@@ -1,0 +1,15 @@
+{
+  "name": "cotizador-tajy",
+  "private": true,
+  "description": "Sistema de cotizaciones multi-ramo de Aseguradora Tajy",
+  "workspaces": [
+    "backend"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=backend",
+    "start": "npm start --workspace=backend"
+  },
+  "allowScripts": {
+    "puppeteer@24.43.1": true
+  }
+}

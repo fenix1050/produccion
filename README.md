@@ -1,8 +1,8 @@
 # Cotizador Tajy
 
-Sistema web de cotización de pólizas para **Aseguradora Tajy** (Paraguay): genera Carta Oferta al
+Sistema web de cotización de pólizas para **Aseguradora Tajy** (Paraguay): Genera Carta Oferta al
 cotizar y Propuesta Formal (con KYC/PLA-FT) cuando el cliente acepta, con historial correlativo
-por ramo.
+por rama.
 
 ![Node](https://img.shields.io/badge/node-20%2B-339933?logo=node.js&logoColor=white)
 ![Backend](https://img.shields.io/badge/backend-Express-000000?logo=express&logoColor=white)
@@ -13,11 +13,11 @@ por ramo.
 
 ## Ramos cubiertos
 
-| Ramo | Estado |
+| Rama | Estado |
 |---|---|
-| Multirriesgo Comercio (MRC) | 🟡 En desarrollo (fase activa) |
-| Incendio | 🟡 En desarrollo (fase activa) |
-| Vida y Accidentes Personales | 🟡 En desarrollo (fase activa) |
+| Multirriesgo Comercio (MRC) | 🟢 Catálogo cerrado — falta calculador `mrc.js` |
+| Incendio | 🟢 Catálogo cerrado — falta calculador `incendio.js` |
+| Vida y Accidentes Personales | 🟡 En desarrollo (fase activa, próximo paso) |
 | Auto individual | ⏸ Pausado (schema listo, fase futura) |
 | Auto Flota | ⏸ Pausado (fase futura) |
 | Multirriesgo Hogar | ⚪ Planificado |
@@ -38,7 +38,8 @@ Antes de tocar código, leé en este orden:
 /backend        API Express (routes -> controllers -> services -> repositories -> Supabase)
 /frontend       Vanilla JS: /cotizar /historial /admin
 /docs           Documentación: plan de desarrollo y estado real de avance
-/docs/insumos   Manuales de suscripción, propuestas reales y planillas de tasas (referencia)
+/docs/insumos   Manuales de suscripción, propuestas reales y planillas de tasas (referencia,
+                excluido del repo por .gitignore — contiene datos reales de clientes)
 ```
 
 ## Requisitos

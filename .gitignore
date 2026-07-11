@@ -5,3 +5,8 @@ node_modules/
 .DS_Store
 dist/
 build/
+.codegraph/
+
+# Insumos con datos reales de clientes (cotizaciones, propuestas) — no confirmado
+# que el repo sea privado. Ver docs/ESTADO_PROYECTO.md antes de destrackear esto.
+docs/insumos/

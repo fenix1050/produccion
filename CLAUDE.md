@@ -76,9 +76,10 @@ Este proyecto se construye **fase por fase**, en este orden fijo (detalle comple
 
 Estamos en **Fase 6/7 (activa)** — orden interno: **MRC primero**, después Incendio, después Vida/AP:
 
-- [ ] Schema completo de la base de datos para MRC/Incendio/Vida-AP (ver sección 4 de PLAN_DESARROLLO.md), incluyendo el campo `tipo_aplicacion` (`cobertura` vs `sublimite`) en `cotizacion_coberturas`
-- [ ] Catálogo de coberturas de MRC e Incendio (manuales de suscripción + propuestas manuales ya recibidas de Kevin)
-- [ ] Calculadores `mrc.js` / `incendio.js` / `vida-ap.js` con la tasa como parámetro configurable (sin hardcodear) — **no se pueden cerrar** hasta recibir el Excel de tasas/RPF del dpto. técnico (pendiente #10, sección 11 de PLAN_DESARROLLO.md)
+- [x] Schema completo de la base de datos para MRC/Incendio/Vida-AP (ver sección 4 de PLAN_DESARROLLO.md), incluyendo el campo `tipo_aplicacion` (`cobertura` vs `sublimite`) en `cotizacion_coberturas` — migración 011 aplicada contra Supabase real (2026-07-10)
+- [x] Catálogo de coberturas de MRC (migración 012, 2026-07-10) — tasas reales de "Version 01 - Calculo Varios.xlsx" + textos legales confirmados contra el sistema de escritorio.
+- [x] Catálogo de coberturas de Incendio (migración 013, 2026-07-10) — fuentes: 4 cotizaciones reales de Incendio ya emitidas (GT S.A., Distribuidora Múltiples Productos, COFUDEP, Robin Hut Heil) + pestaña INCENDIO de "Version 01 - Calculo Varios.xlsx" (confirma que el plan simple reutiliza `rubros_actividad.tasa_edificio/tasa_contenido`, ya cargado en la 012) + plan "Maquinaria Básico" dictado por Kevin (tasa fija 0,7%, RPF confirmado). Catálogo de Vida/AP todavía pendiente (sigue el orden MRC → Incendio → Vida/AP). Pendiente de Incendio: RPF de "Incendio - Edificio y Contenido" (no confirmado en ninguna fuente), nombre exacto de ese plan en el sistema de escritorio, columna de moneda/tope máximo asegurable para modelar el plan Maquinaria Básico en USD (schema no la tiene todavía), y texto legal completo de las cláusulas "a prorrata"/"cobranza"/"inventario no presentado" (solo se confirmó la frase, no el texto completo).
+- [ ] Calculadores `mrc.js` / `incendio.js` / `vida-ap.js` con la tasa como parámetro configurable (sin hardcodear) — RPF de MRC (plan Normal) y de Incendio (plan Maquinaria Básico) ya confirmados; falta el RPF de "Comercio Protección Total", de "Incendio - Edificio y Contenido" y de Vida/AP (pendiente #10, sección 11 de PLAN_DESARROLLO.md)
 - [ ] UI para tildar cobertura vs. sublímite por ítem en la cotización
 
 **Fase 1 de Auto (schema base, importador de tasas) sigue como estaba** — no se retoma hasta que se reactive esa fase.

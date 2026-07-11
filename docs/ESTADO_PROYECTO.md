@@ -6,7 +6,14 @@ Este archivo responde una pregunta puntual: **¿qué se hizo, por qué, y qué f
 momento del desarrollo?**
 
 Última actualización: Fase 6 activa (MRC → Incendio → Vida/AP), Supabase conectado, catálogos
-de MRC (012) e Incendio (013) cargados, migraciones 001→013 corridas.
+de MRC (012) e Incendio (013) cargados, fix de fiabilidad aplicado (014), migraciones 001→014
+corridas. Commit `1661a9f` pusheado a `origin/main` (2026-07-11).
+
+**Nota para trabajar desde otra PC:** `docs/insumos/` (Excels/PDFs con tasas reales y
+cotizaciones de clientes) y `.codegraph/` están en `.gitignore` — no vienen en el `git clone`.
+Copiá `docs/insumos/` a mano a la otra máquina antes de seguir con Vida/AP, y recreá
+`backend/.env` con `SUPABASE_URL`/`SUPABASE_SERVICE_KEY` (tampoco se versiona). Corré
+`codegraph init .` de nuevo ahí si querés tener el índice disponible.
 
 ---
 

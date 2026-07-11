@@ -55,6 +55,10 @@ cp backend/.env.example backend/.env
 # completar SUPABASE_URL y SUPABASE_SERVICE_KEY en backend/.env
 ```
 
+> `docs/insumos/` no viene en el `git clone` (está en `.gitignore` por contener datos reales de
+> clientes) — copiala a mano desde otra máquina/backup si vas a seguir trabajando en los
+> catálogos de coberturas.
+
 ## Migraciones
 
 Las migraciones están en `backend/migrations/*.sql`, numeradas en orden de aplicación.

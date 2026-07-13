@@ -295,6 +295,21 @@ CREATE TABLE cotizacion_plan_pago (
 
 -- Snapshot de coberturas elegidas en ESA cotización (con su texto legal al momento,
 -- para que si el catálogo cambia después, el PDF viejo no se vea afectado)
+--
+-- ⚠ PENDIENTE (detectado 2026-07-13, no bloquea Fase 6/7): esta tabla todavía no se usa desde
+-- ningún lado del backend. `crearCotizacion` (cotizacion.service.js) persiste cotización +
+-- variantes + planes de pago, pero NO inserta filas acá — las líneas de "coberturas
+-- adicionales" que arma el agente en MRC (ver mrc.calculator.js, `coberturas_adicionales`)
+-- solo existen en memoria durante el cálculo, no quedan guardadas contra la cotización
+-- persistida. Hay que resolver esto antes de Historial (Fase 5) o Carta Oferta/Propuesta
+-- Formal (Fase 2/4/8), donde hace falta reconstruir qué coberturas tenía cada cotización.
+--
+-- Las columnas `tipo_aplicacion`/`sublimite_porcentaje`/`sublimite_monto_maximo` (migración 011)
+-- quedaron sin uso — el diseño que representaban ("sublímite = tope sin prima propia") se
+-- descartó el 2026-07-13, ver sección 11 (pendiente #11) más abajo. El campo `monto` de cada
+-- línea SÍ sigue siendo el concepto correcto (suma asegurada de esa línea), solo cambió cómo
+-- se decide si una línea es "cobertura" o "sublímite" (ahora es de solo lectura desde
+-- `coberturas_catalogo.categoria`, no algo que el asegurado alterna por cotización).
 CREATE TABLE cotizacion_coberturas (
   id SERIAL PRIMARY KEY,
   cotizacion_id INT NOT NULL REFERENCES cotizaciones(id) ON DELETE CASCADE,
@@ -306,9 +321,9 @@ CREATE TABLE cotizacion_coberturas (
   franquicia NUMERIC(14,2),
   incluida BOOLEAN DEFAULT TRUE,   -- true = incluida en el plan, false = quitada manualmente
   tipo_aplicacion VARCHAR(10) NOT NULL DEFAULT 'cobertura'
-    CHECK (tipo_aplicacion IN ('cobertura', 'sublimite')), -- decidido por el asegurado en ESTA cotización, no fijo en el catálogo
-  sublimite_porcentaje NUMERIC(6,3),  -- ej. 50% de la suma asegurada, solo si tipo_aplicacion = 'sublimite'
-  sublimite_monto_maximo NUMERIC(14,2) -- tope absoluto del sublímite, solo si tipo_aplicacion = 'sublimite'
+    CHECK (tipo_aplicacion IN ('cobertura', 'sublimite')), -- sin uso hoy, ver nota arriba
+  sublimite_porcentaje NUMERIC(6,3),  -- sin uso hoy, ver nota arriba
+  sublimite_monto_maximo NUMERIC(14,2) -- sin uso hoy, ver nota arriba
 );
 
 -- ============ SERVICIOS (v1 — catálogo separado de coberturas, mismo patrón tildable) ============
@@ -713,14 +728,17 @@ Mismo patrón visual que Siniestros Tajy (sidebar, Vanilla JS, sin framework).
 
 **Fase 5 — Historial y administración**
 - Listado con filtros, búsqueda, reimpresión de PDF
-- Panel admin: gestión de planes/coberturas, reimportación de tasas
+- Panel admin: gestión de planes/coberturas, reimportación de tasas — incluye (pedido 2026-07-13,
+  ver `docs/ESTADO_PROYECTO.md` sección 8) que un rol admin pueda definir qué coberturas quedan
+  fijas por defecto por ramo (hoy hardcodeado en `mrc.calculator.js`) y editar las tasas de
+  `tasas_cobertura_ramo` sin migración SQL
 
 **Fase 6 — Incendio / Multirriesgo Hogar / MRC / TRO / Transporte** — ▶ ACTIVA (2026-07-10). Orden interno acordado con Kevin: **MRC primero**, luego Incendio, Hogar y TRO quedan fuera de esta fase (se retoman después, no las pidió el cliente todavía).
 - Cargar `rubros_actividad`, `tasas_cobertura_ramo` y planes de MRC/Incendio según los manuales oficiales y las propuestas manuales ya recibidas (ver `docs/cotizaciones-ejemplo/` o equivalente)
-- Implementar los calculadores (`mrc.js`, `incendio.js`) sobre el motor unificado (RPF fijo por forma de pago + cuotas = REDONDEAR.SUP(Premio/12,1000)) — **bloqueado hasta recibir el Excel de tasas/RPF del dpto. técnico** (pendiente #2, sección 11); mientras tanto se avanza con schema, catálogo de coberturas y el calculador con la tasa como parámetro configurable (sin hardcodear)
-- Formularios dinámicos por ramo en el frontend (rubro, m², suma por línea de cobertura, etc.)
-- UI para tildar cada cobertura como `cobertura` propia o `sublimite` de otra, según lo que el asegurado quiera pagar (`cotizacion_coberturas.tipo_aplicacion`, ver sección 4) — confirmado con ejemplos reales (GT S.A., Grupo Seguridad Electrónica Paraguay)
-- UI de edición de tasas dentro de rango, restringida a roles con `puede_editar_tasas = true`
+- Implementar los calculadores (`mrc.js`, `incendio.js`) sobre el motor unificado (RPF fijo por forma de pago + cuotas = REDONDEAR.SUP(Premio/12,1000)) — **hecho para MRC plan Normal** (2026-07-13); `incendio.js`/`vida-ap.js` y "Comercio Protección Total" siguen bloqueados hasta recibir el Excel de tasas/RPF del dpto. técnico (pendiente #10, sección 11)
+- Formularios dinámicos por ramo en el frontend (rubro, m², suma por línea de cobertura, etc.) — hecho para MRC
+- ~~UI para tildar cada cobertura como `cobertura` propia o `sublimite` de otra~~ — **rediseñado** (2026-07-13, ver sección 11 pendiente #11): en vez de un toggle por cotización, el agente arma "Coberturas incluidas" agregando líneas del catálogo (repetibles, con suma asegurada propia); el badge cobertura/sublímite es de solo lectura desde `coberturas_catalogo.categoria`. `cotizacion_coberturas.tipo_aplicacion` quedó sin uso.
+- UI de edición de tasas dentro de rango, restringida a roles con `puede_editar_tasas = true` — sigue pendiente, ahora explícitamente pedida por Kevin como parte del panel admin de Fase 5 (coberturas fijas por ramo + tasas editables)
 - Plantillas PDF por ramo
 - Hogar y TRO quedan pendientes de fase futura (mismo esqueleto que MRC/Incendio, se suman cuando el cliente los pida)
 
@@ -756,10 +774,12 @@ Mismo patrón visual que Siniestros Tajy (sidebar, Vanilla JS, sin framework).
 7. **Auto - Flota:** confirmar si la bonificación por cantidad de vehículos (5%/10%/20%) y el recargo por antigüedad se aplican en el orden que asumí (recargo primero, bonificación después sobre el total).
 8. **Máximos de descuento/recargo por plan** (`descuento_maximo`, `recargo_maximo`): ya tengo Premium/Superior (20%/100%) y Fuerte (55%/100%) — faltan Noble y Básico, y el resto de los planes que todavía no me mostraste.
 9. **Franquicia de Importación Directa actualizada a Gs. 350.000** (antes 220.000) — falta: (a) los criterios que hacen variar ese monto base, y (b) el nuevo monto del add-on para sacar la franquicia (el de Gs. 909.091 estaba calculado sobre el valor viejo).
-10. **RPF fijo de MRC, Incendio y Vida/AP:** solicitado al dpto. técnico (2026-07-10); llegará vía Excel. Bloquea terminar los calculadores de la Fase 6/7, no bloquea schema ni catálogo de coberturas.
-11. **Regla "cobertura vs. sublímite" — RESUELTA (2026-07-10), aplica solo a ramos "Otros Riesgos" (MRC, Incendio, etc.), NO a Auto:**
-    - **Auto:** el sublímite es solo texto informativo en la cobertura/PDF (ej. "hasta Gs. X"), sin lógica de cálculo propia. No usa el campo `tipo_aplicacion` — el modelo de Auto ya definido en secciones 4-5 no cambia.
-    - **MRC / Incendio / demás Otros Riesgos:** el asegurado elige por cotización si un ítem (ej. Robo, Granizo, daños a murallas) se cotiza como línea propia (`tipo_aplicacion = 'cobertura'`: capital y prima propios) o como sublímite (`tipo_aplicacion = 'sublimite'`: tope % o monto fijo de indemnización dentro de la cobertura principal, **sin prima adicional**) — ver ejemplos GT S.A. y Grupo Seguridad Electrónica Paraguay. Confirmado: sublímite no lleva tasa reducida propia, es solo un tope de indemnización sin costo adicional.
+10. **RPF fijo de MRC, Incendio y Vida/AP:** solicitado al dpto. técnico (2026-07-10); llegó vía Excel para MRC (plan Normal, 2026-07-13) — `mrc.calculator.js` cerrado end-to-end para ese plan. Sigue pendiente para "Comercio Protección Total", Incendio (salvo "Maquinaria Básico") y los 7 planes de Vida/AP.
+11. **Regla "cobertura vs. sublímite" en MRC — REDISEÑADA (2026-07-13), reemplaza la resolución anterior de esta misma sección (2026-07-10):**
+    - La primera resolución (columna `cotizacion_coberturas.tipo_aplicacion`/`sublimite_porcentaje`/`sublimite_monto_maximo`, migración 011: "sublímite = tope de indemnización dentro de la cobertura principal, sin prima adicional") **se descartó** — Kevin confirmó contra una Propuesta Formal real que los sub-límites de MRC (murallas, granizo, agua, equipos electrónicos, valores ventanilla) SÍ tienen tasa y prima propia, no son un tope sin costo. La migración 011 queda como columnas sin uso en `cotizacion_coberturas` (no se revirtió el schema, simplemente no se lee/escribe desde el calculador).
+    - **Diseño real implementado:** en "Coberturas incluidas" solo Incendio Edificio/Contenido quedan fijos por defecto. El resto de las coberturas del catálogo (`coberturas_catalogo`, ambas categorías "Coberturas Principales" y "Sublímites") las agrega el agente como líneas explícitas con su propia suma asegurada, **pudiendo repetir la misma cobertura varias veces** con sumas distintas (confirmado: "Robo contenido" aparece 2 veces en una cotización real). Cada línea se tarifica con `tasas_cobertura_ramo` y suma a la prima total. El badge "Cobertura"/"Sublímite" que ve el agente es de solo lectura, tomado de `coberturas_catalogo.categoria` — no es un toggle que cambia la tasa.
+    - **Excepción confirmada:** "Robo valores ventanilla" (migración 020) es sub-límite de "Valores en caja fuerte" — misma tasa (10‰), pero su monto NO cuenta para el "Suma Asegurada total" mostrado (columna `coberturas_catalogo.incluye_en_suma_asegurada_total`, default `TRUE`). Las otras 4 coberturas con `categoria = 'Sublímites'` sí cuentan para el total — no es un comportamiento genérico de "Sublímites", es específico de esta cobertura.
+    - **Auto** no se vio afectado por este rediseño: el sublímite sigue siendo solo texto informativo en la cobertura/PDF, sin lógica de cálculo propia — el modelo de Auto de las secciones 4-5 no cambia.
 
 ---
 

@@ -15,7 +15,7 @@ por rama.
 
 | Rama | Estado |
 |---|---|
-| Multirriesgo Comercio (MRC) | 🟢 Cotizador end-to-end (plan Normal) — falta RPF de "Comercio Protección Total" |
+| Multirriesgo Comercio (MRC) | 🟢 Cotizador end-to-end (plan Normal, coberturas adicionales repetibles) — falta RPF de "Comercio Protección Total" |
 | Incendio | 🟡 Catálogo cerrado — falta calculador `incendio.js` (RPF sin confirmar) |
 | Vida y Accidentes Personales | 🟡 Catálogo cerrado — falta calculador `vida-ap.js` (RPF sin confirmar) |
 | Auto individual | ⏸ Pausado (schema listo, fase futura) |
@@ -55,10 +55,6 @@ cp backend/.env.example backend/.env
 # completar SUPABASE_URL y SUPABASE_SERVICE_KEY en backend/.env
 ```
 
-> `docs/insumos/` no viene en el `git clone` (está en `.gitignore` por contener datos reales de
-> clientes) — copiala a mano desde otra máquina/backup si vas a seguir trabajando en los
-> catálogos de coberturas.
-
 ## Migraciones
 
 Las migraciones están en `backend/migrations/*.sql`, numeradas en orden de aplicación.
@@ -66,13 +62,31 @@ Correrlas en el SQL Editor de Supabase (o vía CLI de Supabase) en orden ascende
 
 ## Desarrollo
 
+Opción rápida (Windows, PowerShell) — levanta backend y frontend juntos, cada uno en su
+propia ventana:
+
+```powershell
+.\scripts\dev.ps1
+```
+
+Manual:
+
 ```bash
-npm run dev
+cd backend && npm run dev
 ```
 
 Levanta el backend en `http://localhost:3000` con recarga automática. El frontend es
-estático (Vanilla JS) — abrir los archivos de `/frontend` con un servidor estático local
-(ej. `npx serve frontend`) o servirlos directo desde el backend en desarrollo.
+estático (Vanilla JS) y **debe servirse desde la raíz del repo** (no desde `/frontend`) porque
+las páginas referencian `logo/` con rutas relativas — servir solo `/frontend` rompe esas rutas
+en silencio:
+
+```bash
+npx serve -l 5000 .   # desde la raíz del repo
+```
+
+Con el backend en `:3000` y el frontend en `:5000`, el cotizador queda en
+`http://localhost:5000/frontend/cotizar/`. El puerto del frontend está fijo en `:5000` porque
+`backend/.env` pinea `FRONTEND_URL` para CORS — otro puerto rompe las llamadas a la API.
 
 ## Estado
 

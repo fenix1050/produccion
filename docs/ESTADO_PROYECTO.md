@@ -190,6 +190,15 @@ bloquea Fase 6).
 
 ## 8. Pendientes abiertos
 
+- **Texto oficial para Carta Oferta de MRC (Fase 2/4/8, no empezar todavía)** — Kevin pasó
+  (2026-07-13) el texto completo tal como sale del cotizador de pólizas nuevas: Coberturas
+  Principales, Distribución del Capital Asegurado (Incendio y Robo, 50%/50% Mercaderías/
+  Contenido General), Franquicias (incluye la excepción de Itapúa/Alto Paraná para Caída de
+  Rayo con 10%/mín. Gs. 500.000, ya mencionada como "variable de la cotización, no del
+  catálogo" en la migración 012), Exclusiones ampliadas y las 3 cláusulas que forman parte del
+  contrato (adecuación al código penal, endoso de garantía Segucoop, cobranza). Guardado en
+  Engram (`type: reference`, buscar "texto Carta Oferta MRC") para cuando se encare la
+  generación de PDF — no se tocó código de templates todavía, es fuera de Fase 6/7.
 - **Catálogo de coberturas de MRC** (siguiente paso inmediato) — construir a partir de
   `docs/insumos/M-08OP-GT-01, Manual de Suscripción Riesgos Diversos v.01 301024.pdf` y las
   propuestas manuales reales ya subidas (`GRUPO SEGURIDAD ELECTRONICA PARAGUAY - MULT.

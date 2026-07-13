@@ -125,7 +125,7 @@ Inicial = Cuota = REDONDEAR.SUP(Premio / 12, 1000)
 
 ## Pendientes activos que pueden afectar el código
 
-- **RPF de MRC**: confirmado y cerrado para el plan `MULTIRRIESGO COMERCIO - NORMAL` (`mrc.calculator.js` end-to-end). Sigue sin confirmar para `COMERCIO PROTECCION TOTAL` — corta con 422 explicativo si se intenta cotizar ese plan.
+- **RPF de MRC**: confirmado y cerrado para el plan `MULTIRRIESGO COMERCIO - NORMAL` (`mrc.calculator.js` end-to-end). Sigue sin confirmar para `COMERCIO PROTECCION TOTAL` — migración 022 lo desactivó (`activo = FALSE`) por pedido de Kevin (2026-07-13) porque es probable que quede sin uso; ya no aparece en el selector de planes. Se reactivaría si más adelante se confirma su RPF.
 - **RPF de Incendio y Vida/AP**: sin confirmar en la mayoría de sus planes (solo Incendio "Maquinaria Básico" tiene RPF confirmado) — bloquea terminar `incendio.calculator.js` / `vida-ap.calculator.js`. Ver sección 11 de `PLAN_DESARROLLO.md`, ítem 10.
 - **Panel admin para coberturas fijas por ramo + edición de tasas**: pedido por Kevin (2026-07-13), fuera de alcance hasta Fase 5 — ver `docs/ESTADO_PROYECTO.md` sección 8.
 - **Texto oficial de Carta Oferta de MRC**: ya recibido y guardado de referencia (Engram + `docs/ESTADO_PROYECTO.md` sección 8), pendiente de usarse cuando se implemente el PDF (Fase 2/4/8).

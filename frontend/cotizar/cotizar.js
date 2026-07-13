@@ -47,6 +47,17 @@ function franquiciaValorPorDefecto(franquiciaDefaultMonto) {
   return match ? match.valor : 'sin_deducible';
 }
 
+// Traduce el mapa de selección en UI (codigo -> valor de FRANQUICIA_OPCIONES) al mapa
+// codigo -> monto que espera el backend (riesgo_datos.franquicias_por_cobertura).
+function franquiciasPorCoberturaParaBody() {
+  const resultado = {};
+  for (const [codigo, valor] of Object.entries(state.franquiciasPorCobertura)) {
+    const opcion = FRANQUICIA_OPCIONES.find((o) => o.valor === valor);
+    resultado[codigo] = opcion ? opcion.monto : null;
+  }
+  return resultado;
+}
+
 const DEBOUNCE_MS = 450;
 
 const state = {
@@ -292,6 +303,7 @@ async function calcularPreview() {
       coberturas_adicionales: state.coberturasAdicionales
         .filter((l) => l.codigo && Number(l.sumaAsegurada) > 0)
         .map((l) => ({ codigo: l.codigo, suma_asegurada: Number(l.sumaAsegurada) })),
+      franquicias_por_cobertura: franquiciasPorCoberturaParaBody(),
     },
     descuentos: [],
     recargos: [],

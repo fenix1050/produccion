@@ -55,10 +55,8 @@ export async function crearCotizacion(body) {
           texto_legal_snapshot: catalogoRow?.texto_legal ?? null,
           texto_exclusiones_snapshot: catalogoRow?.texto_exclusiones ?? null,
           monto: cobertura.monto,
-          // TODO: el agente elige la franquicia por cobertura en el frontend
-          // (`state.franquiciasPorCobertura`), pero ese valor todavía no viaja en el body de
-          // esta request — se persiste la franquicia por defecto del catálogo hasta que se
-          // mande la elegida.
+          // El calculador ya resuelve acá la franquicia elegida por el agente (o la default del
+          // catálogo si no eligió ninguna) — ver construirListaCoberturas en mrc.calculator.js.
           franquicia: cobertura.franquicia_default ?? null,
           tipo_aplicacion: cobertura.tipo_aplicacion ?? 'cobertura',
           incluida: true,

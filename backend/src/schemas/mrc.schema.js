@@ -19,6 +19,12 @@ export const riesgoMrcSchema = z
         })
       )
       .default([]),
+    // Franquicia/deducible que el agente elige por cobertura en "Detalle del plan" — puramente
+    // informativo para la propuesta, no afecta el cálculo de la prima (ver FRANQUICIA_OPCIONES en
+    // cotizar.js). Mapa codigo -> monto (null = "sin deducible"). Igual que en el frontend, está
+    // indexado por código de cobertura, no por línea — si el agente repite un código con distinta
+    // suma asegurada, comparten la misma franquicia elegida.
+    franquicias_por_cobertura: z.record(z.string(), z.number().nonnegative().nullable()).default({}),
   })
   .refine((d) => d.capital_edificio > 0 || d.capital_contenido > 0, {
     message: 'Debe indicar al menos un capital (edificio o contenido) mayor a cero',

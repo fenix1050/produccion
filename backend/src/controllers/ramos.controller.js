@@ -26,3 +26,12 @@ export async function listarCoberturasDePlan(req, res, next) {
     next(err);
   }
 }
+
+export async function listarRubrosActividad(req, res, next) {
+  try {
+    const rubros = await ramosService.listarRubrosActividad(req.query.grupo);
+    res.json(rubros);
+  } catch (err) {
+    next(err);
+  }
+}

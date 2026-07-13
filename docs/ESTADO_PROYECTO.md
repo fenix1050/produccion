@@ -10,11 +10,13 @@ momento del desarrollo?**
 "coberturas adicionales" repetibles (2026-07-13, ver sección 16-17). Supabase conectado,
 catálogos de MRC (012, con rename a nomenclatura real en 019 y "Robo valores ventanilla"
 agregado en 020), Incendio (013) y Vida/AP (015, con fix de fiabilidad en 016) cargados, fix de
-Incendio aplicado (014), migraciones 001→021 corridas. `mrc.calculator.js` implementado y
-conectado al frontend de `/cotizar`. Incendio y Vida/AP siguen con calculador pendiente
-(bloqueados por RPF sin confirmar). Pendientes activos: panel admin para coberturas fijas/tasas
-por ramo (Fase 5) y persistir `coberturas_adicionales` en `cotizacion_coberturas` antes de
-Historial/PDF — ver sección 8.
+Incendio aplicado (014), migraciones 001→022 corridas (022 desactiva el plan MRC "Comercio
+Protección Total", sin RPF confirmado). `mrc.calculator.js` implementado y conectado al frontend
+de `/cotizar`. `crearCotizacion` ya persiste el detalle de coberturas en `cotizacion_coberturas`
+(2026-07-13, verificado end-to-end contra Supabase) — falta enviar la franquicia elegida por el
+agente desde el frontend (hoy se persiste la franquicia por defecto del catálogo). Incendio y
+Vida/AP siguen con calculador pendiente (bloqueados por RPF sin confirmar). Pendiente activo:
+panel admin para coberturas fijas/tasas por ramo (Fase 5) — ver sección 8.
 
 **Nota para trabajar desde otra PC:** `docs/insumos/` (Excels/PDFs con tasas reales y
 cotizaciones de clientes) y `.codegraph/` están en `.gitignore` — no vienen en el `git clone`.
@@ -208,11 +210,13 @@ bloquea Fase 6).
   generación de PDF — no se tocó código de templates todavía, es fuera de Fase 6/7.
 - **RLS deshabilitado** en las 29 tablas — ver sección 7, requiere decisión de Kevin antes de
   actuar.
-- **`cotizacion_coberturas` sin usar** (detectado 2026-07-13) — `crearCotizacion` no persiste ahí
-  las líneas de "coberturas adicionales" de MRC, solo existen en memoria durante el cálculo.
-  Hay que resolverlo antes de Historial (Fase 5) o Carta Oferta/Propuesta Formal (Fase 2/4/8),
-  donde hace falta reconstruir qué coberturas tenía cada cotización guardada. Ver
-  `docs/PLAN_DESARROLLO.md` sección 4 (comentario sobre `cotizacion_coberturas`).
+- **`cotizacion_coberturas` resuelto (2026-07-13)** — `crearCotizacion` ahora persiste ahí el
+  detalle de coberturas devuelto por el calculador (snapshot de nombre/texto legal/exclusiones
+  desde `coberturas_catalogo`, con guard porque hoy solo `mrc.calculator.js` devuelve
+  `coberturas`), verificado end-to-end contra Supabase. **Pendiente nuevo:** la franquicia que
+  el agente elige por cobertura en el frontend (`state.franquiciasPorCobertura`, cotizar.js) no
+  viaja todavía en el body de `POST /cotizaciones` — se persiste la franquicia por defecto del
+  catálogo hasta que se mande la elegida.
 - **RPF fijo de Incendio y Vida/AP** — solicitado al dpto. técnico (2026-07-10), llega vía Excel.
   Ya confirmado y cerrado para MRC (plan Normal, 2026-07-13). Sigue bloqueando terminar
   `incendio.calculator.js` / `vida-ap.calculator.js` y el plan "Comercio Protección Total" de

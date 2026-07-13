@@ -126,7 +126,7 @@ Inicial = Cuota = REDONDEAR.SUP(Premio / 12, 1000)
 ## Pendientes activos que pueden afectar el código
 
 - **RPF de MRC**: confirmado y cerrado para el plan `MULTIRRIESGO COMERCIO - NORMAL` (`mrc.calculator.js` end-to-end). Sigue sin confirmar para `COMERCIO PROTECCION TOTAL` — migración 022 lo desactivó (`activo = FALSE`) por pedido de Kevin (2026-07-13) porque es probable que quede sin uso; ya no aparece en el selector de planes. Se reactivaría si más adelante se confirma su RPF.
-- **RPF de Incendio y Vida/AP**: sin confirmar en la mayoría de sus planes (solo Incendio "Maquinaria Básico" tiene RPF confirmado) — bloquea terminar `incendio.calculator.js` / `vida-ap.calculator.js`. Ver sección 11 de `PLAN_DESARROLLO.md`, ítem 10.
+- **RPF de Incendio y Vida/AP confirmado (2026-07-13, migración 023)**: RPF plano (Contado 0% / Cobrador 1,6% / Boca 1,35% / Tarjeta 1%, igual para todos los planes, no varía por cuotas) cargado para los 2 planes de Incendio y los 7 de Vida/AP. "INCENDIO - EDIFICIO Y CONTENIDO" reactivado con prima técnica mínima Gs. 409.091. Vida/AP no maneja prima técnica mínima por ahora (decisión de Kevin, no dato pendiente). Falta todavía escribir `incendio.calculator.js` / `vida-ap.calculator.js` en sí (los datos ya están, la lógica no).
 - **Panel admin para coberturas fijas por ramo + edición de tasas**: pedido por Kevin (2026-07-13), fuera de alcance hasta Fase 5 — ver `docs/ESTADO_PROYECTO.md` sección 8.
 - **Texto oficial de Carta Oferta de MRC**: ya recibido y guardado de referencia (Engram + `docs/ESTADO_PROYECTO.md` sección 8), pendiente de usarse cuando se implemente el PDF (Fase 2/4/8).
 - Auto individual (Fase 1/2, pausada) no tiene pendientes bloqueantes propios — no se retoma hasta reactivar esa fase.

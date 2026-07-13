@@ -204,6 +204,15 @@ bloquea Fase 6).
   de Fase 2, no se toca mientras esa fase esté pausada.
 - Plan Básico (Auto, Fase 1) no distinguido en el calculador — mismo estado, pausado con Fase 2.
 - Panel admin de edición manual de tasas (Auto, Fase 1/5) — decisión tomada, sin diseñar.
+- **Panel admin para configurar coberturas fijas/tasas por ramo (pedido 2026-07-13, Fase 5)**: tras
+  implementar las "coberturas adicionales" de MRC (sección 17), Kevin pidió que un usuario con rol
+  admin pueda definir desde el panel admin (a) qué coberturas quedan fijas/predeterminadas por
+  ramo (hoy `incendio_edificio`/`incendio_contenido` está hardcodeado en `mrc.calculator.js` vía
+  las constantes `CODIGO_INCENDIO_EDIFICIO`/`CODIGO_INCENDIO_CONTENIDO`) y (b) las tasas de
+  `tasas_cobertura_ramo` por si varían en el futuro (hoy solo se cargan por migración SQL). No se
+  empieza hasta Fase 5 — se decidió explícitamente no adelantarla (ver CLAUDE.md, metodología de
+  fases). Cuando se encare, definir con Kevin si "cobertura fija" es una propiedad por ramo o por
+  plan (MRC solo tiene 1 plan calculable hoy, pero Incendio/Vida-AP van a tener varios).
 
 ## 9. Catálogo de coberturas de MRC — CERRADO (migración 012, 2026-07-10)
 
@@ -509,17 +518,43 @@ localmente (backend `npm run dev` + frontend servido estático):
   migración 012 coinciden exacto, tasa por tasa, con el Excel — no se encontró ninguna tasa mal
   cargada.
 
-## 16. Próximo paso
+## 16. Coberturas adicionales de MRC (repetibles) + rename a nomenclatura real — 2026-07-13
+
+- **Rename de 12 coberturas de MRC** (migración 019) a la nomenclatura exacta del sistema de
+  escritorio (fuente: "Version 01 - Calculo Varios.xlsx"), sin el sufijo "hasta la suma de..." del
+  Excel. Filtrado explícito por `ramo_id='mrc'` porque `coberturas_catalogo.codigo` se comparte con
+  Incendio (`incendio_edificio`/`incendio_contenido` existen en ambos ramos con distinto `id`).
+- **Coberturas adicionales repetibles**: rediseño completo de "Coberturas incluidas". Antes, el
+  calculador auto-incluía Robo contenido/Caja fuerte/Resp. Civil (monto placeholder, NO sumado a
+  prima) + sublímites por defecto de `plan_coberturas`. Ahora solo Incendio Edificio/Contenido
+  quedan fijos; todo lo demás (incluidos los 4 sublímites reales: murallas, granizo, agua, equipos
+  electrónicos) lo agrega el agente como línea explícita desde la pestaña Datos, **pudiendo repetir
+  la misma cobertura con distinta suma asegurada** (confirmado por Kevin contra el Excel, hoja
+  MRC/DATOS: "Robo contenido" aparece 2 veces en una cotización real). Cada línea tarifica de
+  verdad con `tasas_cobertura_ramo` (antes cargada pero sin usar) y suma a la prima total. Cada
+  línea muestra un badge "Cobertura"/"Sublímite" tomado directo de `coberturas_catalogo.categoria`
+  — no es un toggle que cambia tasa, es la fila de catálogo elegida. "Suma Asegurada total" en
+  Detalle del plan ahora suma el monto de todas las líneas, no solo los 2 capitales.
+- **Se descartaron 2 diseños alternativos** antes de este: (1) checkbox simple on/off sobre lista
+  fija, descartado por no permitir repetición; (2) el mecanismo original de la migración 011
+  (`tipo_aplicacion`/`sublimite_porcentaje`/`sublimite_monto_maximo`, pensado como "sublímite = sin
+  prima propia, tope de otra cobertura") — descartado porque Kevin confirmó que los 4 sublímites
+  reales SÍ tienen tasa y prima propia en el Excel, no son un tope sin costo.
+- **Nuevo endpoint `GET /ramos/:id/coberturas-catalogo`** (catálogo completo de `coberturas_catalogo`
+  por ramo) — necesario porque `GET /planes/:id/coberturas` (basado en `plan_coberturas`) en MRC
+  solo tenía los 4 sublímites por defecto, nunca las coberturas principales.
+- **Pendiente anotado para Fase 5**: panel admin para que un usuario admin defina qué coberturas
+  quedan fijas por ramo y edite las tasas de `tasas_cobertura_ramo` sin migración SQL — ver
+  sección 8.
+
+## 17. Próximo paso
 
 Con el catálogo de MRC, Incendio y Vida/AP cargado y el primer calculador (MRC, plan Normal) ya
 conectado end-to-end, lo que sigue es uno de estos, a decidir con Kevin:
 - Escribir `incendio.js` y `vida-ap.js` para los planes que ya tienen RPF confirmado (Incendio
   Maquinaria Básico) — los que no lo tienen quedan bloqueados hasta que llegue esa confirmación
   del dpto. técnico.
-- Confirmar el reparto de capital entre las coberturas obligatorias no-Incendio de MRC, para
-  sumarlas a la prima calculada.
-- UI para tildar cobertura vs. sublímite por ítem en la cotización — pendiente ya anotado en
-  `CLAUDE.md`, todavía no encarado.
 - Retomar Fase 2 (Auto end-to-end), si el cliente lo pide.
 - Seguir el frontend de `/cotizar` para Incendio/Vida-AP en cuanto tengan calculador, reutilizando
   el mismo App Shell ya construido para MRC.
+- Panel admin (Fase 5): coberturas fijas por ramo + edición de tasas — ver sección 8.

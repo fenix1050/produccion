@@ -16,3 +16,7 @@ export async function listarCoberturasDePlan(planId) {
 export async function listarRubrosActividad(grupo) {
   return coberturasRepository.findRubrosActividad(grupo);
 }
+
+export async function listarCoberturasCatalogoDeRamo(ramoId) {
+  return coberturasRepository.findCoberturasCatalogoByRamoId(ramoId);
+}

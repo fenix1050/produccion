@@ -69,7 +69,17 @@ const state = {
   // Franquicia elegida por el agente para cada cobertura (codigo -> valor de FRANQUICIA_OPCIONES).
   // Puramente informativo para la propuesta — no afecta la prima ya calculada.
   franquiciasPorCobertura: {},
+  // Catálogo de coberturas del plan actual (plan_coberturas + coberturas_catalogo), usado para
+  // poblar el selector de "Coberturas adicionales". Se carga una vez al elegir plan.
+  coberturasCatalogo: [],
+  // Líneas de coberturas/sublímites adicionales que el agente agrega a mano, más allá de las
+  // 2 fijas (Incendio Edificio / Incendio Contenido). Cada línea: { id, codigo, sumaAsegurada }.
+  coberturasAdicionales: [],
 };
+
+// Códigos que no deben ofrecerse en "Coberturas adicionales": las 2 fijas ya tienen su propio
+// campo en el formulario, y sublimite_cctv todavía no tiene tasa cargada (no cotizable).
+const CODIGOS_COBERTURA_EXCLUIDOS = ['incendio_edificio', 'incendio_contenido', 'sublimite_cctv'];
 
 let debounceTimer = null;
 const app = document.getElementById('app');
@@ -130,6 +140,8 @@ async function selectRamo(nombre) {
   state.planes = [];
   state.franquiciasPorCobertura = {};
   state.rubros = [];
+  state.coberturasCatalogo = [];
+  state.coberturasAdicionales = [];
   state.preview = null;
   state.previewError = null;
   state.formaPagoCodigo = null;
@@ -159,6 +171,10 @@ async function selectRamo(nombre) {
       console.error('No se pudieron cargar los tipos de riesgo', err);
       state.rubros = [];
     }
+
+    // El catálogo de coberturas es por RAMO, no por plan (mismas coberturas disponibles
+    // para "Normal" y "Protección Total") — se carga una sola vez acá.
+    await cargarCoberturasCatalogo(ramo.id);
   } else {
     state.planId = state.planes[0]?.id ?? null;
   }
@@ -171,8 +187,28 @@ function selectPlan(planId) {
   if (!plan || plan.prima_tecnica_minima == null) return; // plan sin RPF confirmado: bloqueado
   state.planId = planId;
   state.data.cuotas = plan.cuotas_default ?? null;
+  state.coberturasAdicionales = [];
   renderApp();
   scheduleCalculate();
+}
+
+// Catálogo COMPLETO de coberturas del ramo (coberturas_catalogo vía GET /ramos/:id/coberturas-catalogo)
+// — a diferencia de GET /planes/:id/coberturas (plan_coberturas), que en MRC solo trae los
+// sublímites por defecto, no las coberturas principales (Robo contenido, Cristales, etc.).
+// Se usa para poblar el selector de "Coberturas adicionales" con nombre + categoría.
+async function cargarCoberturasCatalogo(ramoId) {
+  try {
+    state.coberturasCatalogo = await api.get(`/ramos/${ramoId}/coberturas-catalogo`);
+  } catch (err) {
+    console.error('No se pudo cargar el catálogo de coberturas del ramo', err);
+    state.coberturasCatalogo = [];
+  }
+}
+
+// Opciones seleccionables en "Coberturas adicionales": el catálogo del ramo sin las 2 fijas
+// (tienen su propio campo) ni sublimite_cctv (sin tasa cargada todavía — no cotizable).
+function coberturasDisponibles() {
+  return state.coberturasCatalogo.filter((c) => !CODIGOS_COBERTURA_EXCLUIDOS.includes(c.codigo));
 }
 
 function selectFormaPago(codigo) {
@@ -200,6 +236,28 @@ function updateField(key, value) {
 function scheduleCalculate() {
   clearTimeout(debounceTimer);
   debounceTimer = setTimeout(calcularPreview, DEBOUNCE_MS);
+}
+
+// ---------------------------------------------------------------------------
+// Coberturas adicionales: líneas cobertura/sublímite más allá de Incendio Edificio/Contenido.
+// ---------------------------------------------------------------------------
+
+function addCoberturaLinea() {
+  state.coberturasAdicionales.push({ id: crypto.randomUUID(), codigo: '', sumaAsegurada: '' });
+  renderApp(); // fila nueva: hace falta re-render completo
+}
+
+function removeCoberturaLinea(id) {
+  state.coberturasAdicionales = state.coberturasAdicionales.filter((l) => l.id !== id);
+  renderApp();
+  scheduleCalculate();
+}
+
+function updateCoberturaLinea(id, field, value) {
+  const linea = state.coberturasAdicionales.find((l) => l.id === id);
+  if (!linea) return;
+  linea[field] = value;
+  scheduleCalculate();
 }
 
 function datosMinimosCompletos() {
@@ -231,6 +289,9 @@ async function calcularPreview() {
       ciudad: d.ciudad || '',
       capital_edificio: Number(d.capitalEdificio) || 0,
       capital_contenido: Number(d.capitalContenido) || 0,
+      coberturas_adicionales: state.coberturasAdicionales
+        .filter((l) => l.codigo && Number(l.sumaAsegurada) > 0)
+        .map((l) => ({ codigo: l.codigo, suma_asegurada: Number(l.sumaAsegurada) })),
     },
     descuentos: [],
     recargos: [],
@@ -479,6 +540,9 @@ function renderDatosView(ramo) {
       <label>Incendio Contenido (Gs.)</label>
       <input class="field-input" type="text" inputmode="numeric" data-field="capitalContenido" data-money="true" placeholder="120.000.000" value="${fmtGsInput(state.data.capitalContenido)}" />
     </div>
+    <div class="field field--span2">
+      ${renderCoberturasAdicionales(coberturasDisponibles())}
+    </div>
   ` : `
     <div class="field field--span2">
       <div class="live-summary__pending" style="margin-top:4px;">
@@ -515,6 +579,45 @@ function renderDatosView(ramo) {
         </div>
       </div>
       <div class="live-summary" id="live-summary">${renderLivePanelContent()}</div>
+    </div>
+  `;
+}
+
+// Sección "Coberturas adicionales": líneas cobertura/sublímite más allá de Incendio Edificio/
+// Contenido. `catalogoDisponible` ya viene sin las 2 fijas y sin sublimite_cctv (ver
+// coberturasDisponibles()).
+function renderCoberturasAdicionales(catalogoDisponible) {
+  const opciones = (codigoActual) => catalogoDisponible.map((c) => `
+    <option value="${escapeHtml(c.codigo)}" ${c.codigo === codigoActual ? 'selected' : ''}>
+      ${escapeHtml(c.nombre)}${c.categoria === 'Sublímites' ? ' · Sublímite' : ''}
+    </option>
+  `).join('');
+
+  const filas = state.coberturasAdicionales.map((l) => `
+    <div class="cobertura-adicional-row" data-linea-id="${l.id}">
+      <select class="field-input" data-linea-id="${l.id}" data-linea-field="codigo">
+        <option value="">Seleccioná una cobertura…</option>
+        ${opciones(l.codigo)}
+      </select>
+      <input
+        class="field-input"
+        type="text"
+        inputmode="numeric"
+        data-linea-id="${l.id}"
+        data-linea-field="sumaAsegurada"
+        data-money="true"
+        placeholder="Suma asegurada (Gs.)"
+        value="${fmtGsInput(l.sumaAsegurada)}"
+      />
+      <button type="button" class="btn-outline cobertura-adicional-row__quitar" data-action="remove-cobertura-linea" data-linea-id="${l.id}">Quitar</button>
+    </div>
+  `).join('');
+
+  return `
+    <div class="coberturas-adicionales">
+      <label>Coberturas adicionales</label>
+      ${filas || '<div class="live-summary__pending">Todavía no agregaste coberturas adicionales.</div>'}
+      <button type="button" class="btn-outline" data-action="add-cobertura-linea">+ Agregar cobertura</button>
     </div>
   `;
 }
@@ -661,7 +764,10 @@ function renderResultadoView(ramo) {
             <div class="cobertura-row">
               <div class="cobertura-row__name">
                 <div class="cobertura-row__check">✓</div>
-                <div>${escapeHtml(c.nombre)}</div>
+                <div>
+                  <span class="cobertura-row__badge cobertura-row__badge--${c.tipo_aplicacion}">${c.tipo_aplicacion === 'sublimite' ? 'Sublímite' : 'Cobertura'}</span>
+                  ${escapeHtml(c.nombre)}
+                </div>
               </div>
               <div class="cobertura-row__bottom">
                 ${renderFranquiciaSelect(c)}
@@ -705,8 +811,13 @@ function renderResumenContadoFinanciado() {
 
   const contado = variante.formasPago.find((f) => f.codigo === 'contado');
   const financiado = variante.formasPago.find((f) => f.codigo === 'cobrador');
-  const d = state.preview.detalle || {};
-  const sumaAsegurada = (Number(d.capital_edificio) || 0) + (Number(d.capital_contenido) || 0);
+  // Suma de TODAS las líneas de "Coberturas incluidas" (Incendio Edificio/Contenido +
+  // coberturas/sublímites adicionales que agregó el agente) — no solo los 2 capitales fijos,
+  // igual que "Suma total Gs." en el Excel del cliente (Version 01 - Calculo Varios.xlsx).
+  const sumaAsegurada = (state.preview.coberturas || []).reduce(
+    (acc, c) => acc + (Number(c.monto) || 0),
+    0
+  );
 
   return `
     <div class="resumen-sistema">
@@ -769,33 +880,47 @@ app.addEventListener('click', (e) => {
   else if (action === 'select-plan') selectPlan(Number(target.dataset.planId));
   else if (action === 'select-forma-pago') selectFormaPago(target.dataset.forma);
   else if (action === 'show-tab') setView(target.dataset.view);
+  else if (action === 'add-cobertura-linea') addCoberturaLinea();
+  else if (action === 'remove-cobertura-linea') removeCoberturaLinea(target.dataset.lineaId);
   else if (action === 'emitir-carta') {
     alert('La generación de la Carta Oferta todavía no está implementada (queda para otra tarea).');
   }
 });
 
+// Formatea un input de dinero in-place (misma lógica para el campo money de una línea de
+// cobertura adicional que para capitalEdificio/capitalContenido) y devuelve los dígitos crudos.
+function formatMoneyInputInPlace(target) {
+  const digitsBeforeCursor = target.value.slice(0, target.selectionStart).replace(/\D/g, '').length;
+  const digits = target.value.replace(/\D/g, '');
+  const formatted = fmtGsInput(digits);
+  target.value = formatted;
+
+  let seen = 0;
+  let newCursor = formatted.length;
+  for (let i = 0; i < formatted.length; i += 1) {
+    if (/\d/.test(formatted[i])) seen += 1;
+    if (seen === digitsBeforeCursor) {
+      newCursor = i + 1;
+      break;
+    }
+  }
+  target.setSelectionRange(newCursor, newCursor);
+  return digits;
+}
+
 app.addEventListener('input', (e) => {
+  const lineaTarget = e.target.closest('[data-linea-id][data-linea-field]');
+  if (lineaTarget) {
+    const value = lineaTarget.dataset.money === 'true' ? formatMoneyInputInPlace(lineaTarget) : lineaTarget.value;
+    updateCoberturaLinea(lineaTarget.dataset.lineaId, lineaTarget.dataset.lineaField, value);
+    return;
+  }
+
   const target = e.target.closest('[data-field]');
   if (!target) return;
 
   if (target.dataset.money === 'true') {
-    const digitsBeforeCursor = target.value.slice(0, target.selectionStart).replace(/\D/g, '').length;
-    const digits = target.value.replace(/\D/g, '');
-    const formatted = fmtGsInput(digits);
-    target.value = formatted;
-
-    let seen = 0;
-    let newCursor = formatted.length;
-    for (let i = 0; i < formatted.length; i += 1) {
-      if (/\d/.test(formatted[i])) seen += 1;
-      if (seen === digitsBeforeCursor) {
-        newCursor = i + 1;
-        break;
-      }
-    }
-    target.setSelectionRange(newCursor, newCursor);
-
-    updateField(target.dataset.field, digits);
+    updateField(target.dataset.field, formatMoneyInputInPlace(target));
     return;
   }
 
@@ -806,6 +931,12 @@ app.addEventListener('change', (e) => {
   const franquiciaTarget = e.target.closest('[data-franquicia-cobertura]');
   if (franquiciaTarget) {
     selectFranquicia(franquiciaTarget.dataset.franquiciaCobertura, franquiciaTarget.value);
+    return;
+  }
+
+  const lineaTarget = e.target.closest('[data-linea-id][data-linea-field]');
+  if (lineaTarget && lineaTarget.tagName === 'SELECT') {
+    updateCoberturaLinea(lineaTarget.dataset.lineaId, lineaTarget.dataset.lineaField, lineaTarget.value);
     return;
   }
 

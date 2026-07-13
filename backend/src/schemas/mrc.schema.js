@@ -11,6 +11,14 @@ export const riesgoMrcSchema = z
     ciudad: z.string().min(1),
     capital_edificio: z.number().nonnegative().default(0),
     capital_contenido: z.number().nonnegative().default(0),
+    coberturas_adicionales: z
+      .array(
+        z.object({
+          codigo: z.string().min(1),
+          suma_asegurada: z.number().positive(),
+        })
+      )
+      .default([]),
   })
   .refine((d) => d.capital_edificio > 0 || d.capital_contenido > 0, {
     message: 'Debe indicar al menos un capital (edificio o contenido) mayor a cero',

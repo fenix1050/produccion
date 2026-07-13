@@ -113,9 +113,10 @@ async function validarYResolverContexto(body) {
  * todavía — devuelven siempre 1 variante sin franquicia hasta que se implementen.
  */
 async function construirVariantes({ calculador, plan, datosValidados }) {
-  const { prima, detalle } = await calculador.calcularPrima({
+  const { prima, detalle, coberturas } = await calculador.calcularPrima({
     planId: plan.id,
     capital: datosValidados.capital_asegurado,
+    riesgoDatos: datosValidados.riesgo_datos,
     descuentos: datosValidados.descuentos,
     recargos: datosValidados.recargos,
   });
@@ -130,6 +131,8 @@ async function construirVariantes({ calculador, plan, datosValidados }) {
     franquicia_monto: franquiciaMonto,
     formasPago: formasPagoPlan.map((fp) => ({
       forma_pago_id: fp.forma_pago_id,
+      codigo: fp.formas_pago.codigo,
+      nombre_display: fp.formas_pago.nombre_display,
       cantidad_cuotas: plan.cuotas_default,
       ...calculador.calcularPlanPago(
         primaAjustada,
@@ -139,7 +142,7 @@ async function construirVariantes({ calculador, plan, datosValidados }) {
     })),
   }));
 
-  return { prima, detalle, variantes };
+  return { prima, detalle, coberturas, variantes };
 }
 
 /**

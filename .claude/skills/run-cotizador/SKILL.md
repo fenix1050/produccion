@@ -25,23 +25,56 @@ timeout 30 bash -c 'until curl -sf http://localhost:3000/api/ramos >/dev/null; d
   skip starting a new one and just use it.
 - Stop with `kill $(cat /tmp/cotizador-backend.pid)` or `pkill -f "node --watch src/server.js"`.
 
-## 2. CORS gotcha — the frontend MUST be served on port 5000
+## 2. Serve from the REPO ROOT, not `frontend/` — and CORS needs port 5000
 
-`backend/src/app.js` sets
+Two separate gotchas that both bit a past session, stack them:
+
+**Serve root.** Pages reference the shared `logo/` folder (repo root,
+sibling of `frontend/`, NOT inside it — e.g. sidebar logo and favicon
+via `../../logo/logo.png` / `../../logo/favicon.ico` from
+`frontend/cotizar/index.html`). If you `cd frontend && serve .`, the
+server root is `frontend/` and every one of those `../../logo/...`
+requests resolves outside the served root — the browser 404s them
+**silently** (a broken `<img>` doesn't throw a JS error or show in
+`console --errors`, so this is easy to ship without noticing — it did,
+once). Serve the **repo root** instead, and the app lives under
+`/frontend/...`:
+
+```bash
+npx --yes serve -l 5000 .   # from the REPO ROOT, not frontend/
+echo $! > /tmp/cotizador-frontend.pid
+timeout 15 bash -c 'until curl -sf http://localhost:5000/frontend/cotizar/ >/dev/null; do sleep 1; done'
+```
+
+Page URLs are now `http://localhost:5000/frontend/cotizar/`,
+`http://localhost:5000/frontend/admin/`, etc. — not `/cotizar/`. Sanity
+check after starting: `curl -o /dev/null -w '%{http_code}' http://localhost:5000/logo/logo.png`
+must be `200`, not `404`.
+
+**CORS.** `backend/src/app.js` sets
 `cors({ origin: process.env.FRONTEND_URL || '*' })`, and `backend/.env`
 pins `FRONTEND_URL=http://localhost:5000`. Any other port (5500, 8080,
 whatever `serve` picks by default) gets a CORS preflight rejection and
 every `fetch` in `frontend/shared/api.js` fails silently into
-"No se pudo cargar..." errors in the UI.
+"No se pudo cargar..." errors in the UI — so the port must stay 5000
+regardless of which directory you serve.
+
+**Port already taken by a stale instance.** On Windows, `pkill -f
+"serve -l 5000"` from Git Bash often does NOT kill the underlying
+Windows node process — `serve` silently rebinds to a random port
+instead of failing, so you can be looking at a stale instance without
+any error. Verify the PID that actually owns :5000 and force-kill it
+directly if a fresh `serve` doesn't report `Accepting connections at
+http://localhost:5000` (it'll report some other port instead if 5000
+was still held):
 
 ```bash
-cd frontend
-npx --yes serve -l 5000 . &
-echo $! > /tmp/cotizador-frontend.pid
-timeout 15 bash -c 'until curl -sf http://localhost:5000/cotizar/ >/dev/null; do sleep 1; done'
+netstat -ano | grep ':5000.*LISTENING'   # note the PID in the last column
+taskkill //PID <pid> //F                  # Git Bash needs // to escape the leading -
 ```
 
-Stop with `kill $(cat /tmp/cotizador-frontend.pid)`.
+Stop with `kill $(cat /tmp/cotizador-frontend.pid)`, and verify with
+`netstat` if you're not sure it actually died.
 
 ## 3. Drive it (Playwright — no `chromium-cli` in this environment)
 
@@ -56,7 +89,7 @@ npm install playwright --no-save
 npx playwright install chromium   # ~110MB, only needed once per machine
 ```
 
-Then a Node script against `http://localhost:5000/cotizar/`. Key
+Then a Node script against `http://localhost:5000/frontend/cotizar/`. Key
 selectors/behavior discovered by trial:
 
 - Sidebar ramo links are plain text — `page.click('text=Multirriesgo Comercio')`.

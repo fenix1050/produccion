@@ -22,7 +22,7 @@ const RAMO_CON_CALCULO = 'mrc';
 
 const CLIENT_FIELDS = [
   { key: 'clienteNombre', label: 'Nombre del asegurado', placeholder: 'Juan Pérez', span: 2 },
-  { key: 'cedula', label: 'RUC / Cédula de identidad', placeholder: '4.123.456', span: 1 },
+  { key: 'cedula', label: 'RUC / Cédula de identidad', placeholder: '4.123.456', span: 1, money: true },
   { key: 'direccion', label: 'Dirección', placeholder: 'Av. España 1234, Asunción', span: 1 },
 ];
 
@@ -390,11 +390,27 @@ function renderApp() {
   }
 
   app.innerHTML = `
-    ${renderSidebar()}
-    <div class="main">
-      ${renderHeader(ramo)}
-      ${ramo && state.ramoId === RAMO_CON_CALCULO && ramo.estado === 'disponible' ? renderPlanRow() : ''}
-      ${contenido}
+    ${renderTopbar()}
+    <div class="app-body">
+      ${renderSidebar()}
+      <div class="main">
+        ${renderHeader(ramo)}
+        ${ramo && state.ramoId === RAMO_CON_CALCULO && ramo.estado === 'disponible' ? renderPlanRow() : ''}
+        ${contenido}
+      </div>
+    </div>
+  `;
+}
+
+function renderTopbar() {
+  return `
+    <div class="topbar">
+      <img class="topbar__logo" src="../../logo/logo.svg" alt="Aseguradora Tajy" />
+      <div class="topbar__divider"></div>
+      <div class="topbar__text">
+        <div class="topbar__title">Cotizador</div>
+        <div class="topbar__subtitle">Sistema de Cotización de Pólizas</div>
+      </div>
     </div>
   `;
 }
@@ -414,11 +430,7 @@ function renderSidebar() {
 
   return `
     <div class="sidebar">
-      <div class="sidebar__brand">
-        <img src="../../logo/logo.png" alt="Tajy" />
-        <div class="sidebar__brand-name">Tajy · Cotizador</div>
-      </div>
-      <div class="sidebar__section-label">Ramo a cotizar</div>
+      <div class="sidebar__section-label">Sección a cotizar</div>
       <div class="ramo-list">${rows}</div>
       <div class="sidebar__footer">
         <div class="nav-item">📋 Historial de cotizaciones</div>
@@ -436,7 +448,7 @@ function renderSidebar() {
 }
 
 function renderHeader(ramo) {
-  const subtitle = ramo ? `Cotizando ${ramo.label} para el cliente` : 'Elegí un ramo para comenzar';
+  const subtitle = ramo ? `Cotizando ${ramo.label} para el cliente` : 'Elegí una sección para comenzar';
   const showTabs = Boolean(ramo) && ramo.estado !== 'pausa' && ramo.estado !== 'proximamente';
   const bloqueado = !puedeAvanzarADetalle();
 
@@ -496,6 +508,13 @@ function renderPlanRow() {
 function renderEmptyState() {
   return `
     <div class="empty-state">
+      <div class="empty-state__icon">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M7 2h7l5 5v13a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+          <path d="M14 2v5h5" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+          <path d="M8.5 12h7M8.5 15.5h7M8.5 8.5h2.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        </svg>
+      </div>
       <div class="empty-state__title">Seleccioná un ramo en el panel izquierdo</div>
       <div class="empty-state__subtitle">El formulario y la cotización aparecerán acá.</div>
     </div>
@@ -564,7 +583,7 @@ function renderDatosView(ramo) {
             ${CLIENT_FIELDS.map((f) => `
               <div class="field ${f.span === 2 ? 'field--span2' : ''}">
                 <label>${f.label}</label>
-                <input class="field-input" type="text" data-field="${f.key}" placeholder="${f.placeholder}" value="${escapeHtml(state.data[f.key] ?? '')}" />
+                <input class="field-input" type="text" inputmode="${f.money ? 'numeric' : 'text'}" data-field="${f.key}" ${f.money ? 'data-money="true"' : ''} placeholder="${f.placeholder}" value="${escapeHtml(f.money ? fmtGsInput(state.data[f.key]) : (state.data[f.key] ?? ''))}" />
               </div>
             `).join('')}
             ${camposEspecificos}

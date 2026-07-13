@@ -6,11 +6,15 @@ Este archivo responde una pregunta puntual: **¿qué se hizo, por qué, y qué f
 momento del desarrollo?**
 
 Última actualización: **Fase 6/7 con catálogo cerrado en los 3 ramos priorizados (MRC → Incendio
-→ Vida/AP)** y **cotizador end-to-end funcionando para MRC** (plan Normal). Supabase conectado,
-catálogos de MRC (012), Incendio (013) y Vida/AP (015, con fix de fiabilidad en 016) cargados, fix
-de Incendio aplicado (014), migraciones 001→016 corridas. `mrc.calculator.js` implementado y
-conectado al frontend de `/cotizar` (2026-07-13). Incendio y Vida/AP siguen con calculador
-pendiente (bloqueados por RPF sin confirmar).
+→ Vida/AP)** y **cotizador end-to-end funcionando para MRC** (plan Normal), incluyendo
+"coberturas adicionales" repetibles (2026-07-13, ver sección 16-17). Supabase conectado,
+catálogos de MRC (012, con rename a nomenclatura real en 019 y "Robo valores ventanilla"
+agregado en 020), Incendio (013) y Vida/AP (015, con fix de fiabilidad en 016) cargados, fix de
+Incendio aplicado (014), migraciones 001→021 corridas. `mrc.calculator.js` implementado y
+conectado al frontend de `/cotizar`. Incendio y Vida/AP siguen con calculador pendiente
+(bloqueados por RPF sin confirmar). Pendientes activos: panel admin para coberturas fijas/tasas
+por ramo (Fase 5) y persistir `coberturas_adicionales` en `cotizacion_coberturas` antes de
+Historial/PDF — ver sección 8.
 
 **Nota para trabajar desde otra PC:** `docs/insumos/` (Excels/PDFs con tasas reales y
 cotizaciones de clientes) y `.codegraph/` están en `.gitignore` — no vienen en el `git clone`.
@@ -106,7 +110,7 @@ Plan Básico (tasa única 1,64%) sigue sin implementar — pendiente #4 de la se
 | 008 | Seed de los 5 planes de Auto con valores reales confirmados |
 | 009 | Función Postgres `siguiente_correlativo` (incremento atómico) |
 | 010 | Columna `planes.codigo_tasa` + mapeo a los 4 códigos del Excel de tasas |
-| 011 | `cotizacion_coberturas`: agrega `tipo_aplicacion` (`cobertura`/`sublimite`, CHECK constraint), `sublimite_porcentaje`, `sublimite_monto_maximo` — schema de la regla "cobertura vs. sublímite" para MRC/Incendio (sección 4 y pendiente #11 resuelto de `PLAN_DESARROLLO.md`) |
+| 011 | `cotizacion_coberturas`: agrega `tipo_aplicacion` (`cobertura`/`sublimite`, CHECK constraint), `sublimite_porcentaje`, `sublimite_monto_maximo` — schema para la regla "cobertura vs. sublímite" de MRC/Incendio. **Sin uso hoy**: el diseño que representaba se descartó el 2026-07-13 (ver sección 17 y pendiente #11 de `PLAN_DESARROLLO.md`) y la tabla `cotizacion_coberturas` en sí todavía no se escribe desde ningún lado del backend (ver sección 8) |
 | 012 | Seed de catálogo de coberturas, tasas y planes de MRC — ver sección 9 |
 | 013 | Seed de catálogo de coberturas, tasas y planes de Incendio — ver sección 10 |
 | 014 | Fix de fiabilidad: plan `INCENDIO - EDIFICIO Y CONTENIDO` marcado `activo = FALSE` hasta confirmar su RPF |
@@ -114,10 +118,13 @@ Plan Básico (tasa única 1,64%) sigue sin implementar — pendiente #4 de la se
 | 016 | Fix de fiabilidad sobre la 015: unifica nombres de clave JSONB inconsistentes, completa un `edad_min` faltante, agrega filas de tarifa para 5 coberturas que no tenían ninguna — ver sección 12 |
 | 017 | Agrega `planes.texto_exclusiones_generales` y `planes.texto_sublimites_generales`, cargados para `MULTIRRIESGO COMERCIO - NORMAL` — ver sección 15 |
 | 018 | Agrega `planes.responsabilidad_maxima_cotizable` (tope de suma asegurada cotizable), cargado para `MULTIRRIESGO COMERCIO - NORMAL` (Gs. 7.200.000.000) — ver sección 15 |
+| 019 | Rename de 12 coberturas de MRC a la nomenclatura real del sistema de escritorio, acotado por `ramo_id='mrc'` — ver sección 16 |
+| 020 | Agrega la cobertura `robo_valores_ventanilla` al catálogo de MRC (tasa 10‰) y la columna `coberturas_catalogo.incluye_en_suma_asegurada_total` — ver sección 17 |
+| 021 | Corrige `planes.texto_sublimites_generales` de `MULTIRRIESGO COMERCIO - NORMAL`: agrega 3 sub-límites faltantes y corrige el monto de Daños por Granizo — ver sección 17 |
 
-**Estado real contra Supabase (verificado 2026-07-13 vía MCP):** 001→018 corridas y confirmadas.
-`ramos` 8 filas, `planes` 16 (5 Auto + 2 MRC + 2 Incendio + 7 Vida/AP), `coberturas_catalogo` 30
-filas (14 MRC + 5 Incendio + 11 Vida/AP — Auto no usa esta tabla), `tarifas_generico` 44 filas
+**Estado real contra Supabase (verificado 2026-07-13 vía MCP):** 001→021 corridas y confirmadas.
+`ramos` 8 filas, `planes` 16 (5 Auto + 2 MRC + 2 Incendio + 7 Vida/AP), `coberturas_catalogo` 31
+filas (15 MRC + 5 Incendio + 11 Vida/AP — Auto no usa esta tabla), `tarifas_generico` 44 filas
 (todas de Vida/AP — único ramo que usa esta tabla hasta ahora).
 
 ## 5. Endpoints implementados
@@ -199,22 +206,24 @@ bloquea Fase 6).
   contrato (adecuación al código penal, endoso de garantía Segucoop, cobranza). Guardado en
   Engram (`type: reference`, buscar "texto Carta Oferta MRC") para cuando se encare la
   generación de PDF — no se tocó código de templates todavía, es fuera de Fase 6/7.
-- **Catálogo de coberturas de MRC** (siguiente paso inmediato) — construir a partir de
-  `docs/insumos/M-08OP-GT-01, Manual de Suscripción Riesgos Diversos v.01 301024.pdf` y las
-  propuestas manuales reales ya subidas (`GRUPO SEGURIDAD ELECTRONICA PARAGUAY - MULT.
-  COMERCIO.pdf`, etc.) — insertar filas en `coberturas_catalogo` y `tasas_cobertura_ramo`.
 - **RLS deshabilitado** en las 29 tablas — ver sección 7, requiere decisión de Kevin antes de
   actuar.
-- **RPF fijo de MRC, Incendio y Vida/AP** — solicitado al dpto. técnico (2026-07-10), llega vía
-  Excel. Bloquea terminar `mrc.calculator.js` / `incendio.calculator.js` / `vida-ap.calculator.js`,
-  **no bloquea** schema ni catálogo de coberturas (pendiente #10, sección 11 de
+- **`cotizacion_coberturas` sin usar** (detectado 2026-07-13) — `crearCotizacion` no persiste ahí
+  las líneas de "coberturas adicionales" de MRC, solo existen en memoria durante el cálculo.
+  Hay que resolverlo antes de Historial (Fase 5) o Carta Oferta/Propuesta Formal (Fase 2/4/8),
+  donde hace falta reconstruir qué coberturas tenía cada cotización guardada. Ver
+  `docs/PLAN_DESARROLLO.md` sección 4 (comentario sobre `cotizacion_coberturas`).
+- **RPF fijo de Incendio y Vida/AP** — solicitado al dpto. técnico (2026-07-10), llega vía Excel.
+  Ya confirmado y cerrado para MRC (plan Normal, 2026-07-13). Sigue bloqueando terminar
+  `incendio.calculator.js` / `vida-ap.calculator.js` y el plan "Comercio Protección Total" de
+  MRC — **no bloquea** schema ni catálogo de coberturas (pendiente #10, sección 11 de
   `PLAN_DESARROLLO.md`).
 - Franquicia de Importación Directa (Auto, Fase 1) sigue hardcodeada como constante — pendiente
   de Fase 2, no se toca mientras esa fase esté pausada.
 - Plan Básico (Auto, Fase 1) no distinguido en el calculador — mismo estado, pausado con Fase 2.
 - Panel admin de edición manual de tasas (Auto, Fase 1/5) — decisión tomada, sin diseñar.
 - **Panel admin para configurar coberturas fijas/tasas por ramo (pedido 2026-07-13, Fase 5)**: tras
-  implementar las "coberturas adicionales" de MRC (sección 17), Kevin pidió que un usuario con rol
+  implementar las "coberturas adicionales" de MRC (sección 16), Kevin pidió que un usuario con rol
   admin pueda definir desde el panel admin (a) qué coberturas quedan fijas/predeterminadas por
   ramo (hoy `incendio_edificio`/`incendio_contenido` está hardcodeado en `mrc.calculator.js` vía
   las constantes `CODIGO_INCENDIO_EDIFICIO`/`CODIGO_INCENDIO_CONTENIDO`) y (b) las tasas de
@@ -556,7 +565,35 @@ localmente (backend `npm run dev` + frontend servido estático):
   quedan fijas por ramo y edite las tasas de `tasas_cobertura_ramo` sin migración SQL — ver
   sección 8.
 
-## 17. Próximo paso
+## 17. Robo valores ventanilla + fix de texto de sub-límites — 2026-07-13
+
+- **"Robo valores ventanilla" agregado al catálogo de MRC** (migración 020) — Kevin confirmó
+  contra el dpto. técnico que esta cobertura (y "Valores en tránsito", ya cargada desde la
+  migración 019) sí se usan de verdad. Misma tasa que "Valores en caja fuerte" (10‰), categoría
+  Sublímites. A diferencia de las demás coberturas, su monto NO cuenta para el "Suma Asegurada
+  total" del resumen — es un sub-límite de Caja Fuerte, no una suma asegurada independiente. Se
+  agregó la columna `coberturas_catalogo.incluye_en_suma_asegurada_total` (default `TRUE`,
+  `FALSE` solo para esta fila) porque las otras 4 coberturas categoría "Sublímites" (murallas,
+  granizo, agua, equipos electrónicos) sí cuentan para el total — no es un comportamiento
+  genérico de la categoría.
+- **Verificación end-to-end contra una Propuesta Formal real**: con Tipo de Riesgo Categoría G
+  y los montos reales de la propuesta (Incendio Edificio 250M, Contenido 1000M, Robo contenido
+  500M, Caja fuerte 20M, Ventanilla 2M), el "Suma Asegurada total" calculado dio exacto
+  Gs. 1.770.000.000, igual que el Excel del cliente. Esto también confirmó que el motor de
+  cálculo de MRC (tasa por Tipo de Riesgo + tasas fijas por cobertura + IVA 10% sobre prima
+  cuando RPF=0) está correcto — la discrepancia que Kevin veía antes al replicar la propuesta
+  era por sustituir "Cristales" (8‰) en lugar de "Robo valores ventanilla" (10‰), no un bug.
+- **Fix de `texto_sublimites_generales` del plan Normal** (migración 021): el texto cargado en
+  la migración 017 estaba incompleto (solo tenía Murallas/Granizo) y el monto de "Daños por
+  Granizo" estaba desactualizado (Gs. 2.000.000, de una oferta puntual). Kevin pasó el texto
+  completo real (5 sub-límites) y los 5 montos coincidieron EXACTO con lo que ya estaba en
+  `plan_coberturas.monto` desde la migración 012 — solo hacía falta corregir el texto mostrado,
+  no la base.
+- **Texto oficial completo para la futura Carta Oferta** (Coberturas Principales, Distribución
+  del Capital Asegurado, Franquicias, Exclusiones ampliadas, cláusulas del contrato) guardado de
+  referencia en Engram y en la sección 8 (pendientes) — no se implementa hasta Fase 2/4/8.
+
+## 18. Próximo paso
 
 Con el catálogo de MRC, Incendio y Vida/AP cargado y el primer calculador (MRC, plan Normal) ya
 conectado end-to-end, lo que sigue es uno de estos, a decidir con Kevin:

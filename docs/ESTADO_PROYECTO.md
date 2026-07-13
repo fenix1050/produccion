@@ -217,11 +217,22 @@ bloquea Fase 6).
   (`riesgo_datos.franquicias_por_cobertura`, codigo -> monto, indexado por código igual que
   `state.franquiciasPorCobertura` en el frontend — si se repite un código con distinta suma
   asegurada, comparten la misma franquicia elegida). Verificado end-to-end contra Supabase.
-- **RPF fijo de Incendio y Vida/AP** — solicitado al dpto. técnico (2026-07-10), llega vía Excel.
-  Ya confirmado y cerrado para MRC (plan Normal, 2026-07-13). Sigue bloqueando terminar
-  `incendio.calculator.js` / `vida-ap.calculator.js` y el plan "Comercio Protección Total" de
-  MRC — **no bloquea** schema ni catálogo de coberturas (pendiente #10, sección 11 de
-  `PLAN_DESARROLLO.md`).
+- **RPF de Incendio y Vida/AP — resuelto (2026-07-13, migración 023).** Kevin confirmó contra
+  el sistema real: RPF plano Contado 0% / Cobrador 1,6% / Boca de Cobranza 1,35% / Tarjeta 1%,
+  igual para TODOS los planes de ambos ramos, fijo (no varía por cantidad de cuotas) — mismo
+  criterio que MRC. El manual de suscripción `M-08OP-GT-01` (Incendio/Hogar/Comercio/TRO, Anexo
+  3) trae una tabla de R.P.F. distinta por cuotas; Kevin confirmó que NO se usa, prevalece el
+  valor plano. Cargado para los 2 planes de Incendio ("Maquinaria Básico" ahora con las 4
+  formas de pago habilitadas, antes solo tenía Contado/Cobrador) y los 7 de Vida/AP (ninguno
+  tenía `plan_formas_pago` hasta ahora). "INCENDIO - EDIFICIO Y CONTENIDO" se reactivó
+  (`activo = TRUE`) con Prima Técnica Mínima Gs. 409.091 — el manual transcribe Gs. 409.909 pero
+  Kevin confirmó que el valor correcto es el mismo ya cargado para MRC Normal. **Vida/AP no
+  recibió prima técnica mínima**: Kevin confirmó que por el momento ese ramo no maneja ese piso
+  (decisión, no dato pendiente) — `vida-ap.calculator.js` no debe exigirla como hace
+  `mrc.calculator.js`. Con esto **ya no bloquea** escribir `incendio.calculator.js` /
+  `vida-ap.calculator.js` — falta la lógica en sí, no los datos (pendiente #10, sección 11 de
+  `PLAN_DESARROLLO.md`, a actualizar). El plan "Comercio Protección Total" de MRC sigue sin RPF
+  confirmado (fuera del alcance de esta migración) — ver migración 022, ya desactivado.
 - Franquicia de Importación Directa (Auto, Fase 1) sigue hardcodeada como constante — pendiente
   de Fase 2, no se toca mientras esa fase esté pausada.
 - Plan Básico (Auto, Fase 1) no distinguido en el calculador — mismo estado, pausado con Fase 2.

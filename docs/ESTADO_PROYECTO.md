@@ -5,15 +5,16 @@ Documento de traspaso. Complementa a `CLAUDE.md` (contexto operativo y metodolog
 Este archivo responde una pregunta puntual: **¿qué se hizo, por qué, y qué falta, en este
 momento del desarrollo?**
 
-Última actualización: Fase 6 activa (MRC → Incendio → Vida/AP), Supabase conectado, catálogos
-de MRC (012) e Incendio (013) cargados, fix de fiabilidad aplicado (014), migraciones 001→014
-corridas. Commit `1661a9f` pusheado a `origin/main` (2026-07-11).
+Última actualización: **Fase 6/7 CERRADA** (MRC → Incendio → Vida/AP, los 3 ramos priorizados
+por el cliente ya tienen catálogo de coberturas cargado). Supabase conectado, catálogos de MRC
+(012), Incendio (013) y Vida/AP (015, con fix de fiabilidad en 016) cargados, fix de Incendio
+aplicado (014), migraciones 001→016 corridas (2026-07-12).
 
 **Nota para trabajar desde otra PC:** `docs/insumos/` (Excels/PDFs con tasas reales y
 cotizaciones de clientes) y `.codegraph/` están en `.gitignore` — no vienen en el `git clone`.
-Copiá `docs/insumos/` a mano a la otra máquina antes de seguir con Vida/AP, y recreá
-`backend/.env` con `SUPABASE_URL`/`SUPABASE_SERVICE_KEY` (tampoco se versiona). Corré
-`codegraph init .` de nuevo ahí si querés tener el índice disponible.
+Copiá `docs/insumos/` a mano a la otra máquina, y recreá `backend/.env` con
+`SUPABASE_URL`/`SUPABASE_SERVICE_KEY` (tampoco se versiona). Corré `codegraph init .` de nuevo
+ahí si querés tener el índice disponible.
 
 ---
 
@@ -22,8 +23,12 @@ Copiá `docs/insumos/` a mano a la otra máquina antes de seguir con Vida/AP, y 
 - **Cambio de prioridad (2026-07-10):** el cliente pidió priorizar **MRC, Incendio y Vida/AP**
   por sobre Auto. Fase 2 de Auto queda pausada tal cual está — no se revierte, no se sigue
   tocando hasta que se reactive esa fase.
-- Estamos en **Fase 6/7 (activa)**. Orden interno acordado con Kevin: **MRC primero**, después
-  Incendio, después Vida/AP. Hogar y TRO no fueron pedidos todavía, quedan en fase futura.
+- **Fase 6/7 CERRADA (2026-07-12):** los 3 ramos priorizados por el cliente (MRC → Incendio →
+  Vida/AP) ya tienen su catálogo de coberturas, tasas y planes cargado contra Supabase real. Lo
+  que queda de Fase 6/7 son los 3 calculadores (`mrc.js`/`incendio.js`/`vida-ap.js`), bloqueados
+  por RPF sin confirmar en varios planes (ver sección 8) — no bloquea seguir con otro trabajo de
+  frontend/admin mientras se espera esa confirmación. Hogar y TRO no fueron pedidos todavía,
+  quedan en fase futura.
 - **Supabase real ya está conectado** (`backend/.env` cargado con `SUPABASE_URL` y
   `SUPABASE_SERVICE_KEY`). Las migraciones 001→011 corrieron contra ese proyecto — algunas
   (001→010, de Fase 1 Auto) ya estaban aplicadas de una sesión anterior; la 011 se aplicó en
@@ -91,12 +96,16 @@ Plan Básico (tasa única 1,64%) sigue sin implementar — pendiente #4 de la se
 | 009 | Función Postgres `siguiente_correlativo` (incremento atómico) |
 | 010 | Columna `planes.codigo_tasa` + mapeo a los 4 códigos del Excel de tasas |
 | 011 | `cotizacion_coberturas`: agrega `tipo_aplicacion` (`cobertura`/`sublimite`, CHECK constraint), `sublimite_porcentaje`, `sublimite_monto_maximo` — schema de la regla "cobertura vs. sublímite" para MRC/Incendio (sección 4 y pendiente #11 resuelto de `PLAN_DESARROLLO.md`) |
+| 012 | Seed de catálogo de coberturas, tasas y planes de MRC — ver sección 9 |
+| 013 | Seed de catálogo de coberturas, tasas y planes de Incendio — ver sección 10 |
+| 014 | Fix de fiabilidad: plan `INCENDIO - EDIFICIO Y CONTENIDO` marcado `activo = FALSE` hasta confirmar su RPF |
+| 015 | Seed de catálogo de coberturas, tasas (`tarifas_generico`, JSONB) y planes de Vida y Accidentes Personales — ver sección 12 |
+| 016 | Fix de fiabilidad sobre la 015: unifica nombres de clave JSONB inconsistentes, completa un `edad_min` faltante, agrega filas de tarifa para 5 coberturas que no tenían ninguna — ver sección 12 |
 
-**Estado real contra Supabase (verificado en esta sesión vía MCP):** 001→011 corridas y
-confirmadas — `ramos` tiene 8 filas (incluye `mrc`), `planes` 5, `plan_formas_pago` 20,
-`recargo_antiguedad_tabla` 13, `correlativos` 8. Las tablas de catálogo de MRC/Incendio
-(`coberturas_catalogo`, `tasas_cobertura_ramo`, `rubros_actividad`) están creadas pero **vacías**
-— es el próximo paso (sección 8).
+**Estado real contra Supabase (verificado 2026-07-12 vía MCP):** 001→016 corridas y confirmadas.
+`ramos` 8 filas, `planes` 16 (5 Auto + 2 MRC + 2 Incendio + 7 Vida/AP), `coberturas_catalogo` 30
+filas (14 MRC + 5 Incendio + 11 Vida/AP — Auto no usa esta tabla), `tarifas_generico` 44 filas
+(todas de Vida/AP — único ramo que usa esta tabla hasta ahora).
 
 ## 5. Endpoints implementados
 
@@ -332,10 +341,80 @@ cotización/cliente con un solo PDF combinado. Nuestro `PLAN_DESARROLLO.md` no c
 cotización = un ramo, o una cotización = N ítems de ramos distintos?). No implementar nada de
 esto sin confirmación explícita.
 
-## 12. Próximo paso
+## 12. Catálogo de coberturas de Vida y Accidentes Personales — CERRADO (migración 015, fix en 016, 2026-07-12)
 
-Catálogo de coberturas de **Vida y Accidentes Personales** (siguiente y último ramo en el orden
-MRC → Incendio → Vida/AP), usando `Tajy Cotizador Vida Colectivo 2025-04-04.xlsx` y
-`Tajy Cotizador AP 2025-12-18.xlsx` como fuentes principales de tasas, más el manual
-`M-08OP-GT-01, Manual de Suscripción Vida y Accidentes Personales v.02 301024.pdf` y cualquier
-cotización real de Vida/AP ya emitida que Kevin tenga disponible.
+A diferencia de MRC/Incendio, el `RamoCalculator` de este ramo tarifica **por edad de la persona
+asegurada**, no por capital de un bien (confirmado en `PLAN_DESARROLLO.md` sección 5) — el
+schema no necesitó tablas nuevas: se usó `tarifas_generico` (`ramo_id` + `plan_id` + `variables`
+JSONB, ya prevista desde la migración 004) en vez de `tasas_cobertura_ramo`, porque en Vida/AP la
+misma cobertura cobra tasas distintas según el plan (algo que no pasaba en MRC/Incendio, donde
+una cobertura tenía una sola tasa para todo el ramo).
+
+**Fuentes usadas** (orden de confiabilidad):
+- `M-08OP-GT-01, Manual de Suscripción Vida y Accidentes Personales v.02 301024.pdf`: a
+  diferencia del manual de Incendio/Hogar/Comercio/TRO, **este sí tiene texto extraíble** (no es
+  escaneado). Es la fuente principal — define los 5 sub-productos del ramo (Protección de
+  Préstamos, Protección Familiar, Accidentes Personales, Vida Directivos y Empleados, Aportes y
+  Ahorros) con sus coberturas/exclusiones, y trae un "Anexo 2 – Tasa" que el manual llama
+  textualmente "tasas obligatorias para el presente período" — se usó tal cual, sin cruzarlo
+  contra los Excels.
+- 2 cotizaciones reales de AP ya emitidas (`2026_06_24 ALKA CONSTRUCCIONES S.A - AP, RC,TRC.pdf`,
+  `2026_07_08 Floriano Kochhan Hoffmann - AP.pdf`): confirmaron el texto real de
+  coberturas/exclusiones de Accidentes Personales (Muerte a consecuencia de accidente,
+  Incapacidad total y permanente, Gastos Médicos, y en el caso de Floriano además Gastos de
+  Sepelio).
+- `Tajy Cotizador Vida Colectivo 2025-04-04.xlsx` y `Tajy Cotizador AP 2025-12-18.xlsx`: **NO se
+  usaron** para cargar el catálogo — son herramientas del dpto. técnico con un motor más
+  granular (tabla de mortalidad SISPY 2017 edad por edad para Vida Colectivo; tasas ‰ por
+  cobertura + recargos de compañía Utilidad/Gastos Adm./Comisión/Cobranza/IVA para AP) cuyo
+  resultado numérico no coincide con la tasa combinada y más simple del manual (ej. AP
+  cooperativo 5,5‰ del manual vs. la suma de las 4 tasas del Excel). No se intentó reconciliar
+  ambas fuentes. Quedan como referencia para cuando se escriba `vida-ap.js`: a confirmar con
+  Kevin si el motor granular del Excel es el que realmente usa el dpto. técnico para pólizas
+  colectivas grandes, distinto del cálculo rápido por tasa fija del manual.
+
+**Cargado en Supabase:** 11 `coberturas_catalogo`, 7 `planes` (Protección de Préstamos
+Cooperativas / Mercado General, Protección Familiar, Accidentes Personales Sector Cooperativo /
+Sector Privado, Vida Directivos y Empleados, Aportes y Ahorros), 44 filas en `tarifas_generico`
+(franjas etarias, tasas fijas, recargos y escalas de reducción de capital, todas documentadas con
+`cobertura_codigo` dentro del JSON).
+
+**Fix de fiabilidad aplicado (migración 016), detectado en review-reliability antes de cerrar la
+fase:**
+- Se unificaron 3 nombres de clave JSONB distintos para el mismo concepto de recargo porcentual
+  (`recargo_sobre_tasa_normal_pct` / `recargo_pct` / `recargo`) a un único `recargo_pct`, y 2
+  nombres distintos para tope de monto asegurable (`limite_suma_asegurada` / `monto_maximo`) a
+  `monto_maximo` — para que el futuro `vida-ap.js` no tenga que revisar múltiples nombres de
+  clave para la misma idea.
+- Se completó un `edad_min` faltante en una fila de Aportes y Ahorros (`pct_capital: 100`, "hasta
+  los 54 años inclusive") que había quedado sin ese campo a diferencia de sus filas hermanas —
+  una lectura genérica del futuro calculador la habría dejado inalcanzable para cualquier edad.
+- Se agregaron filas de tarifa para 5 coberturas del catálogo que no tenían ninguna fila
+  `tarifas_generico` que las referenciara (`invalidez_accidente_ap`, `gastos_medicos_accidente`,
+  `gastos_sepelio_accidente`, `reembolso_gastos_funerarios`, `perdidas_organicas`) — estaban
+  documentadas solo en comentarios SQL como "incluidas en la tasa básica", pero un futuro lookup
+  por `cobertura_codigo` habría encontrado cero filas para ellas.
+
+**Pendiente, no bloqueante:**
+- **RPF de los 7 planes de Vida/AP**: ninguna fuente (manual, Excels, ni las 2 cotizaciones
+  reales) desglosa Prima/RPF/IVA por forma de pago para este ramo. Mismo pendiente ya registrado
+  para MRC ("Comercio Protección Total") e Incendio ("Incendio - Edificio y Contenido").
+- El manual anota un recargo "+5" para edad superior a 69 años y hasta 80 años en Accidentes
+  Personales, sin aclarar si son puntos porcentuales o % por año — se cargó el número tal cual,
+  sin interpretar.
+- Motor de cálculo grupal (mortalidad SISPY 2017, Excel Vida Colectivo) vs. tasa fija simple del
+  manual: a confirmar con Kevin cuál aplica en qué caso antes de escribir `vida-ap.js`.
+- Ninguna de las 5 coberturas "incluidas sin tasa propia" (ver fix de la 016) tiene un tope o
+  regla de suma asegurada modelada más allá de la nota textual del manual — puede necesitar
+  columnas nuevas si el calculador termina necesitando esos topes como dato, no solo como texto.
+
+## 13. Próximo paso
+
+Con Fase 6/7 cerrada (catálogo de coberturas de MRC, Incendio y Vida/AP cargado), lo que sigue
+es uno de estos, a decidir con Kevin:
+- Escribir los 3 calculadores (`mrc.js`, `incendio.js`, `vida-ap.js`) para los planes que ya
+  tienen RPF confirmado (MRC Normal, Incendio Maquinaria Básico) — los que no lo tienen quedan
+  bloqueados hasta que llegue esa confirmación del dpto. técnico.
+- Retomar Fase 2 (Auto end-to-end), si el cliente lo pide.
+- Avanzar frontend/UI para lo que ya está cerrado en backend (MRC/Incendio/Vida-AP), que no
+  depende del RPF pendiente.

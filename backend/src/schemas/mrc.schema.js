@@ -33,4 +33,6 @@ export const cotizarMrcSchema = z.object({
   recargos: z.array(ajusteSchema).default([]),
   cliente_nombre: z.string().optional(),
   cliente_contacto: z.string().optional(),
+  // Cantidad de cuotas elegida por el agente. Si no viene, el service usa plan.cuotas_default.
+  cuotas: z.number().int().positive().optional(),
 });

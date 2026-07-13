@@ -15,9 +15,9 @@ por rama.
 
 | Rama | Estado |
 |---|---|
-| Multirriesgo Comercio (MRC) | 🟢 Catálogo cerrado — falta calculador `mrc.js` |
-| Incendio | 🟢 Catálogo cerrado — falta calculador `incendio.js` |
-| Vida y Accidentes Personales | 🟡 En desarrollo (fase activa, próximo paso) |
+| Multirriesgo Comercio (MRC) | 🟢 Cotizador end-to-end (plan Normal) — falta RPF de "Comercio Protección Total" |
+| Incendio | 🟡 Catálogo cerrado — falta calculador `incendio.js` (RPF sin confirmar) |
+| Vida y Accidentes Personales | 🟡 Catálogo cerrado — falta calculador `vida-ap.js` (RPF sin confirmar) |
 | Auto individual | ⏸ Pausado (schema listo, fase futura) |
 | Auto Flota | ⏸ Pausado (fase futura) |
 | Multirriesgo Hogar | ⚪ Planificado |

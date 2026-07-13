@@ -19,10 +19,21 @@ const CODIGO_INCENDIO_CONTENIDO = 'incendio_contenido';
  * la misma prima_tecnica_minima ~409.091 Gs. que el piso confirmado para Incendio, por eso
  * se adopta el mismo esqueleto de 2 líneas en vez de repartir el capital entre todas las
  * coberturas obligatorias, cuya proporción de reparto NO está confirmada todavía):
- *   Costo Edificio  = Capital_Edificio × Tasa(incendio_edificio) / 1000
- *   Costo Contenido = Capital_Contenido × Tasa(incendio_contenido) / 1000
- *   Prima_base = MAX(Costo Edificio + Costo Contenido, plan.prima_tecnica_minima)
+ *   Costo Edificio  = Capital_Edificio × rubros_actividad.tasa_edificio / 1000
+ *   Costo Contenido = Capital_Contenido × rubros_actividad.tasa_contenido / 1000
+ *   Prima_base = Costo Edificio + Costo Contenido — si no alcanza plan.prima_tecnica_minima,
+ *     corta con error 422 (no se aplica el piso en silencio, ver más abajo)
  *   Prima = Prima_base − Descuentos (tope descuento_maximo) + Recargos (tope recargo_maximo)
+ *
+ * La tasa depende del `Tipo de Riesgo` (rubro de actividad) elegido, NO de una tasa fija del
+ * ramo — confirmado por Kevin (2026-07-13): aunque el ejemplo de la hoja "MRC" del Excel usa la
+ * tasa fija de la sección "Tasa MRC" (1,00‰/2,00‰) sin importar el rubro (BAZAR), en el sistema
+ * real la tasa sí varía por categoría del rubro (misma tabla `rubros_actividad` que ya se usa
+ * para Incendio, migración 013).
+ *
+ * También corta con error 422 si Capital_Edificio + Capital_Contenido supera
+ * plan.responsabilidad_maxima_cotizable. Ambas alertas bloquean el cálculo — el frontend no
+ * deja avanzar a "Detalle del plan" mientras estén activas (ver cotizar.js, puedeAvanzarADetalle).
  *
  * @param {object} input
  * @param {number} input.planId
@@ -43,27 +54,56 @@ export async function calcularPrima({ planId, riesgoDatos, descuentos = [], reca
     throw err;
   }
 
-  const tasas = await coberturasRepository.findTasasCoberturaRamo(plan.ramo_id);
-  const tasaPorCodigo = Object.fromEntries(
-    tasas.map((t) => [t.coberturas_catalogo.codigo, t.tasa_valor])
-  );
-
   const capitalEdificio = riesgoDatos.capital_edificio ?? 0;
   const capitalContenido = riesgoDatos.capital_contenido ?? 0;
 
-  const tasaEdificio = tasaPorCodigo[CODIGO_INCENDIO_EDIFICIO];
-  const tasaContenido = tasaPorCodigo[CODIGO_INCENDIO_CONTENIDO];
+  if (
+    plan.responsabilidad_maxima_cotizable != null &&
+    capitalEdificio + capitalContenido > plan.responsabilidad_maxima_cotizable
+  ) {
+    const err = new Error(
+      `La suma de Capital Edificio + Capital Contenido supera la Responsabilidad Máx. Cotizable del plan "${plan.nombre}" (Gs. ${plan.responsabilidad_maxima_cotizable}).`
+    );
+    err.status = 422;
+    err.publicMessage = `El capital declarado supera el máximo cotizable para este plan (Gs. ${plan.responsabilidad_maxima_cotizable.toLocaleString('es-PY')}).`;
+    throw err;
+  }
+
+  const rubro = await coberturasRepository.findRubroPorNombre(riesgoDatos.rubro_actividad);
+  if (!rubro) {
+    const err = new Error(`Tipo de Riesgo "${riesgoDatos.rubro_actividad}" no encontrado en rubros_actividad.`);
+    err.status = 422;
+    err.publicMessage = `El Tipo de Riesgo seleccionado no es válido.`;
+    throw err;
+  }
+
+  const tasaEdificio = rubro.tasa_edificio;
+  const tasaContenido = rubro.tasa_contenido;
 
   if (tasaEdificio == null || tasaContenido == null) {
-    const err = new Error('Faltan tasas de incendio_edificio/incendio_contenido para el ramo MRC.');
-    err.status = 500;
+    const err = new Error(`Faltan tasa_edificio/tasa_contenido para el Tipo de Riesgo "${rubro.nombre}".`);
+    err.status = 422;
+    err.publicMessage = `El Tipo de Riesgo "${rubro.nombre}" todavía no tiene tasas confirmadas.`;
     throw err;
   }
 
   const costoEdificio = capitalEdificio * (tasaEdificio / 1000);
   const costoContenido = capitalContenido * (tasaContenido / 1000);
+  const primaCalculada = costoEdificio + costoContenido;
 
-  const primaBase = Math.max(costoEdificio + costoContenido, plan.prima_tecnica_minima);
+  // A pedido de Kevin (2026-07-13): si el capital declarado no alcanza a generar la Prima
+  // Técnica Mínima del plan, no se aplica el piso en silencio — se corta con alerta, igual que
+  // al superar la Responsabilidad Máx. Cotizable, y no se deja avanzar a la siguiente etapa.
+  if (primaCalculada < plan.prima_tecnica_minima) {
+    const err = new Error(
+      `La prima calculada (Gs. ${primaCalculada}) no alcanza la Prima Técnica Mínima del plan "${plan.nombre}" (Gs. ${plan.prima_tecnica_minima}).`
+    );
+    err.status = 422;
+    err.publicMessage = `El capital declarado es insuficiente: la prima calculada no alcanza la Prima Técnica Mínima de este plan (Gs. ${plan.prima_tecnica_minima.toLocaleString('es-PY')}).`;
+    throw err;
+  }
+
+  const primaBase = primaCalculada;
 
   const totalDescuentos = sumarAjustes(descuentos, primaBase, plan.descuento_maximo);
   const totalRecargos = sumarAjustes(recargos, primaBase, plan.recargo_maximo);
@@ -156,6 +196,7 @@ async function construirListaCoberturas({ ramoId, planId, capitalEdificio, capit
     codigo: c.codigo,
     nombre: c.nombre,
     monto: montoPorCodigo[c.codigo] ?? capitalContenido,
+    franquicia_default: c.franquicia_default ?? null,
   }));
 
   const coberturasDelPlan = await ramosRepository.findCoberturasByPlanId(planId);
@@ -165,6 +206,7 @@ async function construirListaCoberturas({ ramoId, planId, capitalEdificio, capit
       codigo: pc.coberturas_catalogo.codigo,
       nombre: pc.coberturas_catalogo.nombre,
       monto: pc.monto,
+      franquicia_default: pc.coberturas_catalogo?.franquicia_default ?? null,
     }));
 
   return [...principales, ...sublimites];

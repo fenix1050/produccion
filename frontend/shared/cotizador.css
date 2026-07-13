@@ -431,6 +431,7 @@ button {
   border-radius: 9px;
   font-weight: 700;
   font-size: 12.5px;
+  line-height: 1.4;
   cursor: pointer;
 }
 
@@ -597,11 +598,6 @@ button {
   padding: 24px 26px;
 }
 
-.card--pink {
-  background: var(--tajy-pink);
-  border: none;
-}
-
 .card__title {
   font-family: 'Sora', sans-serif;
   font-weight: 700;
@@ -611,10 +607,10 @@ button {
 
 .cobertura-row {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 6px;
   padding: 9px 0;
   border-bottom: 1px solid #f0f0f0;
-  gap: 12px;
 }
 
 .cobertura-row__name {
@@ -639,21 +635,105 @@ button {
   flex-shrink: 0;
 }
 
+.cobertura-row__bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-left: 26px;
+  margin-top: 6px;
+}
+
 .cobertura-row__monto {
   font-size: 12.5px;
   font-weight: 600;
   white-space: nowrap;
 }
 
-.resumen-rows {
+.cobertura-row__franquicia-wrap {
   display: flex;
-  flex-direction: column;
-  gap: 11px;
-  font-size: 12.5px;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
 }
 
-.resumen-rows .live-summary__row span:first-child {
-  color: #7a4444;
+.cobertura-row__franquicia-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--tajy-text-secondary);
+  flex-shrink: 0;
+}
+
+.cobertura-row__franquicia {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--tajy-text-dark);
+  border: 1.5px solid var(--tajy-border);
+  border-radius: 7px;
+  padding: 5px 8px;
+  background: var(--tajy-bg);
+  cursor: pointer;
+  width: 340px;
+  max-width: 100%;
+}
+
+.cobertura-row__franquicia:hover,
+.cobertura-row__franquicia:focus {
+  border-color: var(--tajy-red);
+  outline: none;
+}
+
+.resumen-sistema {
+  border-radius: 10px;
+  overflow: hidden;
+  margin-top: 20px;
+  border: 1px solid var(--tajy-border);
+}
+
+.resumen-sistema__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 11px 20px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--tajy-text-dark);
+}
+
+.resumen-sistema__row--contado {
+  background: #d8d8d8;
+}
+
+.resumen-sistema__row--financiado {
+  background: #e8e8e8;
+}
+
+.resumen-sistema__row--header {
+  background: var(--tajy-red);
+  color: #fff;
+}
+
+.resumen-sistema__row em {
+  font-style: normal;
+  font-weight: 500;
+  color: var(--tajy-text-dark);
+  margin-left: 6px;
+}
+
+.texto-legal-list {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.texto-legal-list li {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--tajy-text-dark);
 }
 
 @media (max-width: 900px) {

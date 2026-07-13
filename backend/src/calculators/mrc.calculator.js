@@ -165,6 +165,10 @@ export async function calcularPrima({ planId, riesgoDatos, descuentos = [], reca
       monto: linea.suma_asegurada,
       franquicia_default: catalogoRow.franquicia_default ?? null,
       tipo_aplicacion: catalogoRow.categoria === 'Sublímites' ? 'sublimite' : 'cobertura',
+      // Por defecto TRUE — "Robo valores ventanilla" es la única excepción confirmada hoy
+      // (migración 020): sub-límite de "Valores en caja fuerte", no cuenta como suma
+      // asegurada independiente en el resumen "Suma Asegurada total".
+      incluye_en_suma_asegurada_total: catalogoRow.incluye_en_suma_asegurada_total ?? true,
       costo: costoLinea,
     });
   }
@@ -286,6 +290,7 @@ function construirListaCoberturas({
       monto: capitalEdificio,
       franquicia_default: catalogoEdificio?.franquicia_default ?? null,
       tipo_aplicacion: 'cobertura',
+      incluye_en_suma_asegurada_total: true,
     },
     {
       codigo: CODIGO_INCENDIO_CONTENIDO,
@@ -293,16 +298,20 @@ function construirListaCoberturas({
       monto: capitalContenido,
       franquicia_default: catalogoContenido?.franquicia_default ?? null,
       tipo_aplicacion: 'cobertura',
+      incluye_en_suma_asegurada_total: true,
     },
   ];
 
-  const adicionales = coberturasAdicionalesValidadas.map(({ codigo, nombre, monto, franquicia_default, tipo_aplicacion }) => ({
-    codigo,
-    nombre,
-    monto,
-    franquicia_default,
-    tipo_aplicacion,
-  }));
+  const adicionales = coberturasAdicionalesValidadas.map(
+    ({ codigo, nombre, monto, franquicia_default, tipo_aplicacion, incluye_en_suma_asegurada_total }) => ({
+      codigo,
+      nombre,
+      monto,
+      franquicia_default,
+      tipo_aplicacion,
+      incluye_en_suma_asegurada_total,
+    })
+  );
 
   return [...fijas, ...adicionales];
 }

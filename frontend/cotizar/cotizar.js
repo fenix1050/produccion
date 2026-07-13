@@ -811,11 +811,14 @@ function renderResumenContadoFinanciado() {
 
   const contado = variante.formasPago.find((f) => f.codigo === 'contado');
   const financiado = variante.formasPago.find((f) => f.codigo === 'cobrador');
-  // Suma de TODAS las líneas de "Coberturas incluidas" (Incendio Edificio/Contenido +
-  // coberturas/sublímites adicionales que agregó el agente) — no solo los 2 capitales fijos,
+  // Suma de las líneas de "Coberturas incluidas" que cuentan como suma asegurada propia
+  // (Incendio Edificio/Contenido + coberturas/sublímites adicionales que agregó el agente) —
   // igual que "Suma total Gs." en el Excel del cliente (Version 01 - Calculo Varios.xlsx).
+  // "Robo valores ventanilla" es la única excepción confirmada hoy: es un sub-límite de
+  // "Valores en caja fuerte", no una suma asegurada independiente, y el backend la marca con
+  // incluye_en_suma_asegurada_total = false (migración 020) para que quede afuera del total.
   const sumaAsegurada = (state.preview.coberturas || []).reduce(
-    (acc, c) => acc + (Number(c.monto) || 0),
+    (acc, c) => acc + (c.incluye_en_suma_asegurada_total === false ? 0 : Number(c.monto) || 0),
     0
   );
 

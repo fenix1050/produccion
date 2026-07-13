@@ -35,3 +35,16 @@ export async function listarRubrosActividad(req, res, next) {
     next(err);
   }
 }
+
+// Catálogo completo de coberturas del ramo (coberturas_catalogo) — a diferencia de
+// listarCoberturasDePlan (plan_coberturas), que solo trae lo pre-cargado por plan
+// (hoy, en MRC, solo los sublímites por defecto). Lo usa el frontend para poblar el
+// selector de "Coberturas adicionales" con TODAS las coberturas/sublímites disponibles.
+export async function listarCoberturasCatalogoDeRamo(req, res, next) {
+  try {
+    const coberturas = await ramosService.listarCoberturasCatalogoDeRamo(req.params.id);
+    res.json(coberturas);
+  } catch (err) {
+    next(err);
+  }
+}

@@ -644,6 +644,61 @@ button {
   margin-top: 6px;
 }
 
+.cobertura-row__badge {
+  display: inline-block;
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 2px 7px;
+  border-radius: 20px;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.cobertura-row__badge--cobertura {
+  background: var(--tajy-green-bg);
+  color: var(--tajy-green-fg);
+}
+
+.cobertura-row__badge--sublimite {
+  background: var(--tajy-pink);
+  color: var(--tajy-red);
+}
+
+/* ---- Coberturas adicionales (MRC) ---- */
+
+.coberturas-adicionales {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.coberturas-adicionales label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--tajy-text-body);
+}
+
+.cobertura-adicional-row {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.cobertura-adicional-row__quitar {
+  padding: 9px 12px;
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+
+.coberturas-adicionales > .btn-outline {
+  align-self: flex-start;
+  padding: 8px 14px;
+  font-size: 12px;
+}
+
 .cobertura-row__monto {
   font-size: 12.5px;
   font-weight: 600;

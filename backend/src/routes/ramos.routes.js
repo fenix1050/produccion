@@ -6,3 +6,4 @@ export const router = Router();
 router.get('/', ramosController.listarRamos);
 router.get('/rubros-actividad', ramosController.listarRubrosActividad);
 router.get('/:id/planes', ramosController.listarPlanesDeRamo);
+router.get('/:id/coberturas-catalogo', ramosController.listarCoberturasCatalogoDeRamo);

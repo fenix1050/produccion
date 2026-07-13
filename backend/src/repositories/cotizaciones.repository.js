@@ -32,10 +32,16 @@ export async function insertPlanesPago(planesPago) {
   return data;
 }
 
+export async function insertCoberturas(coberturas) {
+  const { data, error } = await supabase.from('cotizacion_coberturas').insert(coberturas).select();
+  if (error) throw error;
+  return data;
+}
+
 export async function findCotizacionById(id) {
   const { data, error } = await supabase
     .from('cotizaciones')
-    .select('*, cotizacion_variantes(*, cotizacion_plan_pago(*))')
+    .select('*, cotizacion_variantes(*, cotizacion_plan_pago(*)), cotizacion_coberturas(*)')
     .eq('id', id)
     .single();
   if (error) throw error;

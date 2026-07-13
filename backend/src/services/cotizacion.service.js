@@ -1,5 +1,6 @@
 import * as ramosRepository from '../repositories/ramos.repository.js';
 import * as cotizacionesRepository from '../repositories/cotizaciones.repository.js';
+import * as coberturasRepository from '../repositories/coberturas.repository.js';
 import { getCalculador } from '../calculators/index.js';
 import { getSchemaCotizar } from '../schemas/index.js';
 
@@ -35,6 +36,36 @@ export async function crearCotizacion(body) {
     capital_asegurado: datosValidados.capital_asegurado,
     estado: 'cotizada',
   });
+
+  // Persiste el detalle de coberturas mostrado en "Detalle del plan" (hoy solo lo arma
+  // mrc.calculator.js — Incendio/Vida-AP todavía no devuelven `coberturas`, de ahí el guard).
+  // Snapshot de nombre/texto legal/exclusiones para que quede congelado aunque después
+  // cambie el catálogo (mismo criterio que cotizacion_clausulas/cotizacion_servicios).
+  if (variantesCalculadas.coberturas?.length) {
+    const catalogoRamo = await coberturasRepository.findCoberturasCatalogoByRamoId(ramo.id);
+    const catalogoPorCodigo = new Map(catalogoRamo.map((c) => [c.codigo, c]));
+
+    await cotizacionesRepository.insertCoberturas(
+      variantesCalculadas.coberturas.map((cobertura) => {
+        const catalogoRow = catalogoPorCodigo.get(cobertura.codigo);
+        return {
+          cotizacion_id: cotizacion.id,
+          cobertura_id: catalogoRow?.id ?? null,
+          nombre_snapshot: cobertura.nombre,
+          texto_legal_snapshot: catalogoRow?.texto_legal ?? null,
+          texto_exclusiones_snapshot: catalogoRow?.texto_exclusiones ?? null,
+          monto: cobertura.monto,
+          // TODO: el agente elige la franquicia por cobertura en el frontend
+          // (`state.franquiciasPorCobertura`), pero ese valor todavía no viaja en el body de
+          // esta request — se persiste la franquicia por defecto del catálogo hasta que se
+          // mande la elegida.
+          franquicia: cobertura.franquicia_default ?? null,
+          tipo_aplicacion: cobertura.tipo_aplicacion ?? 'cobertura',
+          incluida: true,
+        };
+      })
+    );
+  }
 
   for (const variante of variantesCalculadas.variantes) {
     const numeroVariante = String(await cotizacionesRepository.nextNumeroCorrelativo(ramo.id));

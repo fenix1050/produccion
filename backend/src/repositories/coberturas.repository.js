@@ -7,7 +7,9 @@ import { supabase } from '../config/supabase.js';
  * @param {string} [grupo] - 'MRC' | 'TRO' | undefined (todos)
  */
 export async function findRubrosActividad(grupo) {
-  let query = supabase.from('rubros_actividad').select('*').order('nombre');
+  // order('id'): conserva el orden real de la pantalla "Tipo de Riesgo" del sistema de
+  // escritorio (orden de inserción de la migración 012), no alfabético.
+  let query = supabase.from('rubros_actividad').select('*').order('id');
   if (grupo) query = query.eq('grupo', grupo);
   const { data, error } = await query;
   if (error) throw error;

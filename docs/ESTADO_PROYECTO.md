@@ -5,10 +5,12 @@ Documento de traspaso. Complementa a `CLAUDE.md` (contexto operativo y metodolog
 Este archivo responde una pregunta puntual: **¿qué se hizo, por qué, y qué falta, en este
 momento del desarrollo?**
 
-Última actualización: **Fase 6/7 CERRADA** (MRC → Incendio → Vida/AP, los 3 ramos priorizados
-por el cliente ya tienen catálogo de coberturas cargado). Supabase conectado, catálogos de MRC
-(012), Incendio (013) y Vida/AP (015, con fix de fiabilidad en 016) cargados, fix de Incendio
-aplicado (014), migraciones 001→016 corridas (2026-07-12).
+Última actualización: **Fase 6/7 con catálogo cerrado en los 3 ramos priorizados (MRC → Incendio
+→ Vida/AP)** y **cotizador end-to-end funcionando para MRC** (plan Normal). Supabase conectado,
+catálogos de MRC (012), Incendio (013) y Vida/AP (015, con fix de fiabilidad en 016) cargados, fix
+de Incendio aplicado (014), migraciones 001→016 corridas. `mrc.calculator.js` implementado y
+conectado al frontend de `/cotizar` (2026-07-13). Incendio y Vida/AP siguen con calculador
+pendiente (bloqueados por RPF sin confirmar).
 
 **Nota para trabajar desde otra PC:** `docs/insumos/` (Excels/PDFs con tasas reales y
 cotizaciones de clientes) y `.codegraph/` están en `.gitignore` — no vienen en el `git clone`.
@@ -23,12 +25,19 @@ ahí si querés tener el índice disponible.
 - **Cambio de prioridad (2026-07-10):** el cliente pidió priorizar **MRC, Incendio y Vida/AP**
   por sobre Auto. Fase 2 de Auto queda pausada tal cual está — no se revierte, no se sigue
   tocando hasta que se reactive esa fase.
-- **Fase 6/7 CERRADA (2026-07-12):** los 3 ramos priorizados por el cliente (MRC → Incendio →
-  Vida/AP) ya tienen su catálogo de coberturas, tasas y planes cargado contra Supabase real. Lo
-  que queda de Fase 6/7 son los 3 calculadores (`mrc.js`/`incendio.js`/`vida-ap.js`), bloqueados
-  por RPF sin confirmar en varios planes (ver sección 8) — no bloquea seguir con otro trabajo de
-  frontend/admin mientras se espera esa confirmación. Hogar y TRO no fueron pedidos todavía,
-  quedan en fase futura.
+- **Fase 6/7 — catálogo cerrado en los 3 ramos priorizados (2026-07-12):** MRC → Incendio →
+  Vida/AP ya tienen su catálogo de coberturas, tasas y planes cargado contra Supabase real.
+- **`mrc.calculator.js` implementado (2026-07-13):** cubre el único plan de MRC con RPF/prima
+  técnica mínima confirmados (`MULTIRRIESGO COMERCIO - NORMAL`) — prima por línea de cobertura
+  (Edificio/Contenido), mismo motor de RPF/IVA/Premio/Cuota que Auto. `COMERCIO PROTECCION TOTAL`
+  corta con error 422 explicativo al intentar cotizarlo (sin RPF confirmado). `incendio.js` y
+  `vida-ap.js` siguen bloqueados por RPF sin confirmar en todos sus planes (ver sección 8).
+- **Frontend de `/cotizar` conectado a MRC (2026-07-13):** sidebar con los 5 ramos reales
+  (MRC/Incendio/Vida-AP disponibles, Auto en pausa, Hogar "próximamente"), panel de cotización en
+  vivo con selección explícita de las 4 formas de pago que se conserva al pasar a Detalle del
+  plan. Incendio, Vida-AP y la generación de Carta Oferta (PDF) quedan con estado "pendiente" en
+  la UI — fuera de alcance de esta tarea.
+- Hogar y TRO no fueron pedidos todavía, quedan en fase futura.
 - **Supabase real ya está conectado** (`backend/.env` cargado con `SUPABASE_URL` y
   `SUPABASE_SERVICE_KEY`). Las migraciones 001→011 corrieron contra ese proyecto — algunas
   (001→010, de Fase 1 Auto) ya estaban aplicadas de una sesión anterior; la 011 se aplicó en
@@ -53,9 +62,11 @@ ahí si querés tener el índice disponible.
     /controllers        cotizaciones, ramos, tasas
     /services            cotizacion, ramos, tasas
     /repositories         cotizaciones, ramos, tasas
-    /calculators          auto (completo), + 7 stubs (auto-flota, incendio, hogar, mrc,
+    /calculators          auto y mrc (completos), + 6 stubs (auto-flota, incendio, hogar,
                            tro, transporte, vida-ap) que lanzan error explícito si se invocan
-    /schemas               auto, tasas
+    /repositories/coberturas.repository.js  nuevo (2026-07-13) — coberturas_catalogo,
+                           tasas_cobertura_ramo y rubros_actividad para MRC/Incendio
+    /schemas               auto, tasas, mrc
     /config                 supabase.js (cliente)
     .env                    creado en esta sesión — NO versionado (.gitignore ya lo cubre)
   /migrations             001 a 011, ver sección 4
@@ -101,20 +112,24 @@ Plan Básico (tasa única 1,64%) sigue sin implementar — pendiente #4 de la se
 | 014 | Fix de fiabilidad: plan `INCENDIO - EDIFICIO Y CONTENIDO` marcado `activo = FALSE` hasta confirmar su RPF |
 | 015 | Seed de catálogo de coberturas, tasas (`tarifas_generico`, JSONB) y planes de Vida y Accidentes Personales — ver sección 12 |
 | 016 | Fix de fiabilidad sobre la 015: unifica nombres de clave JSONB inconsistentes, completa un `edad_min` faltante, agrega filas de tarifa para 5 coberturas que no tenían ninguna — ver sección 12 |
+| 017 | Agrega `planes.texto_exclusiones_generales` y `planes.texto_sublimites_generales`, cargados para `MULTIRRIESGO COMERCIO - NORMAL` — ver sección 15 |
+| 018 | Agrega `planes.responsabilidad_maxima_cotizable` (tope de suma asegurada cotizable), cargado para `MULTIRRIESGO COMERCIO - NORMAL` (Gs. 7.200.000.000) — ver sección 15 |
 
-**Estado real contra Supabase (verificado 2026-07-12 vía MCP):** 001→016 corridas y confirmadas.
+**Estado real contra Supabase (verificado 2026-07-13 vía MCP):** 001→018 corridas y confirmadas.
 `ramos` 8 filas, `planes` 16 (5 Auto + 2 MRC + 2 Incendio + 7 Vida/AP), `coberturas_catalogo` 30
 filas (14 MRC + 5 Incendio + 11 Vida/AP — Auto no usa esta tabla), `tarifas_generico` 44 filas
 (todas de Vida/AP — único ramo que usa esta tabla hasta ahora).
 
 ## 5. Endpoints implementados
 
-Sin cambios respecto a Fase 1 — no se tocó código de rutas/controllers en esta sesión, solo
-schema. Conectados punta a punta:
+Conectados punta a punta:
 - `GET /api/ramos`
+- `GET /api/ramos/rubros-actividad` (nuevo, 2026-07-13 — lista `rubros_actividad` para el
+  formulario de riesgo de MRC/Incendio, filtrable por `?grupo=`)
 - `GET /api/ramos/:id/planes`
 - `GET /api/planes/:id/coberturas`
-- `POST /api/cotizaciones/calcular`
+- `POST /api/cotizaciones/calcular` (ramo `mrc` ya calcula real vía `mrc.calculator.js`; Auto
+  sigue como en Fase 1; Incendio/Vida-AP siguen en stub)
 - `POST /api/cotizaciones`
 - `GET /api/cotizaciones`
 - `GET /api/cotizaciones/:id`
@@ -126,8 +141,9 @@ Stub / no implementados, cada uno con TODO explícito en el código:
 - `GET /api/cotizaciones/:id/pdf-oferta` → Fase 2/4
 - `POST /api/cotizaciones/:id/aceptar`, `GET /api/cotizaciones/:id/pdf-propuesta` → Fase 4
 - CRUD `/api/admin/coberturas` → no existe aún
-- Calculadores `mrc.js` / `incendio.js` / `vida-ap.js` → stubs, bloqueados por el Excel de
-  tasas/RPF del dpto. técnico (pendiente #10, sección 11 de `PLAN_DESARROLLO.md`)
+- Calculadores `incendio.js` / `vida-ap.js` → stubs, bloqueados por el Excel de tasas/RPF del
+  dpto. técnico (pendiente #10, sección 11 de `PLAN_DESARROLLO.md`). `mrc.js` ya implementado
+  (ver sección 1 y 14).
 
 ## 6. Decisiones tomadas en esta sesión (con motivo)
 
@@ -408,13 +424,102 @@ fase:**
   regla de suma asegurada modelada más allá de la nota textual del manual — puede necesitar
   columnas nuevas si el calculador termina necesitando esos topes como dato, no solo como texto.
 
-## 13. Próximo paso
+## 14. Cotizador de MRC end-to-end (plan Normal) — 2026-07-13
 
-Con Fase 6/7 cerrada (catálogo de coberturas de MRC, Incendio y Vida/AP cargado), lo que sigue
-es uno de estos, a decidir con Kevin:
-- Escribir los 3 calculadores (`mrc.js`, `incendio.js`, `vida-ap.js`) para los planes que ya
-  tienen RPF confirmado (MRC Normal, Incendio Maquinaria Básico) — los que no lo tienen quedan
-  bloqueados hasta que llegue esa confirmación del dpto. técnico.
+Con el catálogo de MRC ya cerrado (sección 9), se implementó el primer calculador real del
+bloque priorizado y se conectó al frontend, siguiendo el diseño de referencia de
+`design_handoff_cotizador/` (handoff sumado en el mismo bloque de commits) adaptado a los ramos y
+datos reales del sistema.
+
+- **`mrc.calculator.js`:** cubre solo `MULTIRRIESGO COMERCIO - NORMAL` (único plan con RPF y
+  `prima_tecnica_minima` confirmados). Prima = `MAX(Capital_Edificio × Tasa(incendio_edificio) +
+  Capital_Contenido × Tasa(incendio_contenido), prima_tecnica_minima)`, con descuentos/recargos
+  topados igual que Auto, y el mismo motor de RPF/IVA/Premio/Cuota. Las demás coberturas
+  obligatorias del ramo (robo, cristales, RC, equipos electrónicos) se muestran informativamente
+  en la lista de coberturas pero **no están sumadas a la prima todavía** — no está confirmado
+  cómo se reparte el capital entre esas líneas (mismo pendiente ya anotado en la migración 012).
+  `COMERCIO PROTECCION TOTAL` corta con error 422 explicativo (`err.publicMessage`) en vez de
+  calcular con datos inventados.
+- **Nuevo `coberturas.repository.js`** para leer `coberturas_catalogo`, `tasas_cobertura_ramo` y
+  `rubros_actividad` — hasta ahora esas tablas solo se habían cargado (migraciones), no leído
+  desde código de aplicación.
+- **`mrc.schema.js` (Zod):** valida `riesgo_datos` de MRC (cédula, dirección, rubro de actividad,
+  ciudad, capital edificio/contenido) — exige al menos uno de los dos capitales mayor a cero.
+- **Endpoint nuevo:** `GET /api/ramos/rubros-actividad` (filtrable por `?grupo=`), para poblar el
+  selector de rubro de actividad en el formulario de riesgo.
+- **Frontend (`/frontend/cotizar`):** sidebar con los 5 ramos reales (MRC/Incendio/Vida-AP
+  disponibles, Auto en pausa, Hogar "próximamente"), formulario de datos de riesgo, panel de
+  cotización en vivo con selección explícita de forma de pago (Contado/Cobrador/Boca de
+  Cobranza/Tarjeta) que se conserva al pasar a la pantalla de Detalle del plan. Incendio, Vida-AP
+  y la Carta Oferta (PDF) quedan con estado "pendiente" en la UI — fuera de alcance de esta tarea.
+- **Fix incidental:** el manejador de errores de `app.js` tumbaba el proceso entero al loguear un
+  `ZodError` con `console.error(err)` (bug de `util.inspect` con errores de Zod); ahora loguea
+  `err.stack`.
+
+**Pendiente, no bloqueante:**
+- Reparto del capital entre las coberturas obligatorias no-Incendio de MRC (robo, cristales, RC,
+  equipos electrónicos) — sin esto, esas coberturas quedan fuera de la prima calculada.
+- RPF de `COMERCIO PROTECCION TOTAL` — mismo pendiente de la sección 8/9.
+
+## 15. Ajustes de UI/datos sobre el cotizador de MRC — 2026-07-13 (sesión de pulido)
+
+Serie de ajustes chicos sobre lo cerrado en la sección 14, todos verificados corriendo la app
+localmente (backend `npm run dev` + frontend servido estático):
+
+- **Fix de entorno:** `FRONTEND_URL` en `backend/.env` apuntaba a `http://localhost:5173` (puerto
+  de Vite) mientras el frontend se sirve en `5000` — CORS bloqueaba silenciosamente todas las
+  llamadas a la API. Corregido en el `.env` local de esta máquina (no versionado).
+- **"Rubro de actividad" renombrado a "Tipo de Riesgo"** en el formulario, y el desplegable pasó
+  de filtrar por `?grupo=MRC` (15 de 49 rubros) a traer los 49 sin filtro — la pantalla real del
+  sistema de escritorio muestra los 49 juntos. `coberturas.repository.js` ahora ordena
+  `rubros_actividad` por `id` (orden de inserción) en vez de alfabético, para que coincida con el
+  orden real de esa pantalla — confirmado ítem por ítem contra una captura del sistema real.
+- **Formato de miles en los inputs de capital** (Incendio Edificio / Incendio Contenido, luego
+  renombrados así por pedido de Kevin — antes "Capital Edificio/Contenido"): pasaron de
+  `type="number"` a texto con máscara de miles en vivo (reusa el helper `fmtGs` ya existente),
+  conservando la posición del cursor mientras se tipea.
+- **Exclusiones y Sub-límites generales por plan** (migración 017): se agregaron
+  `planes.texto_exclusiones_generales` y `planes.texto_sublimites_generales`, cargados para
+  `MULTIRRIESGO COMERCIO - NORMAL` con el texto dictado por Kevin contra el sistema real. Se
+  muestran como dos tarjetas nuevas en "Detalle del plan", debajo de Coberturas/Resumen.
+  **Pendiente, no bloqueante:** el sublímite de "Daños por Granizo" ya cargado en `plan_coberturas`
+  (Gs. 5.000.000, migración 012) no coincide con el texto de sub-límites dictado ahora
+  (Gs. 2.000.000) — Kevin confirmó que ese monto se usó en otra oferta puntual y que el valor fijo
+  definitivo se define después. No se tocó `plan_coberturas`.
+- **Selector de cantidad de cuotas:** el service ignoraba cualquier cuota elegida y siempre usaba
+  `plan.cuotas_default` (11, fijo). Se agregó `cuotas` (opcional) a `cotizarMrcSchema` y
+  `cotizacion.service.js` ahora la respeta, topada por `plan.cuotas_maximo`. **Importante:** el
+  monto de cada cuota sigue siendo fijo (`REDONDEAR.SUP(Premio/12, 1000)`, fórmula unificada de
+  `PLAN_DESARROLLO.md` sección 5) — elegir menos cuotas no cambia ese monto, solo cuántas cuotas
+  totales figuran en el plan de pago guardado. El selector vive en el panel "Cotización en vivo".
+- **Bloque "Suma Asegurada total / Costo Contado / Costo Financiado"** en "Detalle del plan"
+  (arriba de "Coberturas incluidas"), replicando el formato de la pantalla del sistema real
+  (header rojo + filas grises). A diferencia del resto de la vista, este bloque siempre muestra
+  Contado y el financiado vía "Crédito (Cobrador)" en simultáneo, sin importar la forma de pago
+  elegida en las pills. Fix de contraste: el header perdía el fondo rojo contra una regla
+  `:nth-child(odd)` con más especificidad — se resolvió con clases explícitas por fila
+  (`--header`/`--contado`/`--financiado`) en vez de depender del orden de las filas.
+- **`planes.responsabilidad_maxima_cotizable`** (migración 018): tope de suma asegurada cotizable
+  por plan, dato que faltaba modelar — confirmado por Kevin contra la pantalla "Configuración para
+  Cotizador" del sistema real (Gs. 7.200.000.000 para `MULTIRRIESGO COMERCIO - NORMAL`).
+  `mrc.calculator.js` ahora corta con error 422 explicativo si `Capital Edificio + Capital
+  Contenido` supera ese tope.
+- **Verificación cruzada contra el Excel real** (`docs/insumos/Version 01 - Calculo Varios.xlsx`,
+  hoja DATOS): las 13 tasas de coberturas de MRC y los 49 `rubros_actividad` cargados en la
+  migración 012 coinciden exacto, tasa por tasa, con el Excel — no se encontró ninguna tasa mal
+  cargada.
+
+## 16. Próximo paso
+
+Con el catálogo de MRC, Incendio y Vida/AP cargado y el primer calculador (MRC, plan Normal) ya
+conectado end-to-end, lo que sigue es uno de estos, a decidir con Kevin:
+- Escribir `incendio.js` y `vida-ap.js` para los planes que ya tienen RPF confirmado (Incendio
+  Maquinaria Básico) — los que no lo tienen quedan bloqueados hasta que llegue esa confirmación
+  del dpto. técnico.
+- Confirmar el reparto de capital entre las coberturas obligatorias no-Incendio de MRC, para
+  sumarlas a la prima calculada.
+- UI para tildar cobertura vs. sublímite por ítem en la cotización — pendiente ya anotado en
+  `CLAUDE.md`, todavía no encarado.
 - Retomar Fase 2 (Auto end-to-end), si el cliente lo pide.
-- Avanzar frontend/UI para lo que ya está cerrado en backend (MRC/Incendio/Vida-AP), que no
-  depende del RPF pendiente.
+- Seguir el frontend de `/cotizar` para Incendio/Vida-AP en cuanto tengan calculador, reutilizando
+  el mismo App Shell ya construido para MRC.

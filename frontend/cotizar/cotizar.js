@@ -28,6 +28,25 @@ const CLIENT_FIELDS = [
 
 const CIUDADES = ['Asunción', 'Ciudad del Este', 'Encarnación', 'Otra'];
 
+// Opciones de franquicia/deducible que el agente puede elegir por cobertura, según lo que le
+// interese al asegurado — misma lista para cualquier cobertura de MRC (confirmado por Kevin,
+// 2026-07-13). Puramente informativo para la propuesta: no cambia la prima ya calculada.
+// `monto` es el mínimo de la franquicia (null = "Sin deducible", no aplica %).
+const FRANQUICIA_OPCIONES = [
+  { valor: 'sin_deducible', label: 'Sin deducible', monto: null },
+  { valor: '10_500000', label: '10% en todo y cada siniestro, mínimo Gs. 500.000', monto: 500000 },
+  { valor: '10_800000', label: '10% en todo y cada siniestro, mínimo Gs. 800.000', monto: 800000 },
+  { valor: '10_1000000', label: '10% en todo y cada siniestro, mínimo Gs. 1.000.000', monto: 1000000 },
+  { valor: '10_1200000', label: '10% en todo y cada siniestro, mínimo Gs. 1.200.000', monto: 1200000 },
+  { valor: '10_1500000', label: '10% en todo y cada siniestro, mínimo Gs. 1.500.000', monto: 1500000 },
+];
+
+function franquiciaValorPorDefecto(franquiciaDefaultMonto) {
+  if (!franquiciaDefaultMonto) return 'sin_deducible';
+  const match = FRANQUICIA_OPCIONES.find((o) => o.monto === franquiciaDefaultMonto);
+  return match ? match.valor : 'sin_deducible';
+}
+
 const DEBOUNCE_MS = 450;
 
 const state = {
@@ -47,6 +66,9 @@ const state = {
   // sección 5: las 4 formas de pago se calculan siempre en simultáneo, pero el agente
   // presenta una sola al cliente.
   formaPagoCodigo: null,
+  // Franquicia elegida por el agente para cada cobertura (codigo -> valor de FRANQUICIA_OPCIONES).
+  // Puramente informativo para la propuesta — no afecta la prima ya calculada.
+  franquiciasPorCobertura: {},
 };
 
 let debounceTimer = null;
@@ -69,6 +91,13 @@ async function init() {
 function fmtGs(n) {
   const num = Math.round(Number(n) || 0);
   return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
+// Como fmtGs, pero para inputs editables: un capital vacío debe mostrarse vacío,
+// no "0" (fmtGs normal trata undefined/"" como 0 para totales/montos ya calculados).
+function fmtGsInput(digits) {
+  if (digits === undefined || digits === null || digits === '') return '';
+  return fmtGs(digits);
 }
 
 function escapeHtml(value) {
@@ -99,6 +128,7 @@ async function selectRamo(nombre) {
   state.data = {};
   state.planId = null;
   state.planes = [];
+  state.franquiciasPorCobertura = {};
   state.rubros = [];
   state.preview = null;
   state.previewError = null;
@@ -119,11 +149,14 @@ async function selectRamo(nombre) {
     // Preselecciona el único plan calculable hoy (RPF confirmado).
     const planCalculable = state.planes.find((p) => p.prima_tecnica_minima != null);
     state.planId = planCalculable ? planCalculable.id : state.planes[0]?.id ?? null;
+    state.data.cuotas = planCalculable?.cuotas_default ?? null;
 
     try {
-      state.rubros = await api.get('/ramos/rubros-actividad?grupo=MRC');
+      // Sin filtro de grupo: la pantalla "Tipo de Riesgo" del sistema de escritorio
+      // muestra los 49 rubros juntos (MRC y TRO comparten la misma lista visual).
+      state.rubros = await api.get('/ramos/rubros-actividad');
     } catch (err) {
-      console.error('No se pudieron cargar los rubros de actividad', err);
+      console.error('No se pudieron cargar los tipos de riesgo', err);
       state.rubros = [];
     }
   } else {
@@ -137,6 +170,7 @@ function selectPlan(planId) {
   const plan = state.planes.find((p) => p.id === planId);
   if (!plan || plan.prima_tecnica_minima == null) return; // plan sin RPF confirmado: bloqueado
   state.planId = planId;
+  state.data.cuotas = plan.cuotas_default ?? null;
   renderApp();
   scheduleCalculate();
 }
@@ -145,6 +179,10 @@ function selectFormaPago(codigo) {
   state.formaPagoCodigo = codigo;
   renderLivePanel();
   if (state.view === 'result') renderApp();
+}
+
+function selectFranquicia(codigoCobertura, valor) {
+  state.franquiciasPorCobertura[codigoCobertura] = valor;
 }
 
 function setView(view) {
@@ -178,6 +216,7 @@ async function calcularPreview() {
     state.previewError = null;
     renderLivePanel();
     if (state.view === 'result') renderApp();
+    syncAvanceButtons();
     return;
   }
 
@@ -196,6 +235,7 @@ async function calcularPreview() {
     descuentos: [],
     recargos: [],
     cliente_nombre: d.clienteNombre || '',
+    ...(d.cuotas ? { cuotas: Number(d.cuotas) } : {}),
   };
 
   state.loadingPreview = true;
@@ -212,6 +252,13 @@ async function calcularPreview() {
         ?? resultado.variantes?.[0]?.formasPago?.[0]?.codigo
         ?? null;
     }
+    // Defaultea la franquicia de cada cobertura nueva a la de catálogo — sin pisar una que
+    // el agente ya haya elegido a mano en esta misma cotización.
+    for (const c of resultado.coberturas || []) {
+      if (!(c.codigo in state.franquiciasPorCobertura)) {
+        state.franquiciasPorCobertura[c.codigo] = franquiciaValorPorDefecto(c.franquicia_default);
+      }
+    }
   } catch (err) {
     state.preview = null;
     state.previewError = err.message || 'No se pudo calcular la cotización.';
@@ -219,6 +266,29 @@ async function calcularPreview() {
     state.loadingPreview = false;
     renderLivePanel();
     if (state.view === 'result') renderApp();
+    syncAvanceButtons();
+  }
+}
+
+// El botón "Ver detalle completo" y la pestaña "Detalle del plan" viven fuera del subárbol que
+// renderLivePanel() actualiza — sin esto quedaban con el estado `disabled` del último render
+// completo (ej. mientras el capital todavía era insuficiente) y nunca se desbloqueaban al llegar
+// a un cálculo válido. Se actualizan acá directo sobre el DOM en vez de un renderApp() completo,
+// para no perder el foco/cursor de los inputs mientras el agente sigue tipeando.
+function syncAvanceButtons() {
+  const habilitado = puedeAvanzarADetalle();
+  const title = habilitado ? '' : 'Corregí el capital declarado antes de avanzar — ver el mensaje de alerta';
+
+  const boton = document.getElementById('btn-ver-detalle');
+  if (boton) {
+    boton.disabled = !habilitado;
+    boton.title = title;
+  }
+
+  const tab = document.getElementById('tab-detalle-plan');
+  if (tab) {
+    tab.disabled = !habilitado;
+    tab.title = title;
   }
 }
 
@@ -307,6 +377,7 @@ function renderSidebar() {
 function renderHeader(ramo) {
   const subtitle = ramo ? `Cotizando ${ramo.label} para el cliente` : 'Elegí un ramo para comenzar';
   const showTabs = Boolean(ramo) && ramo.estado !== 'pausa' && ramo.estado !== 'proximamente';
+  const bloqueado = !puedeAvanzarADetalle();
 
   return `
     <div class="main-header">
@@ -317,11 +388,26 @@ function renderHeader(ramo) {
       ${showTabs ? `
         <div class="tabs">
           <button class="tab-btn ${state.view === 'form' ? 'tab-btn--active' : ''}" data-action="show-tab" data-view="form">Datos</button>
-          <button class="tab-btn ${state.view === 'result' ? 'tab-btn--active' : ''}" data-action="show-tab" data-view="result">Detalle del plan</button>
+          <button
+            id="tab-detalle-plan"
+            class="tab-btn ${state.view === 'result' ? 'tab-btn--active' : ''}"
+            data-action="show-tab"
+            data-view="result"
+            ${bloqueado ? 'disabled title="Corregí el capital declarado antes de avanzar — ver el mensaje de alerta"' : ''}
+          >Detalle del plan</button>
         </div>
       ` : ''}
     </div>
   `;
+}
+
+// El agente no puede pasar a "Detalle del plan" mientras haya una alerta bloqueante
+// (prima por debajo de la Prima Técnica Mínima, o capital por encima de la Responsabilidad
+// Máxima Cotizable) — ver mrc.calculator.js. Otros ramos (sin calculador conectado todavía)
+// no tienen esta restricción.
+function puedeAvanzarADetalle() {
+  if (state.ramoId !== RAMO_CON_CALCULO) return true;
+  return Boolean(state.preview) && !state.previewError;
 }
 
 function renderPlanRow() {
@@ -372,9 +458,9 @@ function renderDatosView(ramo) {
 
   const camposEspecificos = esCalculable ? `
     <div class="field">
-      <label>Rubro de actividad</label>
+      <label>Tipo de Riesgo</label>
       <select class="field-input" data-field="rubroActividad">
-        <option value="">Seleccioná un rubro…</option>
+        <option value="">Seleccioná un tipo de riesgo…</option>
         ${state.rubros.map((r) => `<option value="${escapeHtml(r.nombre)}" ${state.data.rubroActividad === r.nombre ? 'selected' : ''}>${escapeHtml(r.nombre)}</option>`).join('')}
       </select>
     </div>
@@ -386,12 +472,12 @@ function renderDatosView(ramo) {
       </select>
     </div>
     <div class="field">
-      <label>Capital Edificio (Gs.)</label>
-      <input class="field-input" type="number" min="0" data-field="capitalEdificio" placeholder="450000000" value="${escapeHtml(state.data.capitalEdificio ?? '')}" />
+      <label>Incendio Edificio (Gs.)</label>
+      <input class="field-input" type="text" inputmode="numeric" data-field="capitalEdificio" data-money="true" placeholder="450.000.000" value="${fmtGsInput(state.data.capitalEdificio)}" />
     </div>
     <div class="field">
-      <label>Capital Contenido (Gs.)</label>
-      <input class="field-input" type="number" min="0" data-field="capitalContenido" placeholder="120000000" value="${escapeHtml(state.data.capitalContenido ?? '')}" />
+      <label>Incendio Contenido (Gs.)</label>
+      <input class="field-input" type="text" inputmode="numeric" data-field="capitalContenido" data-money="true" placeholder="120.000.000" value="${fmtGsInput(state.data.capitalContenido)}" />
     </div>
   ` : `
     <div class="field field--span2">
@@ -419,7 +505,13 @@ function renderDatosView(ramo) {
             `).join('')}
             ${camposEspecificos}
           </div>
-          <button class="btn-primary form-cta" data-action="show-tab" data-view="result">Ver detalle completo →</button>
+          <button
+            id="btn-ver-detalle"
+            class="btn-primary form-cta"
+            data-action="show-tab"
+            data-view="result"
+            ${puedeAvanzarADetalle() ? '' : 'disabled title="Corregí el capital declarado antes de avanzar — ver el mensaje de alerta"'}
+          >Ver detalle completo →</button>
         </div>
       </div>
       <div class="live-summary" id="live-summary">${renderLivePanelContent()}</div>
@@ -445,7 +537,7 @@ function renderLivePanelContent() {
   if (!state.preview) {
     return `
       <div class="live-summary__label">Cotización en vivo</div>
-      <div class="live-summary__pending">${state.loadingPreview ? 'Calculando…' : 'Completá Rubro, Ciudad y al menos un Capital para ver la prima.'}</div>
+      <div class="live-summary__pending">${state.loadingPreview ? 'Calculando…' : 'Completá Tipo de Riesgo, Ciudad y al menos un Capital para ver la prima.'}</div>
     `;
   }
 
@@ -458,13 +550,34 @@ function renderLivePanelContent() {
     <div class="live-summary__price">${fmtGs(fp.cuota || fp.premio)}</div>
     <div class="live-summary__sub">Gs. / mes · ${fmtGs(fp.premio)} Gs. premio total</div>
     <div class="live-summary__divider"></div>
+    ${renderCuotasSelect()}
     <div class="live-summary__rows">
-      <div class="live-summary__row"><span>Franquicia</span><span>Sin franquicia</span></div>
       <div class="live-summary__row"><span>Forma de pago</span><span>${escapeHtml(fp.nombre_display)}</span></div>
-      <div class="live-summary__row"><span>Vigencia</span><span>12 meses</span></div>
+      <div class="live-summary__row"><span>Cuotas</span><span>Inicial + ${fp.cantidad_cuotas} cuotas</span></div>
       <div class="live-summary__row"><span>Coberturas</span><span>${coberturasCount} incluidas</span></div>
     </div>
     <div class="live-summary__hint">El monto se recalcula automáticamente a medida que completás los datos.</div>
+  `;
+}
+
+// Cantidad de cuotas: el monto de cada cuota es siempre REDONDEAR.SUP(Premio/12, 1000)
+// (fórmula fija, PLAN_DESARROLLO.md sección 5) — este selector no cambia ese monto, define
+// cuántas cuotas paga el cliente en total (tope: plan.cuotas_maximo), dato que se guarda en
+// `cotizacion_planes_pago.cantidad_cuotas` para la Carta Oferta.
+function renderCuotasSelect() {
+  const plan = state.planes.find((p) => p.id === state.planId);
+  if (!plan?.cuotas_maximo || plan.cuotas_maximo <= 1) return '';
+
+  const actual = Number(state.data.cuotas) || plan.cuotas_default || plan.cuotas_maximo;
+  const opciones = Array.from({ length: plan.cuotas_maximo }, (_, i) => i + 1)
+    .map((n) => `<option value="${n}" ${n === actual ? 'selected' : ''}>${n} cuotas</option>`)
+    .join('');
+
+  return `
+    <div class="field" style="margin-bottom:14px;">
+      <label>Cantidad de cuotas</label>
+      <select class="field-input" data-field="cuotas">${opciones}</select>
+    </div>
   `;
 }
 
@@ -533,35 +646,110 @@ function renderResultadoView(ramo) {
       <div class="resultado-view__inner">
         <div class="resultado-hero">
           <div>
-            <div class="resultado-hero__label">Plan ${escapeHtml(planLabel)} · ${escapeHtml(ramo.label)}</div>
+            <div class="resultado-hero__label">Plan ${escapeHtml(planLabel)} · ${escapeHtml(ramo.label)} · ${escapeHtml(fp.nombre_display)}</div>
             <div class="resultado-hero__price">${fmtGs(fp.cuota || fp.premio)} <span>Gs. / mes</span></div>
           </div>
-          <button class="btn-primary" data-action="emitir-carta">Emitir carta oferta</button>
+          <div style="display:flex;gap:10px;">
+            <button class="btn-outline" data-action="show-tab" data-view="form">Editar datos / forma de pago</button>
+            <button class="btn-primary" data-action="emitir-carta">Emitir carta oferta</button>
+          </div>
         </div>
-        <div class="resultado-grid">
-          <div class="card">
-            <div class="card__title">Coberturas incluidas</div>
-            ${coberturas.map((c) => `
-              <div class="cobertura-row">
-                <div class="cobertura-row__name">
-                  <div class="cobertura-row__check">✓</div>
-                  <div>${escapeHtml(c.nombre)}</div>
-                </div>
+        ${renderResumenContadoFinanciado()}
+        <div class="card" style="margin-top:20px;">
+          <div class="card__title">Coberturas incluidas</div>
+          ${coberturas.map((c) => `
+            <div class="cobertura-row">
+              <div class="cobertura-row__name">
+                <div class="cobertura-row__check">✓</div>
+                <div>${escapeHtml(c.nombre)}</div>
+              </div>
+              <div class="cobertura-row__bottom">
+                ${renderFranquiciaSelect(c)}
                 <div class="cobertura-row__monto">${typeof c.monto === 'number' ? `${fmtGs(c.monto)} Gs.` : escapeHtml(c.monto ?? '—')}</div>
               </div>
-            `).join('')}
-          </div>
-          <div class="card card--pink">
-            <div class="card__title">Resumen</div>
-            <div class="resumen-rows">
-              <div class="live-summary__row"><span>Franquicia</span><span>Sin franquicia</span></div>
-              <div class="live-summary__row"><span>Forma de pago</span><span>${escapeHtml(fp.nombre_display)}</span></div>
-              <div class="live-summary__row"><span>Premio total</span><span>${fmtGs(fp.premio)} Gs.</span></div>
             </div>
-            <button class="btn-outline" style="width:100%;margin-top:20px;" data-action="show-tab" data-view="form">Editar datos / forma de pago</button>
-          </div>
+          `).join('')}
         </div>
+        ${renderExclusionesYSublimites(plan)}
       </div>
+    </div>
+  `;
+}
+
+// Bloque "Suma Asegurada / Costo Contado / Costo Financiado" — mismo formato que la pantalla
+// del sistema de escritorio real. A diferencia del resto de "Detalle del plan" (que sigue la
+// forma de pago elegida en las pills), este bloque siempre muestra Contado y el financiado a
+// través de Cobrador en simultáneo, sin importar cuál esté seleccionada.
+// Selector de franquicia/deducible por cobertura — el asegurado decide qué franquicia le
+// interesa y el agente la elige acá para que figure en la propuesta. No afecta la prima ya
+// calculada (confirmado por Kevin, 2026-07-13): es solo el texto que se va a mostrar.
+function renderFranquiciaSelect(cobertura) {
+  const seleccionado = state.franquiciasPorCobertura[cobertura.codigo]
+    ?? franquiciaValorPorDefecto(cobertura.franquicia_default);
+
+  const opciones = FRANQUICIA_OPCIONES.map((o) =>
+    `<option value="${o.valor}" ${o.valor === seleccionado ? 'selected' : ''}>${escapeHtml(o.label)}</option>`
+  ).join('');
+
+  return `
+    <div class="cobertura-row__franquicia-wrap">
+      <span class="cobertura-row__franquicia-label">Franquicia:</span>
+      <select class="cobertura-row__franquicia" data-franquicia-cobertura="${cobertura.codigo}">${opciones}</select>
+    </div>
+  `;
+}
+
+function renderResumenContadoFinanciado() {
+  const variante = state.preview?.variantes?.[0];
+  if (!variante) return '';
+
+  const contado = variante.formasPago.find((f) => f.codigo === 'contado');
+  const financiado = variante.formasPago.find((f) => f.codigo === 'cobrador');
+  const d = state.preview.detalle || {};
+  const sumaAsegurada = (Number(d.capital_edificio) || 0) + (Number(d.capital_contenido) || 0);
+
+  return `
+    <div class="resumen-sistema">
+      <div class="resumen-sistema__row resumen-sistema__row--header">
+        <span>Suma Asegurada total, Gs.</span>
+        <span>${fmtGs(sumaAsegurada)}</span>
+      </div>
+      ${contado ? `
+        <div class="resumen-sistema__row resumen-sistema__row--contado">
+          <span>Costo Contado</span>
+          <span>Gs. ${fmtGs(contado.premio)} <em>IVA Incluido.-</em></span>
+        </div>
+      ` : ''}
+      ${financiado ? `
+        <div class="resumen-sistema__row resumen-sistema__row--financiado">
+          <span>Costo Financiado</span>
+          <span>Inicial y ${financiado.cantidad_cuotas} cuotas Gs. ${fmtGs(financiado.cuota)}</span>
+        </div>
+      ` : ''}
+    </div>
+  `;
+}
+
+function renderExclusionesYSublimites(plan) {
+  if (!plan?.texto_exclusiones_generales && !plan?.texto_sublimites_generales) return '';
+
+  const bloque = (titulo, texto) => {
+    if (!texto) return '';
+    const items = texto.split('\n').filter(Boolean);
+    return `
+      <div class="card">
+        <div class="card__title">${titulo}</div>
+        <ul class="texto-legal-list">
+          ${items.map((linea) => `<li>${escapeHtml(linea)}</li>`).join('')}
+        </ul>
+      </div>
+    `;
+  };
+
+  return `
+    <div class="resultado-grid" style="margin-top:20px;">
+      ${bloque('Exclusiones', plan.texto_exclusiones_generales)}
+      ${bloque('Sub-límites', plan.texto_sublimites_generales)}
     </div>
   `;
 }
@@ -589,10 +777,38 @@ app.addEventListener('click', (e) => {
 app.addEventListener('input', (e) => {
   const target = e.target.closest('[data-field]');
   if (!target) return;
+
+  if (target.dataset.money === 'true') {
+    const digitsBeforeCursor = target.value.slice(0, target.selectionStart).replace(/\D/g, '').length;
+    const digits = target.value.replace(/\D/g, '');
+    const formatted = fmtGsInput(digits);
+    target.value = formatted;
+
+    let seen = 0;
+    let newCursor = formatted.length;
+    for (let i = 0; i < formatted.length; i += 1) {
+      if (/\d/.test(formatted[i])) seen += 1;
+      if (seen === digitsBeforeCursor) {
+        newCursor = i + 1;
+        break;
+      }
+    }
+    target.setSelectionRange(newCursor, newCursor);
+
+    updateField(target.dataset.field, digits);
+    return;
+  }
+
   updateField(target.dataset.field, target.value);
 });
 
 app.addEventListener('change', (e) => {
+  const franquiciaTarget = e.target.closest('[data-franquicia-cobertura]');
+  if (franquiciaTarget) {
+    selectFranquicia(franquiciaTarget.dataset.franquiciaCobertura, franquiciaTarget.value);
+    return;
+  }
+
   const target = e.target.closest('[data-field]');
   if (!target || target.tagName !== 'SELECT') return;
   updateField(target.dataset.field, target.value);

@@ -122,6 +122,7 @@ async function construirVariantes({ calculador, plan, datosValidados }) {
   });
 
   const formasPagoPlan = await ramosRepository.findFormasPagoDelPlan(plan.id);
+  const cuotas = resolverCuotas(plan, datosValidados.cuotas);
 
   const tiposFranquicia = resolverTiposFranquicia(plan, datosValidados.riesgo_datos, prima);
 
@@ -133,16 +134,27 @@ async function construirVariantes({ calculador, plan, datosValidados }) {
       forma_pago_id: fp.forma_pago_id,
       codigo: fp.formas_pago.codigo,
       nombre_display: fp.formas_pago.nombre_display,
-      cantidad_cuotas: plan.cuotas_default,
+      cantidad_cuotas: cuotas,
       ...calculador.calcularPlanPago(
         primaAjustada,
         { codigo: fp.formas_pago.codigo, tasa_rpf: fp.tasa_rpf },
-        plan.cuotas_default
+        cuotas
       ),
     })),
   }));
 
   return { prima, detalle, coberturas, variantes };
+}
+
+/**
+ * Cantidad de cuotas a usar: la que eligió el agente, topada por `plan.cuotas_maximo` si viene
+ * seteado, o `plan.cuotas_default` si el agente no eligió ninguna (compatibilidad con
+ * cotizaciones ya guardadas, que no mandaban este campo).
+ */
+function resolverCuotas(plan, cuotasElegidas) {
+  if (cuotasElegidas == null) return plan.cuotas_default;
+  if (plan.cuotas_maximo != null) return Math.min(cuotasElegidas, plan.cuotas_maximo);
+  return cuotasElegidas;
 }
 
 /**

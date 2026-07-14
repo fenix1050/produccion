@@ -3,9 +3,9 @@
    rosado suave, verde de confirmación. Tipografía Sora (headings) + Public Sans (cuerpo). */
 
 :root {
-  --tajy-red: #bd1719;
-  --tajy-red-soft: rgba(189, 23, 25, 0.25);
-  --tajy-red-gradient: linear-gradient(180deg, #d42226 0%, #7a0f11 100%);
+  --tajy-red: #d8132e;
+  --tajy-red-soft: rgba(216, 19, 46, 0.25);
+  --tajy-red-gradient: linear-gradient(180deg, #d8132e 0%, #7a0f11 100%);
   --tajy-maroon: #5c0e10;
   --tajy-maroon-row: rgba(255, 255, 255, 0.08);
   --tajy-ink: #1a1a1a;
@@ -68,16 +68,33 @@ button {
 
 .topbar {
   flex-shrink: 0;
-  background: var(--tajy-red-gradient);
+  background: var(--tajy-red);
   color: #fff;
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  padding: 14px 32px;
+}
+
+.topbar__brand {
+  display: flex;
+  align-items: center;
   gap: 18px;
-  padding: 20px 32px;
 }
 
 .topbar__logo {
-  height: 60px;
+  height: 40px;
+}
+
+.topbar__version {
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+}
+
+.topbar__version strong {
+  font-weight: 700;
 }
 
 .topbar__divider {
@@ -86,15 +103,10 @@ button {
   background: rgba(255, 255, 255, 0.35);
 }
 
-.topbar__title {
+.topbar__subtitle {
   font-family: 'Sora', sans-serif;
   font-weight: 700;
-  font-size: 19px;
-}
-
-.topbar__subtitle {
-  font-size: 13px;
-  margin-top: 2px;
+  font-size: 14px;
 }
 
 .app-body {
@@ -293,6 +305,20 @@ button {
 .sidebar__agent-role {
   font-size: 11px;
   color: var(--tajy-text-secondary);
+}
+
+.sidebar__credit {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--tajy-border-light);
+  font-size: 11px;
+  color: var(--tajy-text-muted);
+  text-align: center;
+}
+
+.sidebar__credit strong {
+  color: var(--tajy-text-secondary);
+  font-weight: 700;
 }
 
 /* ---- Main content ---- */

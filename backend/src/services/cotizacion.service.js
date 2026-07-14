@@ -3,6 +3,8 @@ import * as cotizacionesRepository from '../repositories/cotizaciones.repository
 import * as coberturasRepository from '../repositories/coberturas.repository.js';
 import { getCalculador } from '../calculators/index.js';
 import { getSchemaCotizar } from '../schemas/index.js';
+import { renderHtmlToPdf } from './pdf.service.js';
+import { buildOfertaHtml } from '../templates/oferta/index.js';
 
 /**
  * Calcula una cotización SIN guardarla — usado para el preview en vivo del frontend.
@@ -108,9 +110,14 @@ export async function obtenerCotizacion(id) {
   return cotizacionesRepository.findCotizacionById(id);
 }
 
-export async function generarPdfOferta(_id) {
-  // TODO Fase 2: render con Puppeteer sobre templates/auto-oferta.html (ver sección 7 del plan)
-  throw new Error('Generación de PDF pendiente — Fase 2');
+export async function generarPdfOferta(id) {
+  const cotizacion = await cotizacionesRepository.findCotizacionById(id);
+  const plan = await ramosRepository.findPlanById(cotizacion.plan_id);
+  const ramos = await ramosRepository.findRamosActivos();
+  const ramo = ramos.find((r) => r.id === cotizacion.ramo_id);
+
+  const html = buildOfertaHtml({ cotizacion, plan, ramo });
+  return renderHtmlToPdf(html);
 }
 
 // ---- Fase 4 ----

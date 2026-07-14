@@ -41,7 +41,9 @@ export async function insertCoberturas(coberturas) {
 export async function findCotizacionById(id) {
   const { data, error } = await supabase
     .from('cotizaciones')
-    .select('*, cotizacion_variantes(*, cotizacion_plan_pago(*, formas_pago(*))), cotizacion_coberturas(*)')
+    .select(
+      '*, cotizacion_variantes(*, cotizacion_plan_pago(*, formas_pago(*))), cotizacion_coberturas(*, coberturas_catalogo(incluye_en_suma_asegurada_total))'
+    )
     .eq('id', id)
     .single();
   if (error) throw error;

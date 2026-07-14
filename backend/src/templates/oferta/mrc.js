@@ -44,6 +44,15 @@ Cláusula de cobranza (todas las formas de pago excepto Segucoop).`;
  */
 export function buildMrcOfertaPages({ cotizacion, plan, ramo }) {
   const riesgo = cotizacion.riesgo_datos || {};
+  const coberturasCotizadas = cotizacion.cotizacion_coberturas || [];
+
+  // Misma cuenta que "Suma Asegurada total" en el panel del cotizador (cotizar.js): suma el
+  // monto de cada cobertura cotizada, salvo las marcadas incluye_en_suma_asegurada_total = false
+  // (hoy solo "Robo valores ventanilla", sub-límite de Caja Fuerte, no una suma independiente).
+  const sumaAseguradaTotal = coberturasCotizadas.reduce((acc, c) => {
+    const cuentaParaTotal = c.coberturas_catalogo?.incluye_en_suma_asegurada_total !== false;
+    return acc + (cuentaParaTotal ? Number(c.monto) || 0 : 0);
+  }, 0);
 
   const paginaUno = `
     <div class="meta-row">
@@ -57,9 +66,21 @@ export function buildMrcOfertaPages({ cotizacion, plan, ramo }) {
       <tr><td>Tipo de Riesgo</td><td>${escapeHtml(riesgo.rubro_actividad || '—')}</td></tr>
       <tr><td>Dirección</td><td>${escapeHtml(riesgo.direccion || '—')}</td></tr>
       <tr><td>Ciudad</td><td>${escapeHtml(riesgo.ciudad || '—')}</td></tr>
-      <tr><td>Incendio Edificio</td><td>Gs. ${fmtGs(riesgo.capital_edificio)}</td></tr>
-      <tr><td>Incendio Contenido</td><td>Gs. ${fmtGs(riesgo.capital_contenido)}</td></tr>
-      <tr><td>Capital Asegurado Total</td><td>Gs. ${fmtGs(cotizacion.capital_asegurado)}</td></tr>
+    </table>
+
+    <h2 class="section-title">SUMAS ASEGURADAS <strong>POR COBERTURA</strong></h2>
+    <table class="sumas-table">
+      <tr>
+        <th>Cobertura</th>
+        <th>Suma Asegurada</th>
+        <th>Franquicia</th>
+      </tr>
+      ${coberturasCotizadas.map(renderFilaSumaAsegurada).join('')}
+      <tr class="sumas-table__total">
+        <td>Suma Asegurada Total, Gs.</td>
+        <td>${fmtGs(sumaAseguradaTotal)}</td>
+        <td></td>
+      </tr>
     </table>
 
     <h2 class="section-title">PLAN <strong>DE PAGO</strong></h2>
@@ -74,8 +95,6 @@ export function buildMrcOfertaPages({ cotizacion, plan, ramo }) {
       Este presupuesto es válido por ${cotizacion.vigencia_dias || 30} días.
     </div>
   `;
-
-  const coberturasCotizadas = cotizacion.cotizacion_coberturas || [];
 
   const paginaDos = `
     <h2 class="section-title">COBERTURAS <strong>Y CONDICIONES</strong></h2>
@@ -114,12 +133,14 @@ function renderVariantePlanPago(variante) {
     (a, b) => ORDEN_FORMAS_PAGO.indexOf(a.formas_pago.codigo) - ORDEN_FORMAS_PAGO.indexOf(b.formas_pago.codigo)
   );
 
+  // Solo se muestra la etiqueta cuando hay más de una variante para distinguir (MRC hoy
+  // siempre cotiza "sin franquicia" — la etiqueta ahí no aporta nada, ver feedback de Kevin).
   const label = variante.tipo_franquicia === 'con_franquicia'
-    ? `Con franquicia (Gs. ${fmtGs(variante.franquicia_monto)})`
-    : 'Sin franquicia';
+    ? `<div class="variante-label">Con franquicia (Gs. ${fmtGs(variante.franquicia_monto)})</div>`
+    : '';
 
   return `
-    <div class="variante-label">${escapeHtml(label)}</div>
+    ${label}
     <table class="plan-pago">
       <tr>
         <th style="text-align:left;">Forma de pago</th>
@@ -146,15 +167,31 @@ function renderVariantePlanPago(variante) {
 function renderCoberturaItem(cobertura) {
   const badgeClass = cobertura.tipo_aplicacion === 'sublimite' ? 'badge--sublimite' : 'badge--cobertura';
   const badgeLabel = cobertura.tipo_aplicacion === 'sublimite' ? 'Sublímite' : 'Cobertura';
-  const franquicia = cobertura.franquicia != null
-    ? `Franquicia: Gs. ${fmtGs(cobertura.franquicia)}`
-    : 'Sin franquicia';
 
   return `
     <div class="cobertura-item">
       <span class="badge ${badgeClass}">${badgeLabel}</span>
       <span class="nombre">${escapeHtml(cobertura.nombre_snapshot)}</span><br>
-      <span class="monto">Suma asegurada: Gs. ${fmtGs(cobertura.monto)} · ${escapeHtml(franquicia)}</span>
+      <span class="monto">Suma asegurada: Gs. ${fmtGs(cobertura.monto)} · ${escapeHtml(textoFranquicia(cobertura.franquicia))}</span>
     </div>
   `;
+}
+
+function renderFilaSumaAsegurada(cobertura) {
+  return `
+    <tr>
+      <td>${escapeHtml(cobertura.nombre_snapshot)}</td>
+      <td>${fmtGs(cobertura.monto)}</td>
+      <td>${escapeHtml(textoFranquicia(cobertura.franquicia))}</td>
+    </tr>
+  `;
+}
+
+// El monto de franquicia persistido es siempre el "mínimo Gs." de la opción elegida en el
+// cotizador (FRANQUICIA_OPCIONES en cotizar.js) — el 10% es fijo en todas las opciones con
+// franquicia, solo varía el mínimo. `null` es la opción "Sin deducible".
+function textoFranquicia(montoFranquicia) {
+  return montoFranquicia != null
+    ? `10% en todo y cada siniestro, mínimo Gs. ${fmtGs(montoFranquicia)}`
+    : 'Sin franquicia';
 }

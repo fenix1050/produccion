@@ -389,6 +389,16 @@ button {
   color: #000;
 }
 
+.plan-row .plan-row__select {
+  width: 340px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  cursor: pointer;
+}
+
 .plan-pill {
   border: 1.5px solid var(--tajy-border);
   background: #fff;

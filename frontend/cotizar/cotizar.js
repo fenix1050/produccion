@@ -656,26 +656,20 @@ function puedeAvanzarADetalle() {
 }
 
 function renderPlanRow() {
-  const pills = state.planes.map((p) => {
-    const activo = p.id === state.planId;
+  const options = state.planes.map((p) => {
     const calculable = planEsCalculable(state.ramoId, p);
-    const tituloDeshabilitado = state.ramoId === 'vida-ap'
-      ? 'Este plan tarifica por saldo mensual — pendiente de confirmación de fórmula, no cotizable todavía'
-      : 'RPF pendiente de confirmar — todavía no se puede cotizar este plan';
+    const sufijo = calculable ? '' : ' (pendiente de confirmación)';
     return `
-      <button
-        class="plan-pill ${activo ? 'plan-pill--active' : ''} ${!calculable ? 'plan-pill--disabled' : ''}"
-        data-action="select-plan"
-        data-plan-id="${p.id}"
-        ${!calculable ? `title="${escapeHtml(tituloDeshabilitado)}" disabled` : ''}
-      >${escapeHtml(p.nombre)}</button>
+      <option value="${p.id}" ${p.id === state.planId ? 'selected' : ''} ${!calculable ? 'disabled' : ''}>
+        ${escapeHtml(p.nombre)}${sufijo}
+      </option>
     `;
   }).join('');
 
   return `
     <div class="plan-row">
       <div class="plan-row__label">Plan a presentar:</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">${pills}</div>
+      <select class="field-input plan-row__select" data-action-select="select-plan">${options}</select>
     </div>
   `;
 }
@@ -1220,6 +1214,12 @@ app.addEventListener('input', (e) => {
 });
 
 app.addEventListener('change', (e) => {
+  const planSelect = e.target.closest('[data-action-select="select-plan"]');
+  if (planSelect) {
+    selectPlan(Number(planSelect.value));
+    return;
+  }
+
   const franquiciaTarget = e.target.closest('[data-franquicia-cobertura]');
   if (franquiciaTarget) {
     selectFranquicia(franquiciaTarget.dataset.franquiciaCobertura, franquiciaTarget.value);

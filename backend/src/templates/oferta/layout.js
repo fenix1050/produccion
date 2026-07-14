@@ -14,13 +14,15 @@ const ICON_INSTAGRAM = `<svg width="14" height="14" viewBox="0 0 24 24" xmlns="h
 
 const ICON_LINKEDIN = `<svg width="14" height="14" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="1" width="22" height="22" rx="5" fill="#fff"/><path d="M7.8 10.2h2.2V18H7.8v-7.8Zm1.1-3.5c.7 0 1.3.6 1.3 1.3S9.6 9.3 8.9 9.3s-1.3-.6-1.3-1.3.6-1.3 1.3-1.3Zm2.9 3.5h2.1v1.07h.03c.3-.55 1.02-1.13 2.1-1.13 2.24 0 2.66 1.47 2.66 3.39V18h-2.2v-3.55c0-.85-.02-1.94-1.18-1.94-1.18 0-1.36.92-1.36 1.88V18h-2.2v-7.8Z" fill="#d8132e"/></svg>`;
 
+const ICON_STOREFRONT = `<svg width="18" height="18" viewBox="0 0 24 24" fill="#fff" xmlns="http://www.w3.org/2000/svg"><path d="M3 4h18l1.5 5a2.5 2.5 0 0 1-4 2v9h-3v-6H8.5v6h-3v-9a2.5 2.5 0 0 1-4-2Z"/></svg>`;
+
 const BASE_CSS = `
   * { box-sizing: border-box; }
   body {
     margin: 0;
     font-family: 'Arial', 'Helvetica', sans-serif;
     color: #1a1a1a;
-    font-size: 11px;
+    font-size: 13px;
   }
   .page {
     position: relative;
@@ -47,6 +49,9 @@ const BASE_CSS = `
   .header__brand-text .name { font-size: 16px; font-weight: 700; letter-spacing: 0.5px; }
   .header__brand-text .tagline { font-size: 11.5px; opacity: 0.9; margin-top: 2px; }
   .header__ramo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     color: #fff;
     font-size: 13px;
     font-weight: 700;
@@ -58,18 +63,18 @@ const BASE_CSS = `
     display: flex;
     justify-content: space-between;
     margin-bottom: 4mm;
-    font-size: 11px;
+    font-size: 12.5px;
   }
-  .meta-row .plan-name { font-size: 16px; font-weight: 700; color: #1a1a1a; }
+  .meta-row .plan-name { font-size: 18px; font-weight: 700; color: #1a1a1a; }
   .cliente-banner {
     background: #d8132e;
     color: #fff;
-    padding: 2mm 4mm;
-    font-size: 11px;
+    padding: 2.5mm 4mm;
+    font-size: 12.5px;
     margin-bottom: 5mm;
   }
   .title {
-    font-size: 20px;
+    font-size: 23px;
     font-weight: 300;
     margin: 0 0 4mm 0;
   }
@@ -81,13 +86,39 @@ const BASE_CSS = `
   }
   table.data-table tr:nth-child(odd) td { background: #f4f3f1; }
   table.data-table td {
-    padding: 2.5mm 4mm;
-    font-size: 11px;
+    padding: 3mm 4mm;
+    font-size: 12.5px;
   }
   table.data-table td:first-child { color: #1a1a1a; width: 45%; }
   table.data-table td:last-child { font-weight: 600; }
+  table.sumas-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 6mm;
+    border: 1px solid #ddd;
+  }
+  table.sumas-table th {
+    background: #d8132e;
+    color: #fff;
+    text-align: left;
+    padding: 3mm;
+    font-size: 11.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  table.sumas-table th:not(:first-child) { text-align: right; }
+  table.sumas-table td {
+    padding: 2.5mm 3mm;
+    font-size: 12px;
+    border-top: 1px solid #eee;
+  }
+  table.sumas-table td:not(:first-child) { text-align: right; }
+  tr.sumas-table__total td {
+    font-weight: 700;
+    border-top: 2px solid #1a1a1a;
+  }
   .section-title {
-    font-size: 16px;
+    font-size: 18px;
     font-weight: 300;
     margin: 0 0 3mm 0;
   }
@@ -99,16 +130,17 @@ const BASE_CSS = `
     border: 1px solid #ddd;
   }
   table.plan-pago th {
-    background: #ddd;
+    background: #d8132e;
+    color: #fff;
     text-align: center;
-    padding: 2.5mm;
-    font-size: 10px;
+    padding: 3mm;
+    font-size: 11.5px;
     font-weight: 700;
     text-transform: uppercase;
   }
   table.plan-pago td {
-    padding: 2.5mm 3mm;
-    font-size: 11px;
+    padding: 3mm;
+    font-size: 12.5px;
     border-top: 1px solid #eee;
     text-align: center;
   }
@@ -119,10 +151,10 @@ const BASE_CSS = `
     display: inline-block;
     background: linear-gradient(180deg, #d8132e 0%, #7a0f11 100%);
     color: #fff;
-    font-size: 10px;
+    font-size: 11.5px;
     font-weight: 700;
     text-transform: uppercase;
-    padding: 1mm 3mm;
+    padding: 1.5mm 3mm;
     margin-bottom: 2mm;
   }
   .agente-box {
@@ -131,11 +163,11 @@ const BASE_CSS = `
     text-align: center;
     width: 60mm;
     margin: 6mm auto 3mm auto;
-    font-size: 10px;
+    font-size: 11.5px;
   }
   .footer-legal {
     text-align: center;
-    font-size: 9px;
+    font-size: 10.5px;
     color: #8a8a8a;
     margin-top: 4mm;
   }
@@ -145,7 +177,7 @@ const BASE_CSS = `
     display: flex;
     align-items: center;
     justify-content: space-around;
-    font-size: 9.5px;
+    font-size: 11px;
     font-weight: 700;
     padding: 3mm 10mm;
     position: absolute;
@@ -172,22 +204,22 @@ const BASE_CSS = `
   .card-title {
     background: linear-gradient(180deg, #d8132e 0%, #7a0f11 100%);
     color: #fff;
-    font-size: 11px;
+    font-size: 12.5px;
     font-weight: 700;
     text-transform: uppercase;
-    padding: 2mm 4mm;
+    padding: 2.5mm 4mm;
     margin-bottom: 2mm;
   }
   .cobertura-item {
-    padding: 2mm 0;
+    padding: 2.5mm 0;
     border-bottom: 1px solid #eee;
-    font-size: 10.5px;
+    font-size: 12px;
   }
   .cobertura-item .nombre { font-weight: 700; }
   .cobertura-item .monto { color: #8a8a8a; }
   .cobertura-item .badge {
     display: inline-block;
-    font-size: 8px;
+    font-size: 9px;
     font-weight: 700;
     text-transform: uppercase;
     padding: 0.5mm 1.5mm;
@@ -196,8 +228,8 @@ const BASE_CSS = `
   }
   .cobertura-item .badge--cobertura { background: #e9f7ee; color: #1e8a4c; }
   .cobertura-item .badge--sublimite { background: #fbeaea; color: #d8132e; }
-  .legal-block { font-size: 9.5px; margin-bottom: 4mm; white-space: pre-line; line-height: 1.4; }
-  .legal-block .subtitle { font-weight: 700; font-size: 10.5px; margin-bottom: 1mm; color: #1a1a1a; }
+  .legal-block { font-size: 11px; margin-bottom: 4mm; white-space: pre-line; line-height: 1.5; }
+  .legal-block .subtitle { font-weight: 700; font-size: 12px; margin-bottom: 1mm; color: #1a1a1a; }
 `;
 
 /**
@@ -213,10 +245,10 @@ export function renderOferta({ ramoLabel, pages }) {
           ${TAJY_LOGO_SVG}
           <div class="header__brand-text">
             <div class="name">ASEGURADORA TAJY</div>
-            <div class="tagline">Cuidamos lo que más te importa</div>
+            <div class="tagline">Viví <strong>seguro</strong>, viví <strong>mejor</strong>.</div>
           </div>
         </div>
-        <div class="header__ramo">${ramoLabel}</div>
+        <div class="header__ramo">${ICON_STOREFRONT}${ramoLabel}</div>
       </div>
       <div class="body">${bodyHtml}</div>
       <div class="footer-bar">

@@ -17,8 +17,27 @@ const RAMOS_UI = [
   { nombre: 'hogar', code: 'MH', label: 'Multirriesgo Hogar', estado: 'proximamente' },
 ];
 
-// Único ramo con calculador real conectado en esta pasada (ver CLAUDE.md — MRC primero).
-const RAMO_CON_CALCULO = 'mrc';
+// Ramos con calculador real conectado en esta pasada (ver CLAUDE.md — MRC primero, luego
+// Incendio, luego Vida-AP).
+const RAMOS_CON_CALCULO = ['mrc', 'incendio', 'vida-ap'];
+
+// Nombres de plan cuyo criterio de "calculable" no es prima_tecnica_minima (MRC/Incendio),
+// sino directamente esta lista fija — ver vida-ap.calculator.js (PLANES_NO_IMPLEMENTADOS).
+const PLANES_VIDA_AP_CALCULABLES = [
+  'PROTECCION FAMILIAR',
+  'ACCIDENTES PERSONALES - SECTOR COOPERATIVO',
+  'ACCIDENTES PERSONALES - SECTOR PRIVADO',
+  'VIDA DIRECTIVOS Y EMPLEADOS',
+];
+
+// Criterio de "plan calculable" (RPF/tasas confirmados) según el ramo — MRC e Incendio usan
+// prima_tecnica_minima; Vida-AP no maneja ese piso (decisión de Kevin) y usa la lista fija de
+// planes con calculador implementado.
+function planEsCalculable(ramoNombre, plan) {
+  if (!plan) return false;
+  if (ramoNombre === 'vida-ap') return PLANES_VIDA_AP_CALCULABLES.includes(plan.nombre);
+  return plan.prima_tecnica_minima != null;
+}
 
 const CLIENT_FIELDS = [
   { key: 'clienteNombre', label: 'Nombre del asegurado', placeholder: 'Juan Pérez', span: 2 },
@@ -86,6 +105,9 @@ const state = {
   // Líneas de coberturas/sublímites adicionales que el agente agrega a mano, más allá de las
   // 2 fijas (Incendio Edificio / Incendio Contenido). Cada línea: { id, codigo, sumaAsegurada }.
   coberturasAdicionales: [],
+  // true mientras se guarda la cotización y se genera el PDF, para deshabilitar el botón y
+  // evitar doble click (crearía 2 cotizaciones con números correlativos distintos).
+  emitiendoCarta: false,
 };
 
 // Códigos que no deben ofrecerse en "Coberturas adicionales": las 2 fijas ya tienen su propio
@@ -168,24 +190,30 @@ async function selectRamo(nombre) {
     state.planes = [];
   }
 
-  if (nombre === RAMO_CON_CALCULO) {
-    // Preselecciona el único plan calculable hoy (RPF confirmado).
-    const planCalculable = state.planes.find((p) => p.prima_tecnica_minima != null);
+  if (RAMOS_CON_CALCULO.includes(nombre)) {
+    // Preselecciona el primer plan calculable hoy (RPF/tasas confirmados).
+    const planCalculable = state.planes.find((p) => planEsCalculable(nombre, p));
     state.planId = planCalculable ? planCalculable.id : state.planes[0]?.id ?? null;
     state.data.cuotas = planCalculable?.cuotas_default ?? null;
 
-    try {
-      // Sin filtro de grupo: la pantalla "Tipo de Riesgo" del sistema de escritorio
-      // muestra los 49 rubros juntos (MRC y TRO comparten la misma lista visual).
-      state.rubros = await api.get('/ramos/rubros-actividad');
-    } catch (err) {
-      console.error('No se pudieron cargar los tipos de riesgo', err);
-      state.rubros = [];
+    if (nombre === 'mrc' || nombre === 'incendio') {
+      try {
+        // Sin filtro de grupo: la pantalla "Tipo de Riesgo" del sistema de escritorio
+        // muestra los 49 rubros juntos (MRC y TRO comparten la misma lista visual). Incendio
+        // solo usa esta lista para el plan "Edificio y Contenido" (Maquinaria Básico no).
+        state.rubros = await api.get('/ramos/rubros-actividad');
+      } catch (err) {
+        console.error('No se pudieron cargar los tipos de riesgo', err);
+        state.rubros = [];
+      }
     }
 
-    // El catálogo de coberturas es por RAMO, no por plan (mismas coberturas disponibles
-    // para "Normal" y "Protección Total") — se carga una sola vez acá.
-    await cargarCoberturasCatalogo(ramo.id);
+    if (nombre === 'mrc') {
+      // El catálogo de coberturas es por RAMO, no por plan (mismas coberturas disponibles
+      // para "Normal" y "Protección Total") — se carga una sola vez acá. Solo MRC usa
+      // "Coberturas adicionales" en esta pasada.
+      await cargarCoberturasCatalogo(ramo.id);
+    }
   } else {
     state.planId = state.planes[0]?.id ?? null;
   }
@@ -195,7 +223,7 @@ async function selectRamo(nombre) {
 
 function selectPlan(planId) {
   const plan = state.planes.find((p) => p.id === planId);
-  if (!plan || plan.prima_tecnica_minima == null) return; // plan sin RPF confirmado: bloqueado
+  if (!plan || !planEsCalculable(state.ramoId, plan)) return; // plan sin RPF/tasas confirmadas: bloqueado
   state.planId = planId;
   state.data.cuotas = plan.cuotas_default ?? null;
   state.coberturasAdicionales = [];
@@ -239,7 +267,7 @@ function setView(view) {
 
 function updateField(key, value) {
   state.data[key] = value;
-  if (state.ramoId === RAMO_CON_CALCULO) {
+  if (RAMOS_CON_CALCULO.includes(state.ramoId)) {
     scheduleCalculate();
   }
 }
@@ -272,11 +300,111 @@ function updateCoberturaLinea(id, field, value) {
 }
 
 function datosMinimosCompletos() {
-  if (state.ramoId !== RAMO_CON_CALCULO || !state.planId) return false;
+  if (!RAMOS_CON_CALCULO.includes(state.ramoId) || !state.planId) return false;
+  const plan = state.planes.find((p) => p.id === state.planId);
+  if (!planEsCalculable(state.ramoId, plan)) return false;
   const d = state.data;
-  const capitalEdificio = Number(d.capitalEdificio) || 0;
-  const capitalContenido = Number(d.capitalContenido) || 0;
-  return Boolean(d.rubroActividad) && Boolean(d.ciudad) && (capitalEdificio > 0 || capitalContenido > 0);
+
+  if (state.ramoId === 'mrc') {
+    const capitalEdificio = Number(d.capitalEdificio) || 0;
+    const capitalContenido = Number(d.capitalContenido) || 0;
+    return Boolean(d.rubroActividad) && Boolean(d.ciudad) && (capitalEdificio > 0 || capitalContenido > 0);
+  }
+
+  if (state.ramoId === 'incendio') {
+    if (plan.nombre === 'MAQUINARIA BASICO') {
+      return (Number(d.capitalMaquinaria) || 0) > 0;
+    }
+    const capitalEdificio = Number(d.capitalEdificio) || 0;
+    const capitalContenido = Number(d.capitalContenido) || 0;
+    return Boolean(d.rubroActividad) && Boolean(d.ciudad) && (capitalEdificio > 0 || capitalContenido > 0);
+  }
+
+  if (state.ramoId === 'vida-ap') {
+    const capitalAsegurado = Number(d.capitalAsegurado) || 0;
+    if (plan.nombre === 'PROTECCION FAMILIAR') return capitalAsegurado > 0;
+    return capitalAsegurado > 0 && Boolean(d.edad);
+  }
+
+  return false;
+}
+
+// `capital_asegurado` es una columna propia de `cotizaciones` (no del cálculo de prima en sí,
+// cada calculador usa sus propios campos de riesgo_datos) — se manda siempre en el body porque
+// el schema de validación de cada ramo lo exige (ver schemas/mrc|incendio|vida-ap.schema.js).
+function capitalAseguradoParaBody(plan) {
+  const d = state.data;
+
+  if (state.ramoId === 'mrc') {
+    return (Number(d.capitalEdificio) || 0) + (Number(d.capitalContenido) || 0);
+  }
+
+  if (state.ramoId === 'incendio') {
+    if (plan?.nombre === 'MAQUINARIA BASICO') return Number(d.capitalMaquinaria) || 0;
+    return (Number(d.capitalEdificio) || 0) + (Number(d.capitalContenido) || 0);
+  }
+
+  if (state.ramoId === 'vida-ap') {
+    return Number(d.capitalAsegurado) || 0;
+  }
+
+  return 0;
+}
+
+// Arma el `riesgo_datos` esperado por el calculador del ramo/plan actual (ver
+// incendio.calculator.js / vida-ap.calculator.js para el shape exacto).
+function armarRiesgoDatos(plan) {
+  const d = state.data;
+
+  if (state.ramoId === 'mrc') {
+    return {
+      cedula: d.cedula || '',
+      direccion: d.direccion || '',
+      rubro_actividad: d.rubroActividad || '',
+      ciudad: d.ciudad || '',
+      capital_edificio: Number(d.capitalEdificio) || 0,
+      capital_contenido: Number(d.capitalContenido) || 0,
+      coberturas_adicionales: state.coberturasAdicionales
+        .filter((l) => l.codigo && Number(l.sumaAsegurada) > 0)
+        .map((l) => ({ codigo: l.codigo, suma_asegurada: Number(l.sumaAsegurada) })),
+      franquicias_por_cobertura: franquiciasPorCoberturaParaBody(),
+    };
+  }
+
+  if (state.ramoId === 'incendio') {
+    if (plan.nombre === 'MAQUINARIA BASICO') {
+      return {
+        capital_maquinaria: Number(d.capitalMaquinaria) || 0,
+        ...(d.sublimiteVandalismoPorcentaje !== undefined && d.sublimiteVandalismoPorcentaje !== ''
+          ? { sublimite_vandalismo_porcentaje: Number(d.sublimiteVandalismoPorcentaje) }
+          : {}),
+      };
+    }
+    return {
+      rubro_actividad: d.rubroActividad || '',
+      capital_edificio: Number(d.capitalEdificio) || 0,
+      capital_contenido: Number(d.capitalContenido) || 0,
+      ...(d.sublimiteFenomenosNaturalesPorcentaje !== undefined && d.sublimiteFenomenosNaturalesPorcentaje !== ''
+        ? { sublimite_fenomenos_naturales_porcentaje: Number(d.sublimiteFenomenosNaturalesPorcentaje) }
+        : {}),
+    };
+  }
+
+  if (state.ramoId === 'vida-ap') {
+    const base = { capital_asegurado: Number(d.capitalAsegurado) || 0 };
+    if (plan.nombre === 'PROTECCION FAMILIAR') return base;
+
+    base.edad = Number(d.edad) || null;
+    if (plan.nombre === 'ACCIDENTES PERSONALES - SECTOR COOPERATIVO' || plan.nombre === 'ACCIDENTES PERSONALES - SECTOR PRIVADO') {
+      if (d.incluyeRentaDiaria) {
+        base.incluye_renta_diaria = true;
+        base.suma_renta_diaria = Number(d.sumaRentaDiaria) || 0;
+      }
+    }
+    return base;
+  }
+
+  return {};
 }
 
 async function calcularPreview() {
@@ -290,21 +418,11 @@ async function calcularPreview() {
   }
 
   const d = state.data;
+  const plan = state.planes.find((p) => p.id === state.planId);
   const body = {
     plan_id: state.planId,
-    capital_asegurado: (Number(d.capitalEdificio) || 0) + (Number(d.capitalContenido) || 0),
-    riesgo_datos: {
-      cedula: d.cedula || '',
-      direccion: d.direccion || '',
-      rubro_actividad: d.rubroActividad || '',
-      ciudad: d.ciudad || '',
-      capital_edificio: Number(d.capitalEdificio) || 0,
-      capital_contenido: Number(d.capitalContenido) || 0,
-      coberturas_adicionales: state.coberturasAdicionales
-        .filter((l) => l.codigo && Number(l.sumaAsegurada) > 0)
-        .map((l) => ({ codigo: l.codigo, suma_asegurada: Number(l.sumaAsegurada) })),
-      franquicias_por_cobertura: franquiciasPorCoberturaParaBody(),
-    },
+    capital_asegurado: capitalAseguradoParaBody(plan),
+    riesgo_datos: armarRiesgoDatos(plan),
     descuentos: [],
     recargos: [],
     cliente_nombre: d.clienteNombre || '',
@@ -340,6 +458,40 @@ async function calcularPreview() {
     renderLivePanel();
     if (state.view === 'result') renderApp();
     syncAvanceButtons();
+  }
+}
+
+// Guarda la cotización (POST /cotizaciones, si es la primera vez que se emite carta para esta
+// pasada por el formulario) y descarga el PDF de la Carta Oferta. Reutiliza exactamente el mismo
+// body que calcularPreview — el backend valida y calcula de nuevo antes de persistir.
+async function emitirCartaOferta() {
+  if (state.emitiendoCarta || !state.preview) return;
+
+  const d = state.data;
+  const plan = state.planes.find((p) => p.id === state.planId);
+  const body = {
+    plan_id: state.planId,
+    capital_asegurado: capitalAseguradoParaBody(plan),
+    riesgo_datos: armarRiesgoDatos(plan),
+    descuentos: [],
+    recargos: [],
+    cliente_nombre: d.clienteNombre || '',
+    ...(d.cuotas ? { cuotas: Number(d.cuotas) } : {}),
+  };
+
+  state.emitiendoCarta = true;
+  renderApp();
+
+  try {
+    const cotizacion = await api.post('/cotizaciones', body);
+    const blob = await api.getBlob(`/cotizaciones/${cotizacion.id}/pdf-oferta`);
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+  } catch (err) {
+    alert(err.message || 'No se pudo generar la Carta Oferta.');
+  } finally {
+    state.emitiendoCarta = false;
+    renderApp();
   }
 }
 
@@ -407,22 +559,29 @@ function renderApp() {
       ${renderSidebar()}
       <div class="main">
         ${renderHeader(ramo)}
-        ${ramo && state.ramoId === RAMO_CON_CALCULO && ramo.estado === 'disponible' ? renderPlanRow() : ''}
+        ${ramo && RAMOS_CON_CALCULO.includes(state.ramoId) && ramo.estado === 'disponible' ? renderPlanRow() : ''}
         ${contenido}
       </div>
     </div>
   `;
 }
 
+// Versión del cotizador mostrada en el topbar y en el pie de página del sidebar (chrome de
+// UI, no viene de la base) — única fuente de verdad para que ambas queden siempre de la mano.
+// Se incrementa a mano cuando haya un cambio visible que valga la pena versionar.
+const COTIZADOR_VERSION = '1.0.1';
+
 function renderTopbar() {
   return `
     <div class="topbar">
-      <img class="topbar__logo" src="../../logo/logo.svg" alt="Aseguradora Tajy" />
-      <div class="topbar__divider"></div>
-      <div class="topbar__text">
-        <div class="topbar__title">Cotizador</div>
-        <div class="topbar__subtitle">Sistema de Cotización de Pólizas</div>
+      <div class="topbar__brand">
+        <img class="topbar__logo" src="../../logo/logo.svg" alt="Aseguradora Tajy" />
+        <div class="topbar__divider"></div>
+        <div class="topbar__text">
+          <div class="topbar__subtitle">Sistema de Cotización de Pólizas</div>
+        </div>
       </div>
+      <div class="topbar__version">Versión: <strong>${COTIZADOR_VERSION}</strong></div>
     </div>
   `;
 }
@@ -454,6 +613,7 @@ function renderSidebar() {
             <div class="sidebar__agent-role">Analista comercial</div>
           </div>
         </div>
+        <div class="sidebar__credit">Powered by <strong>Kevin Ruiz Diaz</strong> v${COTIZADOR_VERSION}</div>
       </div>
     </div>
   `;
@@ -491,20 +651,23 @@ function renderHeader(ramo) {
 // Máxima Cotizable) — ver mrc.calculator.js. Otros ramos (sin calculador conectado todavía)
 // no tienen esta restricción.
 function puedeAvanzarADetalle() {
-  if (state.ramoId !== RAMO_CON_CALCULO) return true;
+  if (!RAMOS_CON_CALCULO.includes(state.ramoId)) return true;
   return Boolean(state.preview) && !state.previewError;
 }
 
 function renderPlanRow() {
   const pills = state.planes.map((p) => {
     const activo = p.id === state.planId;
-    const calculable = p.prima_tecnica_minima != null;
+    const calculable = planEsCalculable(state.ramoId, p);
+    const tituloDeshabilitado = state.ramoId === 'vida-ap'
+      ? 'Este plan tarifica por saldo mensual — pendiente de confirmación de fórmula, no cotizable todavía'
+      : 'RPF pendiente de confirmar — todavía no se puede cotizar este plan';
     return `
       <button
         class="plan-pill ${activo ? 'plan-pill--active' : ''} ${!calculable ? 'plan-pill--disabled' : ''}"
         data-action="select-plan"
         data-plan-id="${p.id}"
-        ${!calculable ? 'title="RPF pendiente de confirmar — todavía no se puede cotizar este plan" disabled' : ''}
+        ${!calculable ? `title="${escapeHtml(tituloDeshabilitado)}" disabled` : ''}
       >${escapeHtml(p.nombre)}</button>
     `;
   }).join('');
@@ -545,10 +708,10 @@ function renderRamoNoDisponible(ramo) {
   `;
 }
 
-function renderDatosView(ramo) {
-  const esCalculable = state.ramoId === RAMO_CON_CALCULO;
-
-  const camposEspecificos = esCalculable ? `
+// Campos "Tipo de Riesgo"/"Ciudad"/capitales del esqueleto MRC — reusado por MRC e Incendio
+// (plan "Edificio y Contenido"), que comparten el mismo motor de tasas por rubro.
+function camposEdificioContenido(sublimiteField) {
+  return `
     <div class="field">
       <label>Tipo de Riesgo</label>
       <select class="field-input" data-field="rubroActividad">
@@ -571,10 +734,92 @@ function renderDatosView(ramo) {
       <label>Incendio Contenido (Gs.)</label>
       <input class="field-input" type="text" inputmode="numeric" data-field="capitalContenido" data-money="true" placeholder="120.000.000" value="${fmtGsInput(state.data.capitalContenido)}" />
     </div>
-    <div class="field field--span2">
-      ${renderCoberturasAdicionales(coberturasDisponibles())}
+    ${sublimiteField || ''}
+  `;
+}
+
+function campoSublimitePorcentaje(field, label) {
+  return `
+    <div class="field">
+      <label>${label}</label>
+      <input class="field-input" type="number" min="0" max="50" data-field="${field}" placeholder="0-50" value="${escapeHtml(state.data[field] ?? '')}" />
     </div>
-  ` : `
+  `;
+}
+
+function camposEspecificosParaRamo(ramo, plan) {
+  if (ramo.nombre === 'mrc') {
+    return `
+      ${camposEdificioContenido()}
+      <div class="field field--span2">
+        ${renderCoberturasAdicionales(coberturasDisponibles())}
+      </div>
+    `;
+  }
+
+  if (ramo.nombre === 'incendio') {
+    if (!plan) {
+      return `<div class="field field--span2"><div class="live-summary__pending">Seleccioná un plan para ver el formulario.</div></div>`;
+    }
+    if (plan.nombre === 'MAQUINARIA BASICO') {
+      return `
+        <div class="field">
+          <label>Capital Maquinaria (USD)</label>
+          <input class="field-input" type="text" inputmode="numeric" data-field="capitalMaquinaria" data-money="true" placeholder="50.000" value="${fmtGsInput(state.data.capitalMaquinaria)}" />
+        </div>
+        ${campoSublimitePorcentaje('sublimiteVandalismoPorcentaje', 'Sublímite Vandalismo (%)')}
+      `;
+    }
+    return camposEdificioContenido(campoSublimitePorcentaje('sublimiteFenomenosNaturalesPorcentaje', 'Sublímite Fenómenos Naturales (%)'));
+  }
+
+  if (ramo.nombre === 'vida-ap') {
+    if (!plan) {
+      return `<div class="field field--span2"><div class="live-summary__pending">Seleccioná un plan para ver el formulario.</div></div>`;
+    }
+    const campoCapital = `
+      <div class="field">
+        <label>Capital Asegurado (Gs.)</label>
+        <input class="field-input" type="text" inputmode="numeric" data-field="capitalAsegurado" data-money="true" placeholder="100.000.000" value="${fmtGsInput(state.data.capitalAsegurado)}" />
+      </div>
+    `;
+
+    if (plan.nombre === 'PROTECCION FAMILIAR') {
+      return campoCapital;
+    }
+
+    const campoEdad = `
+      <div class="field">
+        <label>Edad</label>
+        <input class="field-input" type="number" min="0" max="99" data-field="edad" placeholder="35" value="${escapeHtml(state.data.edad ?? '')}" />
+      </div>
+    `;
+
+    if (plan.nombre === 'ACCIDENTES PERSONALES - SECTOR COOPERATIVO' || plan.nombre === 'ACCIDENTES PERSONALES - SECTOR PRIVADO') {
+      const incluyeRenta = Boolean(state.data.incluyeRentaDiaria);
+      return `
+        ${campoCapital}
+        ${campoEdad}
+        <div class="field field--span2">
+          <label style="display:flex;align-items:center;gap:8px;">
+            <input type="checkbox" data-field="incluyeRentaDiaria" ${incluyeRenta ? 'checked' : ''} />
+            Incluir Renta Diaria
+          </label>
+        </div>
+        ${incluyeRenta ? `
+          <div class="field">
+            <label>Suma Renta Diaria (Gs.)</label>
+            <input class="field-input" type="text" inputmode="numeric" data-field="sumaRentaDiaria" data-money="true" placeholder="50.000" value="${fmtGsInput(state.data.sumaRentaDiaria)}" />
+          </div>
+        ` : ''}
+      `;
+    }
+
+    // VIDA DIRECTIVOS Y EMPLEADOS
+    return `${campoCapital}${campoEdad}`;
+  }
+
+  return `
     <div class="field field--span2">
       <div class="live-summary__pending" style="margin-top:4px;">
         Este ramo todavía no tiene su calculador conectado en el cotizador — el formulario de datos
@@ -582,6 +827,15 @@ function renderDatosView(ramo) {
       </div>
     </div>
   `;
+}
+
+function renderDatosView(ramo) {
+  const esCalculable = RAMOS_CON_CALCULO.includes(state.ramoId);
+  const plan = state.planes.find((p) => p.id === state.planId);
+
+  const camposEspecificos = esCalculable
+    ? camposEspecificosParaRamo(ramo, plan)
+    : camposEspecificosParaRamo({ nombre: null }, null);
 
   return `
     <div class="datos-view panel">
@@ -654,7 +908,7 @@ function renderCoberturasAdicionales(catalogoDisponible) {
 }
 
 function renderLivePanelContent() {
-  if (state.ramoId !== RAMO_CON_CALCULO) {
+  if (!RAMOS_CON_CALCULO.includes(state.ramoId)) {
     return `
       <div class="live-summary__label">Cotización en vivo</div>
       <div class="live-summary__pending">Cálculo pendiente de confirmación de tasas para este ramo.</div>
@@ -671,7 +925,7 @@ function renderLivePanelContent() {
   if (!state.preview) {
     return `
       <div class="live-summary__label">Cotización en vivo</div>
-      <div class="live-summary__pending">${state.loadingPreview ? 'Calculando…' : 'Completá Tipo de Riesgo, Ciudad y al menos un Capital para ver la prima.'}</div>
+      <div class="live-summary__pending">${state.loadingPreview ? 'Calculando…' : 'Completá los datos del riesgo para ver la prima.'}</div>
     `;
   }
 
@@ -747,7 +1001,7 @@ function renderLivePanel() {
 }
 
 function renderResultadoView(ramo) {
-  const esCalculable = state.ramoId === RAMO_CON_CALCULO;
+  const esCalculable = RAMOS_CON_CALCULO.includes(state.ramoId);
   const plan = state.planes.find((p) => p.id === state.planId);
   const planLabel = plan ? plan.nombre : '—';
 
@@ -785,7 +1039,7 @@ function renderResultadoView(ramo) {
           </div>
           <div style="display:flex;gap:10px;">
             <button class="btn-outline" data-action="show-tab" data-view="form">Editar datos / forma de pago</button>
-            <button class="btn-primary" data-action="emitir-carta">Emitir carta oferta</button>
+            <button class="btn-primary" data-action="emitir-carta" ${state.emitiendoCarta ? 'disabled' : ''}>${state.emitiendoCarta ? 'Generando…' : 'Emitir carta oferta'}</button>
           </div>
         </div>
         ${renderResumenContadoFinanciado()}
@@ -916,9 +1170,7 @@ app.addEventListener('click', (e) => {
   else if (action === 'show-tab') setView(target.dataset.view);
   else if (action === 'add-cobertura-linea') addCoberturaLinea();
   else if (action === 'remove-cobertura-linea') removeCoberturaLinea(target.dataset.lineaId);
-  else if (action === 'emitir-carta') {
-    alert('La generación de la Carta Oferta todavía no está implementada (queda para otra tarea).');
-  }
+  else if (action === 'emitir-carta') emitirCartaOferta();
 });
 
 // Formatea un input de dinero in-place (misma lógica para el campo money de una línea de
@@ -952,6 +1204,12 @@ app.addEventListener('input', (e) => {
 
   const target = e.target.closest('[data-field]');
   if (!target) return;
+
+  if (target.type === 'checkbox') {
+    updateField(target.dataset.field, target.checked);
+    renderApp(); // muestra/oculta campos condicionales (ej. Suma Renta Diaria)
+    return;
+  }
 
   if (target.dataset.money === 'true') {
     updateField(target.dataset.field, formatMoneyInputInPlace(target));

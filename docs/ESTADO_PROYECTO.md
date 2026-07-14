@@ -608,13 +608,43 @@ localmente (backend `npm run dev` + frontend servido estático):
   del Capital Asegurado, Franquicias, Exclusiones ampliadas, cláusulas del contrato) guardado de
   referencia en Engram y en la sección 8 (pendientes) — no se implementa hasta Fase 2/4/8.
 
-## 18. Próximo paso
+## 18. Carta Oferta en PDF (MRC) + bugfix de Inicial/Cuota en los 4 calculadores — 2026-07-14
 
-Con el catálogo de MRC, Incendio y Vida/AP cargado y el primer calculador (MRC, plan Normal) ya
-conectado end-to-end, lo que sigue es uno de estos, a decidir con Kevin:
-- Escribir `incendio.js` y `vida-ap.js` para los planes que ya tienen RPF confirmado (Incendio
-  Maquinaria Básico) — los que no lo tienen quedan bloqueados hasta que llegue esa confirmación
-  del dpto. técnico.
+- **Carta Oferta de MRC implementada end-to-end** con Puppeteer (`backend/src/services/pdf.service.js`)
+  sobre templates en `backend/src/templates/oferta/` (`layout.js` compartido + `mrc.js` específico),
+  replicando el layout del modelo MAPFRE adaptado al branding Tajy (rojo `#d8132e`, franja sólida
+  compacta, footer con teléfono/web/redes reales de Tajy). `cotizacion.service.js#generarPdfOferta`
+  ya no tira el TODO. Incendio y Vida-AP quedan sin template todavía (sin texto oficial confirmado) —
+  el dispatcher de `templates/oferta/index.js` corta con 422 explicativo para esos ramos.
+- **Bug real encontrado y corregido en `calcularPlanPago`** (duplicado en `auto.js`, `mrc.js`,
+  `incendio.js`, `vida-ap.js`): Kevin pasó 2 capturas reales del cotizador de Auto de escritorio
+  (cotización Nº 903.662) que mostraban Inicial ≠ Cuota — algo que el código actual no podía producir
+  (calculaba `Inicial = Cuota = REDONDEAR.SUP(Premio/12, 1000)`, fórmula documentada en
+  PLAN_DESARROLLO.md pero **nunca verificada número por número contra el sistema real**). Reconstruyendo
+  la cuenta contra la captura se confirmó que:
+  - La Cuota redondea hacia **ABAJO** (`REDONDEAR.INF`), no hacia arriba.
+  - El Inicial **absorbe el resto**: `Inicial = Premio − (cuotas × Cuota)`, para que la suma dé
+    exacto el Premio (nunca hubo "sobrante" perdido por el redondeo).
+  - **Contado** siempre es Inicial = Premio completo y Cuota = 0, sin importar la cantidad de cuotas
+    configurada para las formas de pago financiadas — el código viejo ignoraba esto y le aplicaba el
+    mismo pago mensual que a las formas financiadas si `cuotas > 0`.
+  - De paso se corrigió que el divisor estaba hardcodeado en `/12` ignorando el parámetro `cuotas`
+    real elegido por el agente — ahora es `premio / (cuotas + 1)`.
+  - Nuevo `redondearInf` en `backend/src/calculators/utils/round.js`, junto al `redondearSup` ya
+    existente (que se sigue usando para RPF/IVA).
+  - Fórmula corregida también en `PLAN_DESARROLLO.md` (sección 5, las 3 apariciones: Auto individual,
+    Auto Flota, Incendio simple) y en `CLAUDE.md`.
+  - **Impacto**: afecta a los 4 ramos con calculador implementado (Auto — pausado pero corregido
+    igual por ser el mismo bug —, MRC, Incendio, Vida-AP). Cualquier cotización ya persistida antes
+    de este fix tiene el Inicial/Cuota calculados con la fórmula vieja — no se re-calculan
+    retroactivamente, solo las cotizaciones nuevas usan la fórmula corregida.
+
+## 19. Próximo paso
+
+Con el catálogo de MRC, Incendio y Vida/AP cargado, el primer calculador (MRC, plan Normal) conectado
+end-to-end, y la Carta Oferta de MRC ya generándose en PDF, lo que sigue es uno de estos, a decidir
+con Kevin:
+- Confirmar el texto oficial de Carta Oferta de Incendio y Vida/AP para sumarles su template de PDF.
 - Retomar Fase 2 (Auto end-to-end), si el cliente lo pide.
 - Seguir el frontend de `/cotizar` para Incendio/Vida-AP en cuanto tengan calculador, reutilizando
   el mismo App Shell ya construido para MRC.

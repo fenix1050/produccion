@@ -21,7 +21,7 @@ El diseño parte de la lógica ya usada hoy por Tajy para Auto (tasa por capital
 | Planes | Fijos por ramo (ej: Auto → Premium/Superior/Fuerte/Noble + variantes; Hogar → Integral/Ampliada/Premium/Mi Hogar), con coberturas predefinidas |
 | Coberturas | Catálogo reutilizable, cada una con monto, texto descriptivo, exclusiones y franquicia. Incluidas por defecto en el plan o agregables/quitables por cotización |
 | Tarifación | Auto: capital × tasa con piso de prima mínima. Incendio/Hogar/MRC/TRO: tasa ‰ dentro de un rango, editable solo por roles autorizados. Transporte: tasa % por nivel de cobertura. Vida y AP: tasa ‰ por franja etaria |
-| Plan de pago | **Contado** / **Crédito (Cobrador)** / **Boca de Cobranza** / **Tarjeta de Crédito**, con RPF escalonado por cuotas — motor unificado en todos los ramos. Fórmula de cuotas: cada pago = REDONDEAR.SUP(Premio/12, 1000) |
+| Plan de pago | **Contado** / **Crédito (Cobrador)** / **Boca de Cobranza** / **Tarjeta de Crédito**, con RPF escalonado por cuotas — motor unificado en todos los ramos. Fórmula: Cuota = REDONDEAR.INF(Premio/(cuotas+1), 1000), Inicial = Premio − cuotas×Cuota (absorbe el resto); Contado = Premio completo, sin cuotas |
 | Roles | Agente (cotiza con tasas ya configuradas), Admin/roles autorizados (puede editar tasas dentro del rango permitido) |
 | Salida | Vista web + PDF tipo **carta oferta enriquecida** (coberturas, exclusiones y franquicias incluidas) — no el documento formal de solicitud con KYC/firmas |
 | Persistencia | Historial completo, numeración correlativa, búsqueda por cliente/número/fecha/ramo |
@@ -492,8 +492,12 @@ RPF% = plan_formas_pago.tasa_rpf (fija según forma de pago, NO varía por canti
 R.P.F. = REDONDEAR.SUP(Prima × RPF% / 100, 1000)
 IVA = (Prima × 10%) + (R.P.F. × 10%)
 Premio = Prima + R.P.F. + IVA
-Inicial = Cuota = REDONDEAR.SUP(Premio / 12, 1000)   [cantidad configurable hasta plan.cuotas_maximo]
+Cuota = REDONDEAR.INF(Premio / (cuotas + 1), 1000)   [cuotas configurable hasta plan.cuotas_maximo]
+Inicial = Premio − (cuotas × Cuota)   [absorbe el resto — Inicial + cuotas×Cuota da EXACTO el Premio]
+Contado: Inicial = Premio completo, Cuota = 0 (pago único, no financiado)
 ```
+**Corrección 2026-07-14** (confirmada contra captura real del sistema de escritorio, cotización Nº 903.662): la Cuota redondea hacia ABAJO, no hacia arriba, y el Inicial NO es igual a la Cuota — absorbe el resto de la división para que la suma dé exacto el Premio. La versión anterior de esta fórmula (`Inicial = Cuota = REDONDEAR.SUP(Premio / 12, 1000)`) nunca se había verificado número por número contra el sistema real y quedó descartada.
+
 Formas de pago: **Contado** (sin RPF), **Crédito/Cobrador**, **Boca de Cobranza**, **Tarjeta de Crédito**, cada una con su tasa RPF fija (Tarjeta tiene además un precio preferencial de inicial + 2 cuotas a costo contado). **Las 4 se calculan siempre en simultáneo** — no se elige una sola forma de pago al cotizar, el PDF las muestra todas con checkbox y el cliente/agente marca la elegida al momento de firmar.
 
 **Franquicia — fórmula confirmada por el manual oficial + pantalla real del cotizador:**
@@ -531,7 +535,8 @@ Por cada vehículo:
 Prima_flota = Σ Prima_individual − Bonificación_por_cantidad_de_vehículos
   [Bonificación: 5% (6-10 vehículos), 10% (11-19), 20% (20+)]
 Premio Contado = Prima_flota × 1.1 (IVA, sin RPF)
-Inicial = Cuota = REDONDEAR.SUP(Premio / 12, 1000)
+Cuota = REDONDEAR.INF(Premio / (cuotas + 1), 1000)
+Inicial = Premio − (cuotas × Cuota)   [absorbe el resto]
 ```
 `recargo_antiguedad_tabla` **ya tiene datos reales** del manual: 0 años=0%, 1 a 14 años=11,1% (plano), luego escala: 15 años=18,1% … 25 años=31,1% (la tabla se recalcula cada año calendario, el "año 0" es siempre el año en curso).
 
@@ -547,7 +552,9 @@ RPF% = tasa fija por forma de pago (mismo mecanismo que Auto — valores exactos
 R.P.F. = REDONDEAR.SUP(Prima × RPF% / 100, 1000)
 IVA = (Prima × 10%) + (R.P.F. × 10%)
 Premio = Prima + R.P.F. + IVA
-Inicial = Cuota = REDONDEAR.SUP(Premio / 12, 1000)
+Cuota = REDONDEAR.INF(Premio / (cuotas + 1), 1000)
+Inicial = Premio − (cuotas × Cuota)   [absorbe el resto]
+Contado: Inicial = Premio completo, Cuota = 0
 ```
 Tasa: rango 0,50‰ a 4‰ (Incendio) — **editable solo por roles autorizados** (admin y roles que se agreguen luego); el agente cotiza siempre con la tasa ya configurada, no la edita.
 

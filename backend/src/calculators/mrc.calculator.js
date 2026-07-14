@@ -1,4 +1,4 @@
-import { redondearSup } from './utils/round.js';
+import { redondearSup, redondearInf } from './utils/round.js';
 import * as ramosRepository from '../repositories/ramos.repository.js';
 import * as coberturasRepository from '../repositories/coberturas.repository.js';
 
@@ -225,7 +225,7 @@ export async function calcularPrima({ planId, riesgoDatos, descuentos = [], reca
 /**
  * @param {number} prima
  * @param {{tasa_rpf: number, codigo: string}} formaPago
- * @param {number} cuotas - cantidad de cuotas (0 = contado)
+ * @param {number} cuotas - cantidad de cuotas financiadas (no cuenta el Inicial)
  */
 export function calcularPlanPago(prima, formaPago, cuotas) {
   const rpfPorcentaje = formaPago.codigo === 'contado' ? 0 : formaPago.tasa_rpf;
@@ -234,16 +234,21 @@ export function calcularPlanPago(prima, formaPago, cuotas) {
   const iva = prima * (IVA_PORCENTAJE / 100) + rpf * (IVA_PORCENTAJE / 100);
   const premio = prima + rpf + iva;
 
-  const pagoMensual = redondearSup(premio / 12);
+  // Contado se paga de una sola vez — Inicial = Premio completo, sin Cuotas, sin importar
+  // la cantidad de cuotas elegida para las formas de pago financiadas (confirmado contra
+  // captura real del sistema de escritorio, cotización Nº 903.662).
+  if (formaPago.codigo === 'contado' || !cuotas) {
+    return { rpf_porcentaje: rpfPorcentaje, rpf, iva, premio, inicial: premio, cuota: 0 };
+  }
 
-  return {
-    rpf_porcentaje: rpfPorcentaje,
-    rpf,
-    iva,
-    premio,
-    inicial: cuotas > 0 ? pagoMensual : premio,
-    cuota: cuotas > 0 ? pagoMensual : 0,
-  };
+  // La Cuota redondea hacia ABAJO (no hacia arriba) y el Inicial absorbe el resto, para que
+  // Inicial + N×Cuota dé EXACTO el Premio — confirmado número por número contra la misma
+  // captura real (antes acá se usaba redondearSup con divisor fijo /12, lo que además
+  // ignoraba la cantidad de cuotas elegida por el agente).
+  const cuota = redondearInf(premio / (cuotas + 1));
+  const inicial = premio - cuotas * cuota;
+
+  return { rpf_porcentaje: rpfPorcentaje, rpf, iva, premio, inicial, cuota };
 }
 
 function sumarAjustes(ajustes, base, tope) {

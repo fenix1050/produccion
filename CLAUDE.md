@@ -97,7 +97,9 @@ RPF% = plan_formas_pago.tasa_rpf   -- FIJA por forma de pago, NO varía por cant
 R.P.F. = REDONDEAR.SUP(Prima × RPF% / 100, 1000)
 IVA = (Prima × 10%) + (R.P.F. × 10%)
 Premio = Prima + R.P.F. + IVA
-Inicial = Cuota = REDONDEAR.SUP(Premio / 12, 1000)
+Cuota = REDONDEAR.INF(Premio / (cuotas + 1), 1000)   -- hacia ABAJO, no hacia arriba
+Inicial = Premio − (cuotas × Cuota)                   -- absorbe el resto, no es igual a la Cuota
+Contado: Inicial = Premio completo, Cuota = 0
 ```
 
 - **4 formas de pago SIEMPRE calculadas en simultáneo**: Contado (RPF=0), Crédito (Cobrador), Boca de Cobranza, Tarjeta de Crédito. No se elige una sola al cotizar.

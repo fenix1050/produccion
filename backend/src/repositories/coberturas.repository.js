@@ -48,3 +48,18 @@ export async function findTasasCoberturaRamo(ramoId) {
   if (error) throw error;
   return data;
 }
+
+/**
+ * Filas de `tarifas_generico` de un plan (usado por Vida y Accidentes Personales — tarificación
+ * que no encaja en tasa fija por ramo ni en tasa por capital, ver migración 015/016). Cada fila
+ * es un JSONB en `variables` con su propia forma según `variables.tipo` o las claves presentes
+ * (franja etaria, monto fijo, reducción de capital, etc.) — no se interpreta acá, solo se trae.
+ */
+export async function findTarifasGenericoByPlanId(planId) {
+  const { data, error } = await supabase
+    .from('tarifas_generico')
+    .select('variables')
+    .eq('plan_id', planId);
+  if (error) throw error;
+  return data.map((row) => row.variables);
+}

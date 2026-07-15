@@ -480,7 +480,7 @@ Esto reemplaza las versiones anteriores (que no cerraban exacto) tanto para Auto
 
 **RPF — corregido con la pantalla real del cotizador (v2):** es una **tasa fija por forma de pago**, NO escalonada por cantidad de cuotas. Es igual en los 5 planes de Auto que me mostraste: Contado=0%, Crédito (Cobrador)=1,6%, Boca de Cobranza=1,35%, Tarjeta de Crédito=1%. La tabla escalonada de `Calculo_RPF.xlsx` y la que aparecía en los manuales de Incendio/Hogar quedan descartadas para el cálculo real — se guardan en `plan_formas_pago` por si a futuro un plan específico necesita una tasa distinta.
 
-**Corrección de "Prima Técnica Mínima":** la pantalla real del cotizador usa un único campo `Prima Técnica Mínima` con el valor que antes yo separaba en "Prima Mínima" vs "Premio Mínimo" (ej. Gs. 3.190.000 para Premium). Vuelvo a lo simple: el schema guarda `planes.prima_tecnica_minima` con ese valor tal cual, y el piso se aplica directo sobre la Prima antes de RPF/IVA — sin la distinción que había propuesto antes.
+**Corrección de "Prima Técnica Mínima":** la pantalla real del cotizador usa un único campo `Prima Técnica Mínima` con el valor que antes yo separaba en "Prima Mínima" vs "Premio Mínimo" (ej. Gs. 3.190.000 para Premium). Vuelvo a lo simple: el schema guarda `planes.prima_tecnica_minima` con ese valor tal cual, y el piso se aplica directo sobre la Prima antes de RPF/IVA — sin la distinción que había propuesto antes. En MRC/Incendio este piso **no bloquea** la cotización: si la prima calculada queda por debajo, se usa silenciosamente `prima_tecnica_minima` como base. Ejemplo real: Gs. 409.091 pre-IVA produce un Premio final cercano a Gs. 450.000 al sumar IVA.
 
 ### Auto
 ```
@@ -562,7 +562,14 @@ Tasa: rango 0,50‰ a 4‰ (Incendio) — **editable solo por roles autorizados*
 Mismo esqueleto que Incendio, pero con **4 planes propios** (Protección Integral, Protección Ampliada, Protección Premium, Mi Hogar), cada uno con montos fijos de cobertura por ítem (Incendio edificio/contenido, Robo, Cristales, Muerte Accidental, Resp. Civil, Equipos Electrónicos, daños por agua/granizo, asistencias domiciliarias 24hs). Rango de tasa: 1,2‰ a 5,5‰ (promedio 4,15‰).
 
 ### MRC (Multirriesgo Comercio) y TRO (Todo Riesgo Operativo)
-Mismo esqueleto, prima = suma de líneas de cobertura (Incendio edificio/contenido, Robo, Cristales, Valores en tránsito/caja fuerte, Resp. Civil, Equipos Electrónicos, sub-límites de granizo/agua/murallas), cada línea con su propia tasa dentro de un rango (Comercio: 2,5‰-4,5‰; TRO: 3,5‰-6,5‰). El **rubro de actividad** del cliente determina el ramo: Grupo A "sin proceso" (bazar, farmacia, oficina, boutique...) → MRC; Grupo B "con proceso" (depósito, taller, hotel, imprenta...) → TRO.
+Mismo esqueleto: prima calculada = suma de líneas de cobertura (Incendio edificio/contenido, Robo, Cristales, Valores en tránsito/caja fuerte, Resp. Civil, Equipos Electrónicos, sub-límites de granizo/agua/murallas), cada línea con su propia tasa dentro de un rango (Comercio: 2,5‰-4,5‰; TRO: 3,5‰-6,5‰). La prima final usa piso silencioso de Prima Técnica Mínima cuando aplica:
+
+```
+Prima_lineas = Σ(Suma_Asegurada_Cobertura × Tasa_Cobertura / 1000)
+Prima = MAX(Prima_lineas, plan.prima_tecnica_minima)
+```
+
+No hay error 422 por quedar debajo de la Prima Técnica Mínima. Sí hay validación bloqueante de negocio en MRC: el plan requiere mínimo 3 coberturas cotizadas. Incendio Edificio + Incendio Contenido cuentan siempre como 2 fijas; los sub-límites fijos (agua, equipos electrónicos, granizo) no cuentan para ese mínimo, así que el agente debe agregar al menos una cobertura adicional para continuar. El **rubro de actividad** del cliente determina el ramo: Grupo A "sin proceso" (bazar, farmacia, oficina, boutique...) → MRC; Grupo B "con proceso" (depósito, taller, hotel, imprenta...) → TRO.
 
 ### Transporte de Mercadería
 ```

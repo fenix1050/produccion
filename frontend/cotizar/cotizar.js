@@ -1091,7 +1091,13 @@ function renderResultadoView(ramo) {
         ${renderResumenContadoFinanciado()}
         <div class="card" style="margin-top:20px;">
           <div class="card__title">Coberturas incluidas</div>
-          ${coberturas.map((c) => `
+          ${[...coberturas]
+            // Los 3 sub-límites fijos (agua/equipos electrónicos/granizo) no van en este listado
+            // de "Coberturas incluidas" (a pedido de Kevin, 2026-07-15) — se muestran aparte en
+            // renderSublimitesFijosMrc / renderExclusionesYSublimites.
+            .filter((c) => !SUBLIMITES_FIJOS_MRC.some((s) => s.codigo === c.codigo))
+            .sort((a, b) => (a.tipo_aplicacion === 'sublimite' ? 1 : 0) - (b.tipo_aplicacion === 'sublimite' ? 1 : 0))
+            .map((c) => `
             <div class="cobertura-row">
               <div class="cobertura-row__name">
                 <div class="cobertura-row__check">✓</div>
@@ -1143,15 +1149,16 @@ function renderResumenContadoFinanciado() {
   const contado = variante.formasPago.find((f) => f.codigo === 'contado');
   const financiado = variante.formasPago.find((f) => f.codigo === 'cobrador');
   // Suma de las líneas de "Coberturas incluidas" que cuentan como suma asegurada propia
-  // (Incendio Edificio/Contenido + coberturas/sublímites adicionales que agregó el agente) —
-  // igual que "Suma total Gs." en el Excel del cliente (Version 01 - Calculo Varios.xlsx).
-  // "Robo valores ventanilla" es la única excepción confirmada hoy: es un sub-límite de
-  // "Valores en caja fuerte", no una suma asegurada independiente, y el backend la marca con
-  // incluye_en_suma_asegurada_total = false (migración 020) para que quede afuera del total.
-  const sumaAsegurada = (state.preview.coberturas || []).reduce(
-    (acc, c) => acc + (c.incluye_en_suma_asegurada_total === false ? 0 : Number(c.monto) || 0),
-    0
-  );
+  // (Incendio Edificio/Contenido + coberturas adicionales que agregó el agente) — igual que
+  // "Suma total Gs." en el Excel del cliente (Version 01 - Calculo Varios.xlsx). Los
+  // sub-límites nunca suman al total (a pedido de Kevin, 2026-07-15), ni "Robo valores
+  // ventanilla" (sub-límite de "Valores en caja fuerte", marcado con
+  // incluye_en_suma_asegurada_total = false en la migración 020).
+  const sumaAsegurada = (state.preview.coberturas || []).reduce((acc, c) => {
+    const esSublimite = c.tipo_aplicacion === 'sublimite';
+    const cuentaParaTotal = !esSublimite && c.incluye_en_suma_asegurada_total !== false;
+    return acc + (cuentaParaTotal ? Number(c.monto) || 0 : 0);
+  }, 0);
 
   return `
     <div class="resumen-sistema">

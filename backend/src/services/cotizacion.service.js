@@ -116,8 +116,8 @@ export async function generarPdfOferta(id) {
   const ramos = await ramosRepository.findRamosActivos();
   const ramo = ramos.find((r) => r.id === cotizacion.ramo_id);
 
-  const html = buildOfertaHtml({ cotizacion, plan, ramo });
-  return renderHtmlToPdf(html);
+  const { html, headerTemplate, footerTemplate, margin } = buildOfertaHtml({ cotizacion, plan, ramo });
+  return renderHtmlToPdf(html, { headerTemplate, footerTemplate, margin });
 }
 
 // ---- Fase 4 ----

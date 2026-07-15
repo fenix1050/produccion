@@ -27,37 +27,9 @@ const BASE_CSS = `
   .page {
     position: relative;
     width: 210mm;
-    min-height: 297mm;
-    padding: 0 0 20mm 0;
     page-break-after: always;
   }
   .page:last-child { page-break-after: avoid; }
-  .header {
-    background: #d8132e;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 5mm 10mm;
-    margin-bottom: 6mm;
-  }
-  .header__brand {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-  }
-  .header__brand-text { color: #fff; }
-  .header__brand-text .name { font-size: 16px; font-weight: 700; letter-spacing: 0.5px; }
-  .header__brand-text .tagline { font-size: 11.5px; opacity: 0.9; margin-top: 2px; }
-  .header__ramo {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: #fff;
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-  }
   .body { padding: 0 10mm; }
   .meta-row {
     display: flex;
@@ -171,30 +143,10 @@ const BASE_CSS = `
     color: #8a8a8a;
     margin-top: 4mm;
   }
-  .footer-bar {
-    background: #d8132e;
-    color: #fff;
-    display: flex;
-    align-items: center;
-    justify-content: space-around;
-    font-size: 11px;
-    font-weight: 700;
-    padding: 3mm 10mm;
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-  }
-  .footer-bar__item {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-  }
-  .footer-bar__item svg { display: block; }
-  .footer-bar__social {
-    display: flex;
-    align-items: center;
-    gap: 4px;
+  .cols {
+    column-count: 2;
+    column-gap: 8mm;
+    column-fill: auto;
   }
   .card-block {
     break-inside: avoid;
@@ -223,11 +175,11 @@ const BASE_CSS = `
   .cobertura-item .monto { color: #8a8a8a; }
   .cobertura-item__legal {
     font-size: 10.5px;
-    color: #555;
+    color: #1a1a1a;
     line-height: 1.4;
     margin-top: 1mm;
   }
-  .cobertura-item__legal--exclusiones { color: #8a8a8a; font-style: italic; }
+  .cobertura-item__legal--exclusiones { color: #8a8a8a; font-style: italic; font-size: 9.5px; }
   .badge {
     display: inline-block;
     font-size: 9px;
@@ -251,25 +203,7 @@ export function renderOferta({ ramoLabel, pages }) {
     .map(
       (bodyHtml) => `
     <div class="page">
-      <div class="header">
-        <div class="header__brand">
-          ${TAJY_LOGO_SVG}
-          <div class="header__brand-text">
-            <div class="name">ASEGURADORA TAJY</div>
-            <div class="tagline">Viví <strong>seguro</strong>, viví <strong>mejor</strong>.</div>
-          </div>
-        </div>
-        <div class="header__ramo">${ICON_STOREFRONT}${ramoLabel}</div>
-      </div>
       <div class="body">${bodyHtml}</div>
-      <div class="footer-bar">
-        <div class="footer-bar__item">${ICON_PHONE} (021) 689-1000</div>
-        <div class="footer-bar__item">${ICON_GLOBE} www.tajy.com.py</div>
-        <div class="footer-bar__item">
-          <span class="footer-bar__social">${ICON_FACEBOOK}${ICON_INSTAGRAM}${ICON_LINKEDIN}</span>
-          Aseguradora Tajy
-        </div>
-      </div>
     </div>
   `
     )
@@ -285,6 +219,45 @@ export function renderOferta({ ramoLabel, pages }) {
 ${pagesHtml}
 </body>
 </html>`;
+}
+
+// headerTemplate/footerTemplate de Puppeteer corren en un contexto aislado (no comparten
+// BASE_CSS ni el <body> del documento) pero SÍ se repiten en cada hoja física del PDF —
+// a diferencia de dibujar header/footer dentro de cada .page, que solo aparece una vez por
+// página lógica y deja hojas de overflow sin marca cuando el contenido no entra en una sola
+// hoja. Los márgenes de page.pdf() deben coincidir con el alto real de estos bloques.
+export const OFERTA_MARGIN = { top: '26mm', bottom: '15mm', left: '0', right: '0' };
+
+export function buildHeaderTemplate(ramoLabel) {
+  return `
+    <style>* { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }</style>
+    <div style="width:100%; background:#d8132e; display:flex; justify-content:space-between; align-items:center; padding:4mm 10mm; font-size:13px;">
+      <div style="display:flex; align-items:center; gap:16px;">
+        ${TAJY_LOGO_SVG}
+        <div style="color:#fff;">
+          <div style="font-size:14px; font-weight:700; letter-spacing:0.5px;">ASEGURADORA TAJY</div>
+          <div style="font-size:10px; opacity:0.9; margin-top:2px;">Viví <strong>seguro</strong>, viví <strong>mejor</strong>.</div>
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px; color:#fff; font-size:12px; font-weight:700; letter-spacing:0.5px; text-transform:uppercase;">
+        ${ICON_STOREFRONT}${escapeHtml(ramoLabel)}
+      </div>
+    </div>
+  `;
+}
+
+export function buildFooterTemplate() {
+  return `
+    <style>* { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }</style>
+    <div style="width:100%; background:#d8132e; color:#fff; display:flex; align-items:center; justify-content:space-around; font-size:9px; font-weight:700; padding:2.5mm 10mm;">
+      <div style="display:flex; align-items:center; gap:5px;">${ICON_PHONE} (021) 689-1000</div>
+      <div style="display:flex; align-items:center; gap:5px;">${ICON_GLOBE} www.tajy.com.py</div>
+      <div style="display:flex; align-items:center; gap:5px;">
+        <span style="display:flex; align-items:center; gap:4px;">${ICON_FACEBOOK}${ICON_INSTAGRAM}${ICON_LINKEDIN}</span>
+        Aseguradora Tajy
+      </div>
+    </div>
+  `;
 }
 
 export function escapeHtml(value) {

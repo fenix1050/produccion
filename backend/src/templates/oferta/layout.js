@@ -196,10 +196,6 @@ const BASE_CSS = `
     align-items: center;
     gap: 4px;
   }
-  .cols {
-    column-count: 2;
-    column-gap: 8mm;
-  }
   .card-block {
     break-inside: avoid;
     page-break-inside: avoid;

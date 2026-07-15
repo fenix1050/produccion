@@ -99,26 +99,35 @@ export function buildMrcOfertaPages({ cotizacion, plan, ramo }) {
   const paginaDos = `
     <h2 class="section-title">COBERTURAS <strong>Y CONDICIONES</strong></h2>
     <div class="cols">
-      <div class="col">
+      <div class="card-block">
         <div class="card-title">Coberturas cotizadas</div>
         ${coberturasCotizadas.map(renderCoberturaItem).join('') || '<div class="cobertura-item">Sin coberturas adicionales cotizadas.</div>'}
+      </div>
 
-        <div class="card-title" style="margin-top:5mm;">Coberturas principales incluidas</div>
+      <div class="card-block">
+        <div class="card-title">Coberturas principales incluidas</div>
         <div class="legal-block">${TEXTO_COBERTURAS_PRINCIPALES.map(escapeHtml).join('.\n')}.</div>
       </div>
-      <div class="col">
+
+      <div class="card-block">
         <div class="card-title">Distribución del capital asegurado</div>
         <div class="legal-block">${escapeHtml(TEXTO_DISTRIBUCION_CAPITAL)}</div>
+      </div>
 
+      <div class="card-block">
         <div class="card-title">Franquicias</div>
         <div class="legal-block">${TEXTO_FRANQUICIAS_ESTANDAR
           .split('\n')
           .map((linea) => escapeHtml(linea))
           .join('\n')}</div>
+      </div>
 
+      <div class="card-block">
         <div class="card-title">Exclusiones</div>
         <div class="legal-block">${escapeHtml(TEXTO_EXCLUSIONES)}</div>
+      </div>
 
+      <div class="card-block">
         <div class="card-title">Forman parte del contrato</div>
         <div class="legal-block">${escapeHtml(TEXTO_CLAUSULAS_CONTRATO)}</div>
       </div>

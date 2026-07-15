@@ -197,10 +197,14 @@ const BASE_CSS = `
     gap: 4px;
   }
   .cols {
-    display: flex;
-    gap: 8mm;
+    column-count: 2;
+    column-gap: 8mm;
   }
-  .col { flex: 1; min-width: 0; }
+  .card-block {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    margin-bottom: 5mm;
+  }
   .card-title {
     background: linear-gradient(180deg, #d8132e 0%, #7a0f11 100%);
     color: #fff;
@@ -209,11 +213,15 @@ const BASE_CSS = `
     text-transform: uppercase;
     padding: 2.5mm 4mm;
     margin-bottom: 2mm;
+    break-after: avoid;
+    page-break-after: avoid;
   }
   .cobertura-item {
     padding: 2.5mm 0;
     border-bottom: 1px solid #eee;
     font-size: 12px;
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
   .cobertura-item .nombre { font-weight: 700; }
   .cobertura-item .monto { color: #8a8a8a; }

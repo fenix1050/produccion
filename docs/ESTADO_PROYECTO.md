@@ -7,16 +7,15 @@ momento del desarrollo?**
 
 Última actualización: **Fase 6/7 con catálogo cerrado en los 3 ramos priorizados (MRC → Incendio
 → Vida/AP)** y **cotizador end-to-end funcionando para MRC** (plan Normal), incluyendo
-"coberturas adicionales" repetibles (2026-07-13, ver sección 16-17). Supabase conectado,
-catálogos de MRC (012, con rename a nomenclatura real en 019 y "Robo valores ventanilla"
-agregado en 020), Incendio (013) y Vida/AP (015, con fix de fiabilidad en 016) cargados, fix de
-Incendio aplicado (014), migraciones 001→022 corridas (022 desactiva el plan MRC "Comercio
-Protección Total", sin RPF confirmado). `mrc.calculator.js` implementado y conectado al frontend
-de `/cotizar`. `crearCotizacion` ya persiste el detalle de coberturas en `cotizacion_coberturas`,
-incluida la franquicia elegida por el agente por cobertura (2026-07-13, verificado end-to-end
-contra Supabase). Incendio y Vida/AP siguen con calculador pendiente (bloqueados por RPF sin
-confirmar). Pendiente activo: panel admin para coberturas fijas/tasas por ramo (Fase 5) — ver
-sección 8.
+"coberturas adicionales" repetibles (2026-07-13, ver sección 16-17) y Carta Oferta de MRC en PDF
+con layout dinámico seguro (2026-07-15, ver sección 19). Supabase conectado, catálogos de MRC
+(012, con rename a nomenclatura real en 019, "Robo valores ventanilla" agregado en 020, y ajustes
+posteriores de Prima Técnica Mínima/texto de sub-límites en 025→027), Incendio (013) y Vida/AP
+(015, con fix de fiabilidad en 016) cargados. `mrc.calculator.js` implementado y conectado al
+frontend de `/cotizar`. `crearCotizacion` ya persiste el detalle de coberturas en
+`cotizacion_coberturas`, incluida la franquicia elegida por el agente por cobertura (2026-07-13,
+verificado end-to-end contra Supabase). Pendiente activo: panel admin para coberturas fijas/tasas
+por ramo (Fase 5) — ver sección 8.
 
 **Nota para trabajar desde otra PC:** `docs/insumos/` (Excels/PDFs con tasas reales y
 cotizaciones de clientes) y `.codegraph/` están en `.gitignore` — no vienen en el `git clone`.
@@ -41,8 +40,8 @@ ahí si querés tener el índice disponible.
 - **Frontend de `/cotizar` conectado a MRC (2026-07-13):** sidebar con los 5 ramos reales
   (MRC/Incendio/Vida-AP disponibles, Auto en pausa, Hogar "próximamente"), panel de cotización en
   vivo con selección explícita de las 4 formas de pago que se conserva al pasar a Detalle del
-  plan. Incendio, Vida-AP y la generación de Carta Oferta (PDF) quedan con estado "pendiente" en
-  la UI — fuera de alcance de esta tarea.
+  plan. La Carta Oferta de MRC ya se genera en PDF; Incendio y Vida/AP siguen pendientes de
+  template.
 - Hogar y TRO no fueron pedidos todavía, quedan en fase futura.
 - **Supabase real ya está conectado** (`backend/.env` cargado con `SUPABASE_URL` y
   `SUPABASE_SERVICE_KEY`). Las migraciones 001→011 corrieron contra ese proyecto — algunas
@@ -199,15 +198,9 @@ bloquea Fase 6).
 
 ## 8. Pendientes abiertos
 
-- **Texto oficial para Carta Oferta de MRC (Fase 2/4/8, no empezar todavía)** — Kevin pasó
-  (2026-07-13) el texto completo tal como sale del cotizador de pólizas nuevas: Coberturas
-  Principales, Distribución del Capital Asegurado (Incendio y Robo, 50%/50% Mercaderías/
-  Contenido General), Franquicias (incluye la excepción de Itapúa/Alto Paraná para Caída de
-  Rayo con 10%/mín. Gs. 500.000, ya mencionada como "variable de la cotización, no del
-  catálogo" en la migración 012), Exclusiones ampliadas y las 3 cláusulas que forman parte del
-  contrato (adecuación al código penal, endoso de garantía Segucoop, cobranza). Guardado en
-  Engram (`type: reference`, buscar "texto Carta Oferta MRC") para cuando se encare la
-  generación de PDF — no se tocó código de templates todavía, es fuera de Fase 6/7.
+- **Carta Oferta de MRC en PDF — implementada (2026-07-14/15)**: el texto oficial recibido el
+  2026-07-13 ya se usa en el template de MRC. Ver secciones 18 y 19. Quedan pendientes los
+  templates de Carta Oferta para Incendio y Vida/AP, porque requieren su texto oficial específico.
 - **RLS deshabilitado** en las 29 tablas — ver sección 7, requiere decisión de Kevin antes de
   actuar.
 - **`cotizacion_coberturas` resuelto (2026-07-13)** — `crearCotizacion` ahora persiste ahí el
@@ -244,8 +237,10 @@ bloquea Fase 6).
   las constantes `CODIGO_INCENDIO_EDIFICIO`/`CODIGO_INCENDIO_CONTENIDO`) y (b) las tasas de
   `tasas_cobertura_ramo` por si varían en el futuro (hoy solo se cargan por migración SQL). No se
   empieza hasta Fase 5 — se decidió explícitamente no adelantarla (ver CLAUDE.md, metodología de
-  fases). Cuando se encare, definir con Kevin si "cobertura fija" es una propiedad por ramo o por
-  plan (MRC solo tiene 1 plan calculable hoy, pero Incendio/Vida-AP van a tener varios).
+  fases). **Actualización 2026-07-15**: el plan de implementación ya está diseñado y aprobado en
+  alcance con Kevin — ver `docs/PLAN_ADMIN_FASE5.md` (auth JWT propio obligatorio para toda la
+  app, coberturas por defecto POR PLAN vía `plan_coberturas.incluida_por_defecto`, tasas editadas
+  por versionado con INSERT, CRUD de usuarios/roles). Queda pausado hasta llegar a Fase 5.
 
 ## 9. Catálogo de coberturas de MRC — CERRADO (migración 012, 2026-07-10)
 
@@ -639,7 +634,40 @@ localmente (backend `npm run dev` + frontend servido estático):
     de este fix tiene el Inicial/Cuota calculados con la fórmula vieja — no se re-calculan
     retroactivamente, solo las cotizaciones nuevas usan la fórmula corregida.
 
-## 19. Próximo paso
+## 19. Carta Oferta de MRC — estado actual del PDF (2026-07-15)
+
+Después de la primera implementación end-to-end de la sección 18, la Carta Oferta de MRC quedó en
+estado usable y alineada con las reglas de negocio actuales del plan `MULTIRRIESGO COMERCIO -
+NORMAL`:
+
+- **Prima Técnica Mínima como piso silencioso:** MRC e Incendio ya no cortan con error 422 cuando
+  la prima calculada queda por debajo de `plan.prima_tecnica_minima`. El calculador usa
+  `MAX(primaCalculada, prima_tecnica_minima)` y continúa el flujo normal. El valor correcto del
+  piso es pre-IVA: Gs. 409.091 produce un Premio final cercano a Gs. 450.000; el intento de subirlo
+  directo a Gs. 450.000 quedó revertido por migraciones 025/026.
+- **Mínimo de 3 coberturas en MRC:** Incendio Edificio + Incendio Contenido cuentan siempre como
+  2 coberturas fijas. Los sub-límites fijos (agua, equipos electrónicos, granizo) no cuentan para
+  ese mínimo. Si el agente no agrega al menos una cobertura adicional, el flujo bloquea con el
+  mensaje: "Este plan requiere un mínimo de 3 coberturas — agregá al menos una cobertura adicional
+  para continuar."
+- **CCTV removido de sub-límites:** "Circuito Cerrado de Televisión (CCTV)" salió del texto de
+  sub-límites y de la Carta Oferta porque ya está cubierto por "Daños a los Equipos Electrónicos";
+  no debe listarse como sub-límite aparte.
+- **Plan de Pago más claro:** el PDF muestra "Cuota (N cuotas)" para evitar que Inicial + Cuota
+  parezca no cerrar contra el Premio. En Contado, la cuota se muestra como "—" en vez de "Gs. 0".
+- **Orden de sumas aseguradas:** la tabla "Sumas Aseguradas por Cobertura" lista primero las
+  coberturas y después los sub-límites, independientemente del orden en que se agregaron en el
+  formulario.
+- **Página de "Coberturas y condiciones" con layout dinámico:** las 6 tarjetas quedaron en este
+  orden: Coberturas principales incluidas, Coberturas cotizadas, Distribución del capital
+  asegurado, Franquicias, Exclusiones, Forman parte del contrato. El template intenta primero un
+  split fijo 3/3 por columna; antes de generar el PDF final, Puppeteer mide si ese candidato entra
+  en una hoja A4. Si entra, se usa el 3/3 exacto; si no, cae automáticamente al layout balanceado,
+  que pagina correctamente en Chromium. La tarjeta "Coberturas cotizadas" puede fluir entre
+  columnas a mitad de lista; las demás tarjetas permanecen atómicas.
+- **Footer ajustado:** el footer del PDF subió de 9px a 11px para mejorar legibilidad.
+
+## 20. Próximo paso
 
 Con el catálogo de MRC, Incendio y Vida/AP cargado, el primer calculador (MRC, plan Normal) conectado
 end-to-end, y la Carta Oferta de MRC ya generándose en PDF, lo que sigue es uno de estos, a decidir

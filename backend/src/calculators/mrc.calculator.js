@@ -9,6 +9,12 @@ const IVA_PORCENTAJE = 10;
 const CODIGO_INCENDIO_EDIFICIO = 'incendio_edificio';
 const CODIGO_INCENDIO_CONTENIDO = 'incendio_contenido';
 
+// A pedido de Kevin (2026-07-15): la cotización de MRC necesita al menos 3 coberturas de tipo
+// "Cobertura" (Incendio Edificio/Contenido cuentan siempre, más lo que agregue el agente como
+// cobertura adicional) — los sub-límites fijos (agua/equipos electrónicos/granizo) NO cuentan
+// para este mínimo, van aparte siempre incluidos.
+const MINIMO_COBERTURAS_MRC = 3;
+
 /**
  * Calculador de MRC (Multirriesgo Comercio) — solo el plan "MULTIRRIESGO COMERCIO - NORMAL"
  * tiene RPF y prima_tecnica_minima confirmados contra el sistema real (ver PLAN_DESARROLLO.md
@@ -172,6 +178,20 @@ export async function calcularPrima({ planId, riesgoDatos, descuentos = [], reca
       incluye_en_suma_asegurada_total: catalogoRow.incluye_en_suma_asegurada_total ?? true,
       costo: costoLinea,
     });
+  }
+
+  // Incendio Edificio + Incendio Contenido cuentan siempre como 2 coberturas fijas — se suma
+  // lo que el agente agregó como cobertura adicional (sin contar sub-límites) para el mínimo.
+  const cantidadCoberturas =
+    2 + coberturasAdicionalesValidadas.filter((c) => c.tipo_aplicacion === 'cobertura').length;
+
+  if (cantidadCoberturas < MINIMO_COBERTURAS_MRC) {
+    const err = new Error(
+      `El plan "${plan.nombre}" requiere al menos ${MINIMO_COBERTURAS_MRC} coberturas — hay ${cantidadCoberturas} cargadas.`
+    );
+    err.status = 422;
+    err.publicMessage = `Este plan requiere un mínimo de ${MINIMO_COBERTURAS_MRC} coberturas — agregá al menos una cobertura adicional para continuar.`;
+    throw err;
   }
 
   const primaCalculada = costoEdificio + costoContenido + totalCoberturasAdicionales;

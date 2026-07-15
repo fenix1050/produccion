@@ -44,7 +44,11 @@ Cláusula de cobranza (todas las formas de pago excepto Segucoop).`;
  */
 export function buildMrcOfertaPages({ cotizacion, plan, ramo }) {
   const riesgo = cotizacion.riesgo_datos || {};
-  const coberturasCotizadas = cotizacion.cotizacion_coberturas || [];
+  // Coberturas primero, sub-límites después (a pedido de Kevin, 2026-07-15) — el orden de
+  // inserción original mezclaba ambos tipos según cómo se armaba la lista en el calculador.
+  const coberturasCotizadas = [...(cotizacion.cotizacion_coberturas || [])].sort(
+    (a, b) => (a.tipo_aplicacion === 'sublimite' ? 1 : 0) - (b.tipo_aplicacion === 'sublimite' ? 1 : 0)
+  );
 
   // Misma cuenta que "Suma Asegurada total" en el panel del cotizador (cotizar.js): suma el
   // monto de cada cobertura cotizada, salvo las marcadas incluye_en_suma_asegurada_total = false

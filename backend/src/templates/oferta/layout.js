@@ -229,9 +229,12 @@ ${pagesHtml}
 export const OFERTA_MARGIN = { top: '26mm', bottom: '15mm', left: '0', right: '0' };
 
 export function buildHeaderTemplate(ramoLabel) {
+  // position:fixed + top:0 ancla la barra al borde real de la hoja — sin esto, Chrome deja
+  // cualquier margen sobrante (margin-top más alto que el contenido) pegado ARRIBA de la
+  // barra en vez de entre la barra y el cuerpo, dejando un hueco blanco antes del header.
   return `
     <style>* { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }</style>
-    <div style="width:100%; background:#d8132e; display:flex; justify-content:space-between; align-items:center; padding:4mm 10mm; font-size:13px;">
+    <div style="position:fixed; top:0; left:0; right:0; width:100%; background:#d8132e; display:flex; justify-content:space-between; align-items:center; padding:4mm 10mm; font-size:13px;">
       <div style="display:flex; align-items:center; gap:16px;">
         ${TAJY_LOGO_SVG}
         <div style="color:#fff;">
@@ -247,9 +250,11 @@ export function buildHeaderTemplate(ramoLabel) {
 }
 
 export function buildFooterTemplate() {
+  // position:fixed + bottom:0 ancla la barra al borde real de la hoja — mismo motivo que en
+  // buildHeaderTemplate, pero pegado abajo.
   return `
     <style>* { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }</style>
-    <div style="width:100%; background:#d8132e; color:#fff; display:flex; align-items:center; justify-content:space-around; font-size:9px; font-weight:700; padding:2.5mm 10mm;">
+    <div style="position:fixed; bottom:0; left:0; right:0; width:100%; background:#d8132e; color:#fff; display:flex; align-items:center; justify-content:space-around; font-size:9px; font-weight:700; padding:2.5mm 10mm;">
       <div style="display:flex; align-items:center; gap:5px;">${ICON_PHONE} (021) 689-1000</div>
       <div style="display:flex; align-items:center; gap:5px;">${ICON_GLOBE} www.tajy.com.py</div>
       <div style="display:flex; align-items:center; gap:5px;">

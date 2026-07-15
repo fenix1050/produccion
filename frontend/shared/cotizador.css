@@ -629,14 +629,18 @@ button {
 .live-summary__row {
   display: flex;
   justify-content: space-between;
+  gap: 10px;
 }
 
 .live-summary__row span:first-child {
   color: var(--tajy-text-muted);
+  min-width: 0;
 }
 
 .live-summary__row span:last-child {
   font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .live-summary__hint {

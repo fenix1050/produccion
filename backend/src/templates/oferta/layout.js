@@ -217,7 +217,14 @@ const BASE_CSS = `
   }
   .cobertura-item .nombre { font-weight: 700; }
   .cobertura-item .monto { color: #8a8a8a; }
-  .cobertura-item .badge {
+  .cobertura-item__legal {
+    font-size: 10.5px;
+    color: #555;
+    line-height: 1.4;
+    margin-top: 1mm;
+  }
+  .cobertura-item__legal--exclusiones { color: #8a8a8a; font-style: italic; }
+  .badge {
     display: inline-block;
     font-size: 9px;
     font-weight: 700;
@@ -226,8 +233,8 @@ const BASE_CSS = `
     border-radius: 2px;
     margin-right: 2mm;
   }
-  .cobertura-item .badge--cobertura { background: #e9f7ee; color: #1e8a4c; }
-  .cobertura-item .badge--sublimite { background: #fbeaea; color: #d8132e; }
+  .badge--cobertura { background: #e9f7ee; color: #1e8a4c; }
+  .badge--sublimite { background: #fbeaea; color: #d8132e; }
   .legal-block { font-size: 11px; margin-bottom: 4mm; white-space: pre-line; line-height: 1.5; }
   .legal-block .subtitle { font-weight: 700; font-size: 12px; margin-bottom: 1mm; color: #1a1a1a; }
 `;

@@ -165,22 +165,29 @@ function renderVariantePlanPago(variante) {
 }
 
 function renderCoberturaItem(cobertura) {
-  const badgeClass = cobertura.tipo_aplicacion === 'sublimite' ? 'badge--sublimite' : 'badge--cobertura';
-  const badgeLabel = cobertura.tipo_aplicacion === 'sublimite' ? 'Sublímite' : 'Cobertura';
+  const textoLegal = cobertura.texto_legal_snapshot
+    ? `<div class="cobertura-item__legal">${escapeHtml(cobertura.texto_legal_snapshot)}</div>`
+    : '';
+  const textoExclusiones = cobertura.texto_exclusiones_snapshot
+    ? `<div class="cobertura-item__legal cobertura-item__legal--exclusiones">Exclusiones: ${escapeHtml(cobertura.texto_exclusiones_snapshot)}</div>`
+    : '';
 
   return `
     <div class="cobertura-item">
-      <span class="badge ${badgeClass}">${badgeLabel}</span>
-      <span class="nombre">${escapeHtml(cobertura.nombre_snapshot)}</span><br>
-      <span class="monto">Suma asegurada: Gs. ${fmtGs(cobertura.monto)} · ${escapeHtml(textoFranquicia(cobertura.franquicia))}</span>
+      <span class="nombre">${escapeHtml(cobertura.nombre_snapshot)}</span>
+      ${textoLegal}
+      ${textoExclusiones}
     </div>
   `;
 }
 
 function renderFilaSumaAsegurada(cobertura) {
+  const badgeClass = cobertura.tipo_aplicacion === 'sublimite' ? 'badge--sublimite' : 'badge--cobertura';
+  const badgeLabel = cobertura.tipo_aplicacion === 'sublimite' ? 'Sublímite' : 'Cobertura';
+
   return `
     <tr>
-      <td>${escapeHtml(cobertura.nombre_snapshot)}</td>
+      <td><span class="badge ${badgeClass}">${badgeLabel}</span>${escapeHtml(cobertura.nombre_snapshot)}</td>
       <td>${fmtGs(cobertura.monto)}</td>
       <td>${escapeHtml(textoFranquicia(cobertura.franquicia))}</td>
     </tr>

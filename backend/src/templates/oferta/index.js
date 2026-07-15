@@ -1,4 +1,4 @@
-import { renderOferta } from './layout.js';
+import { renderOferta, buildHeaderTemplate, buildFooterTemplate, OFERTA_MARGIN } from './layout.js';
 import { buildMrcOfertaPages } from './mrc.js';
 
 // Un builder de páginas por ramo (calculador). Incendio y Vida-AP quedan pendientes: todavía
@@ -20,6 +20,12 @@ export function buildOfertaHtml({ cotizacion, plan, ramo }) {
     throw err;
   }
 
+  const ramoLabel = ramo.nombre_display ?? ramo.nombre;
   const pages = builder({ cotizacion, plan, ramo });
-  return renderOferta({ ramoLabel: ramo.nombre_display ?? ramo.nombre, pages });
+  return {
+    html: renderOferta({ ramoLabel, pages }),
+    headerTemplate: buildHeaderTemplate(ramoLabel),
+    footerTemplate: buildFooterTemplate(),
+    margin: OFERTA_MARGIN,
+  };
 }

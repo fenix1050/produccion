@@ -17,7 +17,7 @@ const TEXTO_COBERTURAS_PRINCIPALES = [
 ];
 
 const TEXTO_DISTRIBUCION_CAPITAL = `Incendio: Mercaderías 50% / Contenido General 50%
-Sublímite CCTV: Gs. 5.000.000 | Daños por agua: Gs. 2.500.000 | Equipos Electrónicos: Gs. 5.000.000
+Daños por agua: Gs. 2.500.000 | Equipos Electrónicos: Gs. 5.000.000
 Robo: Mercaderías 50% / Contenido General 50%
 Daños a murallas/cercos/rejas: Gs. 1.000.000 por vigencia | Daños por granizo: Gs. 5.000.000 por vigencia (edificio)`;
 
@@ -148,6 +148,9 @@ function renderVariantePlanPago(variante) {
     ? `<div class="variante-label">Con franquicia (Gs. ${fmtGs(variante.franquicia_monto)})</div>`
     : '';
 
+  const cuotasFinanciadas = planesPago.find((fp) => fp.monto_cuota > 0)?.cantidad_cuotas;
+  const tituloCuota = cuotasFinanciadas ? `Cuota (${cuotasFinanciadas} cuotas)` : 'Cuota';
+
   return `
     ${label}
     <table class="plan-pago">
@@ -155,7 +158,7 @@ function renderVariantePlanPago(variante) {
         <th style="text-align:left;">Forma de pago</th>
         <th>Premio</th>
         <th>Inicial</th>
-        <th>Cuota</th>
+        <th>${escapeHtml(tituloCuota)}</th>
       </tr>
       ${planesPago
         .map(
@@ -164,7 +167,7 @@ function renderVariantePlanPago(variante) {
           <td>${escapeHtml(fp.formas_pago.nombre_display)}</td>
           <td>Gs. ${fmtGs(fp.premio_total)}</td>
           <td>Gs. ${fmtGs(fp.monto_inicial)}</td>
-          <td>${fp.cantidad_cuotas > 0 ? `Gs. ${fmtGs(fp.monto_cuota)}` : '—'}</td>
+          <td>${fp.monto_cuota > 0 ? `Gs. ${fmtGs(fp.monto_cuota)}` : '—'}</td>
         </tr>
       `
         )

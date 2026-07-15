@@ -14,6 +14,7 @@ const TEXTO_COBERTURAS_PRINCIPALES = [
   'Robo (Tránsito)',
   'Rotura de Cristales, Vidrios o Espejos',
   'Responsabilidad Civil',
+  'Equipos Electrónicos',
 ];
 
 const TEXTO_DISTRIBUCION_CAPITAL = `Incendio: Mercaderías 50% / Contenido General 50%
@@ -100,45 +101,80 @@ export function buildMrcOfertaPages({ cotizacion, plan, ramo }) {
     </div>
   `;
 
-  const paginaDos = `
-    <h2 class="section-title">COBERTURAS <strong>Y CONDICIONES</strong></h2>
-    <div class="cols">
-      <div class="card-block">
-        <div class="card-title">Coberturas cotizadas</div>
-        ${coberturasCotizadas.map(renderCoberturaItem).join('') || '<div class="cobertura-item">Sin coberturas adicionales cotizadas.</div>'}
-      </div>
+  // Orden pedido por Kevin (2026-07-15): 1) Coberturas principales incluidas, 2) Coberturas
+  // cotizadas, 3) Distribución del capital asegurado, 4) Franquicias, 5) Exclusiones,
+  // 6) Forman parte del contrato.
+  const bloques = [
+    {
+      titulo: 'Coberturas principales incluidas',
+      contenido: `<div class="legal-block">${TEXTO_COBERTURAS_PRINCIPALES.map(escapeHtml).join('.\n')}.</div>`,
+    },
+    {
+      titulo: 'Coberturas cotizadas',
+      contenido:
+        coberturasCotizadas.map(renderCoberturaItem).join('') ||
+        '<div class="cobertura-item">Sin coberturas adicionales cotizadas.</div>',
+      // A diferencia de los demás bloques, este puede ser largo y variable — se deja fluir a
+      // la columna siguiente en vez de saltar entero y dejar hueco en blanco (ver .card-block--flow).
+      flow: true,
+    },
+    {
+      titulo: 'Distribución del capital asegurado',
+      contenido: `<div class="legal-block">${escapeHtml(TEXTO_DISTRIBUCION_CAPITAL)}</div>`,
+    },
+    {
+      titulo: 'Franquicias',
+      contenido: `<div class="legal-block">${TEXTO_FRANQUICIAS_ESTANDAR
+        .split('\n')
+        .map((linea) => escapeHtml(linea))
+        .join('\n')}</div>`,
+    },
+    {
+      titulo: 'Exclusiones',
+      contenido: `<div class="legal-block">${escapeHtml(TEXTO_EXCLUSIONES)}</div>`,
+    },
+    {
+      titulo: 'Forman parte del contrato',
+      contenido: `<div class="legal-block">${escapeHtml(TEXTO_CLAUSULAS_CONTRATO)}</div>`,
+    },
+  ];
 
-      <div class="card-block">
-        <div class="card-title">Forman parte del contrato</div>
-        <div class="legal-block">${escapeHtml(TEXTO_CLAUSULAS_CONTRATO)}</div>
-      </div>
+  const tituloPaginaDos = '<h2 class="section-title">COBERTURAS <strong>Y CONDICIONES</strong></h2>';
 
-      <div class="card-block">
-        <div class="card-title">Coberturas principales incluidas</div>
-        <div class="legal-block">${TEXTO_COBERTURAS_PRINCIPALES.map(escapeHtml).join('.\n')}.</div>
-      </div>
-
-      <div class="card-block">
-        <div class="card-title">Distribución del capital asegurado</div>
-        <div class="legal-block">${escapeHtml(TEXTO_DISTRIBUCION_CAPITAL)}</div>
-      </div>
-
-      <div class="card-block">
-        <div class="card-title">Franquicias</div>
-        <div class="legal-block">${TEXTO_FRANQUICIAS_ESTANDAR
-          .split('\n')
-          .map((linea) => escapeHtml(linea))
-          .join('\n')}</div>
-      </div>
-
-      <div class="card-block">
-        <div class="card-title">Exclusiones</div>
-        <div class="legal-block">${escapeHtml(TEXTO_EXCLUSIONES)}</div>
-      </div>
+  // Dos candidatos para la página de "Coberturas y condiciones":
+  // - Flex (3 bloques fijos por columna): se ve prolija (orden 1-2-3 izquierda, 4-5-6 derecha)
+  //   pero NO puede fragmentarse entre hojas — si el contenido no entra en una sola página,
+  //   Chrome no reparte las columnas y deja contenido varado (ver measureContentHeightMm).
+  // - Balanceada (column-count con auto-balance): SIEMPRE pagina bien porque el motor de
+  //   impresión sabe fragmentar multi-columna entre hojas, pero el corte entre columna
+  //   izquierda/derecha varía según la altura del texto en cada cotización.
+  // El caller (templates/oferta/index.js) mide con Puppeteer si el candidato flex entra en una
+  // sola hoja y usa el balanceado como fallback si no.
+  const paginaDosFlex = `
+    ${tituloPaginaDos}
+    <div class="cols cols-flex">
+      <div class="col">${bloques.slice(0, 3).map(renderBloque).join('')}</div>
+      <div class="col">${bloques.slice(3).map(renderBloque).join('')}</div>
     </div>
   `;
 
-  return [paginaUno, paginaDos];
+  const paginaDosBalanceada = `
+    ${tituloPaginaDos}
+    <div class="cols">
+      ${bloques.map(renderBloque).join('')}
+    </div>
+  `;
+
+  return { paginaUno, paginaDosFlex, paginaDosBalanceada };
+}
+
+function renderBloque(bloque) {
+  return `
+    <div class="card-block${bloque.flow ? ' card-block--flow' : ''}">
+      <div class="card-title">${escapeHtml(bloque.titulo)}</div>
+      ${bloque.contenido}
+    </div>
+  `;
 }
 
 function renderVariantePlanPago(variante) {

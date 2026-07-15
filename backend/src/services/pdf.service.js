@@ -39,3 +39,29 @@ export async function renderHtmlToPdf(html, { headerTemplate, footerTemplate, ma
     await page.close();
   }
 }
+
+const PX_POR_MM = 96 / 25.4;
+
+/**
+ * Renderiza `bodyHtml` (con `cssText`, ej. BASE_CSS) en una página headless del ancho de hoja
+ * dado y devuelve el alto renderizado en mm — usado para decidir si un layout de columnas
+ * "forzado" (que no puede fragmentarse entre hojas, a diferencia de column-count) entra en una
+ * sola página antes de generar el PDF final. No es una medida 100% exacta del motor de
+ * impresión de Puppeteer (usa el viewport normal, no el modo "print"), pero alcanza como
+ * chequeo conservador: si ya excede el alto útil en pantalla, seguro tampoco entra impreso.
+ */
+export async function measureContentHeightMm(bodyHtml, cssText, widthMm = 210) {
+  const browser = await getBrowser();
+  const page = await browser.newPage();
+  try {
+    await page.setViewport({ width: Math.ceil(widthMm * PX_POR_MM), height: 200 });
+    await page.setContent(
+      `<!doctype html><html><head><style>${cssText}</style></head><body><div class="page"><div class="body">${bodyHtml}</div></div></body></html>`,
+      { waitUntil: 'networkidle0' }
+    );
+    const heightPx = await page.evaluate(() => document.querySelector('.body').scrollHeight);
+    return heightPx / PX_POR_MM;
+  } finally {
+    await page.close();
+  }
+}

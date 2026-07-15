@@ -21,8 +21,8 @@ const CODIGO_INCENDIO_CONTENIDO = 'incendio_contenido';
  * coberturas obligatorias, cuya proporción de reparto NO está confirmada todavía):
  *   Costo Edificio  = Capital_Edificio × rubros_actividad.tasa_edificio / 1000
  *   Costo Contenido = Capital_Contenido × rubros_actividad.tasa_contenido / 1000
- *   Prima_base = Costo Edificio + Costo Contenido — si no alcanza plan.prima_tecnica_minima,
- *     corta con error 422 (no se aplica el piso en silencio, ver más abajo)
+ *   Prima_base = MAX(Costo Edificio + Costo Contenido, plan.prima_tecnica_minima) — el piso
+ *     se aplica en silencio, no bloquea la cotización (ver más abajo)
  *   Prima = Prima_base − Descuentos (tope descuento_maximo) + Recargos (tope recargo_maximo)
  *
  * La tasa depende del `Tipo de Riesgo` (rubro de actividad) elegido, NO de una tasa fija del
@@ -31,9 +31,10 @@ const CODIGO_INCENDIO_CONTENIDO = 'incendio_contenido';
  * real la tasa sí varía por categoría del rubro (misma tabla `rubros_actividad` que ya se usa
  * para Incendio, migración 013).
  *
- * También corta con error 422 si Capital_Edificio + Capital_Contenido supera
- * plan.responsabilidad_maxima_cotizable. Ambas alertas bloquean el cálculo — el frontend no
- * deja avanzar a "Detalle del plan" mientras estén activas (ver cotizar.js, puedeAvanzarADetalle).
+ * Sigue cortando con error 422 si Capital_Edificio + Capital_Contenido supera
+ * plan.responsabilidad_maxima_cotizable — esa alerta bloquea el cálculo, el frontend no deja
+ * avanzar a "Detalle del plan" mientras esté activa (ver cotizar.js, puedeAvanzarADetalle). La
+ * Prima Técnica Mínima, en cambio, ya NO bloquea (2026-07-15): se aplica como piso silencioso.
  *
  * Coberturas adicionales (desde 2026-07-13): fuera de Incendio Edificio/Contenido, ninguna
  * cobertura se incluye por defecto. El agente agrega explícitamente cada línea vía
@@ -175,19 +176,10 @@ export async function calcularPrima({ planId, riesgoDatos, descuentos = [], reca
 
   const primaCalculada = costoEdificio + costoContenido + totalCoberturasAdicionales;
 
-  // A pedido de Kevin (2026-07-13): si el capital declarado no alcanza a generar la Prima
-  // Técnica Mínima del plan, no se aplica el piso en silencio — se corta con alerta, igual que
-  // al superar la Responsabilidad Máx. Cotizable, y no se deja avanzar a la siguiente etapa.
-  if (primaCalculada < plan.prima_tecnica_minima) {
-    const err = new Error(
-      `La prima calculada (Gs. ${primaCalculada}) no alcanza la Prima Técnica Mínima del plan "${plan.nombre}" (Gs. ${plan.prima_tecnica_minima}).`
-    );
-    err.status = 422;
-    err.publicMessage = `El capital declarado es insuficiente: la prima calculada no alcanza la Prima Técnica Mínima de este plan (Gs. ${plan.prima_tecnica_minima.toLocaleString('es-PY')}).`;
-    throw err;
-  }
-
-  const primaBase = primaCalculada;
+  // A pedido de Kevin (2026-07-15): sí se pueden cotizar capitales que generen una prima menor
+  // a la Prima Técnica Mínima del plan — no se bloquea con alerta. En ese caso se aplica el
+  // piso en silencio: la Prima Técnica Mínima pasa a ser la prima base de la cotización.
+  const primaBase = Math.max(primaCalculada, plan.prima_tecnica_minima);
 
   const totalDescuentos = sumarAjustes(descuentos, primaBase, plan.descuento_maximo);
   const totalRecargos = sumarAjustes(recargos, primaBase, plan.recargo_maximo);

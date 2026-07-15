@@ -105,6 +105,11 @@ export function buildMrcOfertaPages({ cotizacion, plan, ramo }) {
       </div>
 
       <div class="card-block">
+        <div class="card-title">Forman parte del contrato</div>
+        <div class="legal-block">${escapeHtml(TEXTO_CLAUSULAS_CONTRATO)}</div>
+      </div>
+
+      <div class="card-block">
         <div class="card-title">Coberturas principales incluidas</div>
         <div class="legal-block">${TEXTO_COBERTURAS_PRINCIPALES.map(escapeHtml).join('.\n')}.</div>
       </div>
@@ -125,11 +130,6 @@ export function buildMrcOfertaPages({ cotizacion, plan, ramo }) {
       <div class="card-block">
         <div class="card-title">Exclusiones</div>
         <div class="legal-block">${escapeHtml(TEXTO_EXCLUSIONES)}</div>
-      </div>
-
-      <div class="card-block">
-        <div class="card-title">Forman parte del contrato</div>
-        <div class="legal-block">${escapeHtml(TEXTO_CLAUSULAS_CONTRATO)}</div>
       </div>
     </div>
   `;

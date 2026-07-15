@@ -110,9 +110,29 @@ const state = {
   emitiendoCarta: false,
 };
 
+// Sublímites de MRC fijos por defecto (confirmado por el área técnica, 2026-07-15): siempre
+// van incluidos con el monto de `planes.texto_sublimites_generales` para "Multirriesgo Comercio
+// - Normal" (coincide con plan_coberturas.monto de la migración 012) — el agente no los elige
+// ni les cambia el monto, así que se muestran aparte en el panel "Sublímites" (ver
+// renderSublimitesFijosMrc), no como fila editable/quitable en "Coberturas adicionales".
+const SUBLIMITES_FIJOS_MRC = [
+  { codigo: 'sublimite_danos_agua', monto: 2500000 },
+  { codigo: 'sublimite_equipos_electronicos', monto: 5000000 },
+  { codigo: 'sublimite_granizo', monto: 5000000 },
+];
+
 // Códigos que no deben ofrecerse en "Coberturas adicionales": las 2 fijas ya tienen su propio
-// campo en el formulario, y sublimite_cctv todavía no tiene tasa cargada (no cotizable).
-const CODIGOS_COBERTURA_EXCLUIDOS = ['incendio_edificio', 'incendio_contenido', 'sublimite_cctv'];
+// campo en el formulario, sublimite_cctv todavía no tiene tasa cargada (no cotizable), los
+// sublímites de SUBLIMITES_FIJOS_MRC van fijos por defecto (ver arriba), y 'equipos_electronicos'
+// (la cobertura, distinta del sublímite) queda representada por ese mismo sublímite fijo en MRC
+// — confirmado por el área técnica, 2026-07-15: en esta rama no se ofrece por separado.
+const CODIGOS_COBERTURA_EXCLUIDOS = [
+  'incendio_edificio',
+  'incendio_contenido',
+  'sublimite_cctv',
+  'equipos_electronicos',
+  ...SUBLIMITES_FIJOS_MRC.map((s) => s.codigo),
+];
 
 let debounceTimer = null;
 const app = document.getElementById('app');
@@ -364,9 +384,12 @@ function armarRiesgoDatos(plan) {
       ciudad: d.ciudad || '',
       capital_edificio: Number(d.capitalEdificio) || 0,
       capital_contenido: Number(d.capitalContenido) || 0,
-      coberturas_adicionales: state.coberturasAdicionales
-        .filter((l) => l.codigo && Number(l.sumaAsegurada) > 0)
-        .map((l) => ({ codigo: l.codigo, suma_asegurada: Number(l.sumaAsegurada) })),
+      coberturas_adicionales: [
+        ...SUBLIMITES_FIJOS_MRC.map((s) => ({ codigo: s.codigo, suma_asegurada: s.monto })),
+        ...state.coberturasAdicionales
+          .filter((l) => l.codigo && Number(l.sumaAsegurada) > 0)
+          .map((l) => ({ codigo: l.codigo, suma_asegurada: Number(l.sumaAsegurada) })),
+      ],
       franquicias_por_cobertura: franquiciasPorCoberturaParaBody(),
     };
   }
@@ -901,7 +924,15 @@ function renderCoberturasAdicionales(catalogoDisponible) {
   `;
 }
 
+// El panel "Cotización en vivo" (columna derecha) suele quedar con espacio libre debajo de su
+// contenido (columna de ancho fijo, altura estirada por flex) — el bloque "Sublímites" fijos de
+// MRC se agrega ahí abajo para aprovecharlo, en vez de competir por lugar en el formulario de
+// la izquierda (ver SUBLIMITES_FIJOS_MRC, decisión de Kevin 2026-07-15).
 function renderLivePanelContent() {
+  return `${renderLivePanelBody()}${state.ramoId === 'mrc' ? renderSublimitesFijosMrc() : ''}`;
+}
+
+function renderLivePanelBody() {
   if (!RAMOS_CON_CALCULO.includes(state.ramoId)) {
     return `
       <div class="live-summary__label">Cotización en vivo</div>
@@ -939,6 +970,27 @@ function renderLivePanelContent() {
       <div class="live-summary__row"><span>Coberturas</span><span>${coberturasCount} incluidas</span></div>
     </div>
     <div class="live-summary__hint">El monto se recalcula automáticamente a medida que completás los datos.</div>
+  `;
+}
+
+// Sublímites fijos de MRC (agua/equipos electrónicos/granizo) — van siempre incluidos con
+// monto fijo, no son "coberturas" que el agente elija (ver SUBLIMITES_FIJOS_MRC), así que se
+// muestran acá con su propio título en vez de mezclarse bajo "Coberturas adicionales".
+function renderSublimitesFijosMrc() {
+  const filas = SUBLIMITES_FIJOS_MRC.map((s) => {
+    const nombre = state.coberturasCatalogo.find((c) => c.codigo === s.codigo)?.nombre ?? s.codigo;
+    return `
+      <div class="live-summary__row">
+        <span>${escapeHtml(nombre)}</span>
+        <span>${fmtGs(s.monto)} Gs.</span>
+      </div>
+    `;
+  }).join('');
+
+  return `
+    <div class="live-summary__divider"></div>
+    <div class="live-summary__label">Sublímites</div>
+    <div class="live-summary__rows">${filas}</div>
   `;
 }
 

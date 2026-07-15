@@ -18,13 +18,16 @@ const CODIGO_SUBLIMITE_VANDALISMO_MAQUINARIA = 'sublimite_vandalismo_maquinaria'
  * "INCENDIO - EDIFICIO Y CONTENIDO": mismo esqueleto que MRC (mrc.calculator.js) —
  *   Costo Edificio  = Capital_Edificio × rubros_actividad.tasa_edificio / 1000
  *   Costo Contenido = Capital_Contenido × rubros_actividad.tasa_contenido / 1000
- *   Prima = Costo Edificio + Costo Contenido, con piso plan.prima_tecnica_minima (Gs. 409.091,
- *   confirmado migración 023) — corta 422 si no alcanza, igual criterio que MRC (no se aplica
- *   el piso en silencio).
+ *   Prima = MAX(Costo Edificio + Costo Contenido, plan.prima_tecnica_minima) — Gs. 409.091,
+ *   un piso PRE-IVA (calcularPlanPago suma IVA/RPF después) que ya rinde el Premio final
+ *   correcto de ~Gs. 450.000 (409.091 × 1,10) — ver migración 026, revierte el intento fallido
+ *   de la 025 de guardar 450.000 directo (habría duplicado el IVA). El piso se aplica en
+ *   silencio, no bloquea la cotización (2026-07-15, mismo criterio que MRC).
  *
  * "MAQUINARIA BASICO": tasa única fija 0,7% (7‰, cargada en tasas_cobertura_ramo para el código
  *   'incendio_maquinaria') sobre un solo capital declarado (Capital Maquinaria) — no depende del
- *   rubro de actividad. Piso plan.prima_tecnica_minima (100).
+ *   rubro de actividad. Piso plan.prima_tecnica_minima (Gs. 100), mismo criterio de piso
+ *   silencioso.
  *
  * Sublímite de Fenómenos Naturales (plan Edificio y Contenido) y Sublímite de Vandalismo
  * (plan Maquinaria Básico): confirmado por Kevin (2026-07-14) que son INFORMATIVOS — a primer
@@ -59,18 +62,14 @@ export async function calcularPrima({ planId, riesgoDatos, descuentos = [], reca
 
   const esMaquinariaBasico = plan.nombre === NOMBRE_PLAN_MAQUINARIA;
 
-  const { primaBase, detalle, coberturas } = esMaquinariaBasico
+  const { primaBase: primaCalculada, detalle, coberturas } = esMaquinariaBasico
     ? await calcularMaquinariaBasico({ plan, riesgoDatos, catalogoPorCodigo })
     : await calcularEdificioYContenido({ plan, riesgoDatos, catalogoPorCodigo });
 
-  if (primaBase < plan.prima_tecnica_minima) {
-    const err = new Error(
-      `La prima calculada (Gs. ${primaBase}) no alcanza la Prima Técnica Mínima del plan "${plan.nombre}" (Gs. ${plan.prima_tecnica_minima}).`
-    );
-    err.status = 422;
-    err.publicMessage = `El capital declarado es insuficiente: la prima calculada no alcanza la Prima Técnica Mínima de este plan (Gs. ${plan.prima_tecnica_minima.toLocaleString('es-PY')}).`;
-    throw err;
-  }
+  // A pedido de Kevin (2026-07-15): sí se pueden cotizar capitales que generen una prima menor
+  // a la Prima Técnica Mínima del plan — no se bloquea con alerta. En ese caso se aplica el
+  // piso en silencio: la Prima Técnica Mínima pasa a ser la prima base de la cotización.
+  const primaBase = Math.max(primaCalculada, plan.prima_tecnica_minima);
 
   const totalDescuentos = sumarAjustes(descuentos, primaBase, plan.descuento_maximo);
   const totalRecargos = sumarAjustes(recargos, primaBase, plan.recargo_maximo);

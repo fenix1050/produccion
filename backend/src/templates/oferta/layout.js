@@ -16,7 +16,7 @@ const ICON_LINKEDIN = `<svg width="14" height="14" viewBox="0 0 24 24" xmlns="ht
 
 const ICON_STOREFRONT = `<svg width="18" height="18" viewBox="0 0 24 24" fill="#fff" xmlns="http://www.w3.org/2000/svg"><path d="M3 4h18l1.5 5a2.5 2.5 0 0 1-4 2v9h-3v-6H8.5v6h-3v-9a2.5 2.5 0 0 1-4-2Z"/></svg>`;
 
-const BASE_CSS = `
+export const BASE_CSS = `
   * { box-sizing: border-box; }
   body {
     margin: 0;
@@ -148,10 +148,27 @@ const BASE_CSS = `
     column-gap: 8mm;
     column-fill: auto;
   }
+  .cols-flex {
+    display: flex;
+    gap: 8mm;
+  }
+  .cols-flex .col {
+    flex: 1;
+    min-width: 0;
+  }
   .card-block {
     break-inside: avoid;
     page-break-inside: avoid;
     margin-bottom: 5mm;
+  }
+  /* A diferencia de los demás bloques (atómicos: saltan enteros a la siguiente columna/hoja si
+     no entran), "Coberturas cotizadas" puede ser larga y variable — se deja fluir: arranca
+     debajo de "Coberturas principales incluidas" en la misma columna y, si no entra completa,
+     continúa en la columna siguiente en vez de dejar hueco en blanco. Cada cobertura individual
+     (.cobertura-item) sigue sin poder partirse a la mitad. */
+  .card-block--flow {
+    break-inside: auto;
+    page-break-inside: auto;
   }
   .card-title {
     background: linear-gradient(180deg, #d8132e 0%, #7a0f11 100%);
@@ -227,6 +244,11 @@ ${pagesHtml}
 // página lógica y deja hojas de overflow sin marca cuando el contenido no entra en una sola
 // hoja. Los márgenes de page.pdf() deben coincidir con el alto real de estos bloques.
 export const OFERTA_MARGIN = { top: '26mm', bottom: '15mm', left: '0', right: '0' };
+
+// Alto útil de contenido por hoja física (A4 = 297mm) descontando el header/footer fijo de
+// Puppeteer — usado para decidir si el layout de columnas 3/3 forzado entra en una sola hoja
+// antes de generar el PDF final (ver measureContentHeightMm en pdf.service.js).
+export const OFERTA_PAGE_HEIGHT_MM = 297 - 26 - 15;
 
 export function buildHeaderTemplate(ramoLabel) {
   // position:fixed + top:0 ancla la barra al borde real de la hoja — sin esto, Chrome deja

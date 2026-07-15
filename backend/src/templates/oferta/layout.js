@@ -276,7 +276,7 @@ export function buildFooterTemplate() {
   // buildHeaderTemplate, pero pegado abajo.
   return `
     <style>* { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }</style>
-    <div style="position:fixed; bottom:0; left:0; right:0; width:100%; background:#d8132e; color:#fff; display:flex; align-items:center; justify-content:space-around; font-size:9px; font-weight:700; padding:2.5mm 10mm;">
+    <div style="position:fixed; bottom:0; left:0; right:0; width:100%; background:#d8132e; color:#fff; display:flex; align-items:center; justify-content:space-around; font-size:11px; font-weight:700; padding:2.5mm 10mm;">
       <div style="display:flex; align-items:center; gap:5px;">${ICON_PHONE} (021) 689-1000</div>
       <div style="display:flex; align-items:center; gap:5px;">${ICON_GLOBE} www.tajy.com.py</div>
       <div style="display:flex; align-items:center; gap:5px;">

@@ -1,0 +1,68 @@
+import jwt from 'jsonwebtoken';
+import * as usuariosRepository from '../repositories/usuarios.repository.js';
+
+/**
+ * Verifica el JWT del header Authorization y adjunta `req.usuario`. Va a buscar el
+ * usuario actual a la base (no confía solo en el payload del token): un admin puede
+ * desactivar a otro usuario y ese token viejo no debe seguir sirviendo.
+ */
+export async function requireAuth(req, res, next) {
+  try {
+    const header = req.headers.authorization || '';
+    const [scheme, token] = header.split(' ');
+
+    if (scheme !== 'Bearer' || !token) {
+      const err = new Error('Falta el token de autenticación');
+      err.status = 401;
+      throw err;
+    }
+
+    let payload;
+    try {
+      payload = jwt.verify(token, process.env.JWT_SECRET);
+    } catch {
+      const err = new Error('Token inválido o expirado');
+      err.status = 401;
+      throw err;
+    }
+
+    const usuario = await usuariosRepository.findById(payload.sub);
+    if (!usuario || !usuario.activo) {
+      const err = new Error('Usuario inválido o inactivo');
+      err.status = 401;
+      throw err;
+    }
+
+    req.usuario = {
+      id: usuario.id,
+      rol: usuario.rol,
+      puede_editar_tasas: usuario.puede_editar_tasas,
+      nombre: usuario.nombre,
+      email: usuario.email,
+    };
+
+    next();
+  } catch (err) {
+    next(err);
+  }
+}
+
+export function requireRole(...roles) {
+  return (req, res, next) => {
+    if (!req.usuario || !roles.includes(req.usuario.rol)) {
+      const err = new Error('No tenés permiso para acceder a este recurso');
+      err.status = 403;
+      return next(err);
+    }
+    next();
+  };
+}
+
+export function requireTasasEdit(req, res, next) {
+  if (!req.usuario || !req.usuario.puede_editar_tasas) {
+    const err = new Error('No tenés permiso para editar tasas');
+    err.status = 403;
+    return next(err);
+  }
+  next();
+}

@@ -11,7 +11,7 @@ export async function calcular(req, res, next) {
 
 export async function crear(req, res, next) {
   try {
-    const cotizacion = await cotizacionService.crearCotizacion(req.body);
+    const cotizacion = await cotizacionService.crearCotizacion(req.body, req.usuario);
     res.status(201).json(cotizacion);
   } catch (err) {
     next(err);

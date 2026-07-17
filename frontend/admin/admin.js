@@ -8,7 +8,7 @@ import { api, auth } from '../shared/api.js';
 const SECCIONES = [
   { id: 'usuarios', label: 'Usuarios', icon: '👤', disponible: true },
   { id: 'coberturas', label: 'Coberturas por plan', icon: '🛡️', disponible: false },
-  { id: 'tasas', label: 'Tasas', icon: '📈', disponible: false },
+  { id: 'tasas', label: 'Tasas', icon: '📈', disponible: true },
   { id: 'planes', label: 'Planes', icon: '📋', disponible: true },
 ];
 
@@ -29,6 +29,11 @@ const state = {
   formasPagoPorPlan: {}, // planId -> { loading, error, datos: [] }
   primaEnEdicion: new Set(), // ids de plan con el campo prima_tecnica_minima habilitado para editar
   tasaRpfEnEdicion: new Set(), // ids de plan_formas_pago con la tasa habilitada para editar
+
+  ramoTasasSeleccionado: null,
+  tasasPorRamo: {}, // ramoId -> { loading, error, historial: [] }
+  catalogoPorRamo: {}, // ramoId -> coberturas_catalogo[] (para el selector del modal de alta)
+  modalTasa: null, // { error, guardando, cobertura_id, tasa_valor, unidad, vigente_desde }
 };
 
 const app = document.getElementById('app');
@@ -368,6 +373,96 @@ async function guardarTasaRpf(planFormaPagoId, planId, form) {
 }
 
 // ---------------------------------------------------------------------------
+// Tasas: carga y acciones
+// ---------------------------------------------------------------------------
+
+async function seleccionarRamoTasas(ramoId) {
+  // ramos.id es un código de texto ('mrc', 'incendio', ...), no numérico — a diferencia
+  // de plan_id/cobertura_id. Nunca castear con Number acá (ver renderPlanes, que ya trata
+  // ramo_id como string).
+  state.ramoTasasSeleccionado = ramoId || null;
+  renderApp();
+  if (!state.ramoTasasSeleccionado) return;
+  await Promise.all([cargarTasasDeRamo(state.ramoTasasSeleccionado), cargarCatalogoDeRamo(state.ramoTasasSeleccionado)]);
+}
+
+async function cargarTasasDeRamo(ramoId) {
+  state.tasasPorRamo[ramoId] = { loading: true, error: '', historial: state.tasasPorRamo[ramoId]?.historial ?? [] };
+  renderApp();
+  try {
+    const historial = await api.get(`/admin/ramos/${ramoId}/tasas`);
+    state.tasasPorRamo[ramoId] = { loading: false, error: '', historial };
+  } catch (err) {
+    state.tasasPorRamo[ramoId] = {
+      loading: false,
+      error: err.message || 'No se pudo cargar el historial de tasas.',
+      historial: [],
+    };
+  }
+  renderApp();
+}
+
+async function cargarCatalogoDeRamo(ramoId) {
+  if (state.catalogoPorRamo[ramoId]) return; // catálogo de coberturas no cambia en la sesión
+  try {
+    state.catalogoPorRamo[ramoId] = await api.get(`/ramos/${ramoId}/coberturas-catalogo`);
+  } catch {
+    state.catalogoPorRamo[ramoId] = [];
+  }
+}
+
+function abrirModalTasa() {
+  state.modalTasa = {
+    error: '',
+    guardando: false,
+    cobertura_id: '',
+    tasa_valor: '',
+    unidad: 'permil',
+    vigente_desde: new Date().toISOString().slice(0, 10),
+  };
+  renderApp();
+}
+
+function cerrarModalTasa() {
+  state.modalTasa = null;
+  renderApp();
+}
+
+async function guardarModalTasa(form) {
+  const ramoId = state.ramoTasasSeleccionado;
+  const cobertura_id = Number(form.cobertura_id.value);
+  const tasa_valor = Number(form.tasa_valor.value);
+  const unidad = form.unidad.value;
+  const vigente_desde = form.vigente_desde.value;
+
+  if (!cobertura_id) {
+    state.modalTasa.error = 'Elegí una cobertura.';
+    renderApp();
+    return;
+  }
+  if (Number.isNaN(tasa_valor)) {
+    state.modalTasa.error = 'Ingresá un valor de tasa válido.';
+    renderApp();
+    return;
+  }
+
+  state.modalTasa.error = '';
+  state.modalTasa.guardando = true;
+  renderApp();
+
+  try {
+    await api.post('/admin/tasas', { ramo_id: Number(ramoId), cobertura_id, tasa_valor, unidad, vigente_desde });
+    cerrarModalTasa();
+    mostrarBanner('success', 'Nueva versión de tasa creada.');
+    await cargarTasasDeRamo(ramoId);
+  } catch (err) {
+    state.modalTasa.guardando = false;
+    state.modalTasa.error = err.message || 'No se pudo crear la tasa.';
+    renderApp();
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Render
 // ---------------------------------------------------------------------------
 
@@ -390,6 +485,7 @@ function renderApp() {
       </div>
     </div>
     ${state.modal ? renderModal() : ''}
+    ${state.modalTasa ? renderModalTasa() : ''}
   `;
   bindEvents();
 }
@@ -459,6 +555,7 @@ function renderSeccion() {
   if (!seccion?.disponible) return renderProximamente(seccion);
   if (state.seccion === 'usuarios') return renderUsuarios();
   if (state.seccion === 'planes') return renderPlanes();
+  if (state.seccion === 'tasas') return renderTasas();
   return renderProximamente(seccion);
 }
 
@@ -674,6 +771,78 @@ function renderCampoTasaRpf(formaPagoPlan, planId) {
   `;
 }
 
+function renderTasas() {
+  const puedeEditar = Boolean(auth.getUsuario()?.puede_editar_tasas);
+  const opcionesRamo = state.ramos.map((r) => `
+    <option value="${r.id}" ${String(state.ramoTasasSeleccionado) === String(r.id) ? 'selected' : ''}>${escapeHtml(r.nombre_display)}</option>
+  `).join('');
+
+  return `
+    <div class="admin-toolbar">
+      <div class="admin-toolbar__title">Tasas</div>
+      <select class="field-input" style="width: auto;" data-action="seleccionar-ramo-tasas">
+        <option value="">Elegí un ramo…</option>
+        ${opcionesRamo}
+      </select>
+      ${puedeEditar && state.ramoTasasSeleccionado ? '<button class="btn-primary" data-action="crear-tasa">+ Nueva versión de tasa</button>' : ''}
+    </div>
+    ${!puedeEditar ? '<div class="admin-banner admin-banner--error">Tu usuario no tiene permiso para editar tasas — podés ver el historial, pero no cargar versiones nuevas.</div>' : ''}
+    <div class="panel card">
+      ${renderTablaTasas()}
+    </div>
+  `;
+}
+
+function renderTablaTasas() {
+  if (!state.ramoTasasSeleccionado) {
+    return '<div class="empty-state__subtitle">Elegí un ramo para ver su historial de tasas.</div>';
+  }
+
+  const entry = state.tasasPorRamo[state.ramoTasasSeleccionado];
+  if (!entry || entry.loading) {
+    return '<div class="empty-state__subtitle">Cargando tasas…</div>';
+  }
+  if (entry.error) {
+    return `<div class="admin-banner admin-banner--error">${escapeHtml(entry.error)}</div>`;
+  }
+  if (!entry.historial.length) {
+    return '<div class="empty-state__subtitle">Este ramo todavía no tiene tasas cargadas.</div>';
+  }
+
+  // El historial ya viene ordenado por vigente_desde descendente — la primera fila de
+  // cada cobertura es la vigente, el resto queda como versión anterior.
+  const vistaPorCobertura = new Set();
+  const filas = entry.historial.map((t) => {
+    const codigo = t.coberturas_catalogo?.codigo ?? String(t.cobertura_id);
+    const esVigente = !vistaPorCobertura.has(codigo);
+    vistaPorCobertura.add(codigo);
+    return `
+      <tr>
+        <td>${escapeHtml(t.coberturas_catalogo?.nombre ?? '—')}</td>
+        <td>${escapeHtml(String(t.tasa_valor))}</td>
+        <td>${t.unidad === 'permil' ? '‰' : '%'}</td>
+        <td>${escapeHtml(t.vigente_desde)}</td>
+        <td><span class="admin-pill ${esVigente ? 'admin-pill--yes' : 'admin-pill--no'}">${esVigente ? 'Vigente' : 'Histórica'}</span></td>
+      </tr>
+    `;
+  }).join('');
+
+  return `
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>Cobertura</th>
+          <th>Tasa</th>
+          <th>Unidad</th>
+          <th>Vigente desde</th>
+          <th>Estado</th>
+        </tr>
+      </thead>
+      <tbody>${filas}</tbody>
+    </table>
+  `;
+}
+
 function renderModal() {
   const m = state.modal;
   let titulo = '';
@@ -758,6 +927,51 @@ function renderModal() {
   `;
 }
 
+function renderModalTasa() {
+  const m = state.modalTasa;
+  const catalogo = state.catalogoPorRamo[state.ramoTasasSeleccionado] ?? [];
+  const opcionesCobertura = catalogo.map((c) => `
+    <option value="${c.id}" ${String(m.cobertura_id) === String(c.id) ? 'selected' : ''}>${escapeHtml(c.nombre)}</option>
+  `).join('');
+
+  return `
+    <div class="admin-modal-backdrop" data-action="cerrar-modal-tasa-backdrop">
+      <div class="admin-modal" data-stop-propagation="true">
+        <div class="admin-modal__title">Nueva versión de tasa</div>
+        ${m.error ? `<div class="admin-modal__error">${escapeHtml(m.error)}</div>` : ''}
+        <form id="admin-modal-tasa-form">
+          <div class="admin-modal__field">
+            <label>Cobertura</label>
+            <select class="field-input" name="cobertura_id">
+              <option value="">Elegí una cobertura…</option>
+              ${opcionesCobertura}
+            </select>
+          </div>
+          <div class="admin-modal__field">
+            <label>Valor de la tasa</label>
+            <input class="field-input" type="number" step="0.001" name="tasa_valor" value="${escapeHtml(m.tasa_valor)}" />
+          </div>
+          <div class="admin-modal__field">
+            <label>Unidad</label>
+            <select class="field-input" name="unidad">
+              <option value="permil" ${m.unidad === 'permil' ? 'selected' : ''}>‰ (por mil)</option>
+              <option value="porcentaje" ${m.unidad === 'porcentaje' ? 'selected' : ''}>% (porcentaje)</option>
+            </select>
+          </div>
+          <div class="admin-modal__field">
+            <label>Vigente desde</label>
+            <input class="field-input" type="date" name="vigente_desde" value="${escapeHtml(m.vigente_desde)}" />
+          </div>
+          <div class="admin-modal__actions">
+            <button type="button" class="btn-outline" data-action="cerrar-modal-tasa">Cancelar</button>
+            <button type="submit" class="btn-primary" ${m.guardando ? 'disabled' : ''}>${m.guardando ? 'Guardando…' : 'Guardar'}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
+}
+
 // ---------------------------------------------------------------------------
 // Eventos
 // ---------------------------------------------------------------------------
@@ -781,6 +995,19 @@ function bindEvents() {
   if (form) {
     form.addEventListener('submit', onModalSubmit);
   }
+
+  const backdropTasa = app.querySelector('.admin-modal-backdrop[data-action="cerrar-modal-tasa-backdrop"]');
+  if (backdropTasa) {
+    backdropTasa.querySelector('.admin-modal')?.addEventListener('click', (e) => e.stopPropagation());
+  }
+
+  const formTasa = document.getElementById('admin-modal-tasa-form');
+  if (formTasa) {
+    formTasa.addEventListener('submit', (e) => {
+      e.preventDefault();
+      guardarModalTasa(e.target);
+    });
+  }
 }
 
 function onActionClick(e) {
@@ -793,6 +1020,12 @@ function onActionClick(e) {
     renderApp();
     if (state.seccion === 'planes' && !state.planes.length && !state.loadingPlanes) {
       cargarPlanes();
+    }
+    if (state.seccion === 'tasas' && !state.ramos.length) {
+      api.get('/ramos').then((ramos) => {
+        state.ramos = ramos;
+        renderApp();
+      });
     }
     return;
   }
@@ -851,6 +1084,18 @@ function onActionClick(e) {
   }
   if (action === 'cancelar-tasa-rpf') {
     cancelarEdicionTasaRpf(Number(el.dataset.id));
+    return;
+  }
+  if (action === 'seleccionar-ramo-tasas') {
+    seleccionarRamoTasas(el.value);
+    return;
+  }
+  if (action === 'crear-tasa') {
+    abrirModalTasa();
+    return;
+  }
+  if (action === 'cerrar-modal-tasa' || action === 'cerrar-modal-tasa-backdrop') {
+    cerrarModalTasa();
   }
 }
 

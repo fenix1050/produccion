@@ -132,6 +132,10 @@ const state = {
   // Catálogo de coberturas del plan actual (plan_coberturas + coberturas_catalogo), usado para
   // poblar el selector de "Coberturas adicionales". Se carga una vez al elegir plan.
   coberturasCatalogo: [],
+  // Filas de `plan_coberturas` (con `coberturas_catalogo` embebido) del plan MRC elegido — de
+  // acá salen los sublímites fijos por defecto (WU6, 2026-07-17: antes hardcodeados en
+  // SUBLIMITES_FIJOS_MRC). Se carga una vez al elegir plan, vía GET /planes/:id/coberturas.
+  planCoberturas: [],
   // Líneas de coberturas/sublímites adicionales que el agente agrega a mano, más allá de las
   // 2 fijas (Incendio Edificio / Incendio Contenido). Cada línea: { id, codigo, sumaAsegurada }.
   coberturasAdicionales: [],
@@ -140,29 +144,36 @@ const state = {
   emitiendoCarta: false,
 };
 
-// Sublímites de MRC fijos por defecto (confirmado por el área técnica, 2026-07-15): siempre
-// van incluidos con el monto de `planes.texto_sublimites_generales` para "Multirriesgo Comercio
-// - Normal" (coincide con plan_coberturas.monto de la migración 012) — el agente no los elige
-// ni les cambia el monto, así que se muestran aparte en el panel "Sublímites" (ver
-// renderSublimitesFijosMrc), no como fila editable/quitable en "Coberturas adicionales".
-const SUBLIMITES_FIJOS_MRC = [
-  { codigo: 'sublimite_danos_agua', monto: 2500000 },
-  { codigo: 'sublimite_equipos_electronicos', monto: 5000000 },
-  { codigo: 'sublimite_granizo', monto: 5000000 },
-];
-
 // Códigos que no deben ofrecerse en "Coberturas adicionales": las 2 fijas ya tienen su propio
-// campo en el formulario, sublimite_cctv todavía no tiene tasa cargada (no cotizable), los
-// sublímites de SUBLIMITES_FIJOS_MRC van fijos por defecto (ver arriba), y 'equipos_electronicos'
-// (la cobertura, distinta del sublímite) queda representada por ese mismo sublímite fijo en MRC
-// — confirmado por el área técnica, 2026-07-15: en esta rama no se ofrece por separado.
-const CODIGOS_COBERTURA_EXCLUIDOS = [
+// campo en el formulario, sublimite_cctv todavía no tiene tasa cargada (no cotizable), y
+// 'equipos_electronicos' (la cobertura, distinta del sublímite) queda representada por ese
+// mismo sublímite fijo en MRC — confirmado por el área técnica, 2026-07-15: en esta rama no se
+// ofrece por separado. Los sublímites fijos por defecto (WU6, 2026-07-17: ya no hardcodeados,
+// ver sublimitesFijosMrc()) se agregan a esta lista de exclusión en tiempo real.
+const CODIGOS_COBERTURA_EXCLUIDOS_BASE = [
   'incendio_edificio',
   'incendio_contenido',
   'sublimite_cctv',
   'equipos_electronicos',
-  ...SUBLIMITES_FIJOS_MRC.map((s) => s.codigo),
 ];
+
+// Sublímites de MRC fijos por defecto — leídos de `plan_coberturas.incluida_por_defecto` del
+// plan elegido (WU6, 2026-07-17), en vez de la vieja constante hardcodeada SUBLIMITES_FIJOS_MRC.
+// El agente no los elige ni les cambia el monto, así que se muestran aparte en el panel
+// "Sublímites" (ver renderSublimitesFijosMrc), no como fila editable/quitable en "Coberturas
+// adicionales". Excluye explícitamente Incendio Edificio/Contenido: esas 2 no viven en
+// `plan_coberturas` (se cotizan por Capital Edificio/Contenido, campo propio del formulario),
+// pero se filtran igual por defensividad ante un dato inesperado.
+function sublimitesFijosMrc() {
+  return state.planCoberturas
+    .filter((pc) => pc.incluida_por_defecto && !CODIGOS_COBERTURA_EXCLUIDOS_BASE.includes(pc.coberturas_catalogo?.codigo))
+    .map((pc) => ({
+      codigo: pc.coberturas_catalogo?.codigo,
+      nombre: pc.coberturas_catalogo?.nombre ?? pc.coberturas_catalogo?.codigo,
+      monto: pc.monto,
+    }))
+    .filter((s) => s.codigo);
+}
 
 let debounceTimer = null;
 const app = document.getElementById('app');
@@ -233,6 +244,7 @@ async function selectRamo(nombre) {
   state.franquiciasPorCobertura = {};
   state.rubros = [];
   state.coberturasCatalogo = [];
+  state.planCoberturas = [];
   state.coberturasAdicionales = [];
   state.preview = null;
   state.previewError = null;
@@ -272,6 +284,7 @@ async function selectRamo(nombre) {
       // para "Normal" y "Protección Total") — se carga una sola vez acá. Solo MRC usa
       // "Coberturas adicionales" en esta pasada.
       await cargarCoberturasCatalogo(ramo.id);
+      if (state.planId) await cargarPlanCoberturas(state.planId);
     }
   } else {
     state.planId = state.planes[0]?.id ?? null;
@@ -288,6 +301,9 @@ function selectPlan(planId) {
   state.coberturasAdicionales = [];
   renderApp();
   scheduleCalculate();
+  if (state.ramoId === 'mrc') {
+    cargarPlanCoberturas(planId).then(renderApp);
+  }
 }
 
 // Catálogo COMPLETO de coberturas del ramo (coberturas_catalogo vía GET /ramos/:id/coberturas-catalogo)
@@ -303,10 +319,26 @@ async function cargarCoberturasCatalogo(ramoId) {
   }
 }
 
+// Coberturas fijas del PLAN (plan_coberturas + coberturas_catalogo embebido), de donde salen
+// los sublímites fijos por defecto (ver sublimitesFijosMrc()) — a diferencia del catálogo
+// completo del ramo (cargarCoberturasCatalogo), esto sí varía por plan. Se recarga cada vez que
+// el agente cambia de plan; un array vacío (plan sin filas en plan_coberturas todavía) no rompe
+// el flujo — sublimitesFijosMrc() simplemente no devuelve filas.
+async function cargarPlanCoberturas(planId) {
+  try {
+    state.planCoberturas = await api.get(`/planes/${planId}/coberturas`);
+  } catch (err) {
+    console.error('No se pudo cargar las coberturas fijas del plan', err);
+    state.planCoberturas = [];
+  }
+}
+
 // Opciones seleccionables en "Coberturas adicionales": el catálogo del ramo sin las 2 fijas
-// (tienen su propio campo) ni sublimite_cctv (sin tasa cargada todavía — no cotizable).
+// (tienen su propio campo), sin sublimite_cctv (sin tasa cargada todavía — no cotizable), y sin
+// los sublímites fijos por defecto del plan actual (ver sublimitesFijosMrc()).
 function coberturasDisponibles() {
-  return state.coberturasCatalogo.filter((c) => !CODIGOS_COBERTURA_EXCLUIDOS.includes(c.codigo));
+  const excluidos = [...CODIGOS_COBERTURA_EXCLUIDOS_BASE, ...sublimitesFijosMrc().map((s) => s.codigo)];
+  return state.coberturasCatalogo.filter((c) => !excluidos.includes(c.codigo));
 }
 
 function selectFormaPago(codigo) {
@@ -424,7 +456,7 @@ function armarRiesgoDatos(plan) {
       capital_edificio: Number(d.capitalEdificio) || 0,
       capital_contenido: Number(d.capitalContenido) || 0,
       coberturas_adicionales: [
-        ...SUBLIMITES_FIJOS_MRC.map((s) => ({ codigo: s.codigo, suma_asegurada: s.monto })),
+        ...sublimitesFijosMrc().map((s) => ({ codigo: s.codigo, suma_asegurada: s.monto })),
         ...state.coberturasAdicionales
           .filter((l) => l.codigo && Number(l.sumaAsegurada) > 0)
           .map((l) => ({ codigo: l.codigo, suma_asegurada: Number(l.sumaAsegurada) })),
@@ -977,7 +1009,7 @@ function renderCoberturasAdicionales(catalogoDisponible) {
 // El panel "Cotización en vivo" (columna derecha) suele quedar con espacio libre debajo de su
 // contenido (columna de ancho fijo, altura estirada por flex) — el bloque "Sublímites" fijos de
 // MRC se agrega ahí abajo para aprovecharlo, en vez de competir por lugar en el formulario de
-// la izquierda (ver SUBLIMITES_FIJOS_MRC, decisión de Kevin 2026-07-15).
+// la izquierda (ver sublimitesFijosMrc(), decisión de Kevin 2026-07-15).
 function renderLivePanelContent() {
   return `${renderLivePanelBody()}${state.ramoId === 'mrc' ? renderSublimitesFijosMrc() : ''}`;
 }
@@ -1023,19 +1055,16 @@ function renderLivePanelBody() {
   `;
 }
 
-// Sublímites fijos de MRC (agua/equipos electrónicos/granizo) — van siempre incluidos con
-// monto fijo, no son "coberturas" que el agente elija (ver SUBLIMITES_FIJOS_MRC), así que se
-// muestran acá con su propio título en vez de mezclarse bajo "Coberturas adicionales".
+// Sublímites fijos del plan MRC actual — van siempre incluidos con monto fijo, no son
+// "coberturas" que el agente elija (ver sublimitesFijosMrc()), así que se muestran acá con su
+// propio título en vez de mezclarse bajo "Coberturas adicionales".
 function renderSublimitesFijosMrc() {
-  const filas = SUBLIMITES_FIJOS_MRC.map((s) => {
-    const nombre = state.coberturasCatalogo.find((c) => c.codigo === s.codigo)?.nombre ?? s.codigo;
-    return `
+  const filas = sublimitesFijosMrc().map((s) => `
       <div class="live-summary__row">
-        <span>${escapeHtml(nombre)}</span>
+        <span>${escapeHtml(s.nombre)}</span>
         <span>${fmtGs(s.monto)} Gs.</span>
       </div>
-    `;
-  }).join('');
+    `).join('');
 
   return `
     <div class="live-summary__divider"></div>
@@ -1143,10 +1172,9 @@ function renderResultadoView(ramo) {
         <div class="card" style="margin-top:20px;">
           <div class="card__title">Coberturas incluidas</div>
           ${[...coberturas]
-            // Los 3 sub-límites fijos (agua/equipos electrónicos/granizo) no van en este listado
-            // de "Coberturas incluidas" (a pedido de Kevin, 2026-07-15) — se muestran aparte en
-            // renderSublimitesFijosMrc / renderExclusionesYSublimites.
-            .filter((c) => !SUBLIMITES_FIJOS_MRC.some((s) => s.codigo === c.codigo))
+            // Los sub-límites fijos del plan no van en este listado de "Coberturas incluidas"
+            // (a pedido de Kevin, 2026-07-15) — se muestran aparte en renderSublimitesFijosMrc.
+            .filter((c) => !sublimitesFijosMrc().some((s) => s.codigo === c.codigo))
             .sort((a, b) => (a.tipo_aplicacion === 'sublimite' ? 1 : 0) - (b.tipo_aplicacion === 'sublimite' ? 1 : 0))
             .map((c) => `
             <div class="cobertura-row">

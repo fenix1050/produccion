@@ -96,6 +96,10 @@
   color: var(--tajy-text-muted);
   padding: 10px 12px;
   border-bottom: 1.5px solid var(--tajy-border-light);
+  position: sticky;
+  top: 0;
+  background: #fff;
+  z-index: 1;
 }
 
 .admin-table td {
@@ -145,6 +149,53 @@
 .admin-table__actions button {
   padding: 6px 10px;
   font-size: 12px;
+}
+
+.field-input--sm {
+  padding: 6px 10px;
+  font-size: 12.5px;
+  width: 110px;
+}
+
+.admin-inline-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-valor-fijo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-valor-fijo span {
+  min-width: 110px;
+  display: inline-block;
+}
+
+.admin-valor-fijo button {
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.admin-inline-form button {
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.admin-subrow td {
+  background: var(--tajy-pink);
+  padding: 14px 16px;
+}
+
+.admin-table--nested {
+  font-size: 12.5px;
+}
+
+.admin-table--nested th,
+.admin-table--nested td {
+  padding: 8px 10px;
 }
 
 .admin-modal-backdrop {

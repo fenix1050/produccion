@@ -52,3 +52,15 @@ export async function findFormasPagoDelPlan(planId) {
   if (error) throw error;
   return data;
 }
+
+// A diferencia de findFormasPagoDelPlan (usado por el motor de cotización, que solo debe
+// ver formas de pago habilitadas), esta trae TODAS — el admin necesita ver y poder
+// reactivar una forma de pago deshabilitada, no solo las que ya están activas.
+export async function findFormasPagoDelPlanTodas(planId) {
+  const { data, error } = await supabase
+    .from('plan_formas_pago')
+    .select('*, formas_pago(*)')
+    .eq('plan_id', planId);
+  if (error) throw error;
+  return data;
+}

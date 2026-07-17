@@ -53,5 +53,6 @@ export const editarPlanSchema = z.object({
 });
 
 export const editarPlanFormaPagoSchema = z.object({
-  tasa_rpf: z.number(),
+  tasa_rpf: z.number().optional(),
+  habilitada: z.boolean().optional(),
 });

@@ -129,6 +129,14 @@ export async function editarPlan(req, res, next) {
   }
 }
 
+export async function listarFormasPagoDePlan(req, res, next) {
+  try {
+    res.json(await adminService.listarFormasPagoDePlan(req.params.id));
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function editarPlanFormaPago(req, res, next) {
   try {
     const cambios = editarPlanFormaPagoSchema.parse(req.body);

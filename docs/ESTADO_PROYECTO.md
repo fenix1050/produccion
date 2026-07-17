@@ -677,3 +677,12 @@ con Kevin:
 - Seguir el frontend de `/cotizar` para Incendio/Vida-AP en cuanto tengan calculador, reutilizando
   el mismo App Shell ya construido para MRC.
 - Panel admin (Fase 5): coberturas fijas por ramo + edición de tasas — ver sección 8.
+
+**Nota 2026-07-17 — alcance real de WU6 (confirmado leyendo el código, no solo la nota original de PLAN_ADMIN_FASE5.md):**
+Con la sección "Coberturas por plan" del admin ya implementada y funcionando (WU5 cerrado), se verificó qué de lo que ahí se edita realmente impacta el cotizador/PDF de MRC hoy:
+- **Sí se refleja ya**: `franquicia_default` de las 2 coberturas fijas de Incendio (Edificio/Contenido) — `mrc.calculator.js` la lee en vivo de `coberturas_catalogo` vía `findCoberturasCatalogoByRamoId`.
+- **No se refleja (WU6 pendiente, alcance más amplio del que decía la nota original)**:
+  - `plan_coberturas.incluida_por_defecto` — `mrc.calculator.js` tiene hardcodeados `CODIGO_INCENDIO_EDIFICIO`/`CODIGO_INCENDIO_CONTENIDO` como fijos siempre (decisión 2026-07-13, ver sección 16); `cotizar.js` nunca llama `GET /planes/:id/coberturas` para MRC.
+  - `plan_coberturas.monto` — el frontend usa su propia constante `SUBLIMITES_FIJOS_MRC` hardcodeada en `cotizar.js` en vez de leer este campo.
+  - La Carta Oferta (`backend/src/templates/oferta/mrc.js`) no toca `plan_coberturas` directo — solo renderiza lo que ya quedó en `cotizacion_coberturas`, así que se arregla solo en cuanto el calculador use los valores correctos antes de guardar.
+- WU6 queda entonces como: reemplazar `CODIGO_INCENDIO_EDIFICIO`/`CODIGO_INCENDIO_CONTENIDO` y `SUBLIMITES_FIJOS_MRC` por lecturas reales de `plan_coberturas` (incluida_por_defecto + monto), verificando que la prima de MRC Normal no cambie antes/después del refactor.

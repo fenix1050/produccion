@@ -97,7 +97,7 @@ export function buildMrcOfertaPages({ cotizacion, plan, ramo }) {
 
     <table class="data-table">
       <tr><td>Tipo de Riesgo</td><td>${escapeHtml(riesgo.rubro_actividad || '—')}</td></tr>
-      <tr><td>Dirección</td><td>${escapeHtml(riesgo.direccion || '—')}</td></tr>
+      <tr><td>Ubicación del Riesgo</td><td>${escapeHtml(riesgo.direccion || '—')}</td></tr>
       <tr><td>Ciudad</td><td>${escapeHtml(riesgo.ciudad || '—')}</td></tr>
     </table>
 
@@ -229,6 +229,7 @@ function renderVariantePlanPago(variante) {
 
   return `
     ${label}
+    ${renderAjustesVariante(variante)}
     <table class="plan-pago">
       <tr>
         <th style="text-align:left;">Forma de pago</th>
@@ -248,6 +249,25 @@ function renderVariantePlanPago(variante) {
       `
       )
       .join('')}
+    </table>
+  `;
+}
+
+// Descuento/recargo manual del agente (state.data.descuentoValor/recargoValor en cotizar.js),
+// persistido en cotizacion_ajustes por cotizacion.service.js — solo aparece si el agente cargó
+// alguno (montos ya topados por plan.descuento_maximo/recargo_maximo, ver sumarAjustes en
+// mrc.calculator.js). Mismo formato Gs. que el resto de esta tabla (fmtGs).
+function renderAjustesVariante(variante) {
+  const ajustes = variante.cotizacion_ajustes || [];
+  const totalDescuentos = ajustes.filter((a) => a.tipo === 'descuento').reduce((acc, a) => acc + Number(a.monto || 0), 0);
+  const totalRecargos = ajustes.filter((a) => a.tipo === 'recargo').reduce((acc, a) => acc + Number(a.monto || 0), 0);
+
+  if (totalDescuentos <= 0 && totalRecargos <= 0) return '';
+
+  return `
+    <table class="plan-pago">
+      ${totalDescuentos > 0 ? `<tr><td>Descuento</td><td colspan="3">- Gs. ${fmtGs(totalDescuentos)}</td></tr>` : ''}
+      ${totalRecargos > 0 ? `<tr><td>Recargo</td><td colspan="3">+ Gs. ${fmtGs(totalRecargos)}</td></tr>` : ''}
     </table>
   `;
 }

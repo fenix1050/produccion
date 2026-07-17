@@ -78,6 +78,30 @@ export async function crearCotizacion(body) {
       prima: variante.prima,
     });
 
+    // Descuento/recargo manual del agente (mrc/incendio hoy — ver sumarAjustes en esos
+    // calculadores) — se guarda el total ya topado por plan.descuento_maximo/recargo_maximo,
+    // no el body crudo, para que la Carta Oferta muestre lo que efectivamente se aplicó.
+    const ajustesAGuardar = [];
+    if (variantesCalculadas.detalle?.total_descuentos > 0) {
+      ajustesAGuardar.push({
+        variante_id: varianteGuardada.id,
+        tipo: 'descuento',
+        descripcion: 'Descuento aplicado por el agente',
+        monto: variantesCalculadas.detalle.total_descuentos,
+      });
+    }
+    if (variantesCalculadas.detalle?.total_recargos > 0) {
+      ajustesAGuardar.push({
+        variante_id: varianteGuardada.id,
+        tipo: 'recargo',
+        descripcion: 'Recargo aplicado por el agente',
+        monto: variantesCalculadas.detalle.total_recargos,
+      });
+    }
+    if (ajustesAGuardar.length) {
+      await cotizacionesRepository.insertAjustes(ajustesAGuardar);
+    }
+
     await cotizacionesRepository.insertPlanesPago(
       variante.formasPago.map((fp) => ({
         variante_id: varianteGuardada.id,

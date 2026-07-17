@@ -39,10 +39,11 @@ export const BASE_CSS = `
   }
   .meta-row .plan-name { font-size: 18px; font-weight: 700; color: #1a1a1a; }
   .cliente-banner {
-    background: #d8132e;
-    color: #fff;
+    background: none;
+    color: #1a1a1a;
     padding: 2.5mm 4mm;
-    font-size: 12.5px;
+    font-size: 15px;
+    font-weight: 700;
     margin-bottom: 5mm;
   }
   .title {

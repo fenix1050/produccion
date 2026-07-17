@@ -42,7 +42,7 @@ function planEsCalculable(ramoNombre, plan) {
 const CLIENT_FIELDS = [
   { key: 'clienteNombre', label: 'Nombre del asegurado', placeholder: 'Juan Pérez', span: 2 },
   { key: 'cedula', label: 'RUC / Cédula de identidad', placeholder: '4.123.456', span: 1, money: true },
-  { key: 'direccion', label: 'Dirección', placeholder: 'Av. España 1234, Asunción', span: 1 },
+  { key: 'direccion', label: 'Ubicación del Riesgo', placeholder: 'Av. España 1234, Asunción', span: 1 },
 ];
 
 const CIUDADES = ['Asunción', 'Ciudad del Este', 'Encarnación', 'Otra'];
@@ -75,6 +75,36 @@ function franquiciasPorCoberturaParaBody() {
     resultado[codigo] = opcion ? opcion.monto : null;
   }
   return resultado;
+}
+
+// Ramos que hoy soportan descuento/recargo manual del agente en "Detalle del plan" — los
+// calculadores de mrc/incendio ya implementan sumarAjustes con tope plan.descuento_maximo /
+// plan.recargo_maximo (ver mrc.calculator.js / incendio.calculator.js). Vida/AP no tiene ese
+// patrón todavía, no se ofrece ahí.
+const RAMOS_CON_AJUSTES = ['mrc', 'incendio'];
+
+// Traduce el descuento/recargo cargado en "Detalle del plan" (state.data.descuentoMonto /
+// state.data.descuentoPorcentaje — dos campos fijos, uno en Gs. y otro en %, en vez de un input
+// + selector) al array que espera el body de POST /cotizaciones/calcular y POST /cotizaciones
+// (ver ajusteSchema en mrc.schema.js / incendio.schema.js: requiere `descripcion`, y monto O
+// porcentaje). El tope real (plan.descuento_maximo / plan.recargo_maximo) lo aplica el backend
+// (sumarAjustes) — acá solo se arma el ajuste crudo, sin clampear. Si el agente cargó los dos
+// campos a la vez, se prioriza el monto en Gs. (caso borde, no bloqueamos con validación extra).
+function ajustesParaBody(prefijo, descripcion) {
+  if (!RAMOS_CON_AJUSTES.includes(state.ramoId)) return [];
+  const monto = Number(state.data[`${prefijo}Monto`]) || 0;
+  if (monto > 0) return [{ descripcion, monto }];
+  const porcentaje = Number(state.data[`${prefijo}Porcentaje`]) || 0;
+  if (porcentaje > 0) return [{ descripcion, porcentaje }];
+  return [];
+}
+
+function descuentosParaBody() {
+  return ajustesParaBody('descuento', 'Descuento aplicado por el agente');
+}
+
+function recargosParaBody() {
+  return ajustesParaBody('recargo', 'Recargo aplicado por el agente');
 }
 
 const DEBOUNCE_MS = 450;
@@ -446,8 +476,8 @@ async function calcularPreview() {
     plan_id: state.planId,
     capital_asegurado: capitalAseguradoParaBody(plan),
     riesgo_datos: armarRiesgoDatos(plan),
-    descuentos: [],
-    recargos: [],
+    descuentos: descuentosParaBody(),
+    recargos: recargosParaBody(),
     cliente_nombre: d.clienteNombre || '',
     ...(d.cuotas ? { cuotas: Number(d.cuotas) } : {}),
   };
@@ -496,8 +526,8 @@ async function emitirCartaOferta() {
     plan_id: state.planId,
     capital_asegurado: capitalAseguradoParaBody(plan),
     riesgo_datos: armarRiesgoDatos(plan),
-    descuentos: [],
-    recargos: [],
+    descuentos: descuentosParaBody(),
+    recargos: recargosParaBody(),
     cliente_nombre: d.clienteNombre || '',
     ...(d.cuotas ? { cuotas: Number(d.cuotas) } : {}),
   };
@@ -961,7 +991,7 @@ function renderLivePanelBody() {
     <div class="live-summary__label">Cotización en vivo</div>
     ${renderFormaPagoPills()}
     <div class="live-summary__price">${fmtGs(fp.cuota || fp.premio)}</div>
-    <div class="live-summary__sub">Gs. / mes · ${fmtGs(fp.premio)} Gs. premio total</div>
+    <div class="live-summary__sub">Gs.${fp.codigo === 'contado' ? '' : ' / mes'} · ${fmtGs(fp.premio)} Gs. premio total</div>
     <div class="live-summary__divider"></div>
     ${renderCuotasSelect()}
     <div class="live-summary__rows">
@@ -1081,7 +1111,7 @@ function renderResultadoView(ramo) {
         <div class="resultado-hero">
           <div>
             <div class="resultado-hero__label">Plan ${escapeHtml(planLabel)} · ${escapeHtml(ramo.label)} · ${escapeHtml(fp.nombre_display)}</div>
-            <div class="resultado-hero__price">${fmtGs(fp.cuota || fp.premio)} <span>Gs. / mes</span></div>
+            <div class="resultado-hero__price">${fmtGs(fp.cuota || fp.premio)} <span>Gs.${fp.codigo === 'contado' ? '' : ' / mes'}</span></div>
           </div>
           <div style="display:flex;gap:10px;">
             <button class="btn-outline" data-action="show-tab" data-view="form">Editar datos / forma de pago</button>
@@ -1089,6 +1119,7 @@ function renderResultadoView(ramo) {
           </div>
         </div>
         ${renderResumenContadoFinanciado()}
+        ${renderAjustesDescuentoRecargo(plan)}
         <div class="card" style="margin-top:20px;">
           <div class="card__title">Coberturas incluidas</div>
           ${[...coberturas]
@@ -1177,7 +1208,66 @@ function renderResumenContadoFinanciado() {
           <span>Costo Financiado</span>
           <span>Inicial y ${financiado.cantidad_cuotas} cuotas Gs. ${fmtGs(financiado.cuota)}</span>
         </div>
+        <div class="resumen-sistema__row resumen-sistema__row--premio">
+          <span>Premio (Financiado)</span>
+          <span>Gs. ${fmtGs(financiado.premio)} <em>Inicial Gs. ${fmtGs(financiado.inicial)}</em></span>
+        </div>
       ` : ''}
+    </div>
+  `;
+}
+
+// Descuento/recargo manual del agente — solo mrc/incendio (ver RAMOS_CON_AJUSTES). El tope real
+// lo aplica el backend (sumarAjustes en el calculador); acá solo se muestra como texto de ayuda
+// para que el agente sepa hasta cuánto puede cargar antes de que el backend lo clampee. Dos
+// campos fijos (Gs. y %) en vez de un input + selector de tipo — el agente carga uno de los dos.
+// Apenas tipea en uno, el otro se deshabilita (y se limpia) para evitar que queden los dos
+// cargados a la vez y ajustesParaBody tenga que desambiguar en silencio cuál usar.
+function renderAjusteField(prefijo, label, plan) {
+  const tope = prefijo === 'descuento' ? plan?.descuento_maximo : plan?.recargo_maximo;
+  const montoCargado = state.data[`${prefijo}Monto`] != null && state.data[`${prefijo}Monto`] !== '';
+  const porcentajeCargado = state.data[`${prefijo}Porcentaje`] != null && state.data[`${prefijo}Porcentaje`] !== '';
+
+  return `
+    <div class="field">
+      <label>${label}</label>
+      <div style="display:flex;gap:6px;">
+        <input
+          class="field-input"
+          type="text"
+          inputmode="numeric"
+          data-field="${prefijo}Monto"
+          data-money="true"
+          placeholder="Gs."
+          value="${escapeHtml(fmtGsInput(state.data[`${prefijo}Monto`]))}"
+          ${porcentajeCargado ? 'disabled' : ''}
+          style="flex:1;"
+        />
+        <input
+          class="field-input"
+          type="number"
+          min="0"
+          data-field="${prefijo}Porcentaje"
+          placeholder="%"
+          value="${escapeHtml(String(state.data[`${prefijo}Porcentaje`] ?? ''))}"
+          ${montoCargado ? 'disabled' : ''}
+          style="flex:1;"
+        />
+      </div>
+      <small style="color:#888;">${tope != null ? `Tope del plan: ${tope}% de la prima` : 'Sin tope confirmado para este plan'}</small>
+    </div>
+  `;
+}
+
+function renderAjustesDescuentoRecargo(plan) {
+  if (!RAMOS_CON_AJUSTES.includes(state.ramoId)) return '';
+  return `
+    <div class="card" style="margin-top:20px;">
+      <div class="card__title">Ajustes (opcional)</div>
+      <div class="field-grid">
+        ${renderAjusteField('descuento', 'Descuento', plan)}
+        ${renderAjusteField('recargo', 'Recargo', plan)}
+      </div>
     </div>
   `;
 }

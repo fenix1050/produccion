@@ -686,3 +686,25 @@ Con la sección "Coberturas por plan" del admin ya implementada y funcionando (W
   - `plan_coberturas.monto` — el frontend usa su propia constante `SUBLIMITES_FIJOS_MRC` hardcodeada en `cotizar.js` en vez de leer este campo.
   - La Carta Oferta (`backend/src/templates/oferta/mrc.js`) no toca `plan_coberturas` directo — solo renderiza lo que ya quedó en `cotizacion_coberturas`, así que se arregla solo en cuanto el calculador use los valores correctos antes de guardar.
 - WU6 queda entonces como: reemplazar `CODIGO_INCENDIO_EDIFICIO`/`CODIGO_INCENDIO_CONTENIDO` y `SUBLIMITES_FIJOS_MRC` por lecturas reales de `plan_coberturas` (incluida_por_defecto + monto), verificando que la prima de MRC Normal no cambie antes/después del refactor.
+
+**WU6 — cerrado parcialmente (2026-07-17), premisa del backend corregida al implementar:**
+Al leer `plan_coberturas` real del plan "MULTIRRIESGO COMERCIO - NORMAL" (id 6) contra Supabase, las
+5 filas que trae son `sublimite_cctv` (false) y 4 sublímites en `incluida_por_defecto = true`
+(`sublimite_danos_agua`, `sublimite_equipos_electronicos`, `sublimite_granizo`, y uno que la vieja
+constante `SUBLIMITES_FIJOS_MRC` no tenía cargado: `sublimite_murallas_cercos`, Gs. 1.000.000).
+**Ninguna fila corresponde a `incendio_edificio`/`incendio_contenido`** — esos 2 códigos no viven en
+`plan_coberturas`, se cotizan por Capital Edificio/Capital Contenido (campo propio del formulario,
+sin correlato en esa tabla). Por lo tanto:
+- **`backend/src/calculators/mrc.calculator.js` NO se tocó** — las constantes
+  `CODIGO_INCENDIO_EDIFICIO`/`CODIGO_INCENDIO_CONTENIDO` siguen hardcodeadas a propósito: no existe
+  ninguna fuente dinámica real de la que leerlas hoy. Si en el futuro se necesita hacerlas
+  configurables desde el admin, hace falta primero decidir con Kevin dónde vive ese dato (¿nueva
+  columna en `planes`? ¿fila especial en `plan_coberturas` sin `monto`?), no asumir que ya existe.
+- **`frontend/cotizar/cotizar.js` sí se refactorizó**: `SUBLIMITES_FIJOS_MRC` reemplazada por
+  `sublimitesFijosMrc()`, que lee `state.planCoberturas` (cargado vía `GET /planes/:id/coberturas`
+  al elegir plan). Verificado que la Prima de MRC Normal no cambia (Gs. 423.400, mismo capital de
+  prueba antes/después).
+- **Efecto colateral esperado, no una regresión**: el panel "Sublímites" de MRC ahora muestra 4
+  filas en vez de 3 (se suma "murallas/cercos", que ya estaba en la base de datos pero la constante
+  vieja no reflejaba). Es una corrección de un dato que faltaba, confirmar con Kevin si el monto
+  Gs. 1.000.000 es correcto para mostrarse en producción.

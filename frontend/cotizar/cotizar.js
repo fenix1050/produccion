@@ -1,4 +1,4 @@
-import { api } from '../shared/api.js';
+import { api, auth } from '../shared/api.js';
 
 // Cotizador Tajy — App Shell + Datos + Resultado (Fase 6, alcance MRC plan Normal).
 // Recreación en Vanilla JS del handoff de diseño `design_handoff_cotizador/Cotizador-B.dc.html`
@@ -168,6 +168,10 @@ let debounceTimer = null;
 const app = document.getElementById('app');
 
 async function init() {
+  if (!auth.isLoggedIn()) {
+    window.location.href = '../login/';
+    return;
+  }
   try {
     state.ramosActivos = await api.get('/ramos');
   } catch (err) {
@@ -175,6 +179,11 @@ async function init() {
     state.ramosActivos = [];
   }
   renderApp();
+}
+
+function cerrarSesion() {
+  auth.clearSession();
+  window.location.href = '../login/';
 }
 
 // ---------------------------------------------------------------------------
@@ -652,18 +661,29 @@ function renderSidebar() {
     `;
   }).join('');
 
+  const usuario = auth.getUsuario();
+  const nombreAgente = usuario?.nombre || 'Agente';
+  const rolAgente = usuario?.rol || 'Analista comercial';
+  const iniciales = nombreAgente
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0].toUpperCase())
+    .join('') || 'AG';
+
   return `
     <div class="sidebar">
       <div class="sidebar__section-label">Sección a cotizar</div>
       <div class="ramo-list">${rows}</div>
       <div class="sidebar__footer">
-        <div class="nav-item">📋 Historial de cotizaciones</div>
-        <div class="nav-item">⚙️ Configuración (admin)</div>
+        <a class="nav-item" href="../historial/">📋 Historial de cotizaciones</a>
+        <a class="nav-item" href="../admin/">⚙️ Configuración (admin)</a>
+        <div class="nav-item" data-action="logout">🚪 Cerrar sesión</div>
         <div class="sidebar__agent">
-          <div class="sidebar__agent-avatar">AG</div>
+          <div class="sidebar__agent-avatar">${escapeHtml(iniciales)}</div>
           <div>
-            <div class="sidebar__agent-name">Agente</div>
-            <div class="sidebar__agent-role">Analista comercial</div>
+            <div class="sidebar__agent-name">${escapeHtml(nombreAgente)}</div>
+            <div class="sidebar__agent-role">${escapeHtml(rolAgente)}</div>
           </div>
         </div>
         <div class="sidebar__credit">Powered by <strong>Kevin Ruiz Diaz</strong> v${COTIZADOR_VERSION}</div>
@@ -1307,7 +1327,8 @@ app.addEventListener('click', (e) => {
   if (!target || target.disabled) return;
 
   const action = target.dataset.action;
-  if (action === 'select-ramo') selectRamo(target.dataset.ramo);
+  if (action === 'logout') cerrarSesion();
+  else if (action === 'select-ramo') selectRamo(target.dataset.ramo);
   else if (action === 'select-plan') selectPlan(Number(target.dataset.planId));
   else if (action === 'select-forma-pago') selectFormaPago(target.dataset.forma);
   else if (action === 'show-tab') setView(target.dataset.view);

@@ -31,3 +31,51 @@ export async function reemplazarTasasCapitalDePlan(planId, filas) {
   if (error) throw error;
   return data;
 }
+
+// --- Fase 5 / WU3: panel admin de planes ---
+
+export async function findAllPlanes(ramoId) {
+  let query = supabase.from('planes').select('*, ramos(id, nombre, nombre_display)').order('id');
+  if (ramoId) query = query.eq('ramo_id', ramoId);
+  const { data, error } = await query;
+  if (error) throw error;
+  return data;
+}
+
+export async function findPlanById(id) {
+  const { data, error } = await supabase.from('planes').select('*').eq('id', id).maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export async function actualizarPlan(id, cambios) {
+  const { data, error } = await supabase
+    .from('planes')
+    .update(cambios)
+    .eq('id', id)
+    .select('*')
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export async function findPlanFormaPagoById(id) {
+  const { data, error } = await supabase
+    .from('plan_formas_pago')
+    .select('*, formas_pago(*)')
+    .eq('id', id)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export async function actualizarPlanFormaPago(id, cambios) {
+  const { data, error } = await supabase
+    .from('plan_formas_pago')
+    .update(cambios)
+    .eq('id', id)
+    .select('*, formas_pago(*)')
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}

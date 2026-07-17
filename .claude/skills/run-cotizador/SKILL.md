@@ -76,7 +76,37 @@ taskkill //PID <pid> //F                  # Git Bash needs // to escape the lead
 Stop with `kill $(cat /tmp/cotizador-frontend.pid)`, and verify with
 `netstat` if you're not sure it actually died.
 
-## 3. Drive it (Playwright — no `chromium-cli` in this environment)
+## 3. Scope the check to what changed (diff-aware)
+
+Before driving the browser, run `git diff --name-only` (or
+`--name-only HEAD~1` if already committed) and map touched files to the
+affected page(s) instead of re-walking the whole app every time:
+
+| Changed path | Test only |
+|---|---|
+| `backend/src/calculators/mrc.calculator.js`, `backend/src/schemas/*mrc*` | MRC flow in `/frontend/cotizar/` (Datos + Detalle del plan) |
+| `backend/src/calculators/incendio*`, `*incendio*` | Incendio flow |
+| `backend/src/templates/*carta-oferta*` | The PDF output for that ramo's Carta Oferta |
+| `frontend/shared/*` (api.js, sidebar, etc.) | Smoke-test every ramo's sidebar nav + one fetch call, since shared code has cross-ramo blast radius |
+| `frontend/admin/*` | `/frontend/admin/` only |
+| Anything under `backend/migrations/` | Re-run whichever ramo flow reads the changed tables — migrations don't show up in a frontend diff but can silently break a calculator |
+
+If the diff spans more than one ramo or touches `frontend/shared/`,
+widen to a full pass across all ramos rather than guessing which one
+broke. When in doubt, test more, not less — this table is for skipping
+unrelated ramos, not for skipping the one you're actually changing.
+
+## 4. Don't report done without evidence
+
+Before saying the change works: take a screenshot of the actual
+resulting state (the filled form, the `Detalle del plan` tab, or the
+generated PDF page) — not just "no console errors" or "the API
+returned 200". A broken `<img>` or a silently-empty coverage list won't
+throw, so the only way to catch it is to look at the rendered page. If
+you fixed something, capture before/after so the diff is visible, not
+just claimed.
+
+## 5. Drive it (Playwright — no `chromium-cli` in this environment)
 
 No system-wide `chromium-cli`. Install Playwright once per session in
 a scratch dir (don't add it to the repo's `package.json` — it's not a

@@ -1,0 +1,216 @@
+/* Cotizador Tajy — pantalla de login, variante 3b (diagonal rojo sólido) del
+   handoff de diseño en esta misma carpeta (Login Tajy.dc.html / README.md). */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+.login-shell {
+  min-height: 100vh;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fafafa;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+.login-diagonal {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 55%;
+  height: 100%;
+  background: #d8132e;
+  clip-path: polygon(35% 0, 100% 0, 100% 100%, 0 100%);
+}
+
+.login-card {
+  position: relative;
+  z-index: 1;
+  width: 340px;
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.15);
+  padding: 36px 32px 28px;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.login-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 22px 48px rgba(0, 0, 0, 0.22);
+}
+
+.login-card__tab {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 56px;
+  height: 8px;
+  border-radius: 6px;
+  background: #d8132e;
+}
+
+.login-card__logo {
+  display: block;
+  width: 80px;
+  height: auto;
+  margin: 0 auto 20px;
+  transition: transform 0.25s ease;
+}
+
+.login-card:hover .login-card__logo {
+  transform: scale(1.06);
+}
+
+.login-card__title {
+  margin: 0 0 6px;
+  font-size: 20px;
+  font-weight: 800;
+  color: #191919;
+  letter-spacing: -0.01em;
+  text-align: center;
+}
+
+.login-card__subtitle {
+  margin: 0 0 22px;
+  font-size: 13.5px;
+  color: #767a80;
+  text-align: center;
+}
+
+.login-card__error {
+  background: rgba(216, 19, 46, 0.08);
+  border: 1px solid rgba(216, 19, 46, 0.25);
+  color: #b80f26;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 10px 12px;
+  border-radius: 8px;
+  margin-bottom: 14px;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.login-field {
+  margin-bottom: 14px;
+}
+
+.login-field label {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #40444a;
+  margin-bottom: 6px;
+}
+
+.login-field input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 11px 13px;
+  border: 1.5px solid #e4e5e8;
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-family: inherit;
+  color: #191919;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.login-field input::placeholder {
+  color: #a9adb3;
+}
+
+.login-field input:focus {
+  outline: none;
+  border-color: #d8132e;
+  box-shadow: 0 0 0 3px rgba(216, 19, 46, 0.12);
+}
+
+.login-field--password {
+  margin-bottom: 8px;
+}
+
+.login-field__password-wrap {
+  position: relative;
+}
+
+.login-field__password-wrap input {
+  padding-right: 40px;
+}
+
+.login-field__toggle {
+  position: absolute;
+  right: 5px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 30px;
+  height: 30px;
+  border: none;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #8a8f96;
+  border-radius: 6px;
+}
+
+.login-field__toggle:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.login-forgot {
+  text-align: right;
+  margin-bottom: 18px;
+}
+
+.login-forgot a {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #d8132e;
+  text-decoration: none;
+}
+
+.login-forgot a:hover {
+  color: #a80f24;
+}
+
+.login-submit {
+  width: 100%;
+  padding: 12px;
+  background: #d8132e;
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.login-submit:hover:not(:disabled) {
+  background: #b80f26;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(216, 19, 46, 0.35);
+}
+
+.login-submit:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 3px 8px rgba(216, 19, 46, 0.3);
+}
+
+.login-submit:disabled {
+  cursor: progress;
+  opacity: 0.75;
+}
+
+.login-card__footer {
+  text-align: center;
+  font-size: 10.5px;
+  color: #a4a8ad;
+  margin: 20px 0 0;
+}

@@ -21,7 +21,7 @@ export async function calcularPreview(body) {
  * Calcula y persiste la cotización completa: cabecera, variantes y planes de pago
  * por forma de pago. Asigna número(s) correlativo(s) por variante.
  */
-export async function crearCotizacion(body) {
+export async function crearCotizacion(body, usuario) {
   const { plan, ramo, datosValidados } = await validarYResolverContexto(body);
   const calculador = getCalculador(ramo.calculador);
 
@@ -31,7 +31,7 @@ export async function crearCotizacion(body) {
     numero_cotizacion: `${ramo.nombre.toUpperCase()}-${await cotizacionesRepository.nextNumeroCorrelativo(ramo.id)}`,
     ramo_id: ramo.id,
     plan_id: plan.id,
-    agente_id: body.agente_id ?? null, // TODO: tomar del usuario autenticado cuando haya auth
+    agente_id: usuario.id,
     cliente_nombre: body.cliente_nombre,
     cliente_contacto: body.cliente_contacto,
     riesgo_datos: datosValidados.riesgo_datos,

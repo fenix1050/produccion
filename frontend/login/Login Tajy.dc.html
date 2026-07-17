@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#f0eee9;font-family:'Inter',system-ui,sans-serif}
+.dv-turn{padding:40px 44px 32px;border-bottom:1px solid rgba(0,0,0,.08);scroll-margin-top:16px}
+.dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 20px}
+.dv-tid{font:600 10px ui-monospace,Menlo,monospace;padding:3px 7px;background:#1a1a1a;color:#fff;border-radius:4px;text-decoration:none}
+.dv-tname{font:600 13px/1.2 system-ui,sans-serif;color:#1a1a1a}
+.dv-opts{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}
+.dv-opt{flex:none;display:flex;flex-direction:column;gap:9px;scroll-margin-top:16px}
+.dv-oid{font:600 10.5px ui-monospace,Menlo,monospace;padding:3px 7px;background:rgba(0,0,0,.08);color:#1a1a1a;border-radius:5px;text-decoration:none}
+.dv-olabel{display:flex;align-items:baseline;gap:8px;font:400 11px/1.3 system-ui,sans-serif;color:rgba(0,0,0,.55)}
+.dv-card{max-width:100%;background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.06);overflow:hidden}
+.dv-opt:target .dv-oid{background:#d8132e;color:#fff}
+.dv-next{margin:22px 0 0;font:12px/1.5 system-ui,sans-serif;color:rgba(0,0,0,.5)}
+input::placeholder{color:#a9adb3}
+input:focus{outline:none;border-color:#d8132e !important;box-shadow:0 0 0 3px rgba(216,19,46,.12)}
+a{color:#d8132e}
+a:hover{color:#a80f24}
+</style>
+</helmet>
+
+<section class="dv-turn" id="t3">
+<div class="dv-thd"><a class="dv-tid" href="#t3">3</a><span class="dv-tname">Fondos a pantalla completa para <a class="dv-oid" href="#1a">1a</a></span></div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="3a">
+<div class="dv-olabel"><a class="dv-oid" href="#3a">3a</a>Gris claro + formas geométricas</div>
+<div class="dv-card" style="width:900px;height:560px;background:#f0eee9;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center">
+  <div style="position:absolute;top:-70px;right:-70px;width:280px;height:280px;border-radius:50%;background:rgba(216,19,46,.06)"></div>
+  <div style="position:absolute;bottom:-90px;left:-60px;width:220px;height:220px;border:1px solid rgba(216,19,46,.15);border-radius:50%"></div>
+  <div style="position:absolute;bottom:40px;left:180px;width:90px;height:90px;background:rgba(216,19,46,.05);border-radius:50%"></div>
+  <div style="width:340px;background:#fff;border-radius:16px;box-shadow:0 12px 32px rgba(0,0,0,.1);padding:36px 32px 28px;position:relative;z-index:1;transition:transform .25s ease,box-shadow .25s ease" style-hover="transform:translateY(-4px);box-shadow:0 20px 40px rgba(0,0,0,.16)">
+    <div style="position:absolute;top:0;left:50%;transform:translate(-50%,-50%);width:56px;height:8px;border-radius:6px;background:#d8132e"></div>
+    <div style="display:flex;justify-content:center;margin-bottom:20px"><img src="uploads/logo rojo con negro.svg" alt="Tajy" style="width:80px;height:auto;transition:transform .25s ease" style-hover="transform:scale(1.06)"></div>
+    <h1 style="margin:0 0 6px;font-size:20px;font-weight:800;color:#191919;text-align:center;letter-spacing:-0.01em">Bienvenido</h1>
+    <p style="margin:0 0 22px;font-size:13.5px;color:#767a80;text-align:center">Ingresa tus credenciales para continuar</p>
+    <label style="font-size:12.5px;font-weight:600;color:#40444a;display:block;margin-bottom:6px">Usuario</label>
+    <input type="text" placeholder="Tu usuario" style="width:100%;box-sizing:border-box;padding:11px 13px;border:1.5px solid #e4e5e8;border-radius:10px;font-size:13.5px;margin-bottom:14px;font-family:inherit">
+    <label style="font-size:12.5px;font-weight:600;color:#40444a;display:block;margin-bottom:6px">Contraseña</label>
+    <div style="position:relative;margin-bottom:8px">
+      <input type="{{ pwType3a }}" placeholder="Tu contraseña" style="width:100%;box-sizing:border-box;padding:11px 40px 11px 13px;border:1.5px solid #e4e5e8;border-radius:10px;font-size:13.5px;font-family:inherit">
+      <button type="button" onClick="{{ togglePw3a }}" aria-label="Mostrar u ocultar contraseña" style="position:absolute;right:5px;top:50%;transform:translateY(-50%);width:30px;height:30px;border:none;background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#8a8f96;border-radius:6px">
+        <sc-if value="{{ showPw3a }}" hint-placeholder-val="{{ false }}">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M3 3l18 18M10.6 10.6a2.5 2.5 0 0 0 3.5 3.5M9.4 5.5A10.6 10.6 0 0 1 12 5c5 0 9 4 10.5 7-.5 1-1.3 2.2-2.4 3.4M6.7 6.7C4.5 8.1 2.8 10 1.5 12c1.5 3 5.5 7 10.5 7 1.4 0 2.7-.3 3.9-.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </sc-if>
+        <sc-if value="{{ hidePw3a }}" hint-placeholder-val="{{ true }}">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M1.5 12S5.5 5 12 5s10.5 7 10.5 7-4 7-10.5 7S1.5 12 1.5 12z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.7"></circle></svg>
+        </sc-if>
+      </button>
+    </div>
+    <div style="text-align:right;margin-bottom:18px"><a href="#" style="font-size:11.5px;text-decoration:none;font-weight:600">¿Olvidaste tu contraseña?</a></div>
+    <button style="width:100%;padding:12px;background:#d8132e;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;transition:background .2s ease,transform .2s ease,box-shadow .2s ease" style-hover="background:#b80f26;transform:translateY(-1px);box-shadow:0 8px 20px rgba(216,19,46,.35)" style-active="transform:translateY(0);box-shadow:0 3px 8px rgba(216,19,46,.3)">Ingresar</button>
+    <p style="text-align:center;font-size:10.5px;color:#a4a8ad;margin:20px 0 0">Aseguradora Tajy Prop. Coop. S.A</p>
+  </div>
+</div>
+</div>
+
+<div class="dv-opt" id="3b">
+<div class="dv-olabel"><a class="dv-oid" href="#3b">3b</a>Diagonal rojo sólido</div>
+<div class="dv-card" style="width:900px;height:560px;background:#fafafa;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center">
+  <div style="position:absolute;top:0;right:0;width:55%;height:100%;background:#d8132e;clip-path:polygon(35% 0,100% 0,100% 100%,0 100%)"></div>
+  <div style="width:340px;background:#fff;border-radius:16px;box-shadow:0 16px 40px rgba(0,0,0,.15);padding:36px 32px 28px;position:relative;z-index:1;transition:transform .25s ease,box-shadow .25s ease" style-hover="transform:translateY(-4px);box-shadow:0 22px 48px rgba(0,0,0,.22)">
+    <div style="position:absolute;top:0;left:50%;transform:translate(-50%,-50%);width:56px;height:8px;border-radius:6px;background:#d8132e"></div>
+    <div style="display:flex;justify-content:center;margin-bottom:20px"><img src="uploads/logo rojo con negro.svg" alt="Tajy" style="width:80px;height:auto;transition:transform .25s ease" style-hover="transform:scale(1.06)"></div>
+    <h1 style="margin:0 0 6px;font-size:20px;font-weight:800;color:#191919;text-align:center;letter-spacing:-0.01em">Bienvenido</h1>
+    <p style="margin:0 0 22px;font-size:13.5px;color:#767a80;text-align:center">Ingresa tus credenciales para continuar</p>
+    <label style="font-size:12.5px;font-weight:600;color:#40444a;display:block;margin-bottom:6px">Usuario</label>
+    <input type="text" placeholder="Tu usuario" style="width:100%;box-sizing:border-box;padding:11px 13px;border:1.5px solid #e4e5e8;border-radius:10px;font-size:13.5px;margin-bottom:14px;font-family:inherit">
+    <label style="font-size:12.5px;font-weight:600;color:#40444a;display:block;margin-bottom:6px">Contraseña</label>
+    <div style="position:relative;margin-bottom:8px">
+      <input type="{{ pwType3b }}" placeholder="Tu contraseña" style="width:100%;box-sizing:border-box;padding:11px 40px 11px 13px;border:1.5px solid #e4e5e8;border-radius:10px;font-size:13.5px;font-family:inherit">
+      <button type="button" onClick="{{ togglePw3b }}" aria-label="Mostrar u ocultar contraseña" style="position:absolute;right:5px;top:50%;transform:translateY(-50%);width:30px;height:30px;border:none;background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#8a8f96;border-radius:6px">
+        <sc-if value="{{ showPw3b }}" hint-placeholder-val="{{ false }}">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M3 3l18 18M10.6 10.6a2.5 2.5 0 0 0 3.5 3.5M9.4 5.5A10.6 10.6 0 0 1 12 5c5 0 9 4 10.5 7-.5 1-1.3 2.2-2.4 3.4M6.7 6.7C4.5 8.1 2.8 10 1.5 12c1.5 3 5.5 7 10.5 7 1.4 0 2.7-.3 3.9-.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </sc-if>
+        <sc-if value="{{ hidePw3b }}" hint-placeholder-val="{{ true }}">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M1.5 12S5.5 5 12 5s10.5 7 10.5 7-4 7-10.5 7S1.5 12 1.5 12z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.7"></circle></svg>
+        </sc-if>
+      </button>
+    </div>
+    <div style="text-align:right;margin-bottom:18px"><a href="#" style="font-size:11.5px;text-decoration:none;font-weight:600">¿Olvidaste tu contraseña?</a></div>
+    <button style="width:100%;padding:12px;background:#d8132e;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;transition:background .2s ease,transform .2s ease,box-shadow .2s ease" style-hover="background:#b80f26;transform:translateY(-1px);box-shadow:0 8px 20px rgba(216,19,46,.35)" style-active="transform:translateY(0);box-shadow:0 3px 8px rgba(216,19,46,.3)">Ingresar</button>
+    <p style="text-align:center;font-size:10.5px;color:#a4a8ad;margin:20px 0 0">Aseguradora Tajy Prop. Coop. S.A</p>
+  </div>
+</div>
+</div>
+
+<div class="dv-opt" id="3c">
+<div class="dv-olabel"><a class="dv-oid" href="#3c">3c</a>Malla de puntos + acento rojo</div>
+<div class="dv-card" style="width:900px;height:560px;background:#fbfaf9;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center">
+  <svg width="100%" height="100%" style="position:absolute;top:0;left:0;opacity:.5"><defs><pattern id="dots" width="26" height="26" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.4" fill="#d8132e" opacity=".18"></circle></pattern></defs><rect width="100%" height="100%" fill="url(#dots)"></rect></svg>
+  <div style="position:absolute;bottom:-120px;right:-120px;width:340px;height:340px;border-radius:50%;background:radial-gradient(circle,rgba(216,19,46,.12),rgba(216,19,46,0) 70%)"></div>
+  <div style="width:340px;background:#fff;border-radius:16px;box-shadow:0 12px 32px rgba(0,0,0,.1);padding:36px 32px 28px;position:relative;z-index:1;transition:transform .25s ease,box-shadow .25s ease" style-hover="transform:translateY(-4px);box-shadow:0 20px 40px rgba(0,0,0,.16)">
+    <div style="position:absolute;top:0;left:50%;transform:translate(-50%,-50%);width:56px;height:8px;border-radius:6px;background:#d8132e"></div>
+    <div style="display:flex;justify-content:center;margin-bottom:20px"><img src="uploads/logo rojo con negro.svg" alt="Tajy" style="width:80px;height:auto;transition:transform .25s ease" style-hover="transform:scale(1.06)"></div>
+    <h1 style="margin:0 0 6px;font-size:20px;font-weight:800;color:#191919;text-align:center;letter-spacing:-0.01em">Bienvenido</h1>
+    <p style="margin:0 0 22px;font-size:13.5px;color:#767a80;text-align:center">Ingresa tus credenciales para continuar</p>
+    <label style="font-size:12.5px;font-weight:600;color:#40444a;display:block;margin-bottom:6px">Usuario</label>
+    <input type="text" placeholder="Tu usuario" style="width:100%;box-sizing:border-box;padding:11px 13px;border:1.5px solid #e4e5e8;border-radius:10px;font-size:13.5px;margin-bottom:14px;font-family:inherit">
+    <label style="font-size:12.5px;font-weight:600;color:#40444a;display:block;margin-bottom:6px">Contraseña</label>
+    <div style="position:relative;margin-bottom:8px">
+      <input type="{{ pwType3c }}" placeholder="Tu contraseña" style="width:100%;box-sizing:border-box;padding:11px 40px 11px 13px;border:1.5px solid #e4e5e8;border-radius:10px;font-size:13.5px;font-family:inherit">
+      <button type="button" onClick="{{ togglePw3c }}" aria-label="Mostrar u ocultar contraseña" style="position:absolute;right:5px;top:50%;transform:translateY(-50%);width:30px;height:30px;border:none;background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#8a8f96;border-radius:6px">
+        <sc-if value="{{ showPw3c }}" hint-placeholder-val="{{ false }}">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M3 3l18 18M10.6 10.6a2.5 2.5 0 0 0 3.5 3.5M9.4 5.5A10.6 10.6 0 0 1 12 5c5 0 9 4 10.5 7-.5 1-1.3 2.2-2.4 3.4M6.7 6.7C4.5 8.1 2.8 10 1.5 12c1.5 3 5.5 7 10.5 7 1.4 0 2.7-.3 3.9-.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </sc-if>
+        <sc-if value="{{ hidePw3c }}" hint-placeholder-val="{{ true }}">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M1.5 12S5.5 5 12 5s10.5 7 10.5 7-4 7-10.5 7S1.5 12 1.5 12z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.7"></circle></svg>
+        </sc-if>
+      </button>
+    </div>
+    <div style="text-align:right;margin-bottom:18px"><a href="#" style="font-size:11.5px;text-decoration:none;font-weight:600">¿Olvidaste tu contraseña?</a></div>
+    <button style="width:100%;padding:12px;background:#d8132e;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;transition:background .2s ease,transform .2s ease,box-shadow .2s ease" style-hover="background:#b80f26;transform:translateY(-1px);box-shadow:0 8px 20px rgba(216,19,46,.35)" style-active="transform:translateY(0);box-shadow:0 3px 8px rgba(216,19,46,.3)">Ingresar</button>
+    <p style="text-align:center;font-size:10.5px;color:#a4a8ad;margin:20px 0 0">Aseguradora Tajy Prop. Coop. S.A</p>
+  </div>
+</div>
+</div>
+
+</div>
+<p class="dv-next">Probá: "usemos <a class="dv-oid" href="#3a">3a</a> como fondo final" · "combiná el diagonal de <a class="dv-oid" href="#3b">3b</a> con los puntos de <a class="dv-oid" href="#3c">3c</a>" · "menos opacidad en <a class="dv-oid" href="#3c">3c</a>"</p>
+</section>
+<section class="dv-turn" id="t2">
+<div class="dv-thd"><a class="dv-tid" href="#t2">2</a><span class="dv-tname">Fondos para <a class="dv-oid" href="#1a">1a</a></span></div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="2a">
+<div class="dv-olabel"><a class="dv-oid" href="#2a">2a</a>Gris muy claro</div>
+<div class="dv-card" style="width:440px;background:#f5f3f1;display:flex;justify-content:center;padding:32px">
+  <div style="width:340px;background:#fff;border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,.08);padding:36px 32px 28px;position:relative">
+    <div style="position:absolute;top:0;left:50%;transform:translate(-50%,-50%);width:56px;height:8px;border-radius:6px;background:#d8132e"></div>
+    <div style="display:flex;justify-content:center;margin-bottom:20px">
+      <img src="uploads/logo rojo con negro.svg" alt="Tajy" style="width:80px;height:auto">
+    </div>
+    <h1 style="margin:0 0 6px;font-size:20px;font-weight:800;color:#191919;text-align:center;letter-spacing:-0.01em">Bienvenido</h1>
+    <p style="margin:0 0 22px;font-size:13.5px;color:#767a80;text-align:center">Ingresa tus credenciales para continuar</p>
+    <label style="font-size:12.5px;font-weight:600;color:#40444a;display:block;margin-bottom:6px">Usuario</label>
+    <input type="text" placeholder="Tu usuario" style="width:100%;box-sizing:border-box;padding:11px 13px;border:1.5px solid #e4e5e8;border-radius:10px;font-size:13.5px;margin-bottom:14px;font-family:inherit">
+    <label style="font-size:12.5px;font-weight:600;color:#40444a;display:block;margin-bottom:6px">Contraseña</label>
+    <input type="password" placeholder="Tu contraseña" style="width:100%;box-sizing:border-box;padding:11px 13px;border:1.5px solid #e4e5e8;border-radius:10px;font-size:13.5px;margin-bottom:8px;font-family:inherit">
+    <div style="text-align:right;margin-bottom:18px"><a href="#" style="font-size:11.5px;text-decoration:none;font-weight:600">¿Olvidaste tu contraseña?</a></div>
+    <button style="width:100%;padding:12px;background:#d8132e;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer">Ingresar</button>
+    <p style="text-align:center;font-size:10.5px;color:#a4a8ad;margin:20px 0 0">Aseguradora Tajy Prop. Coop. S.A</p>
+  </div>
+</div>
+</div>
+
+<div class="dv-opt" id="2b">
+<div class="dv-olabel"><a class="dv-oid" href="#2b">2b</a>Tint rojo institucional</div>
+<div class="dv-card" style="width:440px;background:#fbecef;display:flex;justify-content:center;padding:32px">
+  <div style="width:340px;background:#fff;border-radius:16px;box-shadow:0 8px 24px rgba(216,19,46,.1);padding:36px 32px 28px;position:relative">
+    <div style="position:absolute;top:0;left:50%;transform:translate(-50%,-50%);width:56px;height:8px;border-radius:6px;background:#d8132e"></div>
+    <div style="display:flex;justify-content:center;margin-bottom:20px">
+      <img src="uploads/logo rojo con negro.svg" alt="Tajy" style="width:80px;height:auto">
+    </div>
+    <h1 style="margin:0 0 6px;font-size:20px;font-weight:800;color:#191919;text-align:center;letter-spacing:-0.01em">Bienvenido</h1>
+    <p style="margin:0 0 22px;font-size:13.5px;color:#767a80;text-align:center">Ingresa tus credenciales para continuar</p>
+    <label style="font-size:12.5px;font-weight:600;color:#40444a;display:block;margin-bottom:6px">Usuario</label>
+    <input type="text" placeholder="Tu usuario" style="width:100%;box-sizing:border-box;padding:11px 13px;border:1.5px solid #e4e5e8;border-radius:10px;font-size:13.5px;margin-bottom:14px;font-family:inherit">
+    <label style="font-size:12.5px;font-weight:600;color:#40444a;display:block;margin-bottom:6px">Contraseña</label>
+    <input type="password" placeholder="Tu contraseña" style="width:100%;box-sizing:border-box;padding:11px 13px;border:1.5px solid #e4e5e8;border-radius:10px;font-size:13.5px;margin-bottom:8px;font-family:inherit">
+    <div style="text-align:right;margin-bottom:18px"><a href="#" style="font-size:11.5px;text-decoration:none;font-weight:600">¿Olvidaste tu contraseña?</a></div>
+    <button style="width:100%;padding:12px;background:#d8132e;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer">Ingresar</button>
+    <p style="text-align:center;font-size:10.5px;color:#a4a8ad;margin:20px 0 0">Aseguradora Tajy Prop. Coop. S.A</p>
+  </div>
+</div>
+</div>
+
+<div class="dv-opt" id="2c">
+<div class="dv-olabel"><a class="dv-oid" href="#2c">2c</a>Degradado sutil + puntos</div>
+<div class="dv-card" style="width:440px;background:linear-gradient(160deg,#f7f6f4,#ffffff);display:flex;justify-content:center;padding:32px;position:relative;overflow:hidden">
+  <svg width="120" height="120" style="position:absolute;top:-10px;right:-10px;opacity:.5" viewBox="0 0 120 120"><g fill="#d8132e" opacity=".25"><circle cx="6" cy="6" r="2"></circle><circle cx="22" cy="6" r="2"></circle><circle cx="38" cy="6" r="2"></circle><circle cx="6" cy="22" r="2"></circle><circle cx="22" cy="22" r="2"></circle><circle cx="38" cy="22" r="2"></circle><circle cx="6" cy="38" r="2"></circle><circle cx="22" cy="38" r="2"></circle><circle cx="38" cy="38" r="2"></circle></g></svg>
+  <div style="width:340px;background:#fff;border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,.08);padding:36px 32px 28px;position:relative;z-index:1">
+    <div style="position:absolute;top:0;left:50%;transform:translate(-50%,-50%);width:56px;height:8px;border-radius:6px;background:#d8132e"></div>
+    <div style="display:flex;justify-content:center;margin-bottom:20px">
+      <img src="uploads/logo rojo con negro.svg" alt="Tajy" style="width:80px;height:auto">
+    </div>
+    <h1 style="margin:0 0 6px;font-size:20px;font-weight:800;color:#191919;text-align:center;letter-spacing:-0.01em">Bienvenido</h1>
+    <p style="margin:0 0 22px;font-size:13.5px;color:#767a80;text-align:center">Ingresa tus credenciales para continuar</p>
+    <label style="font-size:12.5px;font-weight:600;color:#40444a;display:block;margin-bottom:6px">Usuario</label>
+    <input type="text" placeholder="Tu usuario" style="width:100%;box-sizing:border-box;padding:11px 13px;border:1.5px solid #e4e5e8;border-radius:10px;font-size:13.5px;margin-bottom:14px;font-family:inherit">
+    <label style="font-size:12.5px;font-weight:600;color:#40444a;display:block;margin-bottom:6px">Contraseña</label>
+    <input type="password" placeholder="Tu contraseña" style="width:100%;box-sizing:border-box;padding:11px 13px;border:1.5px solid #e4e5e8;border-radius:10px;font-size:13.5px;margin-bottom:8px;font-family:inherit">
+    <div style="text-align:right;margin-bottom:18px"><a href="#" style="font-size:11.5px;text-decoration:none;font-weight:600">¿Olvidaste tu contraseña?</a></div>
+    <button style="width:100%;padding:12px;background:#d8132e;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer">Ingresar</button>
+    <p style="text-align:center;font-size:10.5px;color:#a4a8ad;margin:20px 0 0">Aseguradora Tajy Prop. Coop. S.A</p>
+  </div>
+</div>
+</div>
+
+</div>
+<p class="dv-next">Probá: "quiero <a class="dv-oid" href="#2b">2b</a> pero con el patrón de <a class="dv-oid" href="#2c">2c</a>" · "usemos <a class="dv-oid" href="#2a">2a</a> como fondo final" · "más contraste en <a class="dv-oid" href="#2c">2c</a>"</p>
+</section>
+<section class="dv-turn" id="t1">
+<div class="dv-thd"><a class="dv-tid" href="#t1">1</a><span class="dv-tname">Login Aseguradora Tajy — cotizador de pólizas</span></div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="1a">
+<div class="dv-olabel"><a class="dv-oid" href="#1a">1a</a>Misma estructura · badge circular + borde superior</div>
+<div class="dv-card" style="width:380px;transition:transform .25s ease,box-shadow .25s ease" style-hover="transform:translateY(-4px);box-shadow:0 16px 32px rgba(0,0,0,.12)">
+  <div style="padding:40px 36px 32px;position:relative">
+    <div style="position:absolute;top:0;left:50%;transform:translate(-50%,-50%);width:56px;height:8px;border-radius:6px;background:#d8132e"></div>
+    <div style="display:flex;justify-content:center;margin-bottom:24px">
+      <img src="uploads/logo rojo con negro.svg" alt="Tajy" style="width:88px;height:auto;transition:transform .25s ease" style-hover="transform:scale(1.06)">
+    </div>
+    <h1 style="margin:0 0 6px;font-size:22px;font-weight:800;color:#191919;text-align:center;letter-spacing:-0.01em">Bienvenido</h1>
+    <p style="margin:0 0 28px;font-size:14px;color:#767a80;text-align:center">Ingresa tus credenciales para continuar</p>
+    <label style="font-size:13px;font-weight:600;color:#40444a;display:block;margin-bottom:6px">Usuario</label>
+    <input type="text" placeholder="Tu usuario" style="width:100%;box-sizing:border-box;padding:12px 14px;border:1.5px solid #e4e5e8;border-radius:10px;font-size:14px;margin-bottom:18px;font-family:inherit">
+    <label style="font-size:13px;font-weight:600;color:#40444a;display:block;margin-bottom:6px">Contraseña</label>
+    <div style="position:relative;margin-bottom:8px">
+      <input type="{{ pwType }}" placeholder="Tu contraseña" style="width:100%;box-sizing:border-box;padding:12px 44px 12px 14px;border:1.5px solid #e4e5e8;border-radius:10px;font-size:14px;font-family:inherit">
+      <button type="button" onClick="{{ togglePw }}" aria-label="Mostrar u ocultar contraseña" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);width:32px;height:32px;border:none;background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#8a8f96;border-radius:6px">
+        <sc-if value="{{ showPw }}" hint-placeholder-val="{{ false }}">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M3 3l18 18M10.6 10.6a2.5 2.5 0 0 0 3.5 3.5M9.4 5.5A10.6 10.6 0 0 1 12 5c5 0 9 4 10.5 7-.5 1-1.3 2.2-2.4 3.4M6.7 6.7C4.5 8.1 2.8 10 1.5 12c1.5 3 5.5 7 10.5 7 1.4 0 2.7-.3 3.9-.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </sc-if>
+        <sc-if value="{{ hidePw }}" hint-placeholder-val="{{ true }}">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M1.5 12S5.5 5 12 5s10.5 7 10.5 7-4 7-10.5 7S1.5 12 1.5 12z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.7"></circle></svg>
+        </sc-if>
+      </button>
+    </div>
+    <div style="text-align:right;margin-bottom:22px"><a href="#" style="font-size:12.5px;text-decoration:none;font-weight:600">¿Olvidaste tu contraseña?</a></div>
+    <button style="width:100%;padding:14px;background:#d8132e;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;transition:background .2s ease,transform .2s ease,box-shadow .2s ease" style-hover="background:#b80f26;transform:translateY(-1px);box-shadow:0 8px 20px rgba(216,19,46,.35)" style-active="transform:translateY(0);box-shadow:0 3px 8px rgba(216,19,46,.3)">Ingresar</button>
+    <p style="text-align:center;font-size:11.5px;color:#a4a8ad;margin:24px 0 0">Aseguradora Tajy Prop. Coop. S.A</p>
+  </div>
+</div>
+</div>
+
+<div class="dv-opt" id="1b">
+<div class="dv-olabel"><a class="dv-oid" href="#1b">1b</a>Misma estructura · panel superior rojo sólido</div>
+<div class="dv-card" style="width:380px">
+  <div style="background:#d8132e;padding:32px 36px 24px;display:flex;flex-direction:column;align-items:center">
+    <img src="uploads/logo.svg" alt="Tajy" style="width:78px;height:auto;margin-bottom:6px">
+    <span style="font-size:11.5px;color:rgba(255,255,255,.75);letter-spacing:.06em;text-transform:uppercase;font-weight:600">Cotizador de pólizas</span>
+  </div>
+  <div style="padding:32px 36px 32px">
+    <h1 style="margin:0 0 6px;font-size:21px;font-weight:800;color:#191919;letter-spacing:-0.01em">Bienvenido de nuevo</h1>
+    <p style="margin:0 0 26px;font-size:13.5px;color:#767a80">Accedé con tus credenciales</p>
+    <label style="font-size:13px;font-weight:600;color:#40444a;display:block;margin-bottom:6px">Usuario</label>
+    <input type="text" placeholder="Ingresá tu usuario" style="width:100%;box-sizing:border-box;padding:12px 14px;border:1.5px solid #e9eaec;background:#fafafb;border-radius:8px;font-size:14px;margin-bottom:16px;font-family:inherit">
+    <label style="font-size:13px;font-weight:600;color:#40444a;display:block;margin-bottom:6px">Contraseña</label>
+    <input type="password" placeholder="Ingresá tu contraseña" style="width:100%;box-sizing:border-box;padding:12px 14px;border:1.5px solid #e9eaec;background:#fafafb;border-radius:8px;font-size:14px;margin-bottom:8px;font-family:inherit">
+    <div style="text-align:right;margin-bottom:22px"><a href="#" style="font-size:12.5px;text-decoration:none;font-weight:600">¿Olvidaste tu contraseña?</a></div>
+    <button style="width:100%;padding:14px;background:#191919;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer">Ingresar</button>
+    <p style="text-align:center;font-size:11.5px;color:#a4a8ad;margin:22px 0 0">Aseguradora Tajy Prop. Coop. S.A</p>
+  </div>
+</div>
+</div>
+
+<div class="dv-opt" id="1c">
+<div class="dv-olabel"><a class="dv-oid" href="#1c">1c</a>Layout distinto · panel dividido</div>
+<div class="dv-card" style="width:640px;display:flex">
+  <div style="width:230px;background:#d8132e;padding:36px 28px;display:flex;flex-direction:column;justify-content:space-between">
+    <div>
+      <img src="uploads/logo.svg" alt="Tajy" style="width:64px;height:auto;margin-bottom:20px">
+      <p style="color:#fff;font-size:18px;font-weight:700;line-height:1.35;margin:0">Cotizá tu póliza en minutos</p>
+    </div>
+    <p style="color:rgba(255,255,255,.7);font-size:11.5px;margin:0">Aseguradora Tajy<br>Prop. Coop. S.A</p>
+  </div>
+  <div style="flex:1;padding:40px 36px;display:flex;flex-direction:column;justify-content:center">
+    <h1 style="margin:0 0 6px;font-size:21px;font-weight:800;color:#191919;letter-spacing:-0.01em">Ingresar</h1>
+    <p style="margin:0 0 26px;font-size:13.5px;color:#767a80">Usá tus credenciales de acceso</p>
+    <label style="font-size:13px;font-weight:600;color:#40444a;display:block;margin-bottom:6px">Usuario</label>
+    <input type="text" placeholder="Tu usuario" style="width:100%;box-sizing:border-box;padding:12px 14px;border:1.5px solid #e4e5e8;border-radius:8px;font-size:14px;margin-bottom:16px;font-family:inherit">
+    <label style="font-size:13px;font-weight:600;color:#40444a;display:block;margin-bottom:6px">Contraseña</label>
+    <input type="password" placeholder="Tu contraseña" style="width:100%;box-sizing:border-box;padding:12px 14px;border:1.5px solid #e4e5e8;border-radius:8px;font-size:14px;margin-bottom:8px;font-family:inherit">
+    <div style="text-align:right;margin-bottom:20px"><a href="#" style="font-size:12.5px;text-decoration:none;font-weight:600">¿Olvidaste tu contraseña?</a></div>
+    <button style="width:100%;padding:13px;background:#d8132e;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer">Ingresar</button>
+  </div>
+</div>
+</div>
+
+<div class="dv-opt" id="1d">
+<div class="dv-olabel"><a class="dv-oid" href="#1d">1d</a>Layout distinto · fondo rojo, tarjeta flotante</div>
+<div class="dv-card" style="width:380px;background:#d8132e;padding:36px;display:flex;flex-direction:column;align-items:center;box-shadow:none">
+  <img src="uploads/logo.svg" alt="Tajy" style="width:70px;height:auto;margin-bottom:28px">
+  <div style="width:100%;background:#fff;border-radius:16px;padding:30px 28px;box-shadow:0 12px 32px rgba(0,0,0,.18)">
+    <h1 style="margin:0 0 6px;font-size:20px;font-weight:800;color:#191919;letter-spacing:-0.01em">Acceso al cotizador</h1>
+    <p style="margin:0 0 24px;font-size:13.5px;color:#767a80">Ingresá tus datos para continuar</p>
+    <label style="font-size:12.5px;font-weight:600;color:#40444a;display:block;margin-bottom:6px">Usuario</label>
+    <input type="text" placeholder="Tu usuario" style="width:100%;box-sizing:border-box;padding:11px 13px;border:1.5px solid #e4e5e8;border-radius:8px;font-size:13.5px;margin-bottom:14px;font-family:inherit">
+    <label style="font-size:12.5px;font-weight:600;color:#40444a;display:block;margin-bottom:6px">Contraseña</label>
+    <input type="password" placeholder="Tu contraseña" style="width:100%;box-sizing:border-box;padding:11px 13px;border:1.5px solid #e4e5e8;border-radius:8px;font-size:13.5px;margin-bottom:8px;font-family:inherit">
+    <div style="text-align:right;margin-bottom:18px"><a href="#" style="font-size:12px;text-decoration:none;font-weight:600">¿Olvidaste tu contraseña?</a></div>
+    <button style="width:100%;padding:13px;background:#191919;color:#fff;border:none;border-radius:8px;font-size:14.5px;font-weight:700;font-family:inherit;cursor:pointer">Ingresar</button>
+  </div>
+  <p style="text-align:center;font-size:11px;color:rgba(255,255,255,.75);margin:20px 0 0">Aseguradora Tajy Prop. Coop. S.A</p>
+</div>
+</div>
+
+</div>
+<p class="dv-next">Probá: "combiná el panel de <a class="dv-oid" href="#1c">1c</a> con el botón de <a class="dv-oid" href="#1b">1b</a>" · "más minimalista, sin subrayado en <a class="dv-oid" href="#1a">1a</a>" · "quiero una quinta opción con tabs de acceso"</p>
+</section>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { showPw: false, showPw3a: false, showPw3b: false, showPw3c: false };
+  renderVals() {
+    return {
+      pwType: this.state.showPw ? 'text' : 'password',
+      showPw: this.state.showPw,
+      hidePw: !this.state.showPw,
+      togglePw: () => this.setState(s => ({ showPw: !s.showPw })),
+
+      pwType3a: this.state.showPw3a ? 'text' : 'password',
+      showPw3a: this.state.showPw3a,
+      hidePw3a: !this.state.showPw3a,
+      togglePw3a: () => this.setState(s => ({ showPw3a: !s.showPw3a })),
+
+      pwType3b: this.state.showPw3b ? 'text' : 'password',
+      showPw3b: this.state.showPw3b,
+      hidePw3b: !this.state.showPw3b,
+      togglePw3b: () => this.setState(s => ({ showPw3b: !s.showPw3b })),
+
+      pwType3c: this.state.showPw3c ? 'text' : 'password',
+      showPw3c: this.state.showPw3c,
+      hidePw3c: !this.state.showPw3c,
+      togglePw3c: () => this.setState(s => ({ showPw3c: !s.showPw3c }))
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -7,7 +7,7 @@ import { api, auth } from '../shared/api.js';
 
 const SECCIONES = [
   { id: 'usuarios', label: 'Usuarios', icon: '👤', disponible: true },
-  { id: 'coberturas', label: 'Coberturas por plan', icon: '🛡️', disponible: false },
+  { id: 'coberturas', label: 'Coberturas por plan', icon: '🛡️', disponible: true },
   { id: 'tasas', label: 'Tasas', icon: '📈', disponible: true },
   { id: 'planes', label: 'Planes', icon: '📋', disponible: true },
 ];
@@ -34,6 +34,13 @@ const state = {
   tasasPorRamo: {}, // ramoId -> { loading, error, historial: [] }
   catalogoPorRamo: {}, // ramoId -> coberturas_catalogo[] (para el selector del modal de alta)
   modalTasa: null, // { error, guardando, cobertura_id, tasa_valor, unidad, vigente_desde }
+
+  ramoCoberturasSeleccionado: null,
+  planCoberturasSeleccionado: null,
+  planesPorRamoCob: {}, // ramoId -> { loading, error, datos: [] }
+  coberturasDelPlan: {}, // planId -> { loading, error, datos: [] }
+  coberturaEnEdicion: new Set(), // ids de plan_coberturas con monto/franquicia habilitados para editar
+  modalCobertura: null, // { error, guardando, cobertura_id, incluida_por_defecto }
 };
 
 const app = document.getElementById('app');
@@ -463,6 +470,166 @@ async function guardarModalTasa(form) {
 }
 
 // ---------------------------------------------------------------------------
+// Coberturas por plan: carga y acciones
+// ---------------------------------------------------------------------------
+
+async function seleccionarRamoCoberturas(ramoId) {
+  // Mismo criterio que ramoTasasSeleccionado: guardar el string crudo del <select>,
+  // castear con Number() recién al armar el payload que va al backend.
+  state.ramoCoberturasSeleccionado = ramoId || null;
+  state.planCoberturasSeleccionado = null;
+  renderApp();
+  if (!state.ramoCoberturasSeleccionado) return;
+  await Promise.all([
+    cargarPlanesDeRamoCob(state.ramoCoberturasSeleccionado),
+    cargarCatalogoDeRamo(state.ramoCoberturasSeleccionado),
+  ]);
+}
+
+async function cargarPlanesDeRamoCob(ramoId) {
+  state.planesPorRamoCob[ramoId] = { loading: true, error: '', datos: [] };
+  renderApp();
+  try {
+    const datos = await api.get(`/admin/planes?ramoId=${encodeURIComponent(ramoId)}`);
+    state.planesPorRamoCob[ramoId] = { loading: false, error: '', datos };
+  } catch (err) {
+    state.planesPorRamoCob[ramoId] = {
+      loading: false,
+      error: err.message || 'No se pudieron cargar los planes del ramo.',
+      datos: [],
+    };
+  }
+  renderApp();
+}
+
+async function seleccionarPlanCoberturas(planId) {
+  state.planCoberturasSeleccionado = planId || null;
+  renderApp();
+  if (!state.planCoberturasSeleccionado) return;
+  await cargarCoberturasDelPlan(state.planCoberturasSeleccionado);
+}
+
+async function cargarCoberturasDelPlan(planId) {
+  state.coberturasDelPlan[planId] = { loading: true, error: '', datos: [] };
+  renderApp();
+  try {
+    const datos = await api.get(`/admin/planes/${planId}/coberturas`);
+    state.coberturasDelPlan[planId] = { loading: false, error: '', datos };
+  } catch (err) {
+    state.coberturasDelPlan[planId] = {
+      loading: false,
+      error: err.message || 'No se pudieron cargar las coberturas del plan.',
+      datos: [],
+    };
+  }
+  renderApp();
+}
+
+async function toggleCoberturaDefecto(planCoberturaId, planId, incluidaPorDefecto) {
+  try {
+    const fila = await api.put(`/admin/plan-coberturas/${planCoberturaId}`, { incluida_por_defecto: incluidaPorDefecto });
+    const entry = state.coberturasDelPlan[planId];
+    const idx = entry?.datos.findIndex((c) => c.id === Number(planCoberturaId));
+    if (entry && idx !== -1) entry.datos[idx] = { ...entry.datos[idx], ...fila };
+    mostrarBanner('success', `Cobertura ${incluidaPorDefecto ? 'marcada' : 'desmarcada'} por defecto.`);
+    renderApp();
+  } catch (err) {
+    mostrarBanner('error', err.message || 'No se pudo actualizar la cobertura.');
+  }
+}
+
+function habilitarEdicionCobertura(planCoberturaId) {
+  state.coberturaEnEdicion.add(planCoberturaId);
+  renderApp();
+}
+
+function cancelarEdicionCobertura(planCoberturaId) {
+  state.coberturaEnEdicion.delete(planCoberturaId);
+  renderApp();
+}
+
+async function guardarMontoFranquicia(planCoberturaId, planId, form) {
+  const montoValor = form.monto.value;
+  const franquiciaValor = form.franquicia.value;
+  const monto = montoValor === '' ? null : Number(montoValor);
+  const franquicia = franquiciaValor === '' ? null : Number(franquiciaValor);
+
+  try {
+    const fila = await api.put(`/admin/plan-coberturas/${planCoberturaId}`, { monto, franquicia });
+    const entry = state.coberturasDelPlan[planId];
+    const idx = entry?.datos.findIndex((c) => c.id === Number(planCoberturaId));
+    if (entry && idx !== -1) entry.datos[idx] = { ...entry.datos[idx], ...fila };
+    state.coberturaEnEdicion.delete(Number(planCoberturaId));
+    mostrarBanner('success', 'Cobertura actualizada.');
+    renderApp();
+  } catch (err) {
+    mostrarBanner('error', err.message || 'No se pudo actualizar la cobertura.');
+  }
+}
+
+async function eliminarCoberturaDelPlan(planCoberturaId, planId) {
+  if (!confirm('¿Quitar esta cobertura del plan?')) return;
+  try {
+    await api.delete(`/admin/plan-coberturas/${planCoberturaId}`);
+    mostrarBanner('success', 'Cobertura quitada del plan.');
+    await cargarCoberturasDelPlan(planId);
+  } catch (err) {
+    mostrarBanner('error', err.message || 'No se pudo quitar la cobertura.');
+  }
+}
+
+function abrirModalCobertura() {
+  state.modalCobertura = {
+    error: '',
+    guardando: false,
+    cobertura_id: '',
+    incluida_por_defecto: true,
+    monto: '',
+    franquicia: '',
+  };
+  renderApp();
+}
+
+function cerrarModalCobertura() {
+  state.modalCobertura = null;
+  renderApp();
+}
+
+async function guardarModalCobertura(form) {
+  const planId = state.planCoberturasSeleccionado;
+  const cobertura_id = Number(form.cobertura_id.value);
+  const incluida_por_defecto = form.incluida_por_defecto.checked;
+  const montoValor = form.monto.value;
+  const franquiciaValor = form.franquicia.value;
+
+  if (!cobertura_id) {
+    state.modalCobertura.error = 'Elegí una cobertura.';
+    renderApp();
+    return;
+  }
+
+  state.modalCobertura.error = '';
+  state.modalCobertura.guardando = true;
+  renderApp();
+
+  try {
+    await api.post(`/admin/planes/${planId}/coberturas`, {
+      cobertura_id,
+      incluida_por_defecto,
+      monto: montoValor === '' ? null : Number(montoValor),
+      franquicia: franquiciaValor === '' ? null : Number(franquiciaValor),
+    });
+    cerrarModalCobertura();
+    mostrarBanner('success', 'Cobertura agregada al plan.');
+    await cargarCoberturasDelPlan(planId);
+  } catch (err) {
+    state.modalCobertura.guardando = false;
+    state.modalCobertura.error = err.message || 'No se pudo agregar la cobertura.';
+    renderApp();
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Render
 // ---------------------------------------------------------------------------
 
@@ -486,6 +653,7 @@ function renderApp() {
     </div>
     ${state.modal ? renderModal() : ''}
     ${state.modalTasa ? renderModalTasa() : ''}
+    ${state.modalCobertura ? renderModalCobertura() : ''}
   `;
   bindEvents();
 }
@@ -554,6 +722,7 @@ function renderSeccion() {
   const seccion = SECCIONES.find((s) => s.id === state.seccion);
   if (!seccion?.disponible) return renderProximamente(seccion);
   if (state.seccion === 'usuarios') return renderUsuarios();
+  if (state.seccion === 'coberturas') return renderCoberturas();
   if (state.seccion === 'planes') return renderPlanes();
   if (state.seccion === 'tasas') return renderTasas();
   return renderProximamente(seccion);
@@ -843,6 +1012,163 @@ function renderTablaTasas() {
   `;
 }
 
+function renderCoberturas() {
+  const opcionesRamo = state.ramos.map((r) => `
+    <option value="${r.id}" ${String(state.ramoCoberturasSeleccionado) === String(r.id) ? 'selected' : ''}>${escapeHtml(r.nombre_display)}</option>
+  `).join('');
+
+  const planesEntry = state.ramoCoberturasSeleccionado ? state.planesPorRamoCob[state.ramoCoberturasSeleccionado] : null;
+  const opcionesPlan = (planesEntry?.datos ?? []).map((p) => `
+    <option value="${p.id}" ${String(state.planCoberturasSeleccionado) === String(p.id) ? 'selected' : ''}>${escapeHtml(p.nombre)}</option>
+  `).join('');
+
+  return `
+    <div class="admin-toolbar">
+      <div class="admin-toolbar__title">Coberturas por plan</div>
+      <select class="field-input" style="width: auto;" data-action="seleccionar-ramo-coberturas">
+        <option value="">Elegí un ramo…</option>
+        ${opcionesRamo}
+      </select>
+      ${state.ramoCoberturasSeleccionado ? `
+        <select class="field-input" style="width: auto;" data-action="seleccionar-plan-coberturas">
+          <option value="">Elegí un plan…</option>
+          ${opcionesPlan}
+        </select>
+      ` : ''}
+      ${state.planCoberturasSeleccionado ? '<button class="btn-primary" data-action="agregar-cobertura">+ Agregar cobertura</button>' : ''}
+    </div>
+    <div class="panel card">
+      ${renderTablaCoberturasPlan()}
+    </div>
+  `;
+}
+
+function renderTablaCoberturasPlan() {
+  if (!state.ramoCoberturasSeleccionado) {
+    return '<div class="empty-state__subtitle">Elegí un ramo para ver sus planes.</div>';
+  }
+  const planesEntry = state.planesPorRamoCob[state.ramoCoberturasSeleccionado];
+  if (!planesEntry || planesEntry.loading) {
+    return '<div class="empty-state__subtitle">Cargando planes…</div>';
+  }
+  if (planesEntry.error) {
+    return `<div class="admin-banner admin-banner--error">${escapeHtml(planesEntry.error)}</div>`;
+  }
+  if (!state.planCoberturasSeleccionado) {
+    return '<div class="empty-state__subtitle">Elegí un plan para ver sus coberturas.</div>';
+  }
+
+  const entry = state.coberturasDelPlan[state.planCoberturasSeleccionado];
+  if (!entry || entry.loading) {
+    return '<div class="empty-state__subtitle">Cargando coberturas…</div>';
+  }
+  if (entry.error) {
+    return `<div class="admin-banner admin-banner--error">${escapeHtml(entry.error)}</div>`;
+  }
+  if (!entry.datos.length) {
+    return '<div class="empty-state__subtitle">Este plan todavía no tiene coberturas cargadas.</div>';
+  }
+
+  const planId = state.planCoberturasSeleccionado;
+  const filas = entry.datos.map((c) => `
+    <tr>
+      <td>${escapeHtml(c.coberturas_catalogo?.nombre ?? '—')}</td>
+      <td>${escapeHtml(c.coberturas_catalogo?.categoria ?? '—')}</td>
+      <td>
+        <label class="admin-modal__checkbox">
+          <input type="checkbox" data-action="toggle-cobertura-defecto" data-id="${c.id}" data-plan-id="${planId}" ${c.incluida_por_defecto ? 'checked' : ''} />
+          ${c.incluida_por_defecto ? 'Por defecto' : 'Opcional'}
+        </label>
+      </td>
+      <td colspan="2">${renderCamposMontoFranquicia(c, planId)}</td>
+      <td>
+        <button class="btn-outline" data-action="eliminar-cobertura-plan" data-id="${c.id}" data-plan-id="${planId}">Quitar</button>
+      </td>
+    </tr>
+  `).join('');
+
+  return `
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>Cobertura</th>
+          <th>Categoría</th>
+          <th>Por defecto</th>
+          <th colspan="2">Monto / Franquicia</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>${filas}</tbody>
+    </table>
+  `;
+}
+
+function renderCamposMontoFranquicia(planCobertura, planId) {
+  if (!state.coberturaEnEdicion.has(planCobertura.id)) {
+    return `
+      <div class="admin-valor-fijo">
+        <span>${planCobertura.monto != null ? escapeHtml(fmtGs(planCobertura.monto)) : '—'} / ${planCobertura.franquicia != null ? escapeHtml(fmtGs(planCobertura.franquicia)) : '—'}</span>
+        <button class="btn-outline" data-action="editar-cobertura-plan" data-id="${planCobertura.id}" data-plan-id="${planId}">Editar</button>
+      </div>
+    `;
+  }
+  return `
+    <form class="admin-inline-form" data-form-action="monto-franquicia" data-id="${planCobertura.id}" data-plan-id="${planId}">
+      <input class="field-input field-input--sm" type="number" step="0.01" name="monto" placeholder="Monto" value="${planCobertura.monto ?? ''}" autofocus />
+      <input class="field-input field-input--sm" type="number" step="0.01" name="franquicia" placeholder="Franquicia" value="${planCobertura.franquicia ?? ''}" />
+      <button class="btn-outline" type="submit">Guardar</button>
+      <button class="btn-outline" type="button" data-action="cancelar-cobertura-plan" data-id="${planCobertura.id}">Cancelar</button>
+    </form>
+  `;
+}
+
+function renderModalCobertura() {
+  const m = state.modalCobertura;
+  const catalogo = state.catalogoPorRamo[state.ramoCoberturasSeleccionado] ?? [];
+  const yaAgregadas = new Set((state.coberturasDelPlan[state.planCoberturasSeleccionado]?.datos ?? []).map((c) => c.cobertura_id));
+  const opcionesCobertura = catalogo
+    .filter((c) => !yaAgregadas.has(c.id))
+    .map((c) => `
+      <option value="${c.id}" ${String(m.cobertura_id) === String(c.id) ? 'selected' : ''}>${escapeHtml(c.nombre)}</option>
+    `).join('');
+
+  return `
+    <div class="admin-modal-backdrop" data-action="cerrar-modal-cobertura-backdrop">
+      <div class="admin-modal" data-stop-propagation="true">
+        <div class="admin-modal__title">Agregar cobertura al plan</div>
+        ${m.error ? `<div class="admin-modal__error">${escapeHtml(m.error)}</div>` : ''}
+        <form id="admin-modal-cobertura-form">
+          <div class="admin-modal__field">
+            <label>Cobertura</label>
+            <select class="field-input" name="cobertura_id">
+              <option value="">Elegí una cobertura…</option>
+              ${opcionesCobertura}
+            </select>
+          </div>
+          <div class="admin-modal__field">
+            <label class="admin-modal__checkbox">
+              <input type="checkbox" name="incluida_por_defecto" ${m.incluida_por_defecto ? 'checked' : ''} />
+              Incluida por defecto
+            </label>
+          </div>
+          <div class="admin-modal__field">
+            <label>Monto (opcional)</label>
+            <input class="field-input" type="number" step="0.01" name="monto" value="${escapeHtml(m.monto)}" />
+          </div>
+          <div class="admin-modal__field">
+            <label>Franquicia (opcional)</label>
+            <input class="field-input" type="number" step="0.01" name="franquicia" value="${escapeHtml(m.franquicia)}" />
+          </div>
+          <div class="admin-modal__actions">
+            <button type="button" class="btn-outline" data-action="cerrar-modal-cobertura">Cancelar</button>
+            <button type="submit" class="btn-primary" ${m.guardando ? 'disabled' : ''}>${m.guardando ? 'Guardando…' : 'Guardar'}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
+}
+
 function renderModal() {
   const m = state.modal;
   let titulo = '';
@@ -1008,6 +1334,19 @@ function bindEvents() {
       guardarModalTasa(e.target);
     });
   }
+
+  const backdropCobertura = app.querySelector('.admin-modal-backdrop[data-action="cerrar-modal-cobertura-backdrop"]');
+  if (backdropCobertura) {
+    backdropCobertura.querySelector('.admin-modal')?.addEventListener('click', (e) => e.stopPropagation());
+  }
+
+  const formCobertura = document.getElementById('admin-modal-cobertura-form');
+  if (formCobertura) {
+    formCobertura.addEventListener('submit', (e) => {
+      e.preventDefault();
+      guardarModalCobertura(e.target);
+    });
+  }
 }
 
 function onActionClick(e) {
@@ -1021,7 +1360,7 @@ function onActionClick(e) {
     if (state.seccion === 'planes' && !state.planes.length && !state.loadingPlanes) {
       cargarPlanes();
     }
-    if (state.seccion === 'tasas' && !state.ramos.length) {
+    if ((state.seccion === 'tasas' || state.seccion === 'coberturas') && !state.ramos.length) {
       api.get('/ramos').then((ramos) => {
         state.ramos = ramos;
         renderApp();
@@ -1096,6 +1435,38 @@ function onActionClick(e) {
   }
   if (action === 'cerrar-modal-tasa' || action === 'cerrar-modal-tasa-backdrop') {
     cerrarModalTasa();
+    return;
+  }
+  if (action === 'seleccionar-ramo-coberturas') {
+    seleccionarRamoCoberturas(el.value);
+    return;
+  }
+  if (action === 'seleccionar-plan-coberturas') {
+    seleccionarPlanCoberturas(el.value);
+    return;
+  }
+  if (action === 'toggle-cobertura-defecto') {
+    toggleCoberturaDefecto(el.dataset.id, Number(el.dataset.planId), el.checked);
+    return;
+  }
+  if (action === 'editar-cobertura-plan') {
+    habilitarEdicionCobertura(Number(el.dataset.id));
+    return;
+  }
+  if (action === 'cancelar-cobertura-plan') {
+    cancelarEdicionCobertura(Number(el.dataset.id));
+    return;
+  }
+  if (action === 'eliminar-cobertura-plan') {
+    eliminarCoberturaDelPlan(el.dataset.id, Number(el.dataset.planId));
+    return;
+  }
+  if (action === 'agregar-cobertura') {
+    abrirModalCobertura();
+    return;
+  }
+  if (action === 'cerrar-modal-cobertura' || action === 'cerrar-modal-cobertura-backdrop') {
+    cerrarModalCobertura();
   }
 }
 
@@ -1107,6 +1478,8 @@ function onInlineFormSubmit(e) {
     guardarPrimaTecnicaMinima(form.dataset.id, form);
   } else if (accion === 'tasa-rpf') {
     guardarTasaRpf(form.dataset.id, Number(form.dataset.planId), form);
+  } else if (accion === 'monto-franquicia') {
+    guardarMontoFranquicia(form.dataset.id, Number(form.dataset.planId), form);
   }
 }
 

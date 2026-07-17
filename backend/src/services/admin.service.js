@@ -70,15 +70,11 @@ export async function eliminarCoberturaDePlan(id) {
 }
 
 // --- Tasas ---
-// IMPORTANTE: `coberturasRepository.findTasasCoberturaRamo` (usado por los calculadores en
-// tiempo de cotización, ver mrc.calculator.js/incendio.calculator.js) NO filtra por
-// vigente_desde — trae TODAS las versiones de todas las coberturas del ramo sin importar la
-// fecha, y el calculador arma un Map indexado por código de cobertura quedándose con lo último
-// que aparezca en el array (orden de la respuesta de Supabase, no necesariamente la versión
-// vigente por fecha). Esto es un bug preexistente: en cuanto se inserte una segunda versión de
-// una tasa (este WU3 lo habilita desde el admin), el resultado de cotización puede volverse no
-// determinístico según el orden de retorno de la query. Reportado, NO corregido acá (fuera de
-// alcance de WU3 — lógica de cálculo de cotización en producción).
+// `coberturasRepository.findTasasCoberturaRamo` (usado por los calculadores en tiempo de
+// cotización, ver mrc.calculator.js/incendio.calculator.js) SÍ filtra por vigente_desde <= hoy
+// y se queda con la versión más reciente por cobertura (dedup vía Map, ver el propio repository)
+// — verificado 2026-07-17 al confirmar que las ediciones de tasas del panel admin (WU3/WU5) se
+// reflejan en vivo en el cotizador para cualquier rol, sin caché ni reinicio de por medio.
 
 export async function listarTasasDeRamo(ramoId) {
   return coberturasRepository.findTasasCoberturaRamoConHistorial(ramoId);

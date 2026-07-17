@@ -49,8 +49,12 @@ Nuevos: `routes/admin.routes.js`, `controllers/admin.controller.js`, `services/a
   - **Tasas**: edición de `tasas_cobertura_ramo` con historial de versiones (oculta sin `puede_editar_tasas`).
   - **Planes**: activo, prima técnica mínima, RPF por forma de pago.
 
-### WU6 — Refactor `mrc.calculator.js`
-- Coberturas fijas leídas de `plan_coberturas` en vez de constantes. Actualizar checklist de `CLAUDE.md` y `docs/ESTADO_PROYECTO.md`.
+### WU6 — Refactor `mrc.calculator.js` (alcance confirmado 2026-07-17, ver `docs/ESTADO_PROYECTO.md` sección 8)
+- Reemplazar `CODIGO_INCENDIO_EDIFICIO`/`CODIGO_INCENDIO_CONTENIDO` (hardcodeados) por lectura real de `plan_coberturas.incluida_por_defecto`.
+- Reemplazar `SUBLIMITES_FIJOS_MRC` (hardcodeado en `frontend/cotizar/cotizar.js`) por lectura de `plan_coberturas.monto`.
+- `franquicia_default` YA se lee en vivo (de `coberturas_catalogo`, no hace falta tocarla).
+- No toca `backend/src/templates/oferta/mrc.js` — el PDF solo renderiza `cotizacion_coberturas` ya guardada, se corrige solo una vez que el calculador use los valores correctos.
+- Verificación: prima idéntica de MRC Normal antes y después del refactor (mismo criterio que ya estaba anotado).
 
 **MVP** = WU1–WU5. **Después**: editor de `rubros_actividad`, editor JSONB de `tarifas_generico` (Vida/AP), `tasas_capital` (Auto), UI de importación Excel dentro del shell admin, cambio de password propio, RLS en Supabase.
 

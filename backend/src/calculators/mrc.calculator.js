@@ -1,4 +1,4 @@
-import { redondearSup, redondearInf } from './utils/round.js';
+import { redondearSup, redondearInf, calcularCuotaInicial } from './utils/round.js';
 import * as ramosRepository from '../repositories/ramos.repository.js';
 import * as coberturasRepository from '../repositories/coberturas.repository.js';
 
@@ -244,7 +244,10 @@ export function calcularPlanPago(prima, formaPago, cuotas) {
   const rpf = rpfPorcentaje > 0 ? redondearSup(prima * (rpfPorcentaje / 100)) : 0;
 
   const iva = prima * (IVA_PORCENTAJE / 100) + rpf * (IVA_PORCENTAJE / 100);
-  const premio = prima + rpf + iva;
+  // El Premio se redondea al millar hacia abajo — a pedido de Kevin (2026-07-17), el asegurado
+  // ve siempre un monto redondo (Contado y Financiado), no solo la Cuota/Inicial. La diferencia
+  // con el Premio teórico (Prima+RPF+IVA sin redondear) la absorbe la aseguradora.
+  const premio = redondearInf(prima + rpf + iva);
 
   // Contado se paga de una sola vez — Inicial = Premio completo, sin Cuotas, sin importar
   // la cantidad de cuotas elegida para las formas de pago financiadas (confirmado contra
@@ -253,12 +256,9 @@ export function calcularPlanPago(prima, formaPago, cuotas) {
     return { rpf_porcentaje: rpfPorcentaje, rpf, iva, premio, inicial: premio, cuota: 0 };
   }
 
-  // La Cuota redondea hacia ABAJO (no hacia arriba) y el Inicial absorbe el resto, para que
-  // Inicial + N×Cuota dé EXACTO el Premio — confirmado número por número contra la misma
-  // captura real (antes acá se usaba redondearSup con divisor fijo /12, lo que además
-  // ignoraba la cantidad de cuotas elegida por el agente).
-  const cuota = redondearInf(premio / (cuotas + 1));
-  const inicial = premio - cuotas * cuota;
+  // Cuota e Inicial redondeados al millar hacia abajo (ver calcularCuotaInicial) — el asegurado
+  // paga siempre montos redondos; la diferencia con el Premio teórico la absorbe la aseguradora.
+  const { cuota, inicial } = calcularCuotaInicial(premio, cuotas);
 
   return { rpf_porcentaje: rpfPorcentaje, rpf, iva, premio, inicial, cuota };
 }

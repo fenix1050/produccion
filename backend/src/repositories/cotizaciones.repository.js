@@ -38,11 +38,22 @@ export async function insertCoberturas(coberturas) {
   return data;
 }
 
+// Descuento/recargo manual del agente (state.data.descuentoValor/recargoValor en cotizar.js) —
+// tabla `cotizacion_ajustes` ya existía en el schema (migración 003) sin uso hasta ahora. Se
+// persiste el total YA topado por el calculador (sumarAjustes), no el ajuste crudo que mandó el
+// frontend, para que la Carta Oferta muestre exactamente lo que se cobró.
+export async function insertAjustes(ajustes) {
+  if (!ajustes.length) return [];
+  const { data, error } = await supabase.from('cotizacion_ajustes').insert(ajustes).select();
+  if (error) throw error;
+  return data;
+}
+
 export async function findCotizacionById(id) {
   const { data, error } = await supabase
     .from('cotizaciones')
     .select(
-      '*, cotizacion_variantes(*, cotizacion_plan_pago(*, formas_pago(*))), cotizacion_coberturas(*, coberturas_catalogo(codigo, incluye_en_suma_asegurada_total))'
+      '*, cotizacion_variantes(*, cotizacion_plan_pago(*, formas_pago(*)), cotizacion_ajustes(*)), cotizacion_coberturas(*, coberturas_catalogo(codigo, incluye_en_suma_asegurada_total))'
     )
     .eq('id', id)
     .single();

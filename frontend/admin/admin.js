@@ -9,7 +9,7 @@ const SECCIONES = [
   { id: 'usuarios', label: 'Usuarios', icon: '👤', disponible: true },
   { id: 'coberturas', label: 'Coberturas por plan', icon: '🛡️', disponible: false },
   { id: 'tasas', label: 'Tasas', icon: '📈', disponible: false },
-  { id: 'planes', label: 'Planes', icon: '📋', disponible: false },
+  { id: 'planes', label: 'Planes', icon: '📋', disponible: true },
 ];
 
 const state = {
@@ -19,6 +19,16 @@ const state = {
   usuariosError: '',
   banner: null, // { tipo: 'error'|'success', texto }
   modal: null, // { tipo: 'crear'|'editar'|'password', usuario?, error, guardando }
+
+  ramos: [],
+  planes: [],
+  loadingPlanes: false,
+  planesError: '',
+  ramoFiltro: 'todos',
+  planExpandido: null, // id del plan con la fila de formas de pago abierta
+  formasPagoPorPlan: {}, // planId -> { loading, error, datos: [] }
+  primaEnEdicion: new Set(), // ids de plan con el campo prima_tecnica_minima habilitado para editar
+  tasaRpfEnEdicion: new Set(), // ids de plan_formas_pago con la tasa habilitada para editar
 };
 
 const app = document.getElementById('app');
@@ -43,6 +53,11 @@ async function init() {
 function cerrarSesion() {
   auth.clearSession();
   window.location.href = '../login/';
+}
+
+function fmtGs(n) {
+  const num = Math.round(Number(n) || 0);
+  return `Gs. ${num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')}`;
 }
 
 function escapeHtml(value) {
@@ -226,6 +241,133 @@ async function guardarModalPassword(form) {
 }
 
 // ---------------------------------------------------------------------------
+// Planes: carga y acciones
+// ---------------------------------------------------------------------------
+
+async function cargarPlanes() {
+  state.loadingPlanes = true;
+  state.planesError = '';
+  renderApp();
+  try {
+    const [ramos, planes] = await Promise.all([
+      state.ramos.length ? Promise.resolve(state.ramos) : api.get('/ramos'),
+      api.get('/admin/planes'),
+    ]);
+    state.ramos = ramos;
+    state.planes = planes;
+  } catch (err) {
+    state.planes = [];
+    state.planesError = err.message || 'No se pudo cargar la lista de planes.';
+  } finally {
+    state.loadingPlanes = false;
+    renderApp();
+  }
+}
+
+async function togglePlanActivo(planId, activo) {
+  try {
+    await api.put(`/admin/planes/${planId}`, { activo });
+    const plan = state.planes.find((p) => p.id === Number(planId));
+    if (plan) plan.activo = activo;
+    mostrarBanner('success', `Plan ${activo ? 'activado' : 'desactivado'}.`);
+    renderApp();
+  } catch (err) {
+    mostrarBanner('error', err.message || 'No se pudo actualizar el plan.');
+  }
+}
+
+function habilitarEdicionPrima(planId) {
+  state.primaEnEdicion.add(planId);
+  renderApp();
+}
+
+function cancelarEdicionPrima(planId) {
+  state.primaEnEdicion.delete(planId);
+  renderApp();
+}
+
+async function guardarPrimaTecnicaMinima(planId, form) {
+  const valor = form.prima_tecnica_minima.value;
+  const prima_tecnica_minima = valor === '' ? null : Number(valor);
+
+  try {
+    const plan = await api.put(`/admin/planes/${planId}`, { prima_tecnica_minima });
+    const idx = state.planes.findIndex((p) => p.id === Number(planId));
+    if (idx !== -1) state.planes[idx] = { ...state.planes[idx], ...plan };
+    state.primaEnEdicion.delete(Number(planId));
+    mostrarBanner('success', 'Prima técnica mínima actualizada.');
+    renderApp();
+  } catch (err) {
+    mostrarBanner('error', err.message || 'No se pudo actualizar la prima técnica mínima.');
+  }
+}
+
+async function toggleFormasPago(planId) {
+  if (state.planExpandido === planId) {
+    state.planExpandido = null;
+    renderApp();
+    return;
+  }
+  state.planExpandido = planId;
+  renderApp();
+
+  if (state.formasPagoPorPlan[planId]?.datos) return; // ya cargadas
+
+  state.formasPagoPorPlan[planId] = { loading: true, error: '', datos: [] };
+  renderApp();
+  try {
+    const datos = await api.get(`/admin/planes/${planId}/formas-pago`);
+    state.formasPagoPorPlan[planId] = { loading: false, error: '', datos };
+  } catch (err) {
+    state.formasPagoPorPlan[planId] = {
+      loading: false,
+      error: err.message || 'No se pudieron cargar las formas de pago.',
+      datos: [],
+    };
+  }
+  renderApp();
+}
+
+async function toggleFormaPagoHabilitada(planFormaPagoId, planId, habilitada) {
+  try {
+    await api.put(`/admin/plan-formas-pago/${planFormaPagoId}`, { habilitada });
+    const entry = state.formasPagoPorPlan[planId];
+    const fila = entry?.datos.find((f) => f.id === Number(planFormaPagoId));
+    if (fila) fila.habilitada = habilitada;
+    mostrarBanner('success', `Forma de pago ${habilitada ? 'habilitada' : 'deshabilitada'}.`);
+    renderApp();
+  } catch (err) {
+    mostrarBanner('error', err.message || 'No se pudo actualizar la forma de pago.');
+  }
+}
+
+function habilitarEdicionTasaRpf(planFormaPagoId) {
+  state.tasaRpfEnEdicion.add(planFormaPagoId);
+  renderApp();
+}
+
+function cancelarEdicionTasaRpf(planFormaPagoId) {
+  state.tasaRpfEnEdicion.delete(planFormaPagoId);
+  renderApp();
+}
+
+async function guardarTasaRpf(planFormaPagoId, planId, form) {
+  const tasa_rpf = Number(form.tasa_rpf.value);
+
+  try {
+    const fila = await api.put(`/admin/plan-formas-pago/${planFormaPagoId}`, { tasa_rpf });
+    const entry = state.formasPagoPorPlan[planId];
+    const idx = entry?.datos.findIndex((f) => f.id === Number(planFormaPagoId));
+    if (entry && idx !== -1) entry.datos[idx] = { ...entry.datos[idx], ...fila };
+    state.tasaRpfEnEdicion.delete(Number(planFormaPagoId));
+    mostrarBanner('success', 'Tasa RPF actualizada.');
+    renderApp();
+  } catch (err) {
+    mostrarBanner('error', err.message || 'No se pudo actualizar la tasa RPF.');
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Render
 // ---------------------------------------------------------------------------
 
@@ -316,6 +458,7 @@ function renderSeccion() {
   const seccion = SECCIONES.find((s) => s.id === state.seccion);
   if (!seccion?.disponible) return renderProximamente(seccion);
   if (state.seccion === 'usuarios') return renderUsuarios();
+  if (state.seccion === 'planes') return renderPlanes();
   return renderProximamente(seccion);
 }
 
@@ -382,6 +525,152 @@ function renderTablaUsuarios() {
       </thead>
       <tbody>${filas}</tbody>
     </table>
+  `;
+}
+
+function renderPlanes() {
+  const opcionesRamo = state.ramos.map((r) => `
+    <option value="${r.id}" ${state.ramoFiltro === String(r.id) ? 'selected' : ''}>${escapeHtml(r.nombre_display)}</option>
+  `).join('');
+
+  return `
+    <div class="admin-toolbar">
+      <div class="admin-toolbar__title">Planes</div>
+      <select class="field-input" style="width: auto;" data-action="filtrar-ramo">
+        <option value="todos" ${state.ramoFiltro === 'todos' ? 'selected' : ''}>Todos los ramos</option>
+        ${opcionesRamo}
+      </select>
+    </div>
+    <div class="panel card">
+      ${renderTablaPlanes()}
+    </div>
+  `;
+}
+
+function renderTablaPlanes() {
+  if (state.loadingPlanes) {
+    return '<div class="empty-state__subtitle">Cargando planes…</div>';
+  }
+  if (state.planesError) {
+    return `<div class="admin-banner admin-banner--error">${escapeHtml(state.planesError)}</div>`;
+  }
+
+  const planesFiltrados = state.ramoFiltro === 'todos'
+    ? state.planes
+    : state.planes.filter((p) => String(p.ramo_id) === state.ramoFiltro);
+
+  if (!planesFiltrados.length) {
+    return '<div class="empty-state__subtitle">No hay planes para mostrar.</div>';
+  }
+
+  const filas = planesFiltrados.map((p) => `
+    <tr>
+      <td>${escapeHtml(p.nombre)}</td>
+      <td>${escapeHtml(p.ramos?.nombre_display ?? '')}</td>
+      <td>
+        <label class="admin-modal__checkbox">
+          <input type="checkbox" data-action="toggle-plan-activo" data-id="${p.id}" ${p.activo ? 'checked' : ''} />
+          ${p.activo ? 'Activo' : 'Inactivo'}
+        </label>
+      </td>
+      <td>${renderCampoPrimaTecnicaMinima(p)}</td>
+      <td>
+        <button class="btn-outline" data-action="toggle-formas-pago" data-id="${p.id}">
+          ${state.planExpandido === p.id ? 'Ocultar' : 'Formas de pago'}
+        </button>
+      </td>
+    </tr>
+    ${state.planExpandido === p.id ? `<tr class="admin-subrow"><td colspan="5">${renderFormasPagoDelPlan(p.id)}</td></tr>` : ''}
+  `).join('');
+
+  return `
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>Plan</th>
+          <th>Ramo</th>
+          <th>Estado</th>
+          <th>Prima técnica mínima</th>
+          <th>Formas de pago</th>
+        </tr>
+      </thead>
+      <tbody>${filas}</tbody>
+    </table>
+  `;
+}
+
+function renderFormasPagoDelPlan(planId) {
+  const entry = state.formasPagoPorPlan[planId];
+  if (!entry || entry.loading) {
+    return '<div class="empty-state__subtitle">Cargando formas de pago…</div>';
+  }
+  if (entry.error) {
+    return `<div class="admin-banner admin-banner--error">${escapeHtml(entry.error)}</div>`;
+  }
+  if (!entry.datos.length) {
+    return '<div class="empty-state__subtitle">Este plan no tiene formas de pago configuradas.</div>';
+  }
+
+  const filas = entry.datos.map((f) => `
+    <tr>
+      <td>${escapeHtml(f.formas_pago?.nombre_display ?? '')}</td>
+      <td>${renderCampoTasaRpf(f, planId)}</td>
+      <td>
+        <label class="admin-modal__checkbox">
+          <input type="checkbox" data-action="toggle-forma-pago-habilitada" data-id="${f.id}" data-plan-id="${planId}" ${f.habilitada ? 'checked' : ''} />
+          ${f.habilitada ? 'Habilitada' : 'Deshabilitada'}
+        </label>
+      </td>
+    </tr>
+  `).join('');
+
+  return `
+    <table class="admin-table admin-table--nested">
+      <thead>
+        <tr>
+          <th>Forma de pago</th>
+          <th>Tasa RPF (%)</th>
+          <th>Estado</th>
+        </tr>
+      </thead>
+      <tbody>${filas}</tbody>
+    </table>
+  `;
+}
+
+function renderCampoPrimaTecnicaMinima(plan) {
+  if (!state.primaEnEdicion.has(plan.id)) {
+    return `
+      <div class="admin-valor-fijo">
+        <span>${plan.prima_tecnica_minima != null ? escapeHtml(fmtGs(plan.prima_tecnica_minima)) : '—'}</span>
+        <button class="btn-outline" data-action="editar-prima-tecnica-minima" data-id="${plan.id}">Editar</button>
+      </div>
+    `;
+  }
+  return `
+    <form class="admin-inline-form" data-form-action="prima-tecnica-minima" data-id="${plan.id}">
+      <input class="field-input field-input--sm" type="number" step="0.01" name="prima_tecnica_minima" value="${plan.prima_tecnica_minima ?? ''}" autofocus />
+      <button class="btn-outline" type="submit">Guardar</button>
+      <button class="btn-outline" type="button" data-action="cancelar-prima-tecnica-minima" data-id="${plan.id}">Cancelar</button>
+    </form>
+  `;
+}
+
+function renderCampoTasaRpf(formaPagoPlan, planId) {
+  if (!state.tasaRpfEnEdicion.has(formaPagoPlan.id)) {
+    return `
+      <div class="admin-valor-fijo">
+        <span>${escapeHtml(String(formaPagoPlan.tasa_rpf))}</span>
+        <button class="btn-outline" data-action="editar-tasa-rpf" data-id="${formaPagoPlan.id}" data-plan-id="${planId}">Editar</button>
+      </div>
+    `;
+  }
+  return `
+    <form class="admin-inline-form" data-form-action="tasa-rpf" data-id="${formaPagoPlan.id}" data-plan-id="${planId}">
+      <input class="field-input field-input--sm" type="number" step="0.001" name="tasa_rpf" value="${formaPagoPlan.tasa_rpf}" autofocus />
+      <button class="btn-outline" type="submit">Guardar</button>
+      <button class="btn-outline" type="button" data-action="cancelar-tasa-rpf" data-id="${formaPagoPlan.id}">Cancelar</button>
+    </form>
   `;
 }
 
@@ -475,7 +764,12 @@ function renderModal() {
 
 function bindEvents() {
   app.querySelectorAll('[data-action]').forEach((el) => {
-    el.addEventListener('click', onActionClick);
+    const evento = el.tagName === 'SELECT' || el.tagName === 'INPUT' ? 'change' : 'click';
+    el.addEventListener(evento, onActionClick);
+  });
+
+  app.querySelectorAll('[data-form-action]').forEach((form) => {
+    form.addEventListener('submit', onInlineFormSubmit);
   });
 
   const backdrop = app.querySelector('.admin-modal-backdrop');
@@ -497,6 +791,9 @@ function onActionClick(e) {
     state.seccion = el.dataset.seccion;
     state.banner = null;
     renderApp();
+    if (state.seccion === 'planes' && !state.planes.length && !state.loadingPlanes) {
+      cargarPlanes();
+    }
     return;
   }
   if (action === 'logout') {
@@ -521,6 +818,50 @@ function onActionClick(e) {
   }
   if (action === 'cerrar-modal' || action === 'cerrar-modal-backdrop') {
     cerrarModal();
+    return;
+  }
+  if (action === 'filtrar-ramo') {
+    state.ramoFiltro = el.value;
+    renderApp();
+    return;
+  }
+  if (action === 'toggle-plan-activo') {
+    togglePlanActivo(el.dataset.id, el.checked);
+    return;
+  }
+  if (action === 'toggle-formas-pago') {
+    toggleFormasPago(Number(el.dataset.id));
+    return;
+  }
+  if (action === 'toggle-forma-pago-habilitada') {
+    toggleFormaPagoHabilitada(el.dataset.id, Number(el.dataset.planId), el.checked);
+    return;
+  }
+  if (action === 'editar-prima-tecnica-minima') {
+    habilitarEdicionPrima(Number(el.dataset.id));
+    return;
+  }
+  if (action === 'cancelar-prima-tecnica-minima') {
+    cancelarEdicionPrima(Number(el.dataset.id));
+    return;
+  }
+  if (action === 'editar-tasa-rpf') {
+    habilitarEdicionTasaRpf(Number(el.dataset.id));
+    return;
+  }
+  if (action === 'cancelar-tasa-rpf') {
+    cancelarEdicionTasaRpf(Number(el.dataset.id));
+  }
+}
+
+function onInlineFormSubmit(e) {
+  e.preventDefault();
+  const form = e.target;
+  const accion = form.dataset.formAction;
+  if (accion === 'prima-tecnica-minima') {
+    guardarPrimaTecnicaMinima(form.dataset.id, form);
+  } else if (accion === 'tasa-rpf') {
+    guardarTasaRpf(form.dataset.id, Number(form.dataset.planId), form);
   }
 }
 

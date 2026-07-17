@@ -32,4 +32,5 @@ router.post('/tasas', requireTasasEdit, adminController.crearTasa);
 // Planes
 router.get('/planes', adminController.listarPlanes);
 router.put('/planes/:id', adminController.editarPlan);
+router.get('/planes/:id/formas-pago', adminController.listarFormasPagoDePlan);
 router.put('/plan-formas-pago/:id', adminController.editarPlanFormaPago);

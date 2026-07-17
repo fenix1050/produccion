@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import * as usuariosRepository from '../repositories/usuarios.repository.js';
 import * as coberturasRepository from '../repositories/coberturas.repository.js';
 import * as tasasRepository from '../repositories/tasas.repository.js';
+import * as ramosRepository from '../repositories/ramos.repository.js';
 
 const BCRYPT_ROUNDS = 12;
 
@@ -101,6 +102,10 @@ export async function editarPlan(id, cambios) {
     throw err;
   }
   return plan;
+}
+
+export async function listarFormasPagoDePlan(planId) {
+  return ramosRepository.findFormasPagoDelPlanTodas(planId);
 }
 
 export async function editarPlanFormaPago(id, cambios) {

@@ -28,7 +28,7 @@ function render() {
       <form class="login-form" id="login-form" novalidate>
         <div class="login-field">
           <label for="email">Email</label>
-          <input type="email" id="email" name="email" placeholder="tu@tajy.com.py" autocomplete="username" required value="${escapeHtml(state.email)}" />
+          <input type="email" id="email" name="email" placeholder="correo@ejemplo.com" autocomplete="username" required value="${escapeHtml(state.email)}" />
         </div>
         <div class="login-field login-field--password">
           <label for="password">Contraseña</label>

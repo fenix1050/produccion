@@ -1,10 +1,21 @@
 <!DOCTYPE html>
 <html lang="es">
-<head><meta charset="UTF-8" /><title>Cotizador Tajy — Admin</title><link rel="icon" href="../../logo/favicon.ico" /></head>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cotizador Tajy — Administración</title>
+  <link rel="icon" href="../../logo/favicon.ico" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Public+Sans:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="../shared/cotizador.css" />
+  <link rel="stylesheet" href="./admin.css" />
+</head>
 <body>
-  <h1>Administración</h1>
-  <p><a href="../cotizar/">Volver a Cotizar</a> · <a href="#" id="logout-link">Cerrar sesión</a></p>
-  <p>TODO Fase 5: gestión de planes/coberturas, importación de tasas.</p>
-  <script type="module" src="./admin-guard.js"></script>
+  <div id="app" class="app-shell"></div>
+  <script type="module" src="./admin.js"></script>
+  <!-- admin-guard.js queda deprecado por la guarda embebida en admin.js (WU5) -->
 </body>
 </html>

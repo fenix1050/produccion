@@ -1,0 +1,209 @@
+/* Cotizador Tajy — Admin SPA (WU5). Reutiliza tokens/clases de shared/cotizador.css
+   (app-shell, sidebar, panel, field-input, btn-primary/outline) — acá solo lo específico
+   de este módulo: navegación de secciones admin, tabla de usuarios y modal. */
+
+.admin-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.admin-nav__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--tajy-text-body);
+  cursor: pointer;
+}
+
+.admin-nav__item:hover {
+  background: var(--tajy-pink);
+}
+
+.admin-nav__item--active {
+  background: var(--tajy-red);
+  color: #fff;
+}
+
+.admin-nav__badge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--tajy-text-muted);
+  background: var(--tajy-border-light);
+  padding: 2px 7px;
+  border-radius: 999px;
+  margin-left: auto;
+}
+
+.admin-nav__item--active .admin-nav__badge {
+  background: rgba(255, 255, 255, 0.25);
+  color: #fff;
+}
+
+.admin-content {
+  padding: 24px 32px;
+}
+
+.admin-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.admin-toolbar__title {
+  font-family: 'Sora', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.admin-banner {
+  padding: 12px 14px;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.admin-banner--error {
+  background: rgba(216, 19, 46, 0.08);
+  color: var(--tajy-red);
+  border: 1px solid var(--tajy-red-soft);
+}
+
+.admin-banner--success {
+  background: var(--tajy-green-bg);
+  color: var(--tajy-green-fg);
+  border: 1px solid rgba(30, 138, 76, 0.25);
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.admin-table th {
+  text-align: left;
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--tajy-text-muted);
+  padding: 10px 12px;
+  border-bottom: 1.5px solid var(--tajy-border-light);
+}
+
+.admin-table td {
+  padding: 12px;
+  border-bottom: 1px solid var(--tajy-border-light);
+  vertical-align: middle;
+}
+
+.admin-table tr:last-child td {
+  border-bottom: none;
+}
+
+.admin-pill {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.admin-pill--yes {
+  background: var(--tajy-green-bg);
+  color: var(--tajy-green-fg);
+}
+
+.admin-pill--no {
+  background: var(--tajy-border-light);
+  color: var(--tajy-text-muted);
+}
+
+.admin-pill--admin {
+  background: var(--tajy-pink);
+  color: var(--tajy-red);
+}
+
+.admin-pill--agente {
+  background: var(--tajy-border-light);
+  color: var(--tajy-text-body);
+}
+
+.admin-table__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.admin-table__actions button {
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.admin-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(26, 26, 26, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+.admin-modal {
+  background: #fff;
+  border-radius: 14px;
+  padding: 24px;
+  width: 380px;
+  max-width: calc(100vw - 32px);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.25);
+}
+
+.admin-modal__title {
+  font-family: 'Sora', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+.admin-modal__field {
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.admin-modal__field label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--tajy-text-body);
+}
+
+.admin-modal__checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.admin-modal__error {
+  color: var(--tajy-red);
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.admin-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}

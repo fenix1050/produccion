@@ -10,11 +10,11 @@ import { buildOfertaHtml } from '../templates/oferta/index.js';
  * Calcula una cotización SIN guardarla — usado para el preview en vivo del frontend.
  * Devuelve todas las variantes (sin/con franquicia si corresponde) con sus 4 formas de pago.
  */
-export async function calcularPreview(body) {
+export async function calcularPreview(body, usuario) {
   const { plan, ramo, datosValidados } = await validarYResolverContexto(body);
   const calculador = getCalculador(ramo.calculador);
 
-  return construirVariantes({ calculador, plan, datosValidados });
+  return construirVariantes({ calculador, plan, datosValidados, usuario });
 }
 
 /**
@@ -25,7 +25,7 @@ export async function crearCotizacion(body, usuario) {
   const { plan, ramo, datosValidados } = await validarYResolverContexto(body);
   const calculador = getCalculador(ramo.calculador);
 
-  const variantesCalculadas = await construirVariantes({ calculador, plan, datosValidados });
+  const variantesCalculadas = await construirVariantes({ calculador, plan, datosValidados, usuario });
 
   const cotizacion = await cotizacionesRepository.insertCotizacion({
     numero_cotizacion: `${ramo.nombre.toUpperCase()}-${await cotizacionesRepository.nextNumeroCorrelativo(ramo.id)}`,
@@ -172,13 +172,14 @@ async function validarYResolverContexto(body) {
  * (ver sección 5 de PLAN_DESARROLLO.md). Otros ramos no tienen franquicia dual
  * todavía — devuelven siempre 1 variante sin franquicia hasta que se implementen.
  */
-async function construirVariantes({ calculador, plan, datosValidados }) {
+async function construirVariantes({ calculador, plan, datosValidados, usuario }) {
   const { prima, detalle, coberturas } = await calculador.calcularPrima({
     planId: plan.id,
     capital: datosValidados.capital_asegurado,
     riesgoDatos: datosValidados.riesgo_datos,
     descuentos: datosValidados.descuentos,
     recargos: datosValidados.recargos,
+    usuario,
   });
 
   const formasPagoPlan = await ramosRepository.findFormasPagoDelPlan(plan.id);

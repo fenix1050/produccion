@@ -16,6 +16,22 @@ export async function findRubrosActividad(grupo) {
   return data;
 }
 
+/**
+ * UPDATE directo de rubros_actividad — a diferencia de tasas_cobertura_ramo,
+ * esta tabla no tiene vigente_desde ni versionado por INSERT (no hay historial
+ * que preservar), así que se edita en el lugar.
+ */
+export async function actualizarRubroActividad(id, cambios) {
+  const { data, error } = await supabase
+    .from('rubros_actividad')
+    .update(cambios)
+    .eq('id', id)
+    .select('*')
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
 export async function findRubroPorNombre(nombre) {
   const { data, error } = await supabase
     .from('rubros_actividad')

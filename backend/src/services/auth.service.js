@@ -43,6 +43,8 @@ export async function login(email, password) {
       email: usuario.email,
       rol: usuario.rol,
       puede_editar_tasas: usuario.puede_editar_tasas,
+      descuento_maximo_pct: usuario.descuento_maximo_pct,
+      recargo_maximo_pct: usuario.recargo_maximo_pct,
     },
   };
 }

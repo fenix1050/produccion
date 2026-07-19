@@ -14,6 +14,9 @@ export const editarUsuarioSchema = z.object({
   rol: z.enum(['agente', 'admin']).optional(),
   puede_editar_tasas: z.boolean().optional(),
   activo: z.boolean().optional(),
+  // NULL = el usuario no tiene tope propio, se respeta el tope del plan tal cual.
+  descuento_maximo_pct: z.number().min(0).max(100).nullable().optional(),
+  recargo_maximo_pct: z.number().min(0).max(100).nullable().optional(),
 });
 
 export const resetPasswordSchema = z.object({
@@ -43,6 +46,11 @@ export const crearTasaSchema = z.object({
   tasa_valor: z.number(),
   unidad: z.enum(['permil', 'porcentaje']).default('permil'),
   vigente_desde: z.string().optional(), // fecha ISO; default = hoy si no se envía
+});
+
+export const editarRubroActividadSchema = z.object({
+  tasa_edificio: z.number().nonnegative().optional(),
+  tasa_contenido: z.number().nonnegative().optional(),
 });
 
 // ---- Planes ----

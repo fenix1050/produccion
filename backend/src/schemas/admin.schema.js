@@ -7,12 +7,18 @@ export const crearUsuarioSchema = z.object({
   email: z.string().email('email inválido'),
   rol: z.enum(['agente', 'admin']),
   puede_editar_tasas: z.boolean().default(false),
+  puede_gestionar_usuarios: z.boolean().default(false),
+  puede_editar_coberturas: z.boolean().default(false),
+  puede_editar_planes: z.boolean().default(false),
   password: z.string().min(8, 'password debe tener al menos 8 caracteres'),
 });
 
 export const editarUsuarioSchema = z.object({
   rol: z.enum(['agente', 'admin']).optional(),
   puede_editar_tasas: z.boolean().optional(),
+  puede_gestionar_usuarios: z.boolean().optional(),
+  puede_editar_coberturas: z.boolean().optional(),
+  puede_editar_planes: z.boolean().optional(),
   activo: z.boolean().optional(),
   // NULL = el usuario no tiene tope propio, se respeta el tope del plan tal cual.
   descuento_maximo_pct: z.number().min(0).max(100).nullable().optional(),

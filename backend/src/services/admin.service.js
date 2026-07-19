@@ -12,7 +12,16 @@ export async function listarUsuarios() {
   return usuariosRepository.findAll();
 }
 
-export async function crearUsuario({ nombre, email, rol, puede_editar_tasas, password }) {
+export async function crearUsuario({
+  nombre,
+  email,
+  rol,
+  puede_editar_tasas,
+  puede_gestionar_usuarios,
+  puede_editar_coberturas,
+  puede_editar_planes,
+  password,
+}) {
   const existente = await usuariosRepository.findByEmail(email);
   if (existente) {
     const err = new Error('Ya existe un usuario con ese email');
@@ -21,7 +30,16 @@ export async function crearUsuario({ nombre, email, rol, puede_editar_tasas, pas
   }
 
   const password_hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
-  return usuariosRepository.crear({ nombre, email, rol, puede_editar_tasas, password_hash });
+  return usuariosRepository.crear({
+    nombre,
+    email,
+    rol,
+    puede_editar_tasas,
+    puede_gestionar_usuarios,
+    puede_editar_coberturas,
+    puede_editar_planes,
+    password_hash,
+  });
 }
 
 export async function editarUsuario(id, cambios) {

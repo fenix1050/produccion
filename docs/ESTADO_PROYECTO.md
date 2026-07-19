@@ -717,6 +717,76 @@ revisan después):**
   admin cambia el tope de un agente con sesión activa, el hint queda desactualizado hasta el
   próximo login (el backend sí aplica siempre el valor real y fresco, es solo el texto de ayuda).
 
+## 20a2. Plan aprobado — permisos parciales de admin por sección (implementado, ver 20a3) — 2026-07-19
+
+Kevin quiere poder darle a un usuario acceso a SOLO una parte del panel admin (ej. Coberturas
+por plan, sin darle Usuarios ni Tasas) sin hacerlo admin completo. Hoy `admin.routes.js` tiene
+un gate todo-o-nada (`router.use(requireRole('admin'))`, línea 14) — el único precedente de
+permiso parcial es `usuarios.puede_editar_tasas` (ya usado por `requireTasasEdit`).
+
+**Decisión de alcance (confirmada con Kevin, 2026-07-19):** por ahora, extender el mismo patrón
+de `puede_editar_tasas` con 2-3 columnas booleanas más — NO construir todavía una tabla `roles`
+configurable. Un sistema de roles completo (Kevin define el rol y sus permisos desde el panel,
+sin tocar código) queda anotado como evolución futura de este mismo diseño — las columnas
+booleanas de hoy pasarían a ser filas de una tabla de permisos por rol el día que se aborde.
+
+**Plan concreto para la próxima sesión** (ver prompt guardado — pedirle a Kevin o buscar en
+Engram bajo `cotizador-tajy/plan-permisos-admin-por-seccion` si hace falta el texto exacto):
+- Migración nueva: `usuarios.puede_gestionar_usuarios`, `puede_editar_coberturas`,
+  `puede_editar_planes` (BOOLEAN DEFAULT FALSE) — `puede_editar_tasas` ya existe, no se toca.
+- `middleware/auth.js`: sumar los 3 campos nuevos a `req.usuario` (mismo patrón que
+  `puede_editar_tasas`), y agregar `requireUsuariosEdit`/`requireCoberturasEdit`/
+  `requirePlanesEdit` en `middleware/auth.js` (mismo molde que `requireTasasEdit`).
+- `admin.routes.js`: sacar el `router.use(requireRole('admin'))` global y mover el gate a
+  nivel de cada grupo de rutas (Usuarios con `requireUsuariosEdit`, Coberturas por plan con
+  `requireCoberturasEdit`, Planes con `requirePlanesEdit`, Tasas ya tiene el suyo) — cuidado:
+  hoy varias rutas comparten prefijo `/planes/:id/coberturas` con la sección "Coberturas por
+  plan" del admin, no confundir con las rutas públicas de `/planes` en `routes/index.js`.
+- `admin.schema.js`: sumar los 3 campos a `crearUsuarioSchema`/`editarUsuarioSchema`.
+- `frontend/admin/admin.js`: 3 checkboxes nuevos en los modales "Nuevo usuario"/"Editar
+  usuario" (mismo patrón que el checkbox "Puede editar tasas" ya existente), y ocultar en el
+  sidebar/navegación las secciones para las que el usuario logueado no tenga permiso (hoy
+  todas las secciones se muestran siempre a cualquier admin).
+- Verificar en vivo con Playwright (mismo enfoque que las pruebas de esta sesión): crear/editar
+  un usuario con solo `puede_editar_coberturas=true`, confirmar que entra a esa sección y que
+  las demás rutas de `/admin` le devuelven 403.
+
+## 20a3. Implementado — permisos parciales de admin por sección — 2026-07-19
+
+Implementado el plan de la sección 20a2. Migración `030_permisos_admin_por_seccion.sql` (aplicada
+contra Supabase real) agrega `usuarios.puede_gestionar_usuarios`, `puede_editar_coberturas`,
+`puede_editar_planes` (BOOLEAN NOT NULL DEFAULT FALSE). `admin.routes.js` ya NO tiene el gate
+global `requireRole('admin')` — cada grupo de rutas exige su propio permiso booleano
+(`requireUsuariosEdit`/`requireCoberturasEdit`/`requirePlanesEdit`/`requireTasasEdit`), mismo molde
+para los 4. Se confirmó que el prefijo `/planes/:id/coberturas` del router admin no colisiona con
+las rutas públicas de `/planes` (montajes distintos, `/admin` vs `/planes`).
+
+**Decisión de diseño heredada del patrón existente**: igual que `requireTasasEdit` ya hacía, los
+middlewares nuevos NO chequean `rol` además del booleano — solo el permiso. No es una relajación
+nueva, es el mismo criterio que ya regía Tasas desde antes de esta sesión.
+
+**Paso de compensación no pedido explícitamente en el plan, pero necesario**: como las columnas
+nuevas nacen en `FALSE` por default, se corrió un UPDATE puntual para dejar los 3 permisos nuevos
+en `TRUE` para el admin real `kevinruiz@tajy.com.py` (que ya tenía `puede_editar_tasas = TRUE`).
+Sin este paso, el primer deploy hubiese dejado al único admin real sin acceso a Usuarios/Coberturas/
+Planes hasta la próxima edición manual. Cualquier admin nuevo que se cree de acá en más necesita
+que alguien con `puede_gestionar_usuarios = TRUE` le tilde los permisos correspondientes — ya no
+alcanza con poner `rol = admin`.
+
+**Frontend** (`frontend/admin/admin.js`): `SECCIONES` ahora lleva un campo `permiso` por entrada;
+`seccionesVisibles()` filtra contra `auth.getUsuario()` (permisos vienen del login, cacheados en
+localStorage — mismo caveat ya documentado en la sección de arriba sobre `descuento_maximo_pct`:
+si a un usuario con sesión activa le cambian permisos, no se reflejan hasta el próximo login). Si
+un usuario no tiene ninguna sección visible, se muestra un empty state en vez de una pantalla en
+blanco. 3 checkboxes nuevos en los modales de Usuarios, mismo patrón que "Puede editar tasas".
+
+**Verificado en vivo con Playwright** contra Supabase real (backend + frontend levantados
+localmente): usuario de prueba con SOLO `puede_editar_coberturas = true` ve únicamente la sección
+"Coberturas por plan" en el sidebar; llamadas directas a `/admin/usuarios`, `/admin/planes` y
+`/admin/ramos/:id/tasas` con su token devuelven 403; `/admin/planes/:id/coberturas` responde 200.
+Un usuario con los 4 permisos en `true` ve las 4 secciones (regresión del caso "admin completo" sin
+romperse). Usuarios de prueba creados/borrados directo en Supabase para la prueba, ya no existen.
+
 ## 20a0. Bugfix — botones "Editar"/"Resetear password"/"Desactivar" de Usuarios no hacían nada — 2026-07-19
 
 Kevin reportó que en Admin > Usuarios los botones de acción no reaccionaban. Verificado con

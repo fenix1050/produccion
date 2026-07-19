@@ -6,11 +6,18 @@ import { api, auth } from '../shared/api.js';
 // se implementan en próximas porciones de WU5.
 
 const SECCIONES = [
-  { id: 'usuarios', label: 'Usuarios', icon: '👤', disponible: true },
-  { id: 'coberturas', label: 'Coberturas por plan', icon: '🛡️', disponible: true },
-  { id: 'tasas', label: 'Tasas', icon: '📈', disponible: true },
-  { id: 'planes', label: 'Planes', icon: '📋', disponible: true },
+  { id: 'usuarios', label: 'Usuarios', icon: '👤', disponible: true, permiso: 'puede_gestionar_usuarios' },
+  { id: 'coberturas', label: 'Coberturas por plan', icon: '🛡️', disponible: true, permiso: 'puede_editar_coberturas' },
+  { id: 'tasas', label: 'Tasas', icon: '📈', disponible: true, permiso: 'puede_editar_tasas' },
+  { id: 'planes', label: 'Planes', icon: '📋', disponible: true, permiso: 'puede_editar_planes' },
 ];
+
+// Secciones visibles para el usuario logueado según sus permisos parciales
+// (mismo patrón que puede_editar_tasas, ver docs/ESTADO_PROYECTO.md sección 20a2).
+function seccionesVisibles() {
+  const usuario = auth.getUsuario();
+  return SECCIONES.filter((s) => Boolean(usuario?.[s.permiso]));
+}
 
 const state = {
   seccion: 'usuarios',
@@ -63,8 +70,27 @@ async function init() {
     window.location.href = '../cotizar/';
     return;
   }
+
+  // Permisos parciales por sección (ver docs/ESTADO_PROYECTO.md sección 20a2): un admin
+  // puede no tener acceso a todas las secciones. Se arranca en la primera visible.
+  const visibles = seccionesVisibles();
+  if (!visibles.length) {
+    state.seccion = null;
+    renderApp();
+    return;
+  }
+  state.seccion = visibles[0].id;
   renderApp();
-  await cargarUsuarios();
+
+  if (state.seccion === 'usuarios') {
+    await cargarUsuarios();
+  } else if (state.seccion === 'planes') {
+    await cargarPlanes();
+  } else if (state.seccion === 'tasas' || state.seccion === 'coberturas') {
+    const ramos = await api.get('/ramos');
+    state.ramos = ramos;
+    renderApp();
+  }
 }
 
 function cerrarSesion() {
@@ -120,6 +146,9 @@ function abrirModalCrear() {
     email: '',
     rol: 'agente',
     puede_editar_tasas: false,
+    puede_gestionar_usuarios: false,
+    puede_editar_coberturas: false,
+    puede_editar_planes: false,
     password: '',
   };
   renderApp();
@@ -135,6 +164,9 @@ function abrirModalEditar(usuarioId) {
     guardando: false,
     rol: usuario.rol,
     puede_editar_tasas: Boolean(usuario.puede_editar_tasas),
+    puede_gestionar_usuarios: Boolean(usuario.puede_gestionar_usuarios),
+    puede_editar_coberturas: Boolean(usuario.puede_editar_coberturas),
+    puede_editar_planes: Boolean(usuario.puede_editar_planes),
     activo: Boolean(usuario.activo),
     descuento_maximo_pct: usuario.descuento_maximo_pct,
     recargo_maximo_pct: usuario.recargo_maximo_pct,
@@ -173,6 +205,9 @@ async function guardarModalCrear(form) {
   const email = form.email.value.trim();
   const rol = form.rol.value;
   const puedeEditarTasas = form.puede_editar_tasas.checked;
+  const puedeGestionarUsuarios = form.puede_gestionar_usuarios.checked;
+  const puedeEditarCoberturas = form.puede_editar_coberturas.checked;
+  const puedeEditarPlanes = form.puede_editar_planes.checked;
   const password = form.password.value;
 
   if (!nombre || !email) {
@@ -196,6 +231,9 @@ async function guardarModalCrear(form) {
       email,
       rol,
       puede_editar_tasas: puedeEditarTasas,
+      puede_gestionar_usuarios: puedeGestionarUsuarios,
+      puede_editar_coberturas: puedeEditarCoberturas,
+      puede_editar_planes: puedeEditarPlanes,
       password,
     });
     cerrarModal();
@@ -212,6 +250,9 @@ async function guardarModalEditar(form) {
   const usuario = state.modal.usuario;
   const rol = form.rol.value;
   const puedeEditarTasas = form.puede_editar_tasas.checked;
+  const puedeGestionarUsuarios = form.puede_gestionar_usuarios.checked;
+  const puedeEditarCoberturas = form.puede_editar_coberturas.checked;
+  const puedeEditarPlanes = form.puede_editar_planes.checked;
   const activo = form.activo.checked;
   // Campo vacío = sin tope propio (usa el tope del plan tal cual) -> se manda null.
   const descuentoMaximoPct = form.descuento_maximo_pct.value === '' ? null : Number(form.descuento_maximo_pct.value);
@@ -225,6 +266,9 @@ async function guardarModalEditar(form) {
     await api.put(`/admin/usuarios/${usuario.id}`, {
       rol,
       puede_editar_tasas: puedeEditarTasas,
+      puede_gestionar_usuarios: puedeGestionarUsuarios,
+      puede_editar_coberturas: puedeEditarCoberturas,
+      puede_editar_planes: puedeEditarPlanes,
       activo,
       descuento_maximo_pct: descuentoMaximoPct,
       recargo_maximo_pct: recargoMaximoPct,
@@ -748,7 +792,7 @@ function renderTopbar() {
 }
 
 function renderSidebar() {
-  const items = SECCIONES.map((s) => `
+  const items = seccionesVisibles().map((s) => `
     <div
       class="admin-nav__item ${s.id === state.seccion ? 'admin-nav__item--active' : ''}"
       data-action="select-seccion"
@@ -794,7 +838,15 @@ function renderBanner() {
 }
 
 function renderSeccion() {
-  const seccion = SECCIONES.find((s) => s.id === state.seccion);
+  if (!state.seccion) {
+    return `
+      <div class="empty-state">
+        <div class="empty-state__title">Sin secciones habilitadas</div>
+        <div class="empty-state__subtitle">Tu usuario no tiene permiso para ninguna sección del panel admin. Pedile a un administrador que te habilite acceso.</div>
+      </div>
+    `;
+  }
+  const seccion = seccionesVisibles().find((s) => s.id === state.seccion);
   if (!seccion?.disponible) return renderProximamente(seccion);
   if (state.seccion === 'usuarios') return renderUsuarios();
   if (state.seccion === 'coberturas') return renderCoberturas();
@@ -1331,8 +1383,26 @@ function renderModal() {
       </div>
       <div class="admin-modal__field">
         <label class="admin-modal__checkbox">
+          <input type="checkbox" name="puede_gestionar_usuarios" ${m.puede_gestionar_usuarios ? 'checked' : ''} />
+          Puede gestionar usuarios
+        </label>
+      </div>
+      <div class="admin-modal__field">
+        <label class="admin-modal__checkbox">
+          <input type="checkbox" name="puede_editar_coberturas" ${m.puede_editar_coberturas ? 'checked' : ''} />
+          Puede editar coberturas por plan
+        </label>
+      </div>
+      <div class="admin-modal__field">
+        <label class="admin-modal__checkbox">
           <input type="checkbox" name="puede_editar_tasas" ${m.puede_editar_tasas ? 'checked' : ''} />
           Puede editar tasas
+        </label>
+      </div>
+      <div class="admin-modal__field">
+        <label class="admin-modal__checkbox">
+          <input type="checkbox" name="puede_editar_planes" ${m.puede_editar_planes ? 'checked' : ''} />
+          Puede editar planes
         </label>
       </div>
       <div class="admin-modal__field">
@@ -1352,8 +1422,26 @@ function renderModal() {
       </div>
       <div class="admin-modal__field">
         <label class="admin-modal__checkbox">
+          <input type="checkbox" name="puede_gestionar_usuarios" ${m.puede_gestionar_usuarios ? 'checked' : ''} />
+          Puede gestionar usuarios
+        </label>
+      </div>
+      <div class="admin-modal__field">
+        <label class="admin-modal__checkbox">
+          <input type="checkbox" name="puede_editar_coberturas" ${m.puede_editar_coberturas ? 'checked' : ''} />
+          Puede editar coberturas por plan
+        </label>
+      </div>
+      <div class="admin-modal__field">
+        <label class="admin-modal__checkbox">
           <input type="checkbox" name="puede_editar_tasas" ${m.puede_editar_tasas ? 'checked' : ''} />
           Puede editar tasas
+        </label>
+      </div>
+      <div class="admin-modal__field">
+        <label class="admin-modal__checkbox">
+          <input type="checkbox" name="puede_editar_planes" ${m.puede_editar_planes ? 'checked' : ''} />
+          Puede editar planes
         </label>
       </div>
       <div class="admin-modal__field">

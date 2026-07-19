@@ -1,9 +1,11 @@
 import { supabase } from '../config/supabase.js';
 
+const CAMPOS_PERMISOS = 'puede_editar_tasas, puede_gestionar_usuarios, puede_editar_coberturas, puede_editar_planes';
+
 export async function findByEmail(email) {
   const { data, error } = await supabase
     .from('usuarios')
-    .select('id, nombre, email, rol, puede_editar_tasas, activo, password_hash, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct')
+    .select(`id, nombre, email, rol, ${CAMPOS_PERMISOS}, activo, password_hash, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct`)
     .eq('email', email)
     .maybeSingle();
   if (error) throw error;
@@ -13,7 +15,7 @@ export async function findByEmail(email) {
 export async function findById(id) {
   const { data, error } = await supabase
     .from('usuarios')
-    .select('id, nombre, email, rol, puede_editar_tasas, activo, password_hash, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct')
+    .select(`id, nombre, email, rol, ${CAMPOS_PERMISOS}, activo, password_hash, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct`)
     .eq('id', id)
     .maybeSingle();
   if (error) throw error;
@@ -34,17 +36,36 @@ export async function actualizarUltimaSesion(id) {
 export async function findAll() {
   const { data, error } = await supabase
     .from('usuarios')
-    .select('id, nombre, email, rol, puede_editar_tasas, activo, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct')
+    .select(`id, nombre, email, rol, ${CAMPOS_PERMISOS}, activo, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct`)
     .order('id');
   if (error) throw error;
   return data;
 }
 
-export async function crear({ nombre, email, rol, puede_editar_tasas, password_hash }) {
+export async function crear({
+  nombre,
+  email,
+  rol,
+  puede_editar_tasas,
+  puede_gestionar_usuarios,
+  puede_editar_coberturas,
+  puede_editar_planes,
+  password_hash,
+}) {
   const { data, error } = await supabase
     .from('usuarios')
-    .insert({ nombre, email, rol, puede_editar_tasas, password_hash, activo: true })
-    .select('id, nombre, email, rol, puede_editar_tasas, activo, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct')
+    .insert({
+      nombre,
+      email,
+      rol,
+      puede_editar_tasas,
+      puede_gestionar_usuarios,
+      puede_editar_coberturas,
+      puede_editar_planes,
+      password_hash,
+      activo: true,
+    })
+    .select(`id, nombre, email, rol, ${CAMPOS_PERMISOS}, activo, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct`)
     .single();
   if (error) throw error;
   return data;
@@ -55,7 +76,7 @@ export async function actualizar(id, cambios) {
     .from('usuarios')
     .update(cambios)
     .eq('id', id)
-    .select('id, nombre, email, rol, puede_editar_tasas, activo, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct')
+    .select(`id, nombre, email, rol, ${CAMPOS_PERMISOS}, activo, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct`)
     .maybeSingle();
   if (error) throw error;
   return data;

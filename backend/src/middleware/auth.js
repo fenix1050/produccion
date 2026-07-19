@@ -37,6 +37,9 @@ export async function requireAuth(req, res, next) {
       id: usuario.id,
       rol: usuario.rol,
       puede_editar_tasas: usuario.puede_editar_tasas,
+      puede_gestionar_usuarios: usuario.puede_gestionar_usuarios,
+      puede_editar_coberturas: usuario.puede_editar_coberturas,
+      puede_editar_planes: usuario.puede_editar_planes,
       nombre: usuario.nombre,
       email: usuario.email,
       descuento_maximo_pct: usuario.descuento_maximo_pct,
@@ -63,6 +66,33 @@ export function requireRole(...roles) {
 export function requireTasasEdit(req, res, next) {
   if (!req.usuario || !req.usuario.puede_editar_tasas) {
     const err = new Error('No tenés permiso para editar tasas');
+    err.status = 403;
+    return next(err);
+  }
+  next();
+}
+
+export function requireUsuariosEdit(req, res, next) {
+  if (!req.usuario || !req.usuario.puede_gestionar_usuarios) {
+    const err = new Error('No tenés permiso para gestionar usuarios');
+    err.status = 403;
+    return next(err);
+  }
+  next();
+}
+
+export function requireCoberturasEdit(req, res, next) {
+  if (!req.usuario || !req.usuario.puede_editar_coberturas) {
+    const err = new Error('No tenés permiso para editar coberturas');
+    err.status = 403;
+    return next(err);
+  }
+  next();
+}
+
+export function requirePlanesEdit(req, res, next) {
+  if (!req.usuario || !req.usuario.puede_editar_planes) {
+    const err = new Error('No tenés permiso para editar planes');
     err.status = 403;
     return next(err);
   }

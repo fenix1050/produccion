@@ -61,16 +61,43 @@ export async function findCotizacionById(id) {
   return data;
 }
 
-export async function findCotizaciones({ ramoId, estado, cliente, limit = 20, offset = 0 } = {}) {
+// El listado de Historial (frontend/historial) necesita nombre de ramo/plan y una prima
+// representativa por fila sin caer en N+1 requests — se traen embebidos vía joins de
+// Supabase (FK ya declaradas: cotizaciones.ramo_id -> ramos.id, cotizaciones.plan_id ->
+// planes.id, cotizacion_variantes.cotizacion_id -> cotizaciones.id).
+//
+// De `cotizacion_variantes` solo se trae `tipo_franquicia` + `prima`: la prima NO varía por
+// forma de pago (eso vive en cotizacion_plan_pago.premio_total, que sí varía por RPF), varía
+// solo por variante de franquicia (sin_franquicia / con_franquicia, exclusivo de Auto — Fase
+// 1/2, pausada). MRC/Incendio/Vida-AP (únicos ramos activos hoy) generan siempre una única
+// variante `sin_franquicia` por cotización, así que no hay ambigüedad real al elegirla en el
+// frontend (ver historial.js, primaRepresentativa()).
+export async function findCotizaciones({
+  ramoId,
+  estado,
+  cliente,
+  fechaDesde,
+  fechaHasta,
+  limit = 20,
+  offset = 0,
+} = {}) {
   let query = supabase
     .from('cotizaciones')
-    .select('*', { count: 'exact' })
+    // `ramos.calculador` viaja embebido para que el frontend decida el botón "Descargar Carta
+    // Oferta" fila por fila sin pegarle a /ramos de nuevo (mismo criterio que
+    // BUILDERS_POR_CALCULADOR en backend/src/templates/oferta/index.js: hoy solo 'mrc').
+    .select(
+      '*, ramos(nombre_display, calculador), planes(nombre), cotizacion_variantes(tipo_franquicia, prima)',
+      { count: 'exact' }
+    )
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1);
 
   if (ramoId) query = query.eq('ramo_id', ramoId);
   if (estado) query = query.eq('estado', estado);
   if (cliente) query = query.ilike('cliente_nombre', `%${cliente}%`);
+  if (fechaDesde) query = query.gte('created_at', fechaDesde);
+  if (fechaHasta) query = query.lte('created_at', `${fechaHasta}T23:59:59`);
 
   const { data, error, count } = await query;
   if (error) throw error;

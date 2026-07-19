@@ -39,19 +39,153 @@ export async function crearCotizacion(body, usuario) {
     estado: 'cotizada',
   });
 
+  await insertarCoberturasYVariantes({ cotizacionId: cotizacion.id, ramoId: ramo.id, variantesCalculadas });
+
+  return cotizacionesRepository.findCotizacionById(cotizacion.id);
+}
+
+export async function listarCotizaciones(query, usuario) {
+  return cotizacionesRepository.findCotizaciones({
+    ramoId: query.ramo_id,
+    estado: query.estado,
+    cliente: query.cliente,
+    fechaDesde: query.fecha_desde,
+    fechaHasta: query.fecha_hasta,
+    limit: query.limit ? Number(query.limit) : undefined,
+    offset: query.offset ? Number(query.offset) : undefined,
+    agenteId: usuario.rol === 'admin' ? undefined : usuario.id,
+  });
+}
+
+export async function obtenerCotizacion(id, usuario) {
+  const cotizacion = await cotizacionesRepository.findCotizacionById(id);
+  verificarPropiedad(cotizacion, usuario);
+  return cotizacion;
+}
+
+export async function generarPdfOferta(id, usuario) {
+  const cotizacion = await cotizacionesRepository.findCotizacionById(id);
+  verificarPropiedad(cotizacion, usuario);
+  const plan = await ramosRepository.findPlanById(cotizacion.plan_id);
+  const ramos = await ramosRepository.findRamosActivos();
+  const ramo = ramos.find((r) => r.id === cotizacion.ramo_id);
+
+  const { html, headerTemplate, footerTemplate, margin } = await buildOfertaHtml({ cotizacion, plan, ramo });
+  return renderHtmlToPdf(html, { headerTemplate, footerTemplate, margin });
+}
+
+const VENTANA_EDICION_MS = 30 * 24 * 60 * 60 * 1000;
+
+/**
+ * Recalcula y reemplaza una cotización ya guardada, dentro de la ventana de 30 días desde su
+ * creación (`created_at`). Reusa la misma validación/cálculo que `crearCotizacion` — no se toca
+ * `numero_cotizacion`, `ramo_id` ni `agente_id`: son identidad de la cotización, no datos del
+ * riesgo. Las variantes/coberturas/plan de pago/ajustes viejos se borran y se reinsertan con
+ * números de variante NUEVOS (no se reciclan los correlativos ya emitidos).
+ */
+export async function actualizarCotizacion(id, body, usuario) {
+  const existente = await cotizacionesRepository.findCotizacionById(id);
+  verificarPropiedad(existente, usuario, 'No tenés permiso para editar esta cotización');
+
+  if (Date.now() - new Date(existente.created_at).getTime() > VENTANA_EDICION_MS) {
+    const err = new Error(
+      'Ya pasaron más de 30 días desde que se generó esta cotización — no se puede editar.'
+    );
+    err.status = 422;
+    err.publicMessage = err.message;
+    throw err;
+  }
+
+  const { plan, ramo, datosValidados } = await validarYResolverContexto(body);
+
+  // No se puede "editar" una cotización cambiándole el ramo: coberturas/schema/tasas son
+  // específicos de cada calculador y `ramo_id` nunca se toca en el UPDATE de abajo (es
+  // identidad de la cotización, junto con numero_cotizacion/agente_id). Sin este chequeo, un
+  // agente que cambia de ramo en el sidebar mientras edita (frontend/cotizar/cotizar.js,
+  // selectRamo) terminaría guardando riesgo_datos/coberturas de un ramo distinto bajo el
+  // ramo_id original — detectado en review-risk/readability de esta misma feature.
+  if (ramo.id !== existente.ramo_id) {
+    const err = new Error('No se puede cambiar el ramo de una cotización ya existente.');
+    err.status = 422;
+    err.publicMessage = err.message;
+    throw err;
+  }
+
+  const calculador = getCalculador(ramo.calculador);
+  const variantesCalculadas = await construirVariantes({ calculador, plan, datosValidados, usuario });
+
+  // Orden deliberado: insertar los datos NUEVOS antes de tocar el header o borrar los viejos.
+  // Si `insertarCoberturasYVariantes` falla acá (red, RPC del correlativo, etc.), la cotización
+  // existente queda 100% intacta — nada se tocó todavía. Con el orden anterior (borrar → update
+  // → insertar) una falla a mitad de camino dejaba la cabecera actualizada pero SIN variantes ni
+  // coberturas (PDF roto, prima en null) — detectado por los 4 lentes de review de esta feature.
+  // Se borran los IDs viejos ya capturados (no un DELETE ciego por cotizacion_id) para no
+  // arrastrarse las filas recién insertadas, que comparten el mismo cotizacion_id.
+  const idsVariantesViejas = (existente.cotizacion_variantes ?? []).map((v) => v.id);
+  const idsCoberturasViejas = (existente.cotizacion_coberturas ?? []).map((c) => c.id);
+
+  await insertarCoberturasYVariantes({ cotizacionId: id, ramoId: ramo.id, variantesCalculadas });
+
+  await cotizacionesRepository.updateCotizacion(id, {
+    cliente_nombre: body.cliente_nombre,
+    cliente_contacto: body.cliente_contacto,
+    riesgo_datos: datosValidados.riesgo_datos,
+    capital_asegurado: datosValidados.capital_asegurado,
+    plan_id: plan.id,
+    estado: 'cotizada',
+  });
+
+  if (idsVariantesViejas.length) await cotizacionesRepository.deleteVariantesByIds(idsVariantesViejas);
+  if (idsCoberturasViejas.length) await cotizacionesRepository.deleteCoberturasByIds(idsCoberturasViejas);
+
+  return cotizacionesRepository.findCotizacionById(id);
+}
+
+// ---- Fase 4 ----
+export async function aceptarCotizacion(_id, _kyc) {
+  throw new Error('Aceptación de cotización + KYC pendiente — Fase 4');
+}
+
+export async function generarPdfPropuestaFormal(_id) {
+  throw new Error('Generación de Propuesta Formal pendiente — Fase 4');
+}
+
+// ---------------------------------------------------------------------------
+
+/**
+ * Lanza un error 403 (mismo patrón que `requireRole` en middleware/auth.js: mensaje + `.status`
+ * seteado a mano) si el usuario no es admin y no es el dueño de la cotización. Compartido entre
+ * `obtenerCotizacion`, `generarPdfOferta` y `actualizarCotizacion` para no repetir la condición.
+ */
+function verificarPropiedad(cotizacion, usuario, mensaje = 'No tenés permiso para ver esta cotización') {
+  if (usuario.rol !== 'admin' && cotizacion.agente_id !== usuario.id) {
+    const err = new Error(mensaje);
+    err.status = 403;
+    err.publicMessage = mensaje;
+    throw err;
+  }
+}
+
+/**
+ * Inserta el detalle de coberturas + variantes/planes de pago/ajustes de una cotización ya
+ * persistida (cabecera insertada por `crearCotizacion` o ya existente para `actualizarCotizacion`).
+ * Extraído para no duplicar esta lógica entre alta y edición — antes vivía inline dentro de
+ * `crearCotizacion`.
+ */
+async function insertarCoberturasYVariantes({ cotizacionId, ramoId, variantesCalculadas }) {
   // Persiste el detalle de coberturas mostrado en "Detalle del plan" (hoy solo lo arma
   // mrc.calculator.js — Incendio/Vida-AP todavía no devuelven `coberturas`, de ahí el guard).
   // Snapshot de nombre/texto legal/exclusiones para que quede congelado aunque después
   // cambie el catálogo (mismo criterio que cotizacion_clausulas/cotizacion_servicios).
   if (variantesCalculadas.coberturas?.length) {
-    const catalogoRamo = await coberturasRepository.findCoberturasCatalogoByRamoId(ramo.id);
+    const catalogoRamo = await coberturasRepository.findCoberturasCatalogoByRamoId(ramoId);
     const catalogoPorCodigo = new Map(catalogoRamo.map((c) => [c.codigo, c]));
 
     await cotizacionesRepository.insertCoberturas(
       variantesCalculadas.coberturas.map((cobertura) => {
         const catalogoRow = catalogoPorCodigo.get(cobertura.codigo);
         return {
-          cotizacion_id: cotizacion.id,
+          cotizacion_id: cotizacionId,
           cobertura_id: catalogoRow?.id ?? null,
           nombre_snapshot: cobertura.nombre,
           texto_legal_snapshot: catalogoRow?.texto_legal ?? null,
@@ -68,10 +202,10 @@ export async function crearCotizacion(body, usuario) {
   }
 
   for (const variante of variantesCalculadas.variantes) {
-    const numeroVariante = String(await cotizacionesRepository.nextNumeroCorrelativo(ramo.id));
+    const numeroVariante = String(await cotizacionesRepository.nextNumeroCorrelativo(ramoId));
 
     const varianteGuardada = await cotizacionesRepository.insertVariante({
-      cotizacion_id: cotizacion.id,
+      cotizacion_id: cotizacionId,
       numero_variante: numeroVariante,
       tipo_franquicia: variante.tipo_franquicia,
       franquicia_monto: variante.franquicia_monto,
@@ -116,46 +250,7 @@ export async function crearCotizacion(body, usuario) {
       }))
     );
   }
-
-  return cotizacionesRepository.findCotizacionById(cotizacion.id);
 }
-
-export async function listarCotizaciones(query) {
-  return cotizacionesRepository.findCotizaciones({
-    ramoId: query.ramo_id,
-    estado: query.estado,
-    cliente: query.cliente,
-    fechaDesde: query.fecha_desde,
-    fechaHasta: query.fecha_hasta,
-    limit: query.limit ? Number(query.limit) : undefined,
-    offset: query.offset ? Number(query.offset) : undefined,
-  });
-}
-
-export async function obtenerCotizacion(id) {
-  return cotizacionesRepository.findCotizacionById(id);
-}
-
-export async function generarPdfOferta(id) {
-  const cotizacion = await cotizacionesRepository.findCotizacionById(id);
-  const plan = await ramosRepository.findPlanById(cotizacion.plan_id);
-  const ramos = await ramosRepository.findRamosActivos();
-  const ramo = ramos.find((r) => r.id === cotizacion.ramo_id);
-
-  const { html, headerTemplate, footerTemplate, margin } = await buildOfertaHtml({ cotizacion, plan, ramo });
-  return renderHtmlToPdf(html, { headerTemplate, footerTemplate, margin });
-}
-
-// ---- Fase 4 ----
-export async function aceptarCotizacion(_id, _kyc) {
-  throw new Error('Aceptación de cotización + KYC pendiente — Fase 4');
-}
-
-export async function generarPdfPropuestaFormal(_id) {
-  throw new Error('Generación de Propuesta Formal pendiente — Fase 4');
-}
-
-// ---------------------------------------------------------------------------
 
 async function validarYResolverContexto(body) {
   const plan = await ramosRepository.findPlanById(body.plan_id);

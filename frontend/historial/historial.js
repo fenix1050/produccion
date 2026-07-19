@@ -96,6 +96,39 @@ function ofertaDisponible(cotizacion) {
   return CALCULADORES_CON_OFERTA_PDF.includes(cotizacion.ramos?.calculador);
 }
 
+// Ventana de edición del backend (cotizacion.service.js actualizarCotizacion): 30 días corridos
+// desde `created_at`. Se replica acá solo para habilitar/deshabilitar el botón — el backend
+// vuelve a validarlo igual (nunca se confía solo en el chequeo del frontend).
+const VENTANA_EDICION_MS = 30 * 24 * 60 * 60 * 1000;
+
+function dentroDeVentana30Dias(createdAt) {
+  if (!createdAt) return false;
+  const creado = new Date(createdAt).getTime();
+  if (Number.isNaN(creado)) return false;
+  return Date.now() - creado <= VENTANA_EDICION_MS;
+}
+
+function puedeEditar(cotizacion) {
+  const usuario = auth.getUsuario();
+  if (!usuario) return false;
+  const esDueno = usuario.rol === 'admin' || cotizacion.agente_id === usuario.id;
+  return esDueno && dentroDeVentana30Dias(cotizacion.created_at);
+}
+
+function motivoNoEditable(cotizacion) {
+  const usuario = auth.getUsuario();
+  const esDueno = usuario && (usuario.rol === 'admin' || cotizacion.agente_id === usuario.id);
+  if (!esDueno) return 'No tenés permiso para editar esta cotización.';
+  if (!dentroDeVentana30Dias(cotizacion.created_at)) {
+    return 'Ya pasaron más de 30 días desde que se generó esta cotización — no se puede editar.';
+  }
+  return '';
+}
+
+function editarCotizacion(id) {
+  window.location.href = `../cotizar/?editar=${id}`;
+}
+
 // ---------------------------------------------------------------------------
 // Carga y filtros
 // ---------------------------------------------------------------------------
@@ -447,6 +480,9 @@ function renderModalDetalle() {
         <div class="admin-modal__title">Cotización ${escapeHtml(row?.numero_cotizacion ?? '')}</div>
         ${cuerpo}
         <div class="admin-modal__actions">
+          ${row && puedeEditar(row)
+            ? `<button type="button" class="btn-outline" data-action="editar-cotizacion" data-id="${row.id}">Editar</button>`
+            : `<button type="button" class="btn-outline historial-oferta-disabled" disabled title="${escapeHtml(row ? motivoNoEditable(row) : '')}">Editar</button>`}
           <button type="button" class="btn-outline" data-action="cerrar-modal">Cerrar</button>
         </div>
       </div>
@@ -508,6 +544,10 @@ function onActionClick(e) {
   }
   if (action === 'descargar-oferta') {
     descargarOferta(Number(el.dataset.id), el.dataset.numero);
+    return;
+  }
+  if (action === 'editar-cotizacion') {
+    editarCotizacion(Number(el.dataset.id));
     return;
   }
   if (action === 'cerrar-modal' || action === 'cerrar-modal-backdrop') {

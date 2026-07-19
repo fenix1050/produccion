@@ -49,6 +49,33 @@ export async function insertAjustes(ajustes) {
   return data;
 }
 
+// Borran filas por ID explícito (no un DELETE ciego por cotizacion_id) — actualizarCotizacion en
+// cotizacion.service.js inserta las filas nuevas ANTES de borrar las viejas, y ambas comparten el
+// mismo cotizacion_id, así que un DELETE por cotizacion_id se llevaría puestas también las recién
+// insertadas.
+export async function deleteVariantesByIds(ids) {
+  if (!ids.length) return;
+  const { error } = await supabase.from('cotizacion_variantes').delete().in('id', ids);
+  if (error) throw error;
+}
+
+export async function deleteCoberturasByIds(ids) {
+  if (!ids.length) return;
+  const { error } = await supabase.from('cotizacion_coberturas').delete().in('id', ids);
+  if (error) throw error;
+}
+
+export async function updateCotizacion(id, fields) {
+  const { data, error } = await supabase
+    .from('cotizaciones')
+    .update(fields)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
 export async function findCotizacionById(id) {
   const { data, error } = await supabase
     .from('cotizaciones')
@@ -57,7 +84,20 @@ export async function findCotizacionById(id) {
     )
     .eq('id', id)
     .single();
-  if (error) throw error;
+  if (error) {
+    // PGRST116 = PostgREST no encontró (o encontró más de una) fila para `.single()` — es el
+    // caso "no existe", no una falla real de la base. Se marca acá, en la única función que lee
+    // una cotización por id, para que listar/obtener/actualizar devuelvan 404 de forma consistente
+    // sin que cada caller tenga que repetir el chequeo (antes solo `actualizarCotizacion` lo hacía
+    // con un try/catch que además tapaba errores reales de conexión — detectado en review-reliability).
+    if (error.code === 'PGRST116') {
+      const notFound = new Error('Cotización no encontrada');
+      notFound.status = 404;
+      notFound.publicMessage = notFound.message;
+      throw notFound;
+    }
+    throw error;
+  }
   return data;
 }
 
@@ -80,6 +120,7 @@ export async function findCotizaciones({
   fechaHasta,
   limit = 20,
   offset = 0,
+  agenteId,
 } = {}) {
   let query = supabase
     .from('cotizaciones')
@@ -98,6 +139,7 @@ export async function findCotizaciones({
   if (cliente) query = query.ilike('cliente_nombre', `%${cliente}%`);
   if (fechaDesde) query = query.gte('created_at', fechaDesde);
   if (fechaHasta) query = query.lte('created_at', `${fechaHasta}T23:59:59`);
+  if (agenteId) query = query.eq('agente_id', agenteId);
 
   const { data, error, count } = await query;
   if (error) throw error;

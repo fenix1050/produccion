@@ -862,6 +862,61 @@ Fase 5: reemplazado el stub de `frontend/historial/index.html` por la UI complet
   lanzamiento en vez de heredar el estado roto. Verificado con una descarga real de PDF tras el
   fix (200 OK, PDF válido).
 
+## 20c. Historial — permisos por dueño + edición con ventana de 30 días (2026-07-19)
+
+Kevin pidió dos cosas más sobre el Historial: que un usuario no-admin solo vea/edite sus propias
+cotizaciones (admin ve todas), y poder "editar" una cotización desde el detalle reabriendo el
+formulario completo de `/cotizar`, siempre que no hayan pasado más de 30 días desde `created_at`.
+
+- **Ownership**: `findCotizaciones`/`listarCotizaciones` ahora aceptan `agenteId` (filtra
+  `.eq('agente_id', ...)`); el controller pasa `agenteId: usuario.rol === 'admin' ? undefined :
+  usuario.id`. `obtenerCotizacion`/`generarPdfOferta` ahora reciben `req.usuario` y llaman a
+  `verificarPropiedad()` — 403 si no sos admin ni el dueño. Esto cierra un IDOR real: antes
+  `GET /cotizaciones/:id` (y la descarga de PDF) no validaban dueño aunque el listado sí filtrara,
+  así que conociendo un id directo se podía ver/descargar la cotización de otro agente.
+- **Editar (`PUT /api/cotizaciones/:id`, `actualizarCotizacion` en `cotizacion.service.js`)**:
+  reusa la misma validación/cálculo que `crearCotizacion` (extraído a un helper compartido
+  `insertarCoberturasYVariantes`), sobrescribe la misma cotización (mismo `numero_cotizacion`,
+  `ramo_id`, `agente_id`) y rechaza con 422 si pasaron más de 30 días de `created_at`.
+- **Bugs encontrados por los 4 lentes de review (risk/reliability/readability/resilience) y
+  corregidos antes de mergear** — ninguno llegó a producción:
+  1. **Cambio de ramo durante una edición corrompía la cotización**: si el agente cambiaba de
+     ramo en el sidebar mientras editaba, el `PUT` guardaba `riesgo_datos`/coberturas de un ramo
+     distinto bajo el `ramo_id` original (y consumía el correlativo del OTRO ramo). Fix: el
+     backend rechaza con 422 si `plan.ramo_id !== existente.ramo_id` (chequeo real, no solo de
+     UI); el frontend además resetea `state.editandoId` al usar `selectRamo()` para no dejar
+     llenar un formulario entero que iba a rebotar.
+  2. **Sin transacción, un fallo a mitad de la edición dejaba la cotización sin variantes ni
+     coberturas** (PDF roto, prima en null): la secuencia original era borrar → actualizar
+     cabecera → reinsertar. Fix: se invirtió el orden — insertar los datos NUEVOS primero,
+     recién después actualizar la cabecera y borrar los IDs viejos (capturados explícitamente
+     antes de insertar, no un DELETE ciego por `cotizacion_id`, para no arrastrarse las filas
+     recién insertadas). Si el insert falla, la cotización queda 100% intacta.
+  3. **404 inconsistente**: `findCotizacionById` ahora detecta el código `PGRST116` de
+     PostgREST (fila no encontrada) y lanza un 404 real con `.publicMessage`, en vez de que cada
+     caller improvisara su propio manejo (antes `PUT` armaba un try/catch que además tapaba
+     errores reales de conexión, y `GET` dejaba pasar el error crudo de Supabase como 500).
+  4. **Mensajes de error no llegaban al usuario**: el handler global (`backend/src/app.js`) usa
+     `err.publicMessage` para lo que se muestra al cliente, no `err.message` — los errores nuevos
+     (403 de dueño, 422 de ventana vencida, 422 de cambio de ramo) solo seteaban `.message` y por
+     lo tanto el usuario veía siempre "Error interno del servidor" en vez del motivo real. Se
+     corrigió seteando `.publicMessage` en los 4 puntos, siguiendo el patrón ya establecido en
+     los calculadores (`mrc.calculator.js`, `incendio.calculator.js`, etc.).
+- **Verificado con Playwright + API directa contra Supabase real** (usuario admin real): edición
+  end-to-end (MRC-225, id 114) preserva `numero_cotizacion`/`ramo_id`/`plan_id` y termina con 1
+  variante + 6 coberturas (no vacío); intento de cambio de ramo devuelve 422 con mensaje claro y
+  la cotización queda intacta después del intento; `GET` a un id inexistente devuelve 404
+  consistente.
+- **No verificado en esta sesión** (anotado, no asumido como probado): el filtro "no-admin solo
+  ve lo suyo" no se pudo probar end-to-end porque la única cuenta disponible es admin — la lógica
+  se revisó por código (4 lentes independientes la dieron por correcta) pero falta una prueba en
+  vivo con una segunda cuenta no-admin. Tampoco se simuló el rechazo por ventana de 30 días
+  vencida (hubiera requerido mutar `created_at` de una cotización real en producción).
+- **Pendiente, no bloqueante**: no hay tests automatizados para el boundary de ownership ni para
+  el endpoint de edición (el backend no tiene suite de tests hoy — ningún otro endpoint la tiene
+  tampoco). Señalado por review-reliability como riesgo a futuro si alguien refactoriza
+  `verificarPropiedad` o el chequeo de ventana sin darse cuenta de que rompió el control de acceso.
+
 ## 20. Próximo paso
 
 Con el catálogo de MRC, Incendio y Vida/AP cargado, el primer calculador (MRC, plan Normal) conectado

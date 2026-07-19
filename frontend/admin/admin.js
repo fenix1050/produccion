@@ -35,6 +35,11 @@ const state = {
   catalogoPorRamo: {}, // ramoId -> coberturas_catalogo[] (para el selector del modal de alta)
   modalTasa: null, // { error, guardando, cobertura_id, tasa_valor, unidad, vigente_desde }
 
+  // rubros_actividad: compartida entre MRC e Incendio (no tiene ramo_id propio), se carga
+  // una sola vez (no por ramo) — ver seleccionarRamoTasas.
+  rubrosActividad: { loading: false, error: '', datos: null },
+  rubroActividadEnEdicion: new Set(), // ids de rubros_actividad con tasa_edificio/tasa_contenido habilitados para editar
+
   ramoCoberturasSeleccionado: null,
   planCoberturasSeleccionado: null,
   planesPorRamoCob: {}, // ramoId -> { loading, error, datos: [] }
@@ -131,6 +136,8 @@ function abrirModalEditar(usuarioId) {
     rol: usuario.rol,
     puede_editar_tasas: Boolean(usuario.puede_editar_tasas),
     activo: Boolean(usuario.activo),
+    descuento_maximo_pct: usuario.descuento_maximo_pct,
+    recargo_maximo_pct: usuario.recargo_maximo_pct,
   };
   renderApp();
 }
@@ -206,6 +213,9 @@ async function guardarModalEditar(form) {
   const rol = form.rol.value;
   const puedeEditarTasas = form.puede_editar_tasas.checked;
   const activo = form.activo.checked;
+  // Campo vacío = sin tope propio (usa el tope del plan tal cual) -> se manda null.
+  const descuentoMaximoPct = form.descuento_maximo_pct.value === '' ? null : Number(form.descuento_maximo_pct.value);
+  const recargoMaximoPct = form.recargo_maximo_pct.value === '' ? null : Number(form.recargo_maximo_pct.value);
 
   state.modal.error = '';
   state.modal.guardando = true;
@@ -216,6 +226,8 @@ async function guardarModalEditar(form) {
       rol,
       puede_editar_tasas: puedeEditarTasas,
       activo,
+      descuento_maximo_pct: descuentoMaximoPct,
+      recargo_maximo_pct: recargoMaximoPct,
     });
     cerrarModal();
     mostrarBanner('success', `Usuario ${usuario.nombre} actualizado.`);
@@ -390,7 +402,70 @@ async function seleccionarRamoTasas(ramoId) {
   state.ramoTasasSeleccionado = ramoId || null;
   renderApp();
   if (!state.ramoTasasSeleccionado) return;
-  await Promise.all([cargarTasasDeRamo(state.ramoTasasSeleccionado), cargarCatalogoDeRamo(state.ramoTasasSeleccionado)]);
+  const tareas = [cargarTasasDeRamo(state.ramoTasasSeleccionado), cargarCatalogoDeRamo(state.ramoTasasSeleccionado)];
+  if (ramoUsaRubrosActividad(state.ramoTasasSeleccionado) && state.rubrosActividad.datos == null) {
+    tareas.push(cargarRubrosActividad());
+  }
+  await Promise.all(tareas);
+}
+
+// rubros_actividad es compartida entre MRC e Incendio (no tiene ramo_id propio) —
+// se muestra solo cuando el ramo seleccionado es uno de esos dos (nombre = slug, no
+// nombre_display), evita mostrarla para Vida/AP u otros ramos que no la usan.
+function ramoUsaRubrosActividad(ramoId) {
+  const ramo = state.ramos.find((r) => String(r.id) === String(ramoId));
+  return ramo?.nombre === 'mrc' || ramo?.nombre === 'incendio';
+}
+
+async function cargarRubrosActividad() {
+  state.rubrosActividad = { loading: true, error: '', datos: state.rubrosActividad.datos ?? [] };
+  renderApp();
+  try {
+    const datos = await api.get('/admin/rubros-actividad');
+    state.rubrosActividad = { loading: false, error: '', datos };
+  } catch (err) {
+    state.rubrosActividad = {
+      loading: false,
+      error: err.message || 'No se pudieron cargar los tipos de riesgo.',
+      datos: [],
+    };
+  }
+  renderApp();
+}
+
+function habilitarEdicionRubroActividad(id) {
+  state.rubroActividadEnEdicion.add(id);
+  renderApp();
+}
+
+function cancelarEdicionRubroActividad(id) {
+  state.rubroActividadEnEdicion.delete(id);
+  renderApp();
+}
+
+async function guardarRubroActividadTasas(id, form) {
+  // A diferencia de prima_tecnica_minima/monto/franquicia, el schema de este endpoint
+  // (editarRubroActividadSchema) NO acepta null — tasa_edificio/tasa_contenido son
+  // z.number().nonnegative().optional(), así que acá siempre se manda un número.
+  const tasa_edificio = Number(form.tasa_edificio.value);
+  const tasa_contenido = Number(form.tasa_contenido.value);
+
+  if (Number.isNaN(tasa_edificio) || Number.isNaN(tasa_contenido)) {
+    mostrarBanner('error', 'Ingresá valores numéricos válidos para ambas tasas.');
+    return;
+  }
+
+  try {
+    const fila = await api.put(`/admin/rubros-actividad/${id}`, { tasa_edificio, tasa_contenido });
+    const datos = state.rubrosActividad.datos ?? [];
+    const idx = datos.findIndex((r) => r.id === Number(id));
+    if (idx !== -1) datos[idx] = { ...datos[idx], ...fila };
+    state.rubroActividadEnEdicion.delete(Number(id));
+    mostrarBanner('success', 'Tipo de riesgo actualizado.');
+    renderApp();
+  } catch (err) {
+    mostrarBanner('error', err.message || 'No se pudo actualizar el tipo de riesgo.');
+  }
 }
 
 async function cargarTasasDeRamo(ramoId) {
@@ -959,6 +1034,68 @@ function renderTasas() {
     <div class="panel card">
       ${renderTablaTasas()}
     </div>
+    ${ramoUsaRubrosActividad(state.ramoTasasSeleccionado) ? `
+      <div class="admin-toolbar">
+        <div class="admin-toolbar__title">Tasas por Tipo de Riesgo</div>
+      </div>
+      <div class="panel card">
+        ${renderTablaRubrosActividad()}
+      </div>
+    ` : ''}
+  `;
+}
+
+function renderTablaRubrosActividad() {
+  const entry = state.rubrosActividad;
+  if (entry.loading) {
+    return '<div class="empty-state__subtitle">Cargando tipos de riesgo…</div>';
+  }
+  if (entry.error) {
+    return `<div class="admin-banner admin-banner--error">${escapeHtml(entry.error)}</div>`;
+  }
+  if (!entry.datos?.length) {
+    return '<div class="empty-state__subtitle">Todavía no hay tipos de riesgo cargados.</div>';
+  }
+
+  const filas = entry.datos.map((r) => `
+    <tr>
+      <td>${escapeHtml(r.nombre)}</td>
+      <td>${escapeHtml(r.categoria ?? '—')}</td>
+      <td colspan="2">${renderCamposTasaEdificioContenido(r)}</td>
+    </tr>
+  `).join('');
+
+  return `
+    <table class="admin-table admin-table--nested">
+      <thead>
+        <tr>
+          <th>Tipo de Riesgo</th>
+          <th>Categoría</th>
+          <th colspan="2">Tasa Edificio / Contenido (‰)</th>
+        </tr>
+      </thead>
+      <tbody>${filas}</tbody>
+    </table>
+  `;
+}
+
+function renderCamposTasaEdificioContenido(rubro) {
+  const puedeEditar = Boolean(auth.getUsuario()?.puede_editar_tasas);
+  if (!state.rubroActividadEnEdicion.has(rubro.id)) {
+    return `
+      <div class="admin-valor-fijo">
+        <span>${rubro.tasa_edificio != null ? escapeHtml(String(rubro.tasa_edificio)) : '—'} / ${rubro.tasa_contenido != null ? escapeHtml(String(rubro.tasa_contenido)) : '—'}</span>
+        ${puedeEditar ? `<button class="btn-outline" data-action="editar-tasa-edificio-contenido" data-id="${rubro.id}">Editar</button>` : ''}
+      </div>
+    `;
+  }
+  return `
+    <form class="admin-inline-form" data-form-action="rubro-actividad-tasas" data-id="${rubro.id}">
+      <input class="field-input field-input--sm" type="number" step="0.001" name="tasa_edificio" placeholder="Edificio" value="${rubro.tasa_edificio ?? ''}" autofocus />
+      <input class="field-input field-input--sm" type="number" step="0.001" name="tasa_contenido" placeholder="Contenido" value="${rubro.tasa_contenido ?? ''}" />
+      <button class="btn-outline" type="submit">Guardar</button>
+      <button class="btn-outline" type="button" data-action="cancelar-tasa-edificio-contenido" data-id="${rubro.id}">Cancelar</button>
+    </form>
   `;
 }
 
@@ -1225,6 +1362,14 @@ function renderModal() {
           Activo
         </label>
       </div>
+      <div class="admin-modal__field">
+        <label>Descuento máx. propio (%) — vacío = usa el tope del plan</label>
+        <input class="field-input" type="number" step="0.01" min="0" max="100" name="descuento_maximo_pct" value="${m.descuento_maximo_pct ?? ''}" />
+      </div>
+      <div class="admin-modal__field">
+        <label>Recargo máx. propio (%) — vacío = usa el tope del plan</label>
+        <input class="field-input" type="number" step="0.01" min="0" max="100" name="recargo_maximo_pct" value="${m.recargo_maximo_pct ?? ''}" />
+      </div>
     `;
   } else if (m.tipo === 'password') {
     titulo = `Resetear contraseña de ${escapeHtml(m.usuario.nombre)}`;
@@ -1377,15 +1522,15 @@ function onActionClick(e) {
     return;
   }
   if (action === 'editar-usuario') {
-    abrirModalEditar(el.dataset.id);
+    abrirModalEditar(Number(el.dataset.id));
     return;
   }
   if (action === 'password-usuario') {
-    abrirModalPassword(el.dataset.id);
+    abrirModalPassword(Number(el.dataset.id));
     return;
   }
   if (action === 'desactivar-usuario') {
-    desactivarUsuario(el.dataset.id);
+    desactivarUsuario(Number(el.dataset.id));
     return;
   }
   if (action === 'cerrar-modal' || action === 'cerrar-modal-backdrop') {
@@ -1437,6 +1582,14 @@ function onActionClick(e) {
     cerrarModalTasa();
     return;
   }
+  if (action === 'editar-tasa-edificio-contenido') {
+    habilitarEdicionRubroActividad(Number(el.dataset.id));
+    return;
+  }
+  if (action === 'cancelar-tasa-edificio-contenido') {
+    cancelarEdicionRubroActividad(Number(el.dataset.id));
+    return;
+  }
   if (action === 'seleccionar-ramo-coberturas') {
     seleccionarRamoCoberturas(el.value);
     return;
@@ -1480,6 +1633,8 @@ function onInlineFormSubmit(e) {
     guardarTasaRpf(form.dataset.id, Number(form.dataset.planId), form);
   } else if (accion === 'monto-franquicia') {
     guardarMontoFranquicia(form.dataset.id, Number(form.dataset.planId), form);
+  } else if (accion === 'rubro-actividad-tasas') {
+    guardarRubroActividadTasas(form.dataset.id, form);
   }
 }
 

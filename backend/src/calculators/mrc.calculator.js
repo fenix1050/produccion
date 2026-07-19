@@ -59,7 +59,7 @@ const MINIMO_COBERTURAS_MRC = 3;
  * @param {Array<{monto?: number, porcentaje?: number}>} [input.recargos]
  * @returns {Promise<{prima: number, detalle: object, coberturas: Array<{codigo:string, nombre:string, monto:number}>}>}
  */
-export async function calcularPrima({ planId, riesgoDatos, descuentos = [], recargos = [] }) {
+export async function calcularPrima({ planId, riesgoDatos, descuentos = [], recargos = [], usuario }) {
   const plan = await ramosRepository.findPlanById(planId);
 
   if (!plan.prima_tecnica_minima) {
@@ -201,8 +201,8 @@ export async function calcularPrima({ planId, riesgoDatos, descuentos = [], reca
   // piso en silencio: la Prima Técnica Mínima pasa a ser la prima base de la cotización.
   const primaBase = Math.max(primaCalculada, plan.prima_tecnica_minima);
 
-  const totalDescuentos = sumarAjustes(descuentos, primaBase, plan.descuento_maximo);
-  const totalRecargos = sumarAjustes(recargos, primaBase, plan.recargo_maximo);
+  const totalDescuentos = sumarAjustes(descuentos, primaBase, topeEfectivo(plan.descuento_maximo, usuario?.descuento_maximo_pct));
+  const totalRecargos = sumarAjustes(recargos, primaBase, topeEfectivo(plan.recargo_maximo, usuario?.recargo_maximo_pct));
 
   const prima = primaBase - totalDescuentos + totalRecargos;
 
@@ -274,6 +274,15 @@ function sumarAjustes(ajustes, base, tope) {
     return Math.min(total, topeMonto);
   }
   return total;
+}
+
+// Combina el tope del plan (planes.descuento_maximo/recargo_maximo) con el tope propio
+// del usuario (usuarios.descuento_maximo_pct/recargo_maximo_pct, Fase 5). Gana el más
+// restrictivo de los dos que estén cargados; si ninguno está cargado, no hay tope.
+function topeEfectivo(topePlan, topeUsuario) {
+  if (topePlan == null) return topeUsuario ?? null;
+  if (topeUsuario == null) return topePlan;
+  return Math.min(topePlan, topeUsuario);
 }
 
 /**

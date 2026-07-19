@@ -667,6 +667,98 @@ NORMAL`:
   columnas a mitad de lista; las demás tarjetas permanecen atómicas.
 - **Footer ajustado:** el footer del PDF subió de 9px a 11px para mejorar legibilidad.
 
+## 20a1. Tope propio de descuento/recargo por usuario — 2026-07-19
+
+Kevin pidió poder limitar, por usuario individual, hasta qué porcentaje de descuento/recargo
+puede aplicar un agente al cotizar MRC/Incendio (el ajuste manual de "Ajustes (opcional)" en
+Detalle del plan) — hasta ahora el único tope era `planes.descuento_maximo`/`recargo_maximo`,
+igual para todos los agentes. Decisión confirmada con Kevin: el tope es **por usuario**
+(editable en "Editar usuario"), y cuando el tope del usuario y el del plan no coinciden **gana
+el más restrictivo** (`MIN`).
+
+- **Migración 029**: `usuarios.descuento_maximo_pct` / `recargo_maximo_pct` (`NUMERIC(5,2)`,
+  ambas nullable). `NULL` = el usuario no tiene tope propio, se respeta el tope del plan tal
+  cual — no rompe ninguna cotización existente.
+- **Enforcement real en backend**: `mrc.calculator.js` e `incendio.calculator.js` (los únicos
+  ramos con ajuste manual, ver `RAMOS_CON_AJUSTES`) agregan `topeEfectivo(topePlan, topeUsuario)`
+  — combina ambos topes con `MIN`, duplicada en los dos archivos siguiendo el mismo criterio
+  que `sumarAjustes` (ya duplicada 3 veces, en auto/mrc/incendio). `auto.calculator.js` NO se
+  tocó (Fase 2 pausada, no usa este ajuste desde el frontend hoy).
+- **`req.usuario` ahora completo en todo el pipeline de cotización**: `POST
+  /api/cotizaciones/calcular` (preview en vivo) no le pasaba `req.usuario` al service — se agregó,
+  porque si el preview no aplicara el mismo tope que el guardado final, el agente vería un número
+  en pantalla distinto al que realmente se persiste. `middleware/auth.js` ahora incluye
+  `descuento_maximo_pct`/`recargo_maximo_pct` en `req.usuario` (se re-lee de la base en cada
+  request, no cachea — mismo criterio que el resto de ese objeto).
+- **Frontend**: 2 campos nuevos en el modal "Editar {usuario}" del panel admin (vacío = sin
+  tope propio). El texto de ayuda bajo los inputs de "Ajustes (opcional)" en `/cotizar` pasó de
+  "Tope del plan: X%" a "Tope aplicable: X%" (ya no es necesariamente el del plan) y ahora
+  calcula el mismo `MIN` client-side usando el usuario logueado, para no mostrarle al agente un
+  número que después el backend va a clampear más.
+- **Pendiente menor, no bloqueante**: el hint del tope en `/cotizar` usa el `usuario` cacheado en
+  `localStorage` desde el login — si un admin cambia el tope de un agente con sesión activa, el
+  hint queda desactualizado hasta el próximo login (el backend igual aplica el valor real y
+  fresco en cada cotización, esto es solo un texto de ayuda).
+- **Verificado end-to-end contra Supabase real** con Playwright: usuario `test` con tope propio
+  5% descuento / 3% recargo (más restrictivo que el 30%/20% del plan Normal), pidiendo 20% de
+  descuento manual en una cotización de MRC → `total_descuentos` final dio exacto 5% de la prima
+  base (61.140 de 1.222.800), confirmando que ganó el tope del usuario y no el del plan ni el
+  valor pedido. Dato de prueba revertido a `NULL` al terminar.
+- **Tope máximo del campo: 100%** (confirmado con Kevin, 2026-07-19) — `editarUsuarioSchema`
+  ahora valida `.max(100)` en ambos campos, y los inputs del modal tienen `max="100"`.
+
+**Pendientes anotados para afinar más adelante (no bloqueantes, confirmado con Kevin que se
+revisan después):**
+- El modal "Nuevo usuario" no tiene estos 2 campos (solo "Editar") — un agente recién creado
+  queda sin tope propio (`NULL`, solo el tope del plan) hasta que alguien lo edite a mano.
+- `auto.calculator.js` no tiene `topeEfectivo` — si se retoma Fase 2 y se expone el ajuste manual
+  para Auto, hay que replicar el mismo cambio ahí (hoy no aplicaría el tope por usuario en Auto).
+- El hint de tope en `/cotizar` usa el usuario cacheado en `localStorage` desde el login — si un
+  admin cambia el tope de un agente con sesión activa, el hint queda desactualizado hasta el
+  próximo login (el backend sí aplica siempre el valor real y fresco, es solo el texto de ayuda).
+
+## 20a0. Bugfix — botones "Editar"/"Resetear password"/"Desactivar" de Usuarios no hacían nada — 2026-07-19
+
+Kevin reportó que en Admin > Usuarios los botones de acción no reaccionaban. Verificado con
+Playwright: "+ Nuevo usuario" sí abría su modal, pero "Editar", "Resetear password" y "Desactivar"
+no hacían nada, sin error en consola. Causa raíz: `abrirModalEditar`, `abrirModalPassword` y
+`desactivarUsuario` (`frontend/admin/admin.js`) buscaban el usuario con
+`state.usuarios.find((u) => u.id === usuarioId)`, comparando con `===` estricto. `usuarioId` venía
+de `el.dataset.id` (siempre string), mientras que `u.id` es un número (`usuarios.id SERIAL`) — la
+comparación nunca matcheaba y la función cortaba en el primer `if (!usuario) return;` sin avisar.
+Bug preexistente de WU5, no introducido en esta sesión. **Fix**: convertir a `Number(el.dataset.id)`
+en el dispatcher (`onActionClick`), mismo patrón ya usado en otras acciones del archivo (ej.
+`habilitarEdicionRubroActividad`). Verificado en vivo con Playwright: los 3 modales/confirm ahora
+abren correctamente.
+
+## 20a. Panel admin — editor de tasas por Tipo de Riesgo (`rubros_actividad`) — 2026-07-19
+
+Kevin señaló, mirando la sección "Tasas" del panel admin, que faltaba poder editar las tasas por
+Tipo de Riesgo (`rubros_actividad.tasa_edificio`/`tasa_contenido`, 49 filas) — hasta ahora solo se
+podían editar las tasas fijas por cobertura (`tasas_cobertura_ramo`), pero la prima real de
+Incendio Edificio/Contenido en MRC e Incendio sale de esta otra tabla, que solo se cargaba por
+migración SQL. Este editor había quedado explícitamente fuera del MVP de Fase 5 (ver
+`docs/PLAN_ADMIN_FASE5.md:59`, "Después: editor de rubros_actividad...").
+
+- **Backend**: `GET /admin/rubros-actividad` y `PUT /admin/rubros-actividad/:id`, ambas gated por
+  `requireTasasEdit` (mismo criterio que el resto de la sección Tasas). Nuevo
+  `actualizarRubroActividad` en `coberturas.repository.js`.
+- **Decisión de modelado**: a diferencia de `tasas_cobertura_ramo` (versionado por INSERT, con
+  `vigente_desde`), `rubros_actividad` NO tiene columna de vigencia — se edita con **UPDATE
+  directo**, mismo patrón que `editarPlan`. No se agregó versionado/historial a una tabla que no
+  lo tenía.
+- **Alcance acotado a propósito**: solo `tasa_edificio`/`tasa_contenido` son editables. `nombre`
+  queda de solo lectura porque `findRubroPorNombre` (usado en tiempo de cotización) matchea por
+  ese campo — cambiarlo rompería el join.
+- **Frontend**: nueva tabla "Tasas por Tipo de Riesgo" dentro de la sección Tasas, visible solo
+  cuando el ramo seleccionado es `mrc` o `incendio` (la tabla es compartida entre ambos, no tiene
+  `ramo_id` propio) — mismo criterio ya documentado en sección 15 de que el desplegable "Tipo de
+  Riesgo" del formulario de cotización muestra las 49 filas sin filtrar por grupo.
+- **Pendiente menor, no bloqueante**: el schema (`editarRubroActividadSchema`) no acepta `null`
+  (a diferencia de otros campos inline como `monto`/`franquicia`) — no se puede vaciar una tasa
+  desde el panel, solo cambiarla a otro número. Ajustar si en algún momento hace falta poder dejar
+  una tasa sin definir.
+
 ## 20. Próximo paso
 
 Con el catálogo de MRC, Incendio y Vida/AP cargado, el primer calculador (MRC, plan Normal) conectado
@@ -704,7 +796,7 @@ sin correlato en esa tabla). Por lo tanto:
   `sublimitesFijosMrc()`, que lee `state.planCoberturas` (cargado vía `GET /planes/:id/coberturas`
   al elegir plan). Verificado que la Prima de MRC Normal no cambia (Gs. 423.400, mismo capital de
   prueba antes/después).
-- **Efecto colateral esperado, no una regresión**: el panel "Sublímites" de MRC ahora muestra 4
-  filas en vez de 3 (se suma "murallas/cercos", que ya estaba en la base de datos pero la constante
-  vieja no reflejaba). Es una corrección de un dato que faltaba, confirmar con Kevin si el monto
-  Gs. 1.000.000 es correcto para mostrarse en producción.
+- **Efecto colateral esperado, no una regresión — confirmado (2026-07-19)**: el panel "Sublímites"
+  de MRC ahora muestra 4 filas en vez de 3 (se suma "murallas/cercos", que ya estaba en la base de
+  datos pero la constante vieja no reflejaba). Kevin confirmó que Gs. 1.000.000 es el monto correcto
+  para producción — no hace falta ninguna corrección. WU6 queda cerrado del todo.

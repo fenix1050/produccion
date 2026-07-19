@@ -39,6 +39,8 @@ export async function requireAuth(req, res, next) {
       puede_editar_tasas: usuario.puede_editar_tasas,
       nombre: usuario.nombre,
       email: usuario.email,
+      descuento_maximo_pct: usuario.descuento_maximo_pct,
+      recargo_maximo_pct: usuario.recargo_maximo_pct,
     };
 
     next();

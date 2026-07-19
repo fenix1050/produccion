@@ -695,7 +695,8 @@ function renderSidebar() {
 
   const usuario = auth.getUsuario();
   const nombreAgente = usuario?.nombre || 'Agente';
-  const rolAgente = usuario?.rol || 'Analista comercial';
+  const esAdmin = usuario?.rol === 'admin';
+  const rolAgente = esAdmin ? 'Administrador' : usuario?.rol === 'agente' ? 'Agente' : 'Analista comercial';
   const iniciales = nombreAgente
     .split(' ')
     .filter(Boolean)
@@ -709,7 +710,7 @@ function renderSidebar() {
       <div class="ramo-list">${rows}</div>
       <div class="sidebar__footer">
         <a class="nav-item" href="../historial/">📋 Historial de cotizaciones</a>
-        <a class="nav-item" href="../admin/">⚙️ Configuración (admin)</a>
+        <a class="nav-item" href="../admin/">⚙️ Configuración${esAdmin ? ' (Admin)' : ''}</a>
         <div class="nav-item" data-action="logout">🚪 Cerrar sesión</div>
         <div class="sidebar__agent">
           <div class="sidebar__agent-avatar">${escapeHtml(iniciales)}</div>
@@ -1272,7 +1273,15 @@ function renderResumenContadoFinanciado() {
 // Apenas tipea en uno, el otro se deshabilita (y se limpia) para evitar que queden los dos
 // cargados a la vez y ajustesParaBody tenga que desambiguar en silencio cuál usar.
 function renderAjusteField(prefijo, label, plan) {
-  const tope = prefijo === 'descuento' ? plan?.descuento_maximo : plan?.recargo_maximo;
+  const topePlan = prefijo === 'descuento' ? plan?.descuento_maximo : plan?.recargo_maximo;
+  const usuario = auth.getUsuario();
+  // Tope propio del usuario (Fase 5, ver Editar usuario en admin) — el backend siempre aplica
+  // el más restrictivo de los dos; acá solo se refleja para que el agente no cargue de más
+  // y lo vea clampeado sin explicación. Nota: es el valor cacheado al loguearse, si un admin
+  // edita el tope del usuario en la misma sesión, este texto queda desactualizado hasta el
+  // próximo login — el backend igual aplica el valor real y fresco en cada cotización.
+  const topeUsuario = prefijo === 'descuento' ? usuario?.descuento_maximo_pct : usuario?.recargo_maximo_pct;
+  const tope = topePlan == null ? topeUsuario ?? null : topeUsuario == null ? topePlan : Math.min(topePlan, topeUsuario);
   const montoCargado = state.data[`${prefijo}Monto`] != null && state.data[`${prefijo}Monto`] !== '';
   const porcentajeCargado = state.data[`${prefijo}Porcentaje`] != null && state.data[`${prefijo}Porcentaje`] !== '';
 
@@ -1302,7 +1311,7 @@ function renderAjusteField(prefijo, label, plan) {
           style="flex:1;"
         />
       </div>
-      <small style="color:#888;">${tope != null ? `Tope del plan: ${tope}% de la prima` : 'Sin tope confirmado para este plan'}</small>
+      <small style="color:#888;">${tope != null ? `Tope aplicable: ${tope}% de la prima` : 'Sin tope confirmado para este plan'}</small>
     </div>
   `;
 }

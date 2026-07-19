@@ -6,6 +6,7 @@ import {
   agregarCoberturaAPlanSchema,
   editarPlanCoberturaSchema,
   crearTasaSchema,
+  editarRubroActividadSchema,
   editarPlanSchema,
   editarPlanFormaPagoSchema,
 } from '../schemas/admin.schema.js';
@@ -104,6 +105,24 @@ export async function crearTasa(req, res, next) {
     const { ramo_id, ...datos } = crearTasaSchema.parse(req.body);
     const tasa = await adminService.crearVersionDeTasa(ramo_id, datos);
     res.status(201).json(tasa);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function listarRubrosActividad(req, res, next) {
+  try {
+    res.json(await adminService.listarRubrosActividad(req.query.grupo));
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function editarRubroActividad(req, res, next) {
+  try {
+    const cambios = editarRubroActividadSchema.parse(req.body);
+    const fila = await adminService.editarRubroActividad(req.params.id, cambios);
+    res.json(fila);
   } catch (err) {
     next(err);
   }

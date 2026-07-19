@@ -2,7 +2,7 @@ import * as cotizacionService from '../services/cotizacion.service.js';
 
 export async function calcular(req, res, next) {
   try {
-    const resultado = await cotizacionService.calcularPreview(req.body);
+    const resultado = await cotizacionService.calcularPreview(req.body, req.usuario);
     res.json(resultado);
   } catch (err) {
     next(err);

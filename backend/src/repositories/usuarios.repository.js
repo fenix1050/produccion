@@ -3,7 +3,7 @@ import { supabase } from '../config/supabase.js';
 export async function findByEmail(email) {
   const { data, error } = await supabase
     .from('usuarios')
-    .select('id, nombre, email, rol, puede_editar_tasas, activo, password_hash, ultima_sesion')
+    .select('id, nombre, email, rol, puede_editar_tasas, activo, password_hash, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct')
     .eq('email', email)
     .maybeSingle();
   if (error) throw error;
@@ -13,7 +13,7 @@ export async function findByEmail(email) {
 export async function findById(id) {
   const { data, error } = await supabase
     .from('usuarios')
-    .select('id, nombre, email, rol, puede_editar_tasas, activo, password_hash, ultima_sesion')
+    .select('id, nombre, email, rol, puede_editar_tasas, activo, password_hash, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct')
     .eq('id', id)
     .maybeSingle();
   if (error) throw error;
@@ -34,7 +34,7 @@ export async function actualizarUltimaSesion(id) {
 export async function findAll() {
   const { data, error } = await supabase
     .from('usuarios')
-    .select('id, nombre, email, rol, puede_editar_tasas, activo, ultima_sesion')
+    .select('id, nombre, email, rol, puede_editar_tasas, activo, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct')
     .order('id');
   if (error) throw error;
   return data;
@@ -44,7 +44,7 @@ export async function crear({ nombre, email, rol, puede_editar_tasas, password_h
   const { data, error } = await supabase
     .from('usuarios')
     .insert({ nombre, email, rol, puede_editar_tasas, password_hash, activo: true })
-    .select('id, nombre, email, rol, puede_editar_tasas, activo, ultima_sesion')
+    .select('id, nombre, email, rol, puede_editar_tasas, activo, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct')
     .single();
   if (error) throw error;
   return data;
@@ -55,7 +55,7 @@ export async function actualizar(id, cambios) {
     .from('usuarios')
     .update(cambios)
     .eq('id', id)
-    .select('id, nombre, email, rol, puede_editar_tasas, activo, ultima_sesion')
+    .select('id, nombre, email, rol, puede_editar_tasas, activo, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct')
     .maybeSingle();
   if (error) throw error;
   return data;

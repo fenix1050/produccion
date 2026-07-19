@@ -8,6 +8,9 @@ let browserPromise = null;
 function getBrowser() {
   if (!browserPromise) {
     browserPromise = puppeteer.launch({ headless: true, args: ['--no-sandbox'] });
+    browserPromise
+      .then((browser) => browser.once('disconnected', () => { browserPromise = null; }))
+      .catch(() => { browserPromise = null; });
   }
   return browserPromise;
 }

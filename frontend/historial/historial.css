@@ -1,0 +1,67 @@
+/* Cotizador Tajy — Historial (Fase 5/WU5). Reutiliza tokens de shared/cotizador.css
+   (app-shell, sidebar, panel, field-input, btn-primary/outline) y las clases de tabla/banner/
+   modal ya definidas en admin/admin.css (admin-table, admin-banner, admin-modal, admin-pill,
+   admin-toolbar) — acá solo lo específico de esta pantalla: filtros y paginación. */
+
+.historial-filtros {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr) auto auto;
+  gap: 10px;
+  align-items: end;
+  margin-bottom: 18px;
+}
+
+.historial-filtros__campo {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.historial-filtros__campo label {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--tajy-text-body);
+}
+
+.historial-paginacion {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 16px;
+  font-size: 13px;
+  color: var(--tajy-text-body);
+}
+
+.historial-paginacion button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.historial-oferta-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.historial-modal-detalle {
+  width: 520px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.historial-detalle__grupo {
+  margin-bottom: 14px;
+}
+
+.historial-detalle__grupo-titulo {
+  font-family: 'Sora', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+@media (max-width: 1100px) {
+  .historial-filtros {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

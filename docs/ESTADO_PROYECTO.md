@@ -829,6 +829,39 @@ migración SQL. Este editor había quedado explícitamente fuera del MVP de Fase
   desde el panel, solo cambiarla a otro número. Ajustar si en algún momento hace falta poder dejar
   una tasa sin definir.
 
+## 20b. Historial de cotizaciones — implementado (2026-07-19)
+
+Fase 5: reemplazado el stub de `frontend/historial/index.html` por la UI completa contra
+`GET /api/cotizaciones`.
+
+- **Backend**: sumado el filtro de rango de fecha (`fecha_desde`/`fecha_hasta`, `.gte()`/`.lte()`
+  sobre `created_at`) que faltaba en `cotizaciones.repository.js`/`cotizacion.service.js`, mismo
+  patrón que los filtros ya existentes (`ramo_id`, `estado`, `cliente`). No se tocó el controller
+  (ya reenviaba todo el query sin validar campos individuales).
+- **Frontend** (`frontend/historial/index.html`, `historial.js`, `historial.css`): tabla con
+  Número/Cliente/Ramo/Plan/Fecha/Estado/Prima, filtros (ramo, cliente, fecha desde/hasta, estado)
+  con botón "Buscar" explícito (no reactivo a `change`), paginación con el `count` que ya
+  devolvía el backend, modal de detalle (`GET /cotizaciones/:id`) y botón "Descargar Carta
+  Oferta" (`GET /cotizaciones/:id/pdf-oferta`) — habilitado solo si `ramos.calculador` está en
+  `CALCULADORES_CON_OFERTA_PDF` (hoy solo `'mrc'`), mismo criterio que
+  `ofertaDisponibleParaRamo()` en `backend/src/templates/oferta/index.js`.
+- **Prima mostrada**: `cotizacion_variantes` puede traer más de una variante (franquicia dual de
+  Auto); se prioriza `tipo_franquicia = 'sin_franquicia'` y se cae a la primera si no está — hoy
+  siempre hay una sola variante para MRC/Incendio/Vida-AP, así que no afecta el dato mostrado.
+- **Verificado end-to-end con Playwright contra Supabase real** (login con usuario real, no
+  mock): listado carga, filtro por ramo (MRC) filtra de verdad, filtro de fecha futura devuelve 0
+  filas correctamente, modal de detalle abre, descarga de PDF funciona.
+- **Bug encontrado y corregido durante la verificación (no introducido por este cambio, pero
+  arreglado en la misma sesión)**: `backend/src/services/pdf.service.js` cacheaba
+  `browserPromise` a nivel de módulo sin manejar el caso de rechazo — si el primer intento de
+  lanzar Puppeteer fallaba (ej. Chrome no instalado en la máquina), **todas las descargas de PDF
+  quedaban rotas hasta reiniciar el server**, porque `getBrowser()` seguía devolviendo la misma
+  promesa rechazada para siempre. **Fix aplicado**: `getBrowser()` ahora resetea
+  `browserPromise = null` tanto si el `puppeteer.launch()` rechaza como si el browser ya lanzado
+  se desconecta/crashea más tarde (evento `disconnected`) — el próximo request reintenta el
+  lanzamiento en vez de heredar el estado roto. Verificado con una descarga real de PDF tras el
+  fix (200 OK, PDF válido).
+
 ## 20. Próximo paso
 
 Con el catálogo de MRC, Incendio y Vida/AP cargado, el primer calculador (MRC, plan Normal) conectado

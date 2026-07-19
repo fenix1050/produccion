@@ -125,6 +125,8 @@ export async function listarCotizaciones(query) {
     ramoId: query.ramo_id,
     estado: query.estado,
     cliente: query.cliente,
+    fechaDesde: query.fecha_desde,
+    fechaHasta: query.fecha_hasta,
     limit: query.limit ? Number(query.limit) : undefined,
     offset: query.offset ? Number(query.offset) : undefined,
   });

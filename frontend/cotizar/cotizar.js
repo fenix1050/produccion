@@ -142,6 +142,10 @@ const state = {
   // true mientras se guarda la cotización y se genera el PDF, para deshabilitar el botón y
   // evitar doble click (crearía 2 cotizaciones con números correlativos distintos).
   emitiendoCarta: false,
+  // Id de la cotización que se está editando (via ?editar=<id> — ver historial.js, botón
+  // "Editar" dentro de la ventana de 30 días). null = flujo normal de alta. Si está seteado,
+  // emitirCartaOferta() hace PUT /cotizaciones/:id en vez de POST /cotizaciones.
+  editandoId: null,
 };
 
 // Códigos que no deben ofrecerse en "Coberturas adicionales": las 2 fijas ya tienen su propio
@@ -189,7 +193,133 @@ async function init() {
     console.error('No se pudo cargar la lista de ramos', err);
     state.ramosActivos = [];
   }
+
+  const editarId = new URLSearchParams(location.search).get('editar');
+  if (editarId) {
+    await cargarParaEditar(Number(editarId));
+  }
+
   renderApp();
+}
+
+// ---------------------------------------------------------------------------
+// Edición de una cotización existente (?editar=<id> en la URL, ver historial.js) — ventana de
+// 30 días validada en el backend (cotizacion.service.js actualizarCotizacion). Reconstruye
+// state.ramoId/planId/data/coberturasAdicionales/franquiciasPorCobertura a partir del detalle
+// ya guardado y dispara un cálculo inmediato (no debounced) para que la prima aparezca sin
+// esperar el timer de scheduleCalculate.
+// ---------------------------------------------------------------------------
+
+async function cargarParaEditar(id) {
+  let cotizacion;
+  try {
+    cotizacion = await api.get(`/cotizaciones/${id}`);
+  } catch (err) {
+    alert(err.message || 'No se pudo cargar la cotización para editar.');
+    return;
+  }
+
+  const ramo = state.ramosActivos.find((r) => r.id === cotizacion.ramo_id);
+  if (!ramo) {
+    alert('No se encontró el ramo de esta cotización.');
+    return;
+  }
+
+  state.editandoId = id;
+  state.ramoId = ramo.nombre;
+  state.view = 'form';
+
+  try {
+    state.planes = await api.get(`/ramos/${ramo.id}/planes`);
+  } catch (err) {
+    console.error('No se pudieron cargar los planes del ramo', err);
+    state.planes = [];
+  }
+  state.planId = cotizacion.plan_id;
+
+  if (ramo.nombre === 'mrc' || ramo.nombre === 'incendio') {
+    try {
+      state.rubros = await api.get('/ramos/rubros-actividad');
+    } catch (err) {
+      console.error('No se pudieron cargar los tipos de riesgo', err);
+      state.rubros = [];
+    }
+  }
+
+  if (ramo.nombre === 'mrc') {
+    await cargarCoberturasCatalogo(ramo.id);
+    await cargarPlanCoberturas(state.planId);
+  }
+
+  const plan = state.planes.find((p) => p.id === state.planId);
+  prefillDatosDesdeCotizacion(ramo.nombre, plan, cotizacion);
+
+  if (RAMOS_CON_CALCULO.includes(ramo.nombre)) {
+    await calcularPreview();
+  }
+}
+
+// Traduce `cotizacion.riesgo_datos` (shape guardado por cada calculador — ver
+// armarRiesgoDatos()) de vuelta a los campos de state.data que usa el formulario.
+function prefillDatosDesdeCotizacion(ramoNombre, plan, cotizacion) {
+  const rd = cotizacion.riesgo_datos || {};
+  state.data.clienteNombre = cotizacion.cliente_nombre || '';
+
+  if (ramoNombre === 'mrc') {
+    state.data.cedula = rd.cedula || '';
+    state.data.direccion = rd.direccion || '';
+    state.data.rubroActividad = rd.rubro_actividad || '';
+    state.data.ciudad = rd.ciudad || '';
+    state.data.capitalEdificio = rd.capital_edificio || '';
+    state.data.capitalContenido = rd.capital_contenido || '';
+
+    // Los sublímites fijos del plan (ver sublimitesFijosMrc()) ya se re-agregan solos en
+    // armarRiesgoDatos() — no deben duplicarse acá como línea editable de "Coberturas adicionales".
+    const codigosFijos = new Set(sublimitesFijosMrc().map((s) => s.codigo));
+    state.coberturasAdicionales = (rd.coberturas_adicionales || [])
+      .filter((c) => c.codigo && !codigosFijos.has(c.codigo))
+      .map((c) => ({ id: crypto.randomUUID(), codigo: c.codigo, sumaAsegurada: c.suma_asegurada }));
+
+    for (const [codigo, monto] of Object.entries(rd.franquicias_por_cobertura || {})) {
+      state.franquiciasPorCobertura[codigo] = franquiciaValorPorDefecto(monto);
+    }
+  } else if (ramoNombre === 'incendio') {
+    if (plan?.nombre === 'MAQUINARIA BASICO') {
+      state.data.capitalMaquinaria = rd.capital_maquinaria || '';
+      if (rd.sublimite_vandalismo_porcentaje != null) {
+        state.data.sublimiteVandalismoPorcentaje = rd.sublimite_vandalismo_porcentaje;
+      }
+    } else {
+      state.data.rubroActividad = rd.rubro_actividad || '';
+      state.data.capitalEdificio = rd.capital_edificio || '';
+      state.data.capitalContenido = rd.capital_contenido || '';
+      if (rd.sublimite_fenomenos_naturales_porcentaje != null) {
+        state.data.sublimiteFenomenosNaturalesPorcentaje = rd.sublimite_fenomenos_naturales_porcentaje;
+      }
+    }
+  } else if (ramoNombre === 'vida-ap') {
+    state.data.capitalAsegurado = rd.capital_asegurado || '';
+    if (rd.edad != null) state.data.edad = rd.edad;
+    if (rd.incluye_renta_diaria) {
+      state.data.incluyeRentaDiaria = true;
+      state.data.sumaRentaDiaria = rd.suma_renta_diaria || '';
+    }
+  }
+
+  // Descuento/recargo manual — se prefillea con el monto YA topado que quedó guardado
+  // (cotizacion_ajustes), no con el % crudo que haya tipeado el agente en su momento (ese dato
+  // no se persiste por separado, ver comentario de insertAjustes en cotizaciones.repository.js).
+  if (RAMOS_CON_AJUSTES.includes(ramoNombre)) {
+    const variante = cotizacion.cotizacion_variantes?.[0];
+    const ajustes = variante?.cotizacion_ajustes || [];
+    const descuento = ajustes.find((a) => a.tipo === 'descuento');
+    const recargo = ajustes.find((a) => a.tipo === 'recargo');
+    if (descuento) state.data.descuentoMonto = descuento.monto;
+    if (recargo) state.data.recargoMonto = recargo.monto;
+  }
+
+  const cuotas = cotizacion.cotizacion_variantes?.[0]?.cotizacion_plan_pago?.[0]?.cantidad_cuotas;
+  if (cuotas != null) state.data.cuotas = cuotas;
 }
 
 function cerrarSesion() {
@@ -236,6 +366,11 @@ function ramoActivo(nombre) {
 // ---------------------------------------------------------------------------
 
 async function selectRamo(nombre) {
+  // Salir del modo edición al cambiar de ramo manualmente: el backend rechaza un PUT que cambie
+  // el ramo de una cotización existente (actualizarCotizacion, cotizacion.service.js), así que
+  // sin este reset el agente llenaría todo el formulario de otro ramo para recién enterarse del
+  // 422 al guardar — detectado en review-readability/risk de la feature de edición.
+  state.editandoId = null;
   state.ramoId = nombre;
   state.view = 'form';
   state.data = {};
@@ -577,7 +712,9 @@ async function emitirCartaOferta() {
   renderApp();
 
   try {
-    const cotizacion = await api.post('/cotizaciones', body);
+    const cotizacion = state.editandoId
+      ? await api.put(`/cotizaciones/${state.editandoId}`, body)
+      : await api.post('/cotizaciones', body);
     const blob = await api.getBlob(`/cotizaciones/${cotizacion.id}/pdf-oferta`);
     const url = URL.createObjectURL(blob);
     window.open(url, '_blank');
@@ -1165,7 +1302,7 @@ function renderResultadoView(ramo) {
           </div>
           <div style="display:flex;gap:10px;">
             <button class="btn-outline" data-action="show-tab" data-view="form">Editar datos / forma de pago</button>
-            <button class="btn-primary" data-action="emitir-carta" ${state.emitiendoCarta ? 'disabled' : ''}>${state.emitiendoCarta ? 'Generando…' : 'Emitir carta oferta'}</button>
+            <button class="btn-primary" data-action="emitir-carta" ${state.emitiendoCarta ? 'disabled' : ''}>${state.emitiendoCarta ? 'Generando…' : (state.editandoId ? 'Guardar cambios' : 'Emitir carta oferta')}</button>
           </div>
         </div>
         ${renderResumenContadoFinanciado()}

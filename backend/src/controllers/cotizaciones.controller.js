@@ -20,7 +20,7 @@ export async function crear(req, res, next) {
 
 export async function listar(req, res, next) {
   try {
-    const resultado = await cotizacionService.listarCotizaciones(req.query);
+    const resultado = await cotizacionService.listarCotizaciones(req.query, req.usuario);
     res.json(resultado);
   } catch (err) {
     next(err);
@@ -29,7 +29,16 @@ export async function listar(req, res, next) {
 
 export async function obtener(req, res, next) {
   try {
-    const cotizacion = await cotizacionService.obtenerCotizacion(req.params.id);
+    const cotizacion = await cotizacionService.obtenerCotizacion(req.params.id, req.usuario);
+    res.json(cotizacion);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function actualizar(req, res, next) {
+  try {
+    const cotizacion = await cotizacionService.actualizarCotizacion(req.params.id, req.body, req.usuario);
     res.json(cotizacion);
   } catch (err) {
     next(err);
@@ -38,7 +47,7 @@ export async function obtener(req, res, next) {
 
 export async function pdfOferta(req, res, next) {
   try {
-    const pdfBuffer = await cotizacionService.generarPdfOferta(req.params.id);
+    const pdfBuffer = await cotizacionService.generarPdfOferta(req.params.id, req.usuario);
     res.setHeader('Content-Type', 'application/pdf');
     res.send(pdfBuffer);
   } catch (err) {

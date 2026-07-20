@@ -1,6 +1,7 @@
 import { api, auth } from '../shared/api.js';
-import { ICON_ARROW_LEFT, ICON_CLOCK, ICON_GEAR, ICON_LOGOUT, renderTrustFooter } from '../shared/nav-icons.js';
 import { crearBadge } from '../shared/badge.js';
+import { escapeHtml } from '../shared/dom.js';
+import { renderSidebarFooter } from '../shared/sidebar.js';
 
 // Panel de Administración del Cotizador Tajy — WU5, primera porción (Usuarios).
 // Mismo patrón Vanilla JS que cotizar.js: state + render + delegación de eventos por
@@ -111,15 +112,6 @@ function fmtGs(n) {
   return `Gs. ${num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')}`;
 }
 
-function escapeHtml(value) {
-  return String(value ?? '').replace(/[&<>"']/g, (ch) => ({
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#39;',
-  })[ch]);
-}
 
 function capitalizar(texto) {
   const str = String(texto ?? '');
@@ -897,32 +889,12 @@ function renderSidebar() {
     </div>
   `).join('');
 
-  const usuario = auth.getUsuario();
-  const nombreAgente = usuario?.nombre || 'Admin';
-  const iniciales = nombreAgente
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((p) => p[0].toUpperCase())
-    .join('') || 'AD';
-
   return `
     <div class="sidebar">
       <div class="sidebar__section-label">Secciones</div>
       <div class="admin-nav">${items}</div>
       <div class="sidebar__footer">
-        <a class="nav-item nav-item--icon" href="../cotizar/"><span class="nav-item__badge">${ICON_ARROW_LEFT}</span><span>Volver a cotizar</span></a>
-        <a class="nav-item nav-item--icon" href="../historial/"><span class="nav-item__badge">${ICON_CLOCK}</span><span>Historial de cotizaciones</span></a>
-        <a class="nav-item nav-item--icon" href="../configuracion/"><span class="nav-item__badge">${ICON_GEAR}</span><span>Configuración</span></a>
-        <div class="nav-item nav-item--icon" data-action="logout"><span class="nav-item__badge">${ICON_LOGOUT}</span><span>Cerrar sesión</span></div>
-        <div class="sidebar__agent">
-          <div class="sidebar__agent-avatar">${escapeHtml(iniciales)}</div>
-          <div>
-            <div class="sidebar__agent-name">${escapeHtml(nombreAgente)}</div>
-            <div class="sidebar__agent-role">Administrador</div>
-          </div>
-        </div>
-        ${renderTrustFooter()}
+        ${renderSidebarFooter('admin')}
       </div>
     </div>
   `;

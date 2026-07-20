@@ -1,6 +1,8 @@
 import { api, auth } from '../shared/api.js';
-import { ICON_CLOCK, ICON_GEAR, ICON_WRENCH, ICON_LOGOUT, ICON_X_CIRCLE, ICON_CHECK_CIRCLE, ICON_RAMO_AUTO, ICON_RAMO_MRC, ICON_RAMO_INCENDIO, ICON_RAMO_VIDA_AP, ICON_RAMO_HOGAR, renderTrustFooter } from '../shared/nav-icons.js';
+import { ICON_X_CIRCLE, ICON_CHECK_CIRCLE, ICON_RAMO_AUTO, ICON_RAMO_MRC, ICON_RAMO_INCENDIO, ICON_RAMO_VIDA_AP, ICON_RAMO_HOGAR } from '../shared/nav-icons.js';
 import { crearBadge } from '../shared/badge.js';
+import { escapeHtml } from '../shared/dom.js';
+import { renderSidebarFooter } from '../shared/sidebar.js';
 
 // Cotizador Tajy — App Shell + Datos + Resultado (Fase 6, alcance MRC plan Normal).
 // Recreación en Vanilla JS del handoff de diseño `design_handoff_cotizador/Cotizador-B.dc.html`
@@ -353,16 +355,6 @@ function fmtGs(n) {
 function fmtGsInput(digits) {
   if (digits === undefined || digits === null || digits === '') return '';
   return fmtGs(digits);
-}
-
-function escapeHtml(value) {
-  return String(value ?? '').replace(/[&<>"']/g, (ch) => ({
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#39;',
-  })[ch]);
 }
 
 function ramoInfo(nombre) {
@@ -842,34 +834,12 @@ function renderSidebar() {
     `;
   }).join('');
 
-  const usuario = auth.getUsuario();
-  const nombreAgente = usuario?.nombre || 'Agente';
-  const esAdmin = usuario?.rol === 'admin';
-  const rolAgente = esAdmin ? 'Administrador' : usuario?.rol === 'agente' ? 'Agente' : 'Analista comercial';
-  const iniciales = nombreAgente
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((p) => p[0].toUpperCase())
-    .join('') || 'AG';
-
   return `
     <div class="sidebar">
       <div class="sidebar__section-label">Sección a cotizar</div>
       <div class="ramo-list">${rows}</div>
       <div class="sidebar__footer">
-        <a class="nav-item nav-item--icon" href="../historial/"><span class="nav-item__badge">${ICON_CLOCK}</span><span>Historial de cotizaciones</span></a>
-        <a class="nav-item nav-item--icon" href="../configuracion/"><span class="nav-item__badge">${ICON_GEAR}</span><span>Configuración</span></a>
-        ${esAdmin ? `<a class="nav-item nav-item--icon" href="../admin/"><span class="nav-item__badge">${ICON_WRENCH}</span><span>Panel de administración</span></a>` : ''}
-        <div class="nav-item nav-item--icon" data-action="logout"><span class="nav-item__badge">${ICON_LOGOUT}</span><span>Cerrar sesión</span></div>
-        <div class="sidebar__agent">
-          <div class="sidebar__agent-avatar">${escapeHtml(iniciales)}</div>
-          <div>
-            <div class="sidebar__agent-name">${escapeHtml(nombreAgente)}</div>
-            <div class="sidebar__agent-role">${escapeHtml(rolAgente)}</div>
-          </div>
-        </div>
-        ${renderTrustFooter()}
+        ${renderSidebarFooter('cotizar')}
         <div class="sidebar__credit">Powered by <strong>Kevin Ruiz Diaz</strong> v${COTIZADOR_VERSION}</div>
       </div>
     </div>

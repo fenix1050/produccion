@@ -1,4 +1,5 @@
 import { api, auth } from '../shared/api.js';
+import { escapeHtml } from '../shared/dom.js';
 
 // Pantalla de login del Cotizador Tajy — WU4 (auth de frontend). Formulario
 // email/password contra POST /api/auth/login; guarda token+usuario y redirige
@@ -55,15 +56,6 @@ function render() {
   document.getElementById('forgot-link').addEventListener('click', onForgotPassword);
 }
 
-function escapeHtml(value) {
-  return String(value ?? '').replace(/[&<>"']/g, (ch) => ({
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#39;',
-  }[ch]));
-}
 
 function onTogglePassword() {
   const input = document.getElementById('password');

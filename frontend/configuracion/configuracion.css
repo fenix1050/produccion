@@ -1,0 +1,77 @@
+/* Cotizador Tajy — Configuración (self-service, cualquier usuario logueado). Reutiliza
+   tokens de shared/cotizador.css (app-shell, sidebar, panel, field-input, btn-primary) y
+   admin/admin.css (admin-banner) — acá solo lo específico de esta pantalla: los campos de
+   perfil de solo lectura y el toggle de mostrar/ocultar contraseña (login.js define el
+   mismo patrón visual pero login.css no se carga en esta pantalla, así que se redefine). */
+
+.config-card {
+  max-width: 480px;
+  margin-bottom: 24px;
+}
+
+.config-card .card__title {
+  margin-bottom: 16px;
+}
+
+.config-card--perfil {
+  padding: 20px 26px;
+}
+
+.config-card--perfil .card__title {
+  margin-bottom: 12px;
+}
+
+.config-card--perfil .config-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.config-field {
+  margin-bottom: 14px;
+}
+
+.config-card--perfil .config-field {
+  margin-bottom: 0;
+}
+
+.config-field label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--tajy-text-body, #767a80);
+  margin-bottom: 4px;
+}
+
+.login-field--password {
+  margin-bottom: 14px;
+}
+
+.login-field__password-wrap {
+  position: relative;
+}
+
+.login-field__password-wrap input {
+  padding-right: 40px;
+}
+
+.login-field__toggle {
+  position: absolute;
+  right: 5px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 30px;
+  height: 30px;
+  border: none;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #8a8f96;
+  border-radius: 6px;
+}
+
+.login-field__toggle:hover {
+  background: rgba(0, 0, 0, 0.04);
+}

@@ -847,7 +847,8 @@ function renderSidebar() {
       <div class="ramo-list">${rows}</div>
       <div class="sidebar__footer">
         <a class="nav-item" href="../historial/">📋 Historial de cotizaciones</a>
-        <a class="nav-item" href="../admin/">⚙️ Configuración${esAdmin ? ' (Admin)' : ''}</a>
+        <a class="nav-item" href="../configuracion/">⚙️ Configuración</a>
+        ${esAdmin ? '<a class="nav-item" href="../admin/">🛠️ Panel de administración</a>' : ''}
         <div class="nav-item" data-action="logout">🚪 Cerrar sesión</div>
         <div class="sidebar__agent">
           <div class="sidebar__agent-avatar">${escapeHtml(iniciales)}</div>

@@ -281,9 +281,10 @@ function renderSidebar() {
 
   return `
     <div class="sidebar">
-      <div class="sidebar__footer">
+      <div class="sidebar__nav">
         <a class="nav-item" href="../cotizar/">🧮 Volver a cotizar</a>
-        ${esAdmin ? '<a class="nav-item" href="../admin/">⚙️ Configuración (Admin)</a>' : ''}
+        <a class="nav-item" href="../configuracion/">⚙️ Configuración</a>
+        ${esAdmin ? '<a class="nav-item" href="../admin/">🛠️ Panel de administración</a>' : ''}
         <div class="nav-item" data-action="logout">🚪 Cerrar sesión</div>
         <div class="sidebar__agent">
           <div class="sidebar__agent-avatar">${escapeHtml(iniciales)}</div>

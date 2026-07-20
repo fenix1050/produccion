@@ -56,6 +56,11 @@
   margin-bottom: 16px;
 }
 
+.admin-toolbar + .admin-toolbar,
+.panel + .admin-toolbar {
+  margin-top: 36px;
+}
+
 .admin-toolbar__title {
   font-family: 'Sora', sans-serif;
   font-size: 18px;

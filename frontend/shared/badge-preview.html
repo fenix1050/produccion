@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Preview — Badge component</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Inter:wght@600&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="./cotizador.css" />
+  <link rel="stylesheet" href="./badge.css" />
+  <style>
+    body { padding: 40px; }
+    .row { display: flex; gap: 10px; align-items: center; margin-bottom: 16px; }
+    h2 { font-family: 'Public Sans', sans-serif; font-size: 14px; color: var(--tajy-text-secondary); }
+  </style>
+</head>
+<body>
+  <h2>Variantes</h2>
+  <div class="row" id="variantes"></div>
+
+  <h2>Con ícono</h2>
+  <div class="row" id="iconos"></div>
+
+  <script type="module">
+    import { crearBadge } from './badge.js';
+
+    document.getElementById('variantes').innerHTML = [
+      crearBadge('Agente', 'agent'),
+      crearBadge('En vivo', 'success'),
+      crearBadge('Próximamente', 'warning'),
+      crearBadge('Suspendido', 'danger'),
+      crearBadge('Administrador', 'primary'),
+      crearBadge('Info', 'info'),
+      crearBadge('Neutral', 'neutral'),
+    ].join('');
+
+    document.getElementById('iconos').innerHTML = [
+      crearBadge('En vivo', 'success', 'check'),
+      crearBadge('Administrador', 'primary', 'shield'),
+    ].join('');
+  </script>
+</body>
+</html>

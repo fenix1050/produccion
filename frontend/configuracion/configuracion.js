@@ -184,6 +184,8 @@ function renderTopbar() {
 
 function renderApp() {
   const usuario = state.usuario;
+  const esAdmin = usuario?.rol === 'admin';
+  const rolLabel = esAdmin ? 'Administrador' : usuario?.rol === 'agente' ? 'Agente' : 'Analista comercial';
 
   app.innerHTML = `
     ${renderTopbar()}
@@ -220,7 +222,7 @@ function renderApp() {
                   <span class="config-field__icon">${ICON_SHIELD}</span>
                   <div>
                     <label>Rol</label>
-                    <div>${escapeHtml(usuario?.rol ?? '—')}</div>
+                    <div>${escapeHtml(rolLabel)}</div>
                   </div>
                 </div>
               </div>

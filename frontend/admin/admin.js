@@ -1,5 +1,6 @@
 import { api, auth } from '../shared/api.js';
 import { ICON_ARROW_LEFT, ICON_CLOCK, ICON_GEAR, ICON_LOGOUT, renderTrustFooter } from '../shared/nav-icons.js';
+import { crearBadge } from '../shared/badge.js';
 
 // Panel de Administración del Cotizador Tajy — WU5, primera porción (Usuarios).
 // Mismo patrón Vanilla JS que cotizar.js: state + render + delegación de eventos por
@@ -118,6 +119,11 @@ function escapeHtml(value) {
     '"': '&quot;',
     "'": '&#39;',
   })[ch]);
+}
+
+function capitalizar(texto) {
+  const str = String(texto ?? '');
+  return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
 function mostrarBanner(tipo, texto) {
@@ -986,11 +992,11 @@ function renderTablaRoles() {
 
   const filas = state.roles.map((r) => `
     <tr>
-      <td>${escapeHtml(r.nombre)}</td>
-      <td><span class="admin-pill ${r.puede_gestionar_usuarios ? 'admin-pill--yes' : 'admin-pill--no'}">${r.puede_gestionar_usuarios ? 'Sí' : 'No'}</span></td>
-      <td><span class="admin-pill ${r.puede_editar_coberturas ? 'admin-pill--yes' : 'admin-pill--no'}">${r.puede_editar_coberturas ? 'Sí' : 'No'}</span></td>
-      <td><span class="admin-pill ${r.puede_editar_tasas ? 'admin-pill--yes' : 'admin-pill--no'}">${r.puede_editar_tasas ? 'Sí' : 'No'}</span></td>
-      <td><span class="admin-pill ${r.puede_editar_planes ? 'admin-pill--yes' : 'admin-pill--no'}">${r.puede_editar_planes ? 'Sí' : 'No'}</span></td>
+      <td>${capitalizar(escapeHtml(r.nombre))}</td>
+      <td>${crearBadge(r.puede_gestionar_usuarios ? 'Sí' : 'No', r.puede_gestionar_usuarios ? 'success' : 'neutral')}</td>
+      <td>${crearBadge(r.puede_editar_coberturas ? 'Sí' : 'No', r.puede_editar_coberturas ? 'success' : 'neutral')}</td>
+      <td>${crearBadge(r.puede_editar_tasas ? 'Sí' : 'No', r.puede_editar_tasas ? 'success' : 'neutral')}</td>
+      <td>${crearBadge(r.puede_editar_planes ? 'Sí' : 'No', r.puede_editar_planes ? 'success' : 'neutral')}</td>
       <td>
         ${r.es_sistema
           ? '<button class="btn-outline" disabled title="Rol del sistema — no se puede editar">Editar</button>'
@@ -1031,8 +1037,8 @@ function renderTablaUsuarios() {
     <tr>
       <td>${escapeHtml(u.nombre)}</td>
       <td>${escapeHtml(u.email)}</td>
-      <td><span class="admin-pill admin-pill--${u.rol}">${escapeHtml(u.rol)}</span></td>
-      <td><span class="admin-pill ${u.activo ? 'admin-pill--yes' : 'admin-pill--no'}">${u.activo ? 'Activo' : 'Inactivo'}</span></td>
+      <td>${crearBadge(capitalizar(u.rol), u.rol === 'admin' ? 'primary' : 'neutral')}</td>
+      <td>${crearBadge(u.activo ? 'Activo' : 'Inactivo', u.activo ? 'success' : 'neutral')}</td>
       <td>
         <div class="admin-table__actions">
           <button class="btn-outline" data-action="editar-usuario" data-id="${u.id}">Editar</button>
@@ -1318,7 +1324,7 @@ function renderTablaTasas() {
         <td>${escapeHtml(String(t.tasa_valor))}</td>
         <td>${t.unidad === 'permil' ? '‰' : '%'}</td>
         <td>${escapeHtml(t.vigente_desde)}</td>
-        <td><span class="admin-pill ${esVigente ? 'admin-pill--yes' : 'admin-pill--no'}">${esVigente ? 'Vigente' : 'Histórica'}</span></td>
+        <td>${crearBadge(esVigente ? 'Vigente' : 'Histórica', esVigente ? 'success' : 'neutral')}</td>
       </tr>
     `;
   }).join('');
@@ -1576,7 +1582,7 @@ function renderModal() {
 
 function renderOpcionesRoles(rolIdSeleccionado) {
   return state.roles.map((r) => `
-    <option value="${r.id}" ${String(rolIdSeleccionado) === String(r.id) ? 'selected' : ''}>${escapeHtml(r.nombre)}</option>
+    <option value="${r.id}" ${String(rolIdSeleccionado) === String(r.id) ? 'selected' : ''}>${capitalizar(escapeHtml(r.nombre))}</option>
   `).join('');
 }
 

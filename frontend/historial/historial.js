@@ -1,5 +1,6 @@
 import { api, auth } from '../shared/api.js';
 import { ICON_ARROW_LEFT, ICON_CLOCK, ICON_GEAR, ICON_WRENCH, ICON_LOGOUT, renderTrustFooter } from '../shared/nav-icons.js';
+import { crearBadge } from '../shared/badge.js';
 
 // Historial de cotizaciones (Fase 5/WU5) — mismo patrón Vanilla JS que admin.js: state +
 // renderApp() que reconstruye innerHTML + bindEvents() post-render + modal vía state.modal.
@@ -370,7 +371,7 @@ function renderTabla() {
         <td>${escapeHtml(c.ramos?.nombre_display ?? '—')}</td>
         <td>${escapeHtml(c.planes?.nombre ?? '—')}</td>
         <td>${fmtFecha(c.created_at)}</td>
-        <td><span class="admin-pill admin-pill--no">${escapeHtml(c.estado ?? '—')}</span></td>
+        <td>${crearBadge(c.estado ?? '—', 'neutral')}</td>
         <td>${prima != null ? escapeHtml(fmtGs(prima)) : '—'}</td>
         <td>
           <div class="admin-table__actions">

@@ -11,3 +11,9 @@ build/
 # Insumos con datos reales de clientes (cotizaciones, propuestas) — no confirmado
 # que el repo sea privado. Ver docs/ESTADO_PROYECTO.md antes de destrackear esto.
 docs/insumos/
+
+# Skills instaladas vía `npx skills add` — config local de herramienta,
+# .claude/skills contiene symlinks con path absoluto (no portable entre máquinas).
+.agents/skills/
+.claude/skills/
+skills-lock.json

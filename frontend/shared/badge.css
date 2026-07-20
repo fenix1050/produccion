@@ -1,0 +1,72 @@
+/* Badge — componente reutilizable de etiquetas de estado.
+   Variantes construidas sobre los tokens de cotizador.css (--tajy-red, --tajy-green-*)
+   más 4 tokens nuevos para warning/info/agent que no existían todavía. */
+
+:root {
+  --badge-warning-fg: #92620a;
+  --badge-warning-bg: #fdf1de;
+  --badge-info-fg: #1a5f9e;
+  --badge-info-bg: #e8f2fb;
+  --badge-agent-fg: #5c0e10;
+  --badge-agent-bg: #f4e3e0;
+  --badge-neutral-fg: #5a5a5a;
+  --badge-neutral-bg: #ececea;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-family: 'Inter', 'Public Sans', system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+  transition: filter 0.15s ease, transform 0.15s ease;
+}
+
+.badge:hover {
+  filter: brightness(0.96);
+  transform: translateY(-1px);
+}
+
+.badge svg {
+  flex-shrink: 0;
+}
+
+.badge--primary {
+  color: var(--tajy-red);
+  background: var(--tajy-red-soft);
+}
+
+.badge--success {
+  color: var(--tajy-green-fg);
+  background: var(--tajy-green-bg);
+}
+
+.badge--warning {
+  color: var(--badge-warning-fg);
+  background: var(--badge-warning-bg);
+}
+
+.badge--danger {
+  color: #fff;
+  background: var(--tajy-red);
+}
+
+.badge--info {
+  color: var(--badge-info-fg);
+  background: var(--badge-info-bg);
+}
+
+.badge--neutral {
+  color: var(--badge-neutral-fg);
+  background: var(--badge-neutral-bg);
+}
+
+.badge--agent {
+  color: var(--badge-agent-fg);
+  background: var(--badge-agent-bg);
+}

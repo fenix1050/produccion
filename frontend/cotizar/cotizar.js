@@ -1,5 +1,5 @@
 import { api, auth } from '../shared/api.js';
-import { ICON_CLOCK, ICON_GEAR, ICON_WRENCH, ICON_LOGOUT, renderTrustFooter } from '../shared/nav-icons.js';
+import { ICON_CLOCK, ICON_GEAR, ICON_WRENCH, ICON_LOGOUT, ICON_X_CIRCLE, ICON_CHECK_CIRCLE, renderTrustFooter } from '../shared/nav-icons.js';
 import { crearBadge } from '../shared/badge.js';
 
 // Cotizador Tajy — App Shell + Datos + Resultado (Fase 6, alcance MRC plan Normal).
@@ -1473,14 +1473,19 @@ function renderAjustesDescuentoRecargo(plan) {
 function renderExclusionesYSublimites(plan) {
   if (!plan?.texto_exclusiones_generales && !plan?.texto_sublimites_generales) return '';
 
-  const bloque = (titulo, texto) => {
+  const bloque = (titulo, texto, icon, colorVar) => {
     if (!texto) return '';
     const items = texto.split('\n').filter(Boolean);
     return `
       <div class="card">
         <div class="card__title">${titulo}</div>
         <ul class="texto-legal-list">
-          ${items.map((linea) => `<li>${escapeHtml(linea)}</li>`).join('')}
+          ${items.map((linea) => `
+            <li>
+              <span class="texto-legal-list__icon" style="color: var(${colorVar})">${icon}</span>
+              <span>${escapeHtml(linea)}</span>
+            </li>
+          `).join('')}
         </ul>
       </div>
     `;
@@ -1488,8 +1493,8 @@ function renderExclusionesYSublimites(plan) {
 
   return `
     <div class="resultado-grid" style="margin-top:20px;">
-      ${bloque('Exclusiones', plan.texto_exclusiones_generales)}
-      ${bloque('Sub-límites', plan.texto_sublimites_generales)}
+      ${bloque('Exclusiones', plan.texto_exclusiones_generales, ICON_X_CIRCLE, '--tajy-red')}
+      ${bloque('Sub-límites', plan.texto_sublimites_generales, ICON_CHECK_CIRCLE, '--tajy-green-fg')}
     </div>
   `;
 }

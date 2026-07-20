@@ -670,7 +670,7 @@ button {
 .live-summary__price {
   font-family: var(--tajy-font-mono);
   font-size: 30px;
-  font-weight: 800;
+  font-weight: 600;
   line-height: 1;
 }
 
@@ -774,7 +774,7 @@ button {
 .resultado-hero__price {
   font-family: var(--tajy-font-mono);
   font-size: 30px;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .resultado-hero__price span {

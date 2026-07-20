@@ -49,6 +49,9 @@ export async function login(email, password) {
       puede_editar_planes: usuario.puede_editar_planes,
       descuento_maximo_pct: usuario.descuento_maximo_pct,
       recargo_maximo_pct: usuario.recargo_maximo_pct,
+      // Snapshot tomado ANTES de actualizarUltimaSesion() de arriba: es la sesión previa
+      // a esta, que es lo que la pantalla de Configuración debe mostrar como "último inicio".
+      ultima_sesion: usuario.ultima_sesion,
     },
   };
 }

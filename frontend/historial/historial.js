@@ -1,4 +1,5 @@
 import { api, auth } from '../shared/api.js';
+import { ICON_ARROW_LEFT, ICON_CLOCK, ICON_GEAR, ICON_WRENCH, ICON_LOGOUT, renderTrustFooter } from '../shared/nav-icons.js';
 
 // Historial de cotizaciones (Fase 5/WU5) — mismo patrón Vanilla JS que admin.js: state +
 // renderApp() que reconstruye innerHTML + bindEvents() post-render + modal vía state.modal.
@@ -282,10 +283,11 @@ function renderSidebar() {
   return `
     <div class="sidebar">
       <div class="sidebar__nav">
-        <a class="nav-item" href="../cotizar/">🧮 Volver a cotizar</a>
-        <a class="nav-item" href="../configuracion/">⚙️ Configuración</a>
-        ${esAdmin ? '<a class="nav-item" href="../admin/">🛠️ Panel de administración</a>' : ''}
-        <div class="nav-item" data-action="logout">🚪 Cerrar sesión</div>
+        <a class="nav-item nav-item--icon" href="../cotizar/"><span class="nav-item__badge">${ICON_ARROW_LEFT}</span><span>Volver a cotizar</span></a>
+        <a class="nav-item nav-item--icon nav-item--active" href="./"><span class="nav-item__badge">${ICON_CLOCK}</span><span>Historial de cotizaciones</span></a>
+        <a class="nav-item nav-item--icon" href="../configuracion/"><span class="nav-item__badge">${ICON_GEAR}</span><span>Configuración</span></a>
+        ${esAdmin ? `<a class="nav-item nav-item--icon" href="../admin/"><span class="nav-item__badge">${ICON_WRENCH}</span><span>Panel de administración</span></a>` : ''}
+        <div class="nav-item nav-item--icon" data-action="logout"><span class="nav-item__badge">${ICON_LOGOUT}</span><span>Cerrar sesión</span></div>
         <div class="sidebar__agent">
           <div class="sidebar__agent-avatar">${escapeHtml(iniciales)}</div>
           <div>
@@ -293,6 +295,7 @@ function renderSidebar() {
             <div class="sidebar__agent-role">${esAdmin ? 'Administrador' : 'Agente'}</div>
           </div>
         </div>
+        ${renderTrustFooter()}
       </div>
     </div>
   `;

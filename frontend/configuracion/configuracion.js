@@ -1,4 +1,5 @@
 import { api, auth } from '../shared/api.js';
+import { ICON_ARROW_LEFT, ICON_CLOCK, ICON_GEAR, ICON_WRENCH, ICON_LOGOUT, renderTrustFooter } from '../shared/nav-icons.js';
 
 // Configuración (self-service) — cualquier usuario logueado (admin o agente) ve su propio
 // perfil y cambia su propia contraseña. Distinto del panel /admin/ (gestión de OTROS
@@ -7,6 +8,12 @@ import { api, auth } from '../shared/api.js';
 
 const ICON_EYE = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M1.5 12S5.5 5 12 5s10.5 7 10.5 7-4 7-10.5 7S1.5 12 1.5 12z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.7"></circle></svg>`;
 const ICON_EYE_OFF = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M3 3l18 18M10.6 10.6a2.5 2.5 0 0 0 3.5 3.5M9.4 5.5A10.6 10.6 0 0 1 12 5c5 0 9 4 10.5 7-.5 1-1.3 2.2-2.4 3.4M6.7 6.7C4.5 8.1 2.8 10 1.5 12c1.5 3 5.5 7 10.5 7 1.4 0 2.7-.3 3.9-.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path></svg>`;
+const ICON_LOCK = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="4.5" y="10.5" width="15" height="10" rx="2" stroke="currentColor" stroke-width="1.7"></rect><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path></svg>`;
+const ICON_USER = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.3" stroke="currentColor" stroke-width="1.7"></circle><path d="M4.5 20c1.2-3.8 4.4-5.8 7.5-5.8s6.3 2 7.5 5.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path></svg>`;
+const ICON_MAIL = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="3.5" y="5.5" width="17" height="13" rx="2" stroke="currentColor" stroke-width="1.7"></rect><path d="M4.5 6.5l7.5 6 7.5-6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path></svg>`;
+const ICON_SHIELD = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 3.5l7 2.6v5.4c0 4.4-3 7.9-7 9-4-1.1-7-4.6-7-9V6.1l7-2.6z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path></svg>`;
+const ICON_CLOCK_SM = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.7"></circle><path d="M12 7.5V12l3 2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path></svg>`;
+const ICON_MONITOR = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="3.5" y="4.5" width="17" height="12" rx="1.5" stroke="currentColor" stroke-width="1.7"></rect><path d="M9 20h6M12 16.5V20" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path></svg>`;
 
 const state = {
   usuario: auth.getUsuario(),
@@ -37,6 +44,48 @@ function escapeHtml(value) {
   })[ch]);
 }
 
+function formatearTiempoRelativo(fechaIso) {
+  if (!fechaIso) return 'Sin registro';
+  const fecha = new Date(fechaIso);
+  if (Number.isNaN(fecha.getTime())) return 'Sin registro';
+
+  const segundos = Math.floor((Date.now() - fecha.getTime()) / 1000);
+  if (segundos < 60) return 'Hace un momento';
+
+  const unidades = [
+    ['año', 31536000],
+    ['mes', 2592000],
+    ['día', 86400],
+    ['hora', 3600],
+    ['minuto', 60],
+  ];
+
+  for (const [nombre, segundosPorUnidad] of unidades) {
+    const cantidad = Math.floor(segundos / segundosPorUnidad);
+    if (cantidad >= 1) {
+      return `Hace ${cantidad} ${nombre}${cantidad > 1 ? 's' : ''}`;
+    }
+  }
+  return 'Hace un momento';
+}
+
+// Cosmético: no persistido en backend, solo lee el navegador/SO actual del cliente.
+function detectarDispositivo() {
+  const ua = navigator.userAgent;
+  const navegador = ua.includes('Edg/') ? 'Edge'
+    : ua.includes('Chrome/') ? 'Chrome'
+    : ua.includes('Firefox/') ? 'Firefox'
+    : ua.includes('Safari/') ? 'Safari'
+    : 'Navegador';
+  const so = ua.includes('Windows') ? 'Windows'
+    : ua.includes('Mac OS') ? 'macOS'
+    : ua.includes('Linux') ? 'Linux'
+    : ua.includes('Android') ? 'Android'
+    : ua.includes('iPhone') || ua.includes('iPad') ? 'iOS'
+    : 'este dispositivo';
+  return `${navegador} - ${so}`;
+}
+
 function cerrarSesion() {
   auth.clearSession();
   window.location.href = '../login/';
@@ -56,10 +105,11 @@ function renderSidebar() {
   return `
     <div class="sidebar">
       <div class="sidebar__nav">
-        <a class="nav-item" href="../cotizar/">🧮 Volver a cotizar</a>
-        <a class="nav-item" href="../historial/">📋 Historial de cotizaciones</a>
-        ${esAdmin ? '<a class="nav-item" href="../admin/">🛠️ Panel de administración</a>' : ''}
-        <div class="nav-item" id="logout-link" data-action="logout">🚪 Cerrar sesión</div>
+        <a class="nav-item nav-item--icon" href="../cotizar/"><span class="nav-item__badge">${ICON_ARROW_LEFT}</span><span>Volver a cotizar</span></a>
+        <a class="nav-item nav-item--icon" href="../historial/"><span class="nav-item__badge">${ICON_CLOCK}</span><span>Historial de cotizaciones</span></a>
+        <a class="nav-item nav-item--icon nav-item--active" href="./"><span class="nav-item__badge">${ICON_GEAR}</span><span>Configuración</span></a>
+        ${esAdmin ? `<a class="nav-item nav-item--icon" href="../admin/"><span class="nav-item__badge">${ICON_WRENCH}</span><span>Panel de administración</span></a>` : ''}
+        <div class="nav-item nav-item--icon" id="logout-link" data-action="logout"><span class="nav-item__badge">${ICON_LOGOUT}</span><span>Cerrar sesión</span></div>
         <div class="sidebar__agent">
           <div class="sidebar__agent-avatar">${escapeHtml(iniciales)}</div>
           <div>
@@ -67,6 +117,7 @@ function renderSidebar() {
             <div class="sidebar__agent-role">${escapeHtml(rolLabel)}</div>
           </div>
         </div>
+        ${renderTrustFooter()}
       </div>
     </div>
   `;
@@ -78,8 +129,9 @@ function renderPasswordField(campo, label, autocomplete) {
     <div class="config-field login-field--password">
       <label for="campo-${campo}">${label}</label>
       <div class="login-field__password-wrap">
+        <span class="login-field__prefix">${ICON_LOCK}</span>
         <input
-          class="field-input"
+          class="field-input login-field__input"
           type="${visible ? 'text' : 'password'}"
           id="campo-${campo}"
           name="${campo}"
@@ -91,8 +143,29 @@ function renderPasswordField(campo, label, autocomplete) {
           ${visible ? ICON_EYE_OFF : ICON_EYE}
         </button>
       </div>
+    </div>`;
+}
+
+function renderPerfilHeader() {
+  const usuario = state.usuario;
+  const nombreAgente = usuario?.nombre || 'Agente';
+  const esAdmin = usuario?.rol === 'admin';
+  const rolLabel = esAdmin ? 'Administrador' : usuario?.rol === 'agente' ? 'Agente' : 'Analista comercial';
+  const iniciales = nombreAgente
+    .split(' ')
+    .slice(0, 2)
+    .map((p) => p[0].toUpperCase())
+    .join('') || 'AG';
+
+  return `
+    <div class="config-perfil-header">
+      <div class="sidebar__agent-avatar config-perfil-avatar">${escapeHtml(iniciales)}</div>
+      <div class="config-perfil-header__info">
+        <div class="config-perfil-header__name">${escapeHtml(nombreAgente)}</div>
+        <span class="config-perfil-header__badge">${escapeHtml(rolLabel)}</span>
+      </div>
     </div>
-  `;
+    <div class="config-perfil-divider"></div>`;
 }
 
 function renderTopbar() {
@@ -124,36 +197,68 @@ function renderApp() {
           </div>
         </div>
         <div class="admin-content">
-          <div class="panel card config-card config-card--perfil">
-            <div class="card__title">Mi perfil</div>
-            <div class="config-fields">
-              <div class="config-field">
-                <label>Nombre</label>
-                <div>${escapeHtml(usuario?.nombre ?? '—')}</div>
+          <div class="config-grid">
+            <div class="panel card config-card config-card--perfil">
+              <div class="card__title">Mi perfil</div>
+              ${renderPerfilHeader()}
+              <div class="config-fields">
+                <div class="config-field config-field--icon">
+                  <span class="config-field__icon">${ICON_USER}</span>
+                  <div>
+                    <label>Nombre</label>
+                    <div>${escapeHtml(usuario?.nombre ?? '—')}</div>
+                  </div>
+                </div>
+                <div class="config-field config-field--icon">
+                  <span class="config-field__icon">${ICON_MAIL}</span>
+                  <div>
+                    <label>Email</label>
+                    <div>${escapeHtml(usuario?.email ?? '—')}</div>
+                  </div>
+                </div>
+                <div class="config-field config-field--icon">
+                  <span class="config-field__icon">${ICON_SHIELD}</span>
+                  <div>
+                    <label>Rol</label>
+                    <div>${escapeHtml(usuario?.rol ?? '—')}</div>
+                  </div>
+                </div>
               </div>
-              <div class="config-field">
-                <label>Email</label>
-                <div>${escapeHtml(usuario?.email ?? '—')}</div>
-              </div>
-              <div class="config-field">
-                <label>Rol</label>
-                <div>${escapeHtml(usuario?.rol ?? '—')}</div>
-              </div>
+            </div>
+
+            <div class="panel card config-card">
+              <div class="card__title">Cambiar contraseña</div>
+              ${state.error ? `<div class="admin-banner admin-banner--error">${escapeHtml(state.error)}</div>` : ''}
+              ${state.exito ? `<div class="admin-banner admin-banner--success">${escapeHtml(state.exito)}</div>` : ''}
+              <form id="password-form" novalidate>
+                ${renderPasswordField('actual', 'Contraseña actual', 'current-password')}
+                ${renderPasswordField('nueva', 'Contraseña nueva', 'new-password')}
+                ${renderPasswordField('confirmar', 'Confirmar contraseña nueva', 'new-password')}
+                <button type="submit" class="btn-primary" ${state.enviando ? 'disabled' : ''}>
+                  ${state.enviando ? 'Guardando…' : 'Guardar contraseña'}
+                </button>
+              </form>
             </div>
           </div>
 
-          <div class="panel card config-card">
-            <div class="card__title">Cambiar contraseña</div>
-            ${state.error ? `<div class="admin-banner admin-banner--error">${escapeHtml(state.error)}</div>` : ''}
-            ${state.exito ? `<div class="admin-banner admin-banner--success">${escapeHtml(state.exito)}</div>` : ''}
-            <form id="password-form" novalidate>
-              ${renderPasswordField('actual', 'Contraseña actual', 'current-password')}
-              ${renderPasswordField('nueva', 'Contraseña nueva', 'new-password')}
-              ${renderPasswordField('confirmar', 'Confirmar contraseña nueva', 'new-password')}
-              <button type="submit" class="btn-primary" ${state.enviando ? 'disabled' : ''}>
-                ${state.enviando ? 'Guardando…' : 'Guardar contraseña'}
-              </button>
-            </form>
+          <div class="panel card config-card config-card--actividad">
+            <div class="card__title">Actividad reciente</div>
+            <div class="config-actividad-grid">
+              <div class="config-actividad-item">
+                <span class="config-actividad-icon">${ICON_CLOCK_SM}</span>
+                <div>
+                  <label>Último inicio de sesión</label>
+                  <div>${escapeHtml(formatearTiempoRelativo(usuario?.ultima_sesion))}</div>
+                </div>
+              </div>
+              <div class="config-actividad-item">
+                <span class="config-actividad-icon">${ICON_MONITOR}</span>
+                <div>
+                  <label>Dispositivo</label>
+                  <div>${escapeHtml(detectarDispositivo())}</div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

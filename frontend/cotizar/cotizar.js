@@ -1,4 +1,5 @@
 import { api, auth } from '../shared/api.js';
+import { ICON_CLOCK, ICON_GEAR, ICON_WRENCH, ICON_LOGOUT, renderTrustFooter } from '../shared/nav-icons.js';
 
 // Cotizador Tajy — App Shell + Datos + Resultado (Fase 6, alcance MRC plan Normal).
 // Recreación en Vanilla JS del handoff de diseño `design_handoff_cotizador/Cotizador-B.dc.html`
@@ -846,10 +847,10 @@ function renderSidebar() {
       <div class="sidebar__section-label">Sección a cotizar</div>
       <div class="ramo-list">${rows}</div>
       <div class="sidebar__footer">
-        <a class="nav-item" href="../historial/">📋 Historial de cotizaciones</a>
-        <a class="nav-item" href="../configuracion/">⚙️ Configuración</a>
-        ${esAdmin ? '<a class="nav-item" href="../admin/">🛠️ Panel de administración</a>' : ''}
-        <div class="nav-item" data-action="logout">🚪 Cerrar sesión</div>
+        <a class="nav-item nav-item--icon" href="../historial/"><span class="nav-item__badge">${ICON_CLOCK}</span><span>Historial de cotizaciones</span></a>
+        <a class="nav-item nav-item--icon" href="../configuracion/"><span class="nav-item__badge">${ICON_GEAR}</span><span>Configuración</span></a>
+        ${esAdmin ? `<a class="nav-item nav-item--icon" href="../admin/"><span class="nav-item__badge">${ICON_WRENCH}</span><span>Panel de administración</span></a>` : ''}
+        <div class="nav-item nav-item--icon" data-action="logout"><span class="nav-item__badge">${ICON_LOGOUT}</span><span>Cerrar sesión</span></div>
         <div class="sidebar__agent">
           <div class="sidebar__agent-avatar">${escapeHtml(iniciales)}</div>
           <div>
@@ -857,6 +858,7 @@ function renderSidebar() {
             <div class="sidebar__agent-role">${escapeHtml(rolAgente)}</div>
           </div>
         </div>
+        ${renderTrustFooter()}
         <div class="sidebar__credit">Powered by <strong>Kevin Ruiz Diaz</strong> v${COTIZADOR_VERSION}</div>
       </div>
     </div>

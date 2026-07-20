@@ -243,6 +243,13 @@ button {
   opacity: 0.6;
 }
 
+/* Variante para páginas sin selector de ramo arriba (Historial, Configuración):
+   mismo contenido de nav que .sidebar__footer, pero anclado arriba en vez de
+   empujado al fondo con margin-top: auto. */
+.sidebar__nav {
+  padding: 0 22px;
+}
+
 .sidebar__footer {
   margin-top: auto;
   padding: 18px 22px 0;

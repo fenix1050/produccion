@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import * as usuariosRepository from '../repositories/usuarios.repository.js';
 
 const JWT_EXPIRES_IN = '8h';
+const BCRYPT_ROUNDS = 12;
 
 // Mensaje genérico a propósito: no debe diferir según si el email existe o no,
 // para no filtrar qué emails están registrados en el sistema.
@@ -50,4 +51,29 @@ export async function login(email, password) {
       recargo_maximo_pct: usuario.recargo_maximo_pct,
     },
   };
+}
+
+// Self-service: el propio usuario autenticado cambia su contraseña (a diferencia de
+// adminService.resetearPassword, acá SÍ se valida la contraseña actual con bcrypt.compare
+// antes de permitir el cambio). req.usuario (armado por middleware/auth.js) no trae
+// password_hash, por eso se vuelve a buscar el usuario completo por id acá.
+function passwordActualIncorrecta() {
+  const err = new Error('Contraseña actual incorrecta');
+  err.status = 401;
+  return err;
+}
+
+export async function cambiarPassword(usuarioId, passwordActual, passwordNueva) {
+  const usuario = await usuariosRepository.findById(usuarioId);
+  if (!usuario || !usuario.password_hash) {
+    throw passwordActualIncorrecta();
+  }
+
+  const passwordOk = await bcrypt.compare(passwordActual, usuario.password_hash);
+  if (!passwordOk) {
+    throw passwordActualIncorrecta();
+  }
+
+  const password_hash = await bcrypt.hash(passwordNueva, BCRYPT_ROUNDS);
+  await usuariosRepository.actualizarPassword(usuario.id, password_hash);
 }

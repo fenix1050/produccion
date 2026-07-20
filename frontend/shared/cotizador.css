@@ -69,8 +69,10 @@ button {
 
 .topbar {
   flex-shrink: 0;
-  background: var(--tajy-red);
-  color: #fff;
+  background: #fff;
+  color: var(--tajy-ink);
+  border-top: 3px solid var(--tajy-red);
+  border-bottom: 1px solid var(--tajy-border);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -92,16 +94,18 @@ button {
   font-weight: 400;
   letter-spacing: 0.2px;
   white-space: nowrap;
+  color: var(--tajy-text-secondary);
 }
 
 .topbar__version strong {
   font-weight: 700;
+  color: var(--tajy-ink);
 }
 
 .topbar__divider {
   width: 1px;
   align-self: stretch;
-  background: rgba(255, 255, 255, 0.35);
+  background: var(--tajy-border);
 }
 
 .topbar__subtitle {

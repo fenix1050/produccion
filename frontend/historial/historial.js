@@ -252,7 +252,7 @@ function renderTopbar() {
   return `
     <div class="topbar">
       <div class="topbar__brand">
-        <img class="topbar__logo" src="../../logo/logo.svg" alt="Aseguradora Tajy" />
+        <img class="topbar__logo" src="../../logo/logo%20rojo%20con%20negro.svg" alt="Aseguradora Tajy" />
         <div class="topbar__divider"></div>
         <div class="topbar__text">
           <div class="topbar__subtitle">Historial de cotizaciones</div>

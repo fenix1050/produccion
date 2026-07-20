@@ -401,6 +401,27 @@ button {
   align-items: center;
 }
 
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 5px;
+  font-size: 12px;
+}
+
+.breadcrumb__item {
+  color: var(--tajy-text-muted);
+}
+
+.breadcrumb__item--current {
+  color: var(--tajy-ink);
+  font-weight: 600;
+}
+
+.breadcrumb__sep {
+  color: var(--tajy-text-muted);
+}
+
 .main-header__title {
   font-family: 'Sora', sans-serif;
   font-weight: 700;

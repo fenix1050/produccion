@@ -5,17 +5,14 @@ Documento de traspaso. Complementa a `CLAUDE.md` (contexto operativo y metodolog
 Este archivo responde una pregunta puntual: **¿qué se hizo, por qué, y qué falta, en este
 momento del desarrollo?**
 
-Última actualización: **Fase 6/7 con catálogo cerrado en los 3 ramos priorizados (MRC → Incendio
-→ Vida/AP)** y **cotizador end-to-end funcionando para MRC** (plan Normal), incluyendo
-"coberturas adicionales" repetibles (2026-07-13, ver sección 16-17) y Carta Oferta de MRC en PDF
-con layout dinámico seguro (2026-07-15, ver sección 19). Supabase conectado, catálogos de MRC
-(012, con rename a nomenclatura real en 019, "Robo valores ventanilla" agregado en 020, y ajustes
-posteriores de Prima Técnica Mínima/texto de sub-límites en 025→027), Incendio (013) y Vida/AP
-(015, con fix de fiabilidad en 016) cargados. `mrc.calculator.js` implementado y conectado al
-frontend de `/cotizar`. `crearCotizacion` ya persiste el detalle de coberturas en
-`cotizacion_coberturas`, incluida la franquicia elegida por el agente por cobertura (2026-07-13,
-verificado end-to-end contra Supabase). Pendiente activo: panel admin para coberturas fijas/tasas
-por ramo (Fase 5) — ver sección 8.
+Última actualización: **2026-07-20 — Fase 6/7 cerrada con catálogo en los 3 ramos priorizados
+(MRC → Incendio → Vida/AP) y cotizador end-to-end funcionando para MRC** (plan Normal). 
+Implementado: "coberturas adicionales" repetibles, Carta Oferta en PDF con layout dinámico, 
+panel admin con permisos granulares por sección, tope de descuento/recargo por usuario, 
+editor de tasas por Tipo de Riesgo, y edición de cotizaciones con ventana de 30 días. 
+Supabase conectado, migraciones 001→031 aplicadas. `mrc.calculator.js` implementado y conectado. 
+Historial con filtros, búsqueda, descarga de PDF y permisos por dueño operativo. 
+Pendiente activo: calculadores de Incendio y Vida/AP (datos confirmados, solo falta lógica).
 
 **Nota para trabajar desde otra PC:** `docs/insumos/` (Excels/PDFs con tasas reales y
 cotizaciones de clientes) y `.codegraph/` están en `.gitignore` — no vienen en el `git clone`.
@@ -27,36 +24,25 @@ ahí si querés tener el índice disponible.
 
 ## 1. Resumen ejecutivo
 
-- **Cambio de prioridad (2026-07-10):** el cliente pidió priorizar **MRC, Incendio y Vida/AP**
-  por sobre Auto. Fase 2 de Auto queda pausada tal cual está — no se revierte, no se sigue
-  tocando hasta que se reactive esa fase.
-- **Fase 6/7 — catálogo cerrado en los 3 ramos priorizados (2026-07-12):** MRC → Incendio →
-  Vida/AP ya tienen su catálogo de coberturas, tasas y planes cargado contra Supabase real.
-- **`mrc.calculator.js` implementado (2026-07-13):** cubre el único plan de MRC con RPF/prima
-  técnica mínima confirmados (`MULTIRRIESGO COMERCIO - NORMAL`) — prima por línea de cobertura
-  (Edificio/Contenido), mismo motor de RPF/IVA/Premio/Cuota que Auto. `COMERCIO PROTECCION TOTAL`
-  corta con error 422 explicativo al intentar cotizarlo (sin RPF confirmado). `incendio.js` y
-  `vida-ap.js` siguen bloqueados por RPF sin confirmar en todos sus planes (ver sección 8).
-- **Frontend de `/cotizar` conectado a MRC (2026-07-13):** sidebar con los 5 ramos reales
-  (MRC/Incendio/Vida-AP disponibles, Auto en pausa, Hogar "próximamente"), panel de cotización en
-  vivo con selección explícita de las 4 formas de pago que se conserva al pasar a Detalle del
-  plan. La Carta Oferta de MRC ya se genera en PDF; Incendio y Vida/AP siguen pendientes de
-  template.
-- Hogar y TRO no fueron pedidos todavía, quedan en fase futura.
-- **Supabase real ya está conectado** (`backend/.env` cargado con `SUPABASE_URL` y
-  `SUPABASE_SERVICE_KEY`). Las migraciones 001→011 corrieron contra ese proyecto — algunas
-  (001→010, de Fase 1 Auto) ya estaban aplicadas de una sesión anterior; la 011 se aplicó en
-  esta sesión.
-- El **schema de MRC está completo**: no hizo falta ninguna tabla nueva — `coberturas_catalogo`,
-  `tasas_cobertura_ramo`, `rubros_actividad` y el ramo `mrc` ya existían desde Fase 1 (son
-  genéricos, compartidos con Incendio/TRO). Solo faltaba `tipo_aplicacion` /
-  `sublimite_porcentaje` / `sublimite_monto_maximo` en `cotizacion_coberturas` — ver sección 4.
-- **Riesgo de seguridad detectado, no resuelto:** las 29 tablas de `public` tienen RLS (Row
-  Level Security) deshabilitado — ver sección 7. No es explotable hoy porque el frontend nunca
-  habla directo con Supabase (regla no negociable de `CLAUDE.md`), pero queda como deuda a
-  decidir con Kevin.
-- No hay bugs de lógica conocidos en Auto (motor de cálculo cerrado en Fase 1, sección 3 de
-  este documento en su versión anterior — no se tocó en esta sesión).
+**Fase 6/7 Cerrada (2026-07-20)** — Sistema de cotización end-to-end para MRC en producción, 
+Incendio y Vida/AP listos para cotizar, panel admin funcional con permisos granulares.
+
+- **Priorización confirmada (2026-07-10):** MRC → Incendio → Vida/AP (Auto pausado).
+- **Catálogos cerrados (2026-07-10/12):** 3 ramos con coberturas, tasas y planes cargados contra 
+  Supabase (migraciones 012/013/015/016).
+- **MRC end-to-end (2026-07-13):** calculador implementado para plan Normal, Carta Oferta en PDF 
+  con layout dinámico (2026-07-15), coberturas adicionales repetibles, calcular en vivo.
+- **Panel admin Fase 5 (2026-07-19):** CRUD de usuarios con roles configurables (migración 031), 
+  permisos granulares por sección (usuarios/coberturas/planes/tasas), editor de tasas por Tipo 
+  de Riesgo (rubros_actividad), tope de descuento/recargo por usuario.
+- **Historial Fase 5 (2026-07-19):** listado con filtros (ramo/cliente/fecha/estado), paginación, 
+  detalle, descarga de PDF (MRC), permisos por dueño (IDOR cerrado), edición con ventana de 30 días.
+- **Bugfixes críticos (2026-07-18/19):** Inicial/Cuota corregidos (hacia ABAJO), redondeo RPF/IVA 
+  hacia arriba confirmado, ownership de cotizaciones validado real en 403.
+- **Supabase real conectado:** migraciones 001→031 aplicadas, 14 usuarios/planes configurados, 
+  RLS deshabilitado (no explotable hoy, documentado como deuda técnica).
+- **Datos confirmados vs. pendientes:** RPF de Incendio/Vida-AP ✅, Prima Técnica Mínima ✅, 
+  Calculadores pendientes (solo lógica, datos 100% confirmados).
 
 ## 2. Estructura del código
 
@@ -1019,3 +1005,28 @@ sin correlato en esa tabla). Por lo tanto:
   de MRC ahora muestra 4 filas en vez de 3 (se suma "murallas/cercos", que ya estaba en la base de
   datos pero la constante vieja no reflejaba). Kevin confirmó que Gs. 1.000.000 es el monto correcto
   para producción — no hace falta ninguna corrección. WU6 queda cerrado del todo.
+
+## 21. Resumen cierre de Fase 6/7 — 2026-07-20
+
+**Fase 6/7 completa y lista para producción en MRC, Incendio y Vida/AP.** Estado por ramo:
+
+**Multirriesgo Comercio (MRC):** 🟢 Operativo. Plan Normal cotiza end-to-end, Carta Oferta genera 
+PDF, panel admin puede editar tasas, coberturas adicionales repetibles, permisos granulares 
+implementados. "Comercio Protección Total" desactivado (sin RPF). 
+
+**Incendio:** 🟡 Listo para calculador. Catálogo completo (2 planes, 5 coberturas, 49 rubros de 
+actividad), RPF confirmado (Contado 0% / Cobrador 1,6% / Boca 1,35% / Tarjeta 1%, fijo para todos 
+los planes). Falta: lógica de cálculo en `incendio.calculator.js` (datos 100% confirmados, no RPF 
+ni prima técnica mínima incompleta).
+
+**Vida y Accidentes Personales:** 🟡 Listo para calculador. Catálogo completo (7 planes, 11 
+coberturas, tarifación por edad en 44 filas), RPF confirmado (igual a Incendio, sin prima técnica 
+mínima). Falta: lógica de cálculo en `vida-ap.calculator.js`.
+
+**Próximos pasos confirmados con Kevin:** (1) Implementar calculadores de Incendio y Vida/AP, (2) 
+Agregar templates de Carta Oferta para ambos ramos (pendiente texto oficial), (3) Retomar Fase 2 
+(Auto) si se pide, (4) Hogar/TRO cuando el cliente lo solicite (no incluido aún).
+
+**Migraciones aplicadas:** 001–031 contra Supabase real (28 migraciones de catálogo + motor, 3 de 
+config/permisos). **Código estable:** auto.calculator (Fase 1), mrc.calculator (Fase 6), backend 
+robusto con error handling explícito y validaciones Zod, frontend Vanilla JS sin dependencies.

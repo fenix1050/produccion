@@ -1,5 +1,6 @@
 import { api, auth } from '../shared/api.js';
 import { ICON_CLOCK, ICON_GEAR, ICON_WRENCH, ICON_LOGOUT, renderTrustFooter } from '../shared/nav-icons.js';
+import { crearBadge } from '../shared/badge.js';
 
 // Cotizador Tajy — App Shell + Datos + Resultado (Fase 6, alcance MRC plan Normal).
 // Recreación en Vanilla JS del handoff de diseño `design_handoff_cotizador/Cotizador-B.dc.html`
@@ -1322,7 +1323,7 @@ function renderResultadoView(ramo) {
               <div class="cobertura-row__name">
                 <div class="cobertura-row__check">✓</div>
                 <div>
-                  <span class="cobertura-row__badge cobertura-row__badge--${c.tipo_aplicacion}">${c.tipo_aplicacion === 'sublimite' ? 'Sublímite' : 'Cobertura'}</span>
+                  ${crearBadge(c.tipo_aplicacion === 'sublimite' ? 'Sublímite' : 'Cobertura', c.tipo_aplicacion === 'sublimite' ? 'primary' : 'success')}
                   ${escapeHtml(c.nombre)}
                 </div>
               </div>

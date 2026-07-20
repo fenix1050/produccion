@@ -27,6 +27,12 @@ const state = {
   banner: null, // { tipo: 'error'|'success', texto }
   modal: null, // { tipo: 'crear'|'editar'|'password', usuario?, error, guardando }
 
+  // Roles configurables (migración 031) — cacheados en memoria al entrar a Usuarios.
+  roles: [],
+  loadingRoles: false,
+  rolesError: '',
+  modalRol: null, // { tipo: 'crear'|'editar', rolId?, nombre, puede_*, error, guardando }
+
   ramos: [],
   planes: [],
   loadingPlanes: false,
@@ -83,7 +89,7 @@ async function init() {
   renderApp();
 
   if (state.seccion === 'usuarios') {
-    await cargarUsuarios();
+    await Promise.all([cargarUsuarios(), cargarRoles()]);
   } else if (state.seccion === 'planes') {
     await cargarPlanes();
   } else if (state.seccion === 'tasas' || state.seccion === 'coberturas') {
@@ -138,17 +144,14 @@ async function cargarUsuarios() {
 }
 
 function abrirModalCrear() {
+  const rolDefault = state.roles.find((r) => r.nombre === 'agente') ?? state.roles[0];
   state.modal = {
     tipo: 'crear',
     error: '',
     guardando: false,
     nombre: '',
     email: '',
-    rol: 'agente',
-    puede_editar_tasas: false,
-    puede_gestionar_usuarios: false,
-    puede_editar_coberturas: false,
-    puede_editar_planes: false,
+    rol_id: rolDefault?.id ?? '',
     password: '',
   };
   renderApp();
@@ -157,16 +160,13 @@ function abrirModalCrear() {
 function abrirModalEditar(usuarioId) {
   const usuario = state.usuarios.find((u) => u.id === usuarioId);
   if (!usuario) return;
+  const rolActual = state.roles.find((r) => r.nombre === usuario.rol);
   state.modal = {
     tipo: 'editar',
     usuario,
     error: '',
     guardando: false,
-    rol: usuario.rol,
-    puede_editar_tasas: Boolean(usuario.puede_editar_tasas),
-    puede_gestionar_usuarios: Boolean(usuario.puede_gestionar_usuarios),
-    puede_editar_coberturas: Boolean(usuario.puede_editar_coberturas),
-    puede_editar_planes: Boolean(usuario.puede_editar_planes),
+    rol_id: usuario.rol_id ?? rolActual?.id ?? '',
     activo: Boolean(usuario.activo),
     descuento_maximo_pct: usuario.descuento_maximo_pct,
     recargo_maximo_pct: usuario.recargo_maximo_pct,
@@ -203,15 +203,16 @@ async function desactivarUsuario(usuarioId) {
 async function guardarModalCrear(form) {
   const nombre = form.nombre.value.trim();
   const email = form.email.value.trim();
-  const rol = form.rol.value;
-  const puedeEditarTasas = form.puede_editar_tasas.checked;
-  const puedeGestionarUsuarios = form.puede_gestionar_usuarios.checked;
-  const puedeEditarCoberturas = form.puede_editar_coberturas.checked;
-  const puedeEditarPlanes = form.puede_editar_planes.checked;
+  const rol_id = Number(form.rol_id.value);
   const password = form.password.value;
 
   if (!nombre || !email) {
     state.modal.error = 'Completá nombre y email.';
+    renderApp();
+    return;
+  }
+  if (!rol_id) {
+    state.modal.error = 'Elegí un rol.';
     renderApp();
     return;
   }
@@ -226,16 +227,7 @@ async function guardarModalCrear(form) {
   renderApp();
 
   try {
-    await api.post('/admin/usuarios', {
-      nombre,
-      email,
-      rol,
-      puede_editar_tasas: puedeEditarTasas,
-      puede_gestionar_usuarios: puedeGestionarUsuarios,
-      puede_editar_coberturas: puedeEditarCoberturas,
-      puede_editar_planes: puedeEditarPlanes,
-      password,
-    });
+    await api.post('/admin/usuarios', { nombre, email, rol_id, password });
     cerrarModal();
     mostrarBanner('success', `Usuario ${nombre} creado.`);
     await cargarUsuarios();
@@ -248,15 +240,17 @@ async function guardarModalCrear(form) {
 
 async function guardarModalEditar(form) {
   const usuario = state.modal.usuario;
-  const rol = form.rol.value;
-  const puedeEditarTasas = form.puede_editar_tasas.checked;
-  const puedeGestionarUsuarios = form.puede_gestionar_usuarios.checked;
-  const puedeEditarCoberturas = form.puede_editar_coberturas.checked;
-  const puedeEditarPlanes = form.puede_editar_planes.checked;
+  const rol_id = Number(form.rol_id.value);
   const activo = form.activo.checked;
   // Campo vacío = sin tope propio (usa el tope del plan tal cual) -> se manda null.
   const descuentoMaximoPct = form.descuento_maximo_pct.value === '' ? null : Number(form.descuento_maximo_pct.value);
   const recargoMaximoPct = form.recargo_maximo_pct.value === '' ? null : Number(form.recargo_maximo_pct.value);
+
+  if (!rol_id) {
+    state.modal.error = 'Elegí un rol.';
+    renderApp();
+    return;
+  }
 
   state.modal.error = '';
   state.modal.guardando = true;
@@ -264,11 +258,7 @@ async function guardarModalEditar(form) {
 
   try {
     await api.put(`/admin/usuarios/${usuario.id}`, {
-      rol,
-      puede_editar_tasas: puedeEditarTasas,
-      puede_gestionar_usuarios: puedeGestionarUsuarios,
-      puede_editar_coberturas: puedeEditarCoberturas,
-      puede_editar_planes: puedeEditarPlanes,
+      rol_id,
       activo,
       descuento_maximo_pct: descuentoMaximoPct,
       recargo_maximo_pct: recargoMaximoPct,
@@ -304,6 +294,101 @@ async function guardarModalPassword(form) {
   } catch (err) {
     state.modal.guardando = false;
     state.modal.error = err.message || 'No se pudo actualizar la contraseña.';
+    renderApp();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Roles: carga y acciones (migración 031)
+// ---------------------------------------------------------------------------
+
+async function cargarRoles() {
+  state.loadingRoles = true;
+  state.rolesError = '';
+  renderApp();
+  try {
+    state.roles = await api.get('/admin/roles');
+  } catch (err) {
+    state.roles = [];
+    state.rolesError = err.message || 'No se pudo cargar la lista de roles.';
+  } finally {
+    state.loadingRoles = false;
+    renderApp();
+  }
+}
+
+function abrirModalRolCrear() {
+  state.modalRol = {
+    tipo: 'crear',
+    error: '',
+    guardando: false,
+    nombre: '',
+    puede_editar_tasas: false,
+    puede_gestionar_usuarios: false,
+    puede_editar_coberturas: false,
+    puede_editar_planes: false,
+  };
+  renderApp();
+}
+
+function abrirModalRolEditar(rolId) {
+  const rol = state.roles.find((r) => r.id === rolId);
+  if (!rol || rol.es_sistema) return; // roles del sistema no son editables desde el panel
+  state.modalRol = {
+    tipo: 'editar',
+    rolId: rol.id,
+    error: '',
+    guardando: false,
+    nombre: rol.nombre,
+    puede_editar_tasas: Boolean(rol.puede_editar_tasas),
+    puede_gestionar_usuarios: Boolean(rol.puede_gestionar_usuarios),
+    puede_editar_coberturas: Boolean(rol.puede_editar_coberturas),
+    puede_editar_planes: Boolean(rol.puede_editar_planes),
+  };
+  renderApp();
+}
+
+function cerrarModalRol() {
+  state.modalRol = null;
+  renderApp();
+}
+
+async function guardarModalRol(form) {
+  const nombre = form.nombre.value.trim();
+  const datos = {
+    nombre,
+    puede_editar_tasas: form.puede_editar_tasas.checked,
+    puede_gestionar_usuarios: form.puede_gestionar_usuarios.checked,
+    puede_editar_coberturas: form.puede_editar_coberturas.checked,
+    puede_editar_planes: form.puede_editar_planes.checked,
+  };
+
+  if (!nombre) {
+    state.modalRol.error = 'Completá el nombre del rol.';
+    renderApp();
+    return;
+  }
+
+  state.modalRol.error = '';
+  state.modalRol.guardando = true;
+  renderApp();
+
+  try {
+    if (state.modalRol.tipo === 'crear') {
+      await api.post('/admin/roles', datos);
+      mostrarBanner('success', `Rol ${nombre} creado.`);
+    } else {
+      await api.put(`/admin/roles/${state.modalRol.rolId}`, datos);
+      mostrarBanner('success', `Rol ${nombre} actualizado.`);
+    }
+    cerrarModalRol();
+    await cargarRoles();
+    // Repuebla el select de rol de un modal de usuario abierto, si lo hay, para que
+    // el rol recién creado/editado aparezca sin tener que cerrar y reabrir el modal.
+    renderApp();
+  } catch (err) {
+    state.modalRol.guardando = false;
+    state.modalRol.error = err.message || 'No se pudo guardar el rol.';
     renderApp();
   }
 }
@@ -771,6 +856,7 @@ function renderApp() {
       </div>
     </div>
     ${state.modal ? renderModal() : ''}
+    ${state.modalRol ? renderModalRol() : ''}
     ${state.modalTasa ? renderModalTasa() : ''}
     ${state.modalCobertura ? renderModalCobertura() : ''}
   `;
@@ -873,6 +959,56 @@ function renderUsuarios() {
     <div class="panel card">
       ${renderTablaUsuarios()}
     </div>
+    <div class="admin-toolbar">
+      <div class="admin-toolbar__title">Roles</div>
+      <button class="btn-primary" data-action="crear-rol">+ Crear rol</button>
+    </div>
+    <div class="panel card">
+      ${renderTablaRoles()}
+    </div>
+  `;
+}
+
+function renderTablaRoles() {
+  if (state.loadingRoles) {
+    return '<div class="empty-state__subtitle">Cargando roles…</div>';
+  }
+  if (state.rolesError) {
+    return `<div class="admin-banner admin-banner--error">${escapeHtml(state.rolesError)}</div>`;
+  }
+  if (!state.roles.length) {
+    return '<div class="empty-state__subtitle">Todavía no hay roles cargados.</div>';
+  }
+
+  const filas = state.roles.map((r) => `
+    <tr>
+      <td>${escapeHtml(r.nombre)}</td>
+      <td><span class="admin-pill ${r.puede_gestionar_usuarios ? 'admin-pill--yes' : 'admin-pill--no'}">${r.puede_gestionar_usuarios ? 'Sí' : 'No'}</span></td>
+      <td><span class="admin-pill ${r.puede_editar_coberturas ? 'admin-pill--yes' : 'admin-pill--no'}">${r.puede_editar_coberturas ? 'Sí' : 'No'}</span></td>
+      <td><span class="admin-pill ${r.puede_editar_tasas ? 'admin-pill--yes' : 'admin-pill--no'}">${r.puede_editar_tasas ? 'Sí' : 'No'}</span></td>
+      <td><span class="admin-pill ${r.puede_editar_planes ? 'admin-pill--yes' : 'admin-pill--no'}">${r.puede_editar_planes ? 'Sí' : 'No'}</span></td>
+      <td>
+        ${r.es_sistema
+          ? '<button class="btn-outline" disabled title="Rol del sistema — no se puede editar">Editar</button>'
+          : `<button class="btn-outline" data-action="editar-rol" data-id="${r.id}">Editar</button>`}
+      </td>
+    </tr>
+  `).join('');
+
+  return `
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>Rol</th>
+          <th>Gestiona usuarios</th>
+          <th>Edita coberturas</th>
+          <th>Edita tasas</th>
+          <th>Edita planes</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>${filas}</tbody>
+    </table>
   `;
 }
 
@@ -891,8 +1027,7 @@ function renderTablaUsuarios() {
     <tr>
       <td>${escapeHtml(u.nombre)}</td>
       <td>${escapeHtml(u.email)}</td>
-      <td><span class="admin-pill admin-pill--${u.rol}">${u.rol === 'admin' ? 'Admin' : 'Agente'}</span></td>
-      <td><span class="admin-pill ${u.puede_editar_tasas ? 'admin-pill--yes' : 'admin-pill--no'}">${u.puede_editar_tasas ? 'Sí' : 'No'}</span></td>
+      <td><span class="admin-pill admin-pill--${u.rol}">${escapeHtml(u.rol)}</span></td>
       <td><span class="admin-pill ${u.activo ? 'admin-pill--yes' : 'admin-pill--no'}">${u.activo ? 'Activo' : 'Inactivo'}</span></td>
       <td>
         <div class="admin-table__actions">
@@ -911,7 +1046,6 @@ function renderTablaUsuarios() {
           <th>Nombre</th>
           <th>Email</th>
           <th>Rol</th>
-          <th>Edita tasas</th>
           <th>Estado</th>
           <th>Acciones</th>
         </tr>
@@ -1376,34 +1510,9 @@ function renderModal() {
       </div>
       <div class="admin-modal__field">
         <label>Rol</label>
-        <select class="field-input" name="rol">
-          <option value="agente" ${m.rol === 'agente' ? 'selected' : ''}>Agente</option>
-          <option value="admin" ${m.rol === 'admin' ? 'selected' : ''}>Admin</option>
+        <select class="field-input" name="rol_id">
+          ${renderOpcionesRoles(m.rol_id)}
         </select>
-      </div>
-      <div class="admin-modal__field">
-        <label class="admin-modal__checkbox">
-          <input type="checkbox" name="puede_gestionar_usuarios" ${m.puede_gestionar_usuarios ? 'checked' : ''} />
-          Puede gestionar usuarios
-        </label>
-      </div>
-      <div class="admin-modal__field">
-        <label class="admin-modal__checkbox">
-          <input type="checkbox" name="puede_editar_coberturas" ${m.puede_editar_coberturas ? 'checked' : ''} />
-          Puede editar coberturas por plan
-        </label>
-      </div>
-      <div class="admin-modal__field">
-        <label class="admin-modal__checkbox">
-          <input type="checkbox" name="puede_editar_tasas" ${m.puede_editar_tasas ? 'checked' : ''} />
-          Puede editar tasas
-        </label>
-      </div>
-      <div class="admin-modal__field">
-        <label class="admin-modal__checkbox">
-          <input type="checkbox" name="puede_editar_planes" ${m.puede_editar_planes ? 'checked' : ''} />
-          Puede editar planes
-        </label>
       </div>
       <div class="admin-modal__field">
         <label>Contraseña (mín. 8 caracteres)</label>
@@ -1415,34 +1524,9 @@ function renderModal() {
     cuerpo = `
       <div class="admin-modal__field">
         <label>Rol</label>
-        <select class="field-input" name="rol">
-          <option value="agente" ${m.rol === 'agente' ? 'selected' : ''}>Agente</option>
-          <option value="admin" ${m.rol === 'admin' ? 'selected' : ''}>Admin</option>
+        <select class="field-input" name="rol_id">
+          ${renderOpcionesRoles(m.rol_id)}
         </select>
-      </div>
-      <div class="admin-modal__field">
-        <label class="admin-modal__checkbox">
-          <input type="checkbox" name="puede_gestionar_usuarios" ${m.puede_gestionar_usuarios ? 'checked' : ''} />
-          Puede gestionar usuarios
-        </label>
-      </div>
-      <div class="admin-modal__field">
-        <label class="admin-modal__checkbox">
-          <input type="checkbox" name="puede_editar_coberturas" ${m.puede_editar_coberturas ? 'checked' : ''} />
-          Puede editar coberturas por plan
-        </label>
-      </div>
-      <div class="admin-modal__field">
-        <label class="admin-modal__checkbox">
-          <input type="checkbox" name="puede_editar_tasas" ${m.puede_editar_tasas ? 'checked' : ''} />
-          Puede editar tasas
-        </label>
-      </div>
-      <div class="admin-modal__field">
-        <label class="admin-modal__checkbox">
-          <input type="checkbox" name="puede_editar_planes" ${m.puede_editar_planes ? 'checked' : ''} />
-          Puede editar planes
-        </label>
       </div>
       <div class="admin-modal__field">
         <label class="admin-modal__checkbox">
@@ -1478,6 +1562,60 @@ function renderModal() {
           ${cuerpo}
           <div class="admin-modal__actions">
             <button type="button" class="btn-outline" data-action="cerrar-modal">Cancelar</button>
+            <button type="submit" class="btn-primary" ${m.guardando ? 'disabled' : ''}>${m.guardando ? 'Guardando…' : 'Guardar'}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
+}
+
+function renderOpcionesRoles(rolIdSeleccionado) {
+  return state.roles.map((r) => `
+    <option value="${r.id}" ${String(rolIdSeleccionado) === String(r.id) ? 'selected' : ''}>${escapeHtml(r.nombre)}</option>
+  `).join('');
+}
+
+function renderModalRol() {
+  const m = state.modalRol;
+  const titulo = m.tipo === 'crear' ? 'Crear rol' : `Editar rol: ${escapeHtml(m.nombre)}`;
+
+  return `
+    <div class="admin-modal-backdrop" data-action="cerrar-modal-rol-backdrop">
+      <div class="admin-modal" data-stop-propagation="true">
+        <div class="admin-modal__title">${titulo}</div>
+        ${m.error ? `<div class="admin-modal__error">${escapeHtml(m.error)}</div>` : ''}
+        <form id="admin-modal-rol-form">
+          <div class="admin-modal__field">
+            <label>Nombre del rol</label>
+            <input class="field-input" type="text" name="nombre" maxlength="30" value="${escapeHtml(m.nombre)}" />
+          </div>
+          <div class="admin-modal__field">
+            <label class="admin-modal__checkbox">
+              <input type="checkbox" name="puede_gestionar_usuarios" ${m.puede_gestionar_usuarios ? 'checked' : ''} />
+              Puede gestionar usuarios
+            </label>
+          </div>
+          <div class="admin-modal__field">
+            <label class="admin-modal__checkbox">
+              <input type="checkbox" name="puede_editar_coberturas" ${m.puede_editar_coberturas ? 'checked' : ''} />
+              Puede editar coberturas por plan
+            </label>
+          </div>
+          <div class="admin-modal__field">
+            <label class="admin-modal__checkbox">
+              <input type="checkbox" name="puede_editar_tasas" ${m.puede_editar_tasas ? 'checked' : ''} />
+              Puede editar tasas
+            </label>
+          </div>
+          <div class="admin-modal__field">
+            <label class="admin-modal__checkbox">
+              <input type="checkbox" name="puede_editar_planes" ${m.puede_editar_planes ? 'checked' : ''} />
+              Puede editar planes
+            </label>
+          </div>
+          <div class="admin-modal__actions">
+            <button type="button" class="btn-outline" data-action="cerrar-modal-rol">Cancelar</button>
             <button type="submit" class="btn-primary" ${m.guardando ? 'disabled' : ''}>${m.guardando ? 'Guardando…' : 'Guardar'}</button>
           </div>
         </form>
@@ -1580,6 +1718,19 @@ function bindEvents() {
       guardarModalCobertura(e.target);
     });
   }
+
+  const backdropRol = app.querySelector('.admin-modal-backdrop[data-action="cerrar-modal-rol-backdrop"]');
+  if (backdropRol) {
+    backdropRol.querySelector('.admin-modal')?.addEventListener('click', (e) => e.stopPropagation());
+  }
+
+  const formRol = document.getElementById('admin-modal-rol-form');
+  if (formRol) {
+    formRol.addEventListener('submit', (e) => {
+      e.preventDefault();
+      guardarModalRol(e.target);
+    });
+  }
 }
 
 function onActionClick(e) {
@@ -1590,6 +1741,10 @@ function onActionClick(e) {
     state.seccion = el.dataset.seccion;
     state.banner = null;
     renderApp();
+    if (state.seccion === 'usuarios') {
+      if (!state.usuarios.length && !state.loadingUsuarios) cargarUsuarios();
+      if (!state.roles.length && !state.loadingRoles) cargarRoles();
+    }
     if (state.seccion === 'planes' && !state.planes.length && !state.loadingPlanes) {
       cargarPlanes();
     }
@@ -1623,6 +1778,18 @@ function onActionClick(e) {
   }
   if (action === 'cerrar-modal' || action === 'cerrar-modal-backdrop') {
     cerrarModal();
+    return;
+  }
+  if (action === 'crear-rol') {
+    abrirModalRolCrear();
+    return;
+  }
+  if (action === 'editar-rol') {
+    abrirModalRolEditar(Number(el.dataset.id));
+    return;
+  }
+  if (action === 'cerrar-modal-rol' || action === 'cerrar-modal-rol-backdrop') {
+    cerrarModalRol();
     return;
   }
   if (action === 'filtrar-ramo') {

@@ -3,8 +3,10 @@ import * as usuariosRepository from '../repositories/usuarios.repository.js';
 import * as coberturasRepository from '../repositories/coberturas.repository.js';
 import * as tasasRepository from '../repositories/tasas.repository.js';
 import * as ramosRepository from '../repositories/ramos.repository.js';
+import * as rolesRepository from '../repositories/roles.repository.js';
 
 const BCRYPT_ROUNDS = 12;
+const CODIGO_UNIQUE_VIOLATION = '23505'; // Postgres: unique_violation
 
 // --- Usuarios ---
 
@@ -12,34 +14,17 @@ export async function listarUsuarios() {
   return usuariosRepository.findAll();
 }
 
-export async function crearUsuario({
-  nombre,
-  email,
-  rol,
-  puede_editar_tasas,
-  puede_gestionar_usuarios,
-  puede_editar_coberturas,
-  puede_editar_planes,
-  password,
-}) {
+export async function crearUsuario({ nombre, email, rol_id, password }) {
   const existente = await usuariosRepository.findByEmail(email);
   if (existente) {
     const err = new Error('Ya existe un usuario con ese email');
     err.status = 409;
+    err.publicMessage = err.message;
     throw err;
   }
 
   const password_hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
-  return usuariosRepository.crear({
-    nombre,
-    email,
-    rol,
-    puede_editar_tasas,
-    puede_gestionar_usuarios,
-    puede_editar_coberturas,
-    puede_editar_planes,
-    password_hash,
-  });
+  return usuariosRepository.crear({ nombre, email, rol_id, password_hash });
 }
 
 export async function editarUsuario(id, cambios) {
@@ -61,6 +46,57 @@ export async function resetearPassword(id, password) {
   }
   const password_hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
   await usuariosRepository.actualizarPassword(id, password_hash);
+}
+
+// --- Roles (migración 031) ---
+
+export async function listarRoles() {
+  return rolesRepository.findAll();
+}
+
+export async function crearRol(datos) {
+  try {
+    return await rolesRepository.crear(datos);
+  } catch (err) {
+    if (err.code === CODIGO_UNIQUE_VIOLATION) {
+      const dup = new Error('Ya existe un rol con ese nombre');
+      dup.status = 409;
+      dup.publicMessage = dup.message;
+      throw dup;
+    }
+    throw err;
+  }
+}
+
+// Los roles del sistema (admin/agente, es_sistema = true) son inmutables desde el panel:
+// ni nombre ni los 4 permisos se pueden cambiar, porque `req.usuario.rol === 'admin'` se
+// usa fuera de este panel (ownership de Historial, ver cotizacion.service.js) — ver
+// docs/ESTADO_PROYECTO.md y la migración 031.
+export async function editarRol(id, cambios) {
+  const rol = await rolesRepository.findById(id);
+  if (!rol) {
+    const err = new Error('Rol no encontrado');
+    err.status = 404;
+    err.publicMessage = err.message;
+    throw err;
+  }
+  if (rol.es_sistema) {
+    const err = new Error('Este rol es del sistema y no se puede editar');
+    err.status = 409;
+    err.publicMessage = err.message;
+    throw err;
+  }
+  try {
+    return await rolesRepository.actualizar(id, cambios);
+  } catch (err) {
+    if (err.code === CODIGO_UNIQUE_VIOLATION) {
+      const dup = new Error('Ya existe un rol con ese nombre');
+      dup.status = 409;
+      dup.publicMessage = dup.message;
+      throw dup;
+    }
+    throw err;
+  }
 }
 
 // --- Plan coberturas ---

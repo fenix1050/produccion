@@ -562,6 +562,11 @@ button {
   cursor: pointer;
 }
 
+.btn-outline:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .form-cta {
   margin-top: 26px;
 }

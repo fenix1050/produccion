@@ -1,25 +1,44 @@
 import { supabase } from '../config/supabase.js';
 
-const CAMPOS_PERMISOS = 'puede_editar_tasas, puede_gestionar_usuarios, puede_editar_coberturas, puede_editar_planes';
+// Migración 031: `rol` (string) + los 4 booleanos sueltos de permisos se reemplazaron
+// por `roles` (tabla configurable) referenciada vía `usuarios.rol_id`. Este repository
+// hace el join con Supabase JS y APLANA el resultado (rol = roles.nombre, los 4 puede_*
+// al nivel superior) para que middleware/auth.js (armado de req.usuario) y cualquier
+// código downstream que lea `usuario.rol` / `usuario.puede_editar_tasas` etc. no necesiten
+// cambiar — ver docs/ESTADO_PROYECTO.md.
+const CAMPOS_ROL = 'roles(nombre, puede_editar_tasas, puede_gestionar_usuarios, puede_editar_coberturas, puede_editar_planes)';
+
+function aplanar(usuario) {
+  if (!usuario) return usuario;
+  const { roles, ...resto } = usuario;
+  return {
+    ...resto,
+    rol: roles?.nombre ?? null,
+    puede_editar_tasas: roles?.puede_editar_tasas ?? false,
+    puede_gestionar_usuarios: roles?.puede_gestionar_usuarios ?? false,
+    puede_editar_coberturas: roles?.puede_editar_coberturas ?? false,
+    puede_editar_planes: roles?.puede_editar_planes ?? false,
+  };
+}
 
 export async function findByEmail(email) {
   const { data, error } = await supabase
     .from('usuarios')
-    .select(`id, nombre, email, rol, ${CAMPOS_PERMISOS}, activo, password_hash, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct`)
+    .select(`id, nombre, email, rol_id, ${CAMPOS_ROL}, activo, password_hash, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct`)
     .eq('email', email)
     .maybeSingle();
   if (error) throw error;
-  return data;
+  return aplanar(data);
 }
 
 export async function findById(id) {
   const { data, error } = await supabase
     .from('usuarios')
-    .select(`id, nombre, email, rol, ${CAMPOS_PERMISOS}, activo, password_hash, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct`)
+    .select(`id, nombre, email, rol_id, ${CAMPOS_ROL}, activo, password_hash, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct`)
     .eq('id', id)
     .maybeSingle();
   if (error) throw error;
-  return data;
+  return aplanar(data);
 }
 
 export async function actualizarUltimaSesion(id) {
@@ -36,39 +55,26 @@ export async function actualizarUltimaSesion(id) {
 export async function findAll() {
   const { data, error } = await supabase
     .from('usuarios')
-    .select(`id, nombre, email, rol, ${CAMPOS_PERMISOS}, activo, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct`)
+    .select(`id, nombre, email, rol_id, ${CAMPOS_ROL}, activo, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct`)
     .order('id');
   if (error) throw error;
-  return data;
+  return (data ?? []).map(aplanar);
 }
 
-export async function crear({
-  nombre,
-  email,
-  rol,
-  puede_editar_tasas,
-  puede_gestionar_usuarios,
-  puede_editar_coberturas,
-  puede_editar_planes,
-  password_hash,
-}) {
+export async function crear({ nombre, email, rol_id, password_hash }) {
   const { data, error } = await supabase
     .from('usuarios')
     .insert({
       nombre,
       email,
-      rol,
-      puede_editar_tasas,
-      puede_gestionar_usuarios,
-      puede_editar_coberturas,
-      puede_editar_planes,
+      rol_id,
       password_hash,
       activo: true,
     })
-    .select(`id, nombre, email, rol, ${CAMPOS_PERMISOS}, activo, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct`)
+    .select(`id, nombre, email, rol_id, ${CAMPOS_ROL}, activo, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct`)
     .single();
   if (error) throw error;
-  return data;
+  return aplanar(data);
 }
 
 export async function actualizar(id, cambios) {
@@ -76,10 +82,10 @@ export async function actualizar(id, cambios) {
     .from('usuarios')
     .update(cambios)
     .eq('id', id)
-    .select(`id, nombre, email, rol, ${CAMPOS_PERMISOS}, activo, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct`)
+    .select(`id, nombre, email, rol_id, ${CAMPOS_ROL}, activo, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct`)
     .maybeSingle();
   if (error) throw error;
-  return data;
+  return aplanar(data);
 }
 
 export async function actualizarPassword(id, password_hash) {

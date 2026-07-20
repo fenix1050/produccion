@@ -5,20 +5,12 @@ import { z } from 'zod';
 export const crearUsuarioSchema = z.object({
   nombre: z.string().min(1, 'nombre es requerido'),
   email: z.string().email('email inválido'),
-  rol: z.enum(['agente', 'admin']),
-  puede_editar_tasas: z.boolean().default(false),
-  puede_gestionar_usuarios: z.boolean().default(false),
-  puede_editar_coberturas: z.boolean().default(false),
-  puede_editar_planes: z.boolean().default(false),
+  rol_id: z.number().int().positive(),
   password: z.string().min(8, 'password debe tener al menos 8 caracteres'),
 });
 
 export const editarUsuarioSchema = z.object({
-  rol: z.enum(['agente', 'admin']).optional(),
-  puede_editar_tasas: z.boolean().optional(),
-  puede_gestionar_usuarios: z.boolean().optional(),
-  puede_editar_coberturas: z.boolean().optional(),
-  puede_editar_planes: z.boolean().optional(),
+  rol_id: z.number().int().positive().optional(),
   activo: z.boolean().optional(),
   // NULL = el usuario no tiene tope propio, se respeta el tope del plan tal cual.
   descuento_maximo_pct: z.number().min(0).max(100).nullable().optional(),
@@ -27,6 +19,28 @@ export const editarUsuarioSchema = z.object({
 
 export const resetPasswordSchema = z.object({
   password: z.string().min(8, 'password debe tener al menos 8 caracteres'),
+});
+
+// ---- Roles (migración 031) ----
+
+export const crearRolSchema = z.object({
+  nombre: z.string().min(1, 'nombre es requerido').max(30, 'nombre debe tener como máximo 30 caracteres'),
+  puede_editar_tasas: z.boolean().default(false),
+  puede_gestionar_usuarios: z.boolean().default(false),
+  puede_editar_coberturas: z.boolean().default(false),
+  puede_editar_planes: z.boolean().default(false),
+});
+
+// Los roles nuevos (es_sistema = false) son totalmente editables, incluido el nombre.
+// Los roles del sistema (admin/agente) se rechazan en el service con 409 antes de
+// llegar a actualizar() — ver admin.service.js editarRol.
+export const editarRolSchema = z.object({
+  nombre: z.string().min(1).max(30).optional(),
+  puede_editar_tasas: z.boolean().optional(),
+  puede_gestionar_usuarios: z.boolean().optional(),
+  puede_editar_coberturas: z.boolean().optional(),
+  puede_editar_planes: z.boolean().optional(),
+  activo: z.boolean().optional(),
 });
 
 // ---- Plan coberturas ----

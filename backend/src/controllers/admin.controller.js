@@ -3,6 +3,8 @@ import {
   crearUsuarioSchema,
   editarUsuarioSchema,
   resetPasswordSchema,
+  crearRolSchema,
+  editarRolSchema,
   agregarCoberturaAPlanSchema,
   editarPlanCoberturaSchema,
   crearTasaSchema,
@@ -46,6 +48,36 @@ export async function resetearPassword(req, res, next) {
     const { password } = resetPasswordSchema.parse(req.body);
     await adminService.resetearPassword(req.params.id, password);
     res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
+}
+
+// --- Roles ---
+
+export async function listarRoles(_req, res, next) {
+  try {
+    res.json(await adminService.listarRoles());
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function crearRol(req, res, next) {
+  try {
+    const datos = crearRolSchema.parse(req.body);
+    const rol = await adminService.crearRol(datos);
+    res.status(201).json(rol);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function editarRol(req, res, next) {
+  try {
+    const cambios = editarRolSchema.parse(req.body);
+    const rol = await adminService.editarRol(req.params.id, cambios);
+    res.json(rol);
   } catch (err) {
     next(err);
   }

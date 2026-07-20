@@ -787,6 +787,67 @@ localmente): usuario de prueba con SOLO `puede_editar_coberturas = true` ve úni
 Un usuario con los 4 permisos en `true` ve las 4 secciones (regresión del caso "admin completo" sin
 romperse). Usuarios de prueba creados/borrados directo en Supabase para la prueba, ya no existen.
 
+## 20a4. Roles configurables del panel admin (reemplaza el patrón booleano de 20a2/20a3) — 2026-07-19
+
+Kevin pidió reemplazar el rol binario `'agente'`/`'admin'` + los 4 booleanos sueltos por usuario
+(`puede_editar_tasas`, `puede_gestionar_usuarios`, `puede_editar_coberturas`, `puede_editar_planes`,
+ver 20a2/20a3) por una tabla `roles` configurable con nombre propio: cada rol agrupa esos 4 permisos
+como columnas fijas, y cada usuario referencia un rol vía FK (`usuarios.rol_id`). El patrón booleano
+directo en `usuarios` — que la memoria previa (Engram #136) ya anotaba como paso intermedio antes de
+esta evolución — queda reemplazado, no coexistiendo.
+
+**Migración `031_roles_configurables.sql`** (aplicada contra Supabase real vía MCP): crea `roles`
+(`id`, `nombre` UNIQUE, los 4 `puede_*` BOOLEAN, `es_sistema`, `activo`, timestamps), siembra
+`admin` y `agente` con `es_sistema = TRUE` y los permisos que ya tenían, agrega `usuarios.rol_id`
+(FK), hace backfill 1:1 desde el `rol` string viejo (lossless — solo 3 usuarios reales, ids 1/2/8,
+sin divergencias entre el string y sus booleanos, verificado antes de aplicar) y dropea `rol` +
+los 4 booleanos de `usuarios`.
+
+**`es_sistema` — por qué existe**: `req.usuario.rol === 'admin'` sigue siendo un string mágico usado
+FUERA del panel admin, en `cotizacion.service.js`, para resolver ownership de Historial (ver sección
+de Historial de este doc). Si el rol `admin` se pudiera renombrar o despermisionar desde el panel,
+ese caso especial se rompe. Kevin decidió explícitamente NO tocar esa lógica de ownership en este
+cambio — `admin` y `agente` quedan con `es_sistema = TRUE`, inmutables desde el panel (nombre y los
+4 permisos). Intentar editarlos devuelve 409 con mensaje claro. Roles nuevos (`es_sistema = FALSE`)
+son totalmente editables (nombre incluido) pero sin endpoint de borrado en esta primera pasada — si
+hace falta retirarlos, se desactivan con `activo = FALSE`.
+
+**Backend**: `backend/src/repositories/roles.repository.js` nuevo (`findAll`/`findById`/`crear`/
+`actualizar`). `usuarios.repository.js` reescrito para joinear `roles(...)` vía Supabase JS y
+APLANAR el resultado (`rol` = `roles.nombre`, los 4 `puede_*` al nivel superior) — así
+`middleware/auth.js` (arma `req.usuario`) y `auth.service.js` (login) NO necesitaron cambios, siguen
+leyendo `usuario.rol`/`usuario.puede_editar_tasas` como si fueran columnas planas. `admin.schema.js`:
+`crearUsuarioSchema`/`editarUsuarioSchema` ahora piden `rol_id` en vez de `rol` + 4 booleanos;
+`crearRolSchema`/`editarRolSchema` nuevos. Rutas nuevas `GET/POST /admin/roles`, `PUT
+/admin/roles/:id`, gateadas con el mismo `requireUsuariosEdit` que ya protegía Usuarios (roles es
+sub-recurso de esa sección).
+
+**Bug de la misma sesión, corregido de paso**: el error handler central (`app.js`) solo expone
+`err.publicMessage` al cliente, nunca `err.message` — varios `throw new Error(...)` de
+`admin.service.js` (incluidos los nuevos de roles) no seteaban `publicMessage`, así que el 409/404
+le llegaba al frontend como "Error interno del servidor" genérico en vez del mensaje real. Corregido
+seteando `err.publicMessage = err.message` en los errores nuevos de `crearRol`/`editarRol` (los
+preexistentes de usuarios/coberturas/planes quedan con el mismo bug latente, fuera de alcance de
+este cambio).
+
+**Frontend** (`frontend/admin/admin.js`): la sección Usuarios carga y cachea `GET /admin/roles` en
+memoria. Los modales "Nuevo usuario"/"Editar usuario" pasan de un `<select>` de 2 opciones
+hardcodeadas a listar los roles cargados dinámicamente (value = `rol_id`). Botón "+ Crear rol"
+separado de "+ Nuevo usuario" (decisión de Kevin), con su propio modal (nombre + 4 checkboxes) y una
+tabla de roles debajo de la de usuarios; los roles `es_sistema` se muestran con el botón "Editar"
+deshabilitado + `title` explicativo (agregado `.btn-outline:disabled` a `shared/cotizador.css`, que
+no tenía esa variante). La tabla de usuarios ya no repite los booleanos crudos (esa info vive ahora
+en la tabla de roles) — solo muestra el nombre del rol.
+
+**Verificado en vivo con Playwright** contra Supabase real (backend + frontend levantados
+localmente, login como Kevin): crear un rol nuevo con 1-2 permisos → aparece en la tabla de roles y
+en el select de "Nuevo usuario" sin recargar; crear un usuario con ese rol → aparece correctamente
+en la tabla; editar el rol custom → funciona sin error; intentar `PUT /admin/roles/:id` sobre el rol
+`admin` vía fetch directo → 409 con el mensaje `"Este rol es del sistema y no se puede editar"`; los
+botones "Editar" de `admin`/`agente` en la tabla de roles están deshabilitados (2/2 confirmado por
+selector). Usuarios y roles de prueba borrados de Supabase al terminar; se usó una contraseña
+temporal para el usuario 1 durante la prueba de login (restaurada al hash original al finalizar).
+
 ## 20a0. Bugfix — botones "Editar"/"Resetear password"/"Desactivar" de Usuarios no hacían nada — 2026-07-19
 
 Kevin reportó que en Admin > Usuarios los botones de acción no reaccionaban. Verificado con

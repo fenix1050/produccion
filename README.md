@@ -13,13 +13,13 @@ correlativo y numeración progresiva por rama.
 > Desarrollo por fases — ver el estado real de avance, decisiones tomadas y pendientes en
 > [`docs/ESTADO_PROYECTO.md`](docs/ESTADO_PROYECTO.md).
 
-## Ramos — estado actual (2026-07-19)
+## Ramos — estado actual (2026-07-20)
 
 | Rama | Estado | Detalles |
 |---|---|---|
-| **Multirriesgo Comercio** (MRC) | 🟢 **Producción** | Plan Normal cotiza end-to-end con Carta Oferta en PDF. Coberturas adicionales repetibles (incluidos sublímites: murallas, granizo, agua, equipos electrónicos). Editor de tasas por Tipo de Riesgo desde panel admin. RPF confirmado para plan Normal; falta RPF de "Comercio Protección Total" (desactivado hasta confirmar). |
-| **Incendio** | 🟡 **Listo para cotizar** | Catálogo completo (2 planes, 5 coberturas). RPF confirmado (plano: Contado 0%, Cobrador 1.6%, Boca 1.35%, Tarjeta 1%). Falta calculador `incendio.js` y template de PDF. |
-| **Vida y Accidentes Personales** | 🟡 **Listo para cotizar** | Catálogo completo (7 planes, 11 coberturas, 44 filas de tarifación por edad). RPF confirmado (igual a Incendio). Falta calculador `vida-ap.js` y template de PDF. |
+| **Multirriesgo Comercio** (MRC) | 🟢 **Producción** | Plan Normal cotiza end-to-end con Carta Oferta en PDF. Coberturas adicionales repetibles (incluidos sublímites: murallas, granizo, agua, equipos electrónicos). Panel admin: editor de tasas por Tipo de Riesgo, permisos granulares por sección. Tope de descuento/recargo por usuario. RPF confirmado para plan Normal; "Comercio Protección Total" desactivado (sin RPF). |
+| **Incendio** | 🟡 **Listo para cotizar** | Catálogo completo (2 planes, 5 coberturas). RPF confirmado (plano: Contado 0%, Cobrador 1.6%, Boca 1.35%, Tarjeta 1%). Falta calculador `incendio.js` y template de Carta Oferta (pendiente texto oficial). |
+| **Vida y Accidentes Personales** | 🟡 **Listo para cotizar** | Catálogo completo (7 planes, 11 coberturas, 44 filas de tarifación por edad). RPF confirmado (igual a Incendio). Falta calculador `vida-ap.js` y template de Carta Oferta (pendiente texto oficial). |
 | Auto individual | ⏸ Pausado | Schema y calculador completos (Fase 1). Pausado por prioridad del cliente — se retoma si se pide. |
 | Auto Flota | ⏸ Pausado | Planificado en Fase 2. Depende de retomar Auto individual. |
 | Multirriesgo Hogar | ⚪ Futuro | Planificado. |
@@ -39,25 +39,35 @@ Antes de tocar código, leé en este orden:
 ## Características principales
 
 ### Cotizador (`/frontend/cotizar`)
-- Selección de ramo, plan y coberturas.
-- Cálculo en vivo de prima, RPF, IVA y plan de pago (Contado / Cobrador / Boca de Cobranza / Tarjeta).
-- Descuentos y recargos manuales (tope por plan y por usuario).
-- Generación de **Carta Oferta en PDF** (MRC implementada; Incendio/Vida-AP pendientes de template).
-- Coberturas adicionales repetibles en MRC (permite agregar la misma cobertura con distinta suma asegurada).
+- Selección de ramo (MRC/Incendio/Vida-AP funcionales; Auto pausado; Hogar próximamente).
+- Plan y coberturas: coberturas fijas + adicionales repetibles (mismo código, distinta suma asegurada).
+- Cálculo en vivo de prima, RPF, IVA y plan de pago (Contado 0% / Cobrador 1.6% / Boca de Cobranza 1.35% / Tarjeta 1%).
+- Descuentos y recargos manuales (tope por plan + tope individual por usuario, gana el más restrictivo).
+- **Carta Oferta en PDF** (MRC operativo; Incendio/Vida-AP pendientes de template).
+- MRC: premium experience (3 coberturas mín., responsabilidad máxima asegurable, Prima Técnica Mínima silenciosa).
 
 ### Panel Admin (`/frontend/admin`)
-- **Autenticación JWT** independiente por usuario.
-- **Usuarios:** crear, editar, resetear password, desactivar.
-- **Permisos por sección** (no todo-o-nada):
-  - Editar coberturas por plan (`plan_coberturas`: incluida por defecto, monto).
-  - Editar tasas fijas por cobertura (`tasas_cobertura_ramo`).
-  - Editar tasas por Tipo de Riesgo (`rubros_actividad.tasa_edificio`, `tasa_contenido`) — MRC/Incendio.
-  - Gestionar usuarios (crear/editar permisos de otros usuarios).
-- Cada usuario admin puede tener un tope propio de descuento/recargo más restrictivo que el plan.
+- **Autenticación JWT** independiente, tokens auto-renovables.
+- **Roles configurables** (`admin` y `agente` del sistema + custom roles):
+  - Crear/editar roles con 4 permisos: `puede_gestionar_usuarios`, `puede_editar_coberturas`, `puede_editar_planes`, `puede_editar_tasas`.
+  - Usuarios se asignan a un rol (no booleanos sueltos).
+  - Roles `admin`/`agente` del sistema no se pueden renombrar (inmutables).
+- **Secciones** (visibles solo si usuario tiene permiso):
+  - **Usuarios:** CRUD, resetear password, desactivar, tope de descuento/recargo individual.
+  - **Coberturas por plan:** `plan_coberturas` (incluida por defecto, monto).
+  - **Tasas:** fijas por cobertura (`tasas_cobertura_ramo`) + por Tipo de Riesgo (`rubros_actividad.tasa_edificio`/`tasa_contenido`, MRC/Incendio).
+  - **Planes:** Prima Técnica Mínima, topología, responsabilidad máxima cotizable.
+  - **Roles:** CRUD (custom roles solo; `admin`/`agente` protegidos).
+- Tope de descuento/recargo: `MIN(tope_plan, tope_usuario)` (always el más restrictivo).
 
-### Historial y búsqueda (Fase 5 futura)
-- Listado de cotizaciones con numeración correlativa.
-- Búsqueda por cliente, número, ramo, fecha.
+### Historial y búsqueda (Fase 5 implementada)
+- Listado de cotizaciones: Número / Cliente / Ramo / Plan / Fecha / Estado / Prima.
+- Filtros: ramo, cliente, fecha desde/hasta, estado (predefinido/confirmado/rechazado).
+- Paginación automática, listado de 25 cotizaciones por página.
+- Detalle de cotización: acceso completo a datos, coberturas, plan de pago.
+- Descarga de Carta Oferta en PDF (disponible si ramo tiene calculador + template; MRC funcional).
+- **Permisos:** usuarios no-admin ven solo sus cotizaciones (IDOR cerrado); admin ve todas.
+- **Edición:** reabre el cotizador (mismo formulario) con ventana de 30 días desde creación.
 
 ## Estructura
 
@@ -110,7 +120,11 @@ cd backend
 supabase migration up
 ```
 
-El estado actual está en `docs/ESTADO_PROYECTO.md` sección 4 (tabla de migraciones 001 a 030, con descripción de qué hace cada una).
+El estado actual está en `docs/ESTADO_PROYECTO.md` sección 4 (tabla de migraciones 001 a 031, con descripción de qué hace cada una). En resumen:
+- **001–010:** Schema base (usuarios, ramos, planes, tarifación, cotizaciones, Auto Flota, KYC, funcs SQL, códigos de tasa).
+- **011–016:** Incendio/Vida-AP (coberturas, catálogos, tarifas por edad).
+- **017–027:** MRC (texto legal, responsabilidad máxima, rename de coberturas, Carta Oferta).
+- **028–031:** Panel Admin (permisos, versioning de tasas, roles configurables).
 
 ### Reset de Supabase local
 
@@ -249,12 +263,12 @@ Usa Puppeteer (Chromium headless) para convertir HTML → PDF. Cada ramo puede t
 
 ## Estado actual
 
-**Última actualización:** 2026-07-19
+**Última actualización:** 2026-07-20 — Fase 6/7 activa. MRC funcional end-to-end en Producción. Incendio y Vida/AP listos para cotizar (catálogos completos, RPF confirmado, calculadores pendientes). Panel admin con permisos granulares, editor de tasas por Tipo de Riesgo y tope de descuento/recargo por usuario implementados.
 
 Ver `docs/ESTADO_PROYECTO.md` para el detalle completo de:
-- Qué está implementado (sección por sección)
+- Qué está implementado sección por sección
 - Decisiones tomadas y por qué
-- Pendientes abiertos
-- Historial de cambios y bugs corregidos
+- Pendientes abiertos y bloqueantes
+- Migraciones SQL aplicadas
 
-La sección "Estado actual del proyecto" en `CLAUDE.md` resume qué fase es la activa y cuál es el próximo paso.
+La sección "Estado actual del proyecto" en `CLAUDE.md` resume la fase activa, próximos pasos y reglas de negocio.

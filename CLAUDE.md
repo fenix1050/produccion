@@ -52,6 +52,8 @@ CLAUDE.md                -- este archivo
 
 ## Metodología: desarrollo por fases
 
+**Última actualización:** 2026-07-20.
+
 Este proyecto se construye **fase por fase**, en este orden fijo (detalle completo de cada una en la sección 10 de `PLAN_DESARROLLO.md`):
 
 1. Base del sistema (monorepo, schema, importadores de tasas Auto)
@@ -74,7 +76,7 @@ Este proyecto se construye **fase por fase**, en este orden fijo (detalle comple
 
 **Cambio de prioridad (2026-07-10):** el cliente pidió priorizar **MRC, Incendio y Vida/AP** por sobre Auto. Fase 2 de Auto queda **pausada tal cual está** (no se revierte, no se sigue tocando). Hogar y TRO no fueron pedidos todavía — quedan en fase futura, no se suman a este bloque aunque compartan esqueleto con MRC/Incendio.
 
-Estamos en **Fase 6/7 (activa)** — orden interno: **MRC primero**, después Incendio, después Vida/AP:
+**Fase 6/7 Cerrada (2026-07-20)** — MRC operativo, Incendio y Vida/AP listos (datos + esquema, falta lógica de calculadores). Panel admin y Historial (Fase 5) implementados:
 
 - [x] Schema completo de la base de datos para MRC/Incendio/Vida-AP (ver sección 4 de PLAN_DESARROLLO.md), incluyendo el campo `tipo_aplicacion` (`cobertura` vs `sublimite`) en `cotizacion_coberturas` — migración 011 aplicada contra Supabase real (2026-07-10)
 - [x] Catálogo de coberturas de MRC (migración 012, 2026-07-10) — tasas reales de "Version 01 - Calculo Varios.xlsx" + textos legales confirmados contra el sistema de escritorio.
@@ -91,9 +93,13 @@ Estamos en **Fase 6/7 (activa)** — orden interno: **MRC primero**, después In
 - [x] **Editor de tasas por Tipo de Riesgo** (2026-07-19): nuevo endpoint `PUT /admin/rubros-actividad/:id` para editar `rubros_actividad.tasa_edificio` / `tasa_contenido` directamente desde el panel admin, sin migración SQL. Visible solo para MRC/Incendio (la tabla es compartida entre ambos). Editorial con UPDATE directo (sin versionado, a diferencia de `tasas_cobertura_ramo`).
 - [x] **WU6 cerrado** (2026-07-17): frontend `cotizar.js` refactorizado para leer sublímites fijos de `plan_coberturas` en vez de constante hardcodeada. Verificado que prima de MRC Normal no cambió. Efecto colateral: "Murallas/Cercos" (Gs. 1.000.000) ahora visible en el resumen de Sublímites (ya estaba en la base, la constante vieja no la reflejaba — Kevin confirmó el monto como correcto).
 - [x] **Bugfix — usuarios en panel admin sin respuesta** (2026-07-19): botones "Editar"/"Resetear password"/"Desactivar" no hacían nada porque comparaban string (`el.dataset.id`) vs number (`usuarios.id SERIAL`) con `===` estricto. Corregido con `Number()` en el dispatcher. Verificado en vivo.
-- [ ] Calculadores `incendio.js` / `vida-ap.js` con la tasa como parámetro configurable (sin hardcodear) — RPF de Incendio y Vida/AP ya confirmado (plano, igual a MRC). Falta solo la lógica de cálculo en sí (pendiente #10, sección 11 de PLAN_DESARROLLO.md)
+- [x] **Roles configurables** (2026-07-19): reemplazó el patrón booleano de permisos sueltos en `usuarios`. Tabla `roles` con 4 permisos cada una (`puede_gestionar_usuarios`, `puede_editar_coberturas`, `puede_editar_planes`, `puede_editar_tasas`). Roles `admin`/`agente` del sistema inmutables. CRUD de roles custom (migración 031). Frontend con tabla de roles + modal de creación.
+- [x] **Historial y edición de cotizaciones** (2026-07-19): Fase 5 implementada. Listado con filtros, paginación, descarga de PDF, permisos por dueño (IDOR cerrado), edición con ventana de 30 días. Backend con `actualizarCotizacion`, validaciones de ventana + cambio de ramo. 4 lentes review confirmaron correctitud.
+- [ ] Calculadores `incendio.js` / `vida-ap.js` — lógica de cálculo pendiente, datos 100% confirmados (RPF plano, Prima Técnica Mínima o sin piso, tarifación por edad ya en 44 filas). Siguiente paso: implementación.
 
-**Fase 1 de Auto (schema base, importador de tasas) sigue como estaba** — no se retoma hasta que se reactive esa fase.
+**Próximo paso confirmado con Kevin:** implementar calculadores de Incendio y Vida/AP (lógica solo, datos listos), agregar templates de Carta Oferta (requieren texto oficial), o retomar Fase 2 (Auto) si se pide.
+
+**Fase 1 de Auto (schema base, importador de tasas) sigue como estaba** — pausado, no se retoma hasta que el cliente lo pida.
 
 ## Reglas de negocio clave para Auto (resumen — detalle completo en sección 5 de PLAN_DESARROLLO.md)
 
@@ -134,13 +140,13 @@ Contado: Inicial = Premio completo, Cuota = 0
 
 ## Pendientes activos que pueden afectar el código
 
-- **RPF de Incendio y Vida/AP**: ✅ confirmado (2026-07-13, migración 023) — RPF plano, igual para todos los planes, no varía por cuotas. Cargado en `plan_formas_pago`. **Falta:** escribir `incendio.calculator.js` / `vida-ap.calculator.js` (lógica de cálculo, no datos).
-- **Calculadores `incendio.js` / `vida-ap.js`**: bloqueados solo por el tiempo de implementación, todos los datos están confirmados.
-- **Templates de Carta Oferta para Incendio y Vida/AP**: pendientes de texto oficial de cada ramo. MRC ya implementado y funcionando.
-- **RPF de "COMERCIO PROTECCION TOTAL"** (MRC): no confirmado — plan desactivado (`activo = FALSE`) desde migración 022 (2026-07-13), no aparece en selector. Se reactivaría al confirmar RPF.
-- **Plan Básico de Auto** (Fase 1/2, pausada): no implementado — tasa única fija 1,64% vs. tarifación por capital. Pendiente #4 de sección 11 de `PLAN_DESARROLLO.md`, no bloqueante.
-- **Auto individual (Fase 1/2, pausada)**: schema y calculador listos, pero fase pausada por prioridad del cliente. No se retoma hasta que se reactive.
-- **RLS en Supabase**: 29 tablas de `public` tienen RLS deshabilitado (ver `docs/ESTADO_PROYECTO.md` sección 7). Hoy no es explotable (frontend nunca habla directo con Supabase), pero queda como deuda técnica — requiere decisión de Kevin antes de actuar.
+- **Calculadores `incendio.js` / `vida-ap.js`** (Fase 6/7): lógica de cálculo, no datos. Todos los datos confirmados: RPF plano (Contado 0% / Cobrador 1,6% / Boca 1,35% / Tarjeta 1%, fijo para todos los planes), Prima Técnica Mínima (Incendio Gs. 409.091; Vida/AP = sin piso). Bloqueados solo por implementación. Migración 023 ya cargó `plan_formas_pago` con los valores.
+- **Templates de Carta Oferta para Incendio y Vida/AP** (Fase 6/7): pendientes de texto oficial de cada ramo. MRC ya implementado con layout dinámico + failover. Los dispatchers de `templates/oferta/index.js` cortan con 422 explicativo mientras no haya template.
+- **RPF de "COMERCIO PROTECCION TOTAL"** (MRC, Fase 6/7): no confirmado — plan desactivado (`activo = FALSE`) desde migración 022 (2026-07-13), no aparece en selector. Se reactivaría al confirmar RPF.
+- **Auto individual (Fase 1/2, pausada)**: schema y calculador completos, fase pausada por prioridad del cliente. No se retoma hasta que se reactive.
+- **Plan Básico de Auto** (Fase 1/2 pausada): no implementado — tasa única fija 1,64% vs. tarifación por capital. Pendiente #4 de sección 11 de `PLAN_DESARROLLO.md`, no bloqueante.
+- **RLS en Supabase**: 29 tablas de `public` tienen RLS deshabilitado. Hoy no es explotable (frontend nunca habla directo con Supabase), pero queda como deuda técnica — requiere decisión de Kevin antes de actuar.
+- **Modal "Nuevo usuario"**: no tiene campos de tope propio (descuento/recargo máximo) — solo "Editar usuario" los tiene. Usuario recién creado queda sin tope (`NULL`, solo el tope del plan) hasta que se edite a mano (confirmado con Kevin como "revisamos después").
 
 ## Al empezar una sesión nueva
 

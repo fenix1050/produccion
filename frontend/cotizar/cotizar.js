@@ -1,5 +1,5 @@
 import { api, auth } from '../shared/api.js';
-import { ICON_CLOCK, ICON_GEAR, ICON_WRENCH, ICON_LOGOUT, ICON_X_CIRCLE, ICON_CHECK_CIRCLE, renderTrustFooter } from '../shared/nav-icons.js';
+import { ICON_CLOCK, ICON_GEAR, ICON_WRENCH, ICON_LOGOUT, ICON_X_CIRCLE, ICON_CHECK_CIRCLE, ICON_RAMO_AUTO, ICON_RAMO_MRC, ICON_RAMO_INCENDIO, ICON_RAMO_VIDA_AP, ICON_RAMO_HOGAR, renderTrustFooter } from '../shared/nav-icons.js';
 import { crearBadge } from '../shared/badge.js';
 
 // Cotizador Tajy — App Shell + Datos + Resultado (Fase 6, alcance MRC plan Normal).
@@ -18,6 +18,16 @@ const RAMOS_UI = [
   { nombre: 'vida-ap', code: 'VA', label: 'Vida y Accidentes Personales', estado: 'disponible' },
   { nombre: 'hogar', code: 'MH', label: 'Multirriesgo Hogar', estado: 'proximamente' },
 ];
+
+// Íconos por ramo para el badge de la vista Datos (form-heading__badge) — no se usan en el
+// sidebar, que sigue mostrando el código de 2 letras (AU/MR/IN/VA/MH) sin cambios.
+const RAMO_ICONOS = {
+  auto: ICON_RAMO_AUTO,
+  mrc: ICON_RAMO_MRC,
+  incendio: ICON_RAMO_INCENDIO,
+  'vida-ap': ICON_RAMO_VIDA_AP,
+  hogar: ICON_RAMO_HOGAR,
+};
 
 // Ramos con calculador real conectado en esta pasada (ver CLAUDE.md — MRC primero, luego
 // Incendio, luego Vida-AP).
@@ -874,6 +884,11 @@ function renderHeader(ramo) {
   return `
     <div class="main-header">
       <div>
+        <div class="breadcrumb">
+          <span class="breadcrumb__item">Cotizar</span>
+          <span class="breadcrumb__sep">/</span>
+          <span class="breadcrumb__item breadcrumb__item--current">Nueva cotización</span>
+        </div>
         <div class="main-header__title">Nueva cotización</div>
         <div class="main-header__subtitle">${escapeHtml(subtitle)}</div>
       </div>
@@ -1083,7 +1098,7 @@ function renderDatosView(ramo) {
       <div class="datos-view__form">
         <div class="datos-view__form-inner">
           <div class="form-heading">
-            <div class="form-heading__badge">${ramo.code}</div>
+            <div class="form-heading__badge">${RAMO_ICONOS[ramo.nombre] || ''}</div>
             <div class="form-heading__label">${escapeHtml(ramo.label)}</div>
           </div>
           <div class="field-grid">

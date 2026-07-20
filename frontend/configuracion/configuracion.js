@@ -1,5 +1,6 @@
 import { api, auth } from '../shared/api.js';
-import { ICON_ARROW_LEFT, ICON_CLOCK, ICON_GEAR, ICON_WRENCH, ICON_LOGOUT, renderTrustFooter } from '../shared/nav-icons.js';
+import { escapeHtml } from '../shared/dom.js';
+import { renderSidebarFooter } from '../shared/sidebar.js';
 
 // Configuración (self-service) — cualquier usuario logueado (admin o agente) ve su propio
 // perfil y cambia su propia contraseña. Distinto del panel /admin/ (gestión de OTROS
@@ -33,16 +34,6 @@ const state = {
 };
 
 const app = document.getElementById('app');
-
-function escapeHtml(value) {
-  return String(value ?? '').replace(/[&<>"']/g, (ch) => ({
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#39;',
-  })[ch]);
-}
 
 function formatearTiempoRelativo(fechaIso) {
   if (!fechaIso) return 'Sin registro';
@@ -92,32 +83,10 @@ function cerrarSesion() {
 }
 
 function renderSidebar() {
-  const usuario = state.usuario;
-  const nombreAgente = usuario?.nombre || 'Agente';
-  const esAdmin = usuario?.rol === 'admin';
-  const rolLabel = esAdmin ? 'Administrador' : usuario?.rol === 'agente' ? 'Agente' : 'Analista comercial';
-  const iniciales = nombreAgente
-    .split(' ')
-    .slice(0, 2)
-    .map((p) => p[0].toUpperCase())
-    .join('') || 'AG';
-
   return `
     <div class="sidebar">
       <div class="sidebar__nav">
-        <a class="nav-item nav-item--icon" href="../cotizar/"><span class="nav-item__badge">${ICON_ARROW_LEFT}</span><span>Volver a cotizar</span></a>
-        <a class="nav-item nav-item--icon" href="../historial/"><span class="nav-item__badge">${ICON_CLOCK}</span><span>Historial de cotizaciones</span></a>
-        <a class="nav-item nav-item--icon nav-item--active" href="./"><span class="nav-item__badge">${ICON_GEAR}</span><span>Configuración</span></a>
-        ${esAdmin ? `<a class="nav-item nav-item--icon" href="../admin/"><span class="nav-item__badge">${ICON_WRENCH}</span><span>Panel de administración</span></a>` : ''}
-        <div class="nav-item nav-item--icon" id="logout-link" data-action="logout"><span class="nav-item__badge">${ICON_LOGOUT}</span><span>Cerrar sesión</span></div>
-        <div class="sidebar__agent">
-          <div class="sidebar__agent-avatar">${escapeHtml(iniciales)}</div>
-          <div>
-            <div class="sidebar__agent-name">${escapeHtml(nombreAgente)}</div>
-            <div class="sidebar__agent-role">${escapeHtml(rolLabel)}</div>
-          </div>
-        </div>
-        ${renderTrustFooter()}
+        ${renderSidebarFooter('configuracion')}
       </div>
     </div>
   `;
@@ -271,7 +240,7 @@ function renderApp() {
 }
 
 function bindEvents() {
-  document.getElementById('logout-link')?.addEventListener('click', (e) => {
+  document.querySelector('.sidebar [data-action="logout"]')?.addEventListener('click', (e) => {
     e.preventDefault();
     cerrarSesion();
   });

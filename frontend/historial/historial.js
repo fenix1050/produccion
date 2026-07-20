@@ -1,6 +1,7 @@
 import { api, auth } from '../shared/api.js';
-import { ICON_ARROW_LEFT, ICON_CLOCK, ICON_GEAR, ICON_WRENCH, ICON_LOGOUT, renderTrustFooter } from '../shared/nav-icons.js';
 import { crearBadge } from '../shared/badge.js';
+import { escapeHtml } from '../shared/dom.js';
+import { renderSidebarFooter } from '../shared/sidebar.js';
 
 // Historial de cotizaciones (Fase 5/WU5) — mismo patrón Vanilla JS que admin.js: state +
 // renderApp() que reconstruye innerHTML + bindEvents() post-render + modal vía state.modal.
@@ -67,15 +68,6 @@ function fmtFecha(iso) {
   return fecha.toLocaleDateString('es-PY', { year: 'numeric', month: '2-digit', day: '2-digit' });
 }
 
-function escapeHtml(value) {
-  return String(value ?? '').replace(/[&<>"']/g, (ch) => ({
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#39;',
-  })[ch]);
-}
 
 function mostrarBanner(tipo, texto) {
   state.banner = { tipo, texto };
@@ -271,32 +263,10 @@ function renderTopbar() {
 }
 
 function renderSidebar() {
-  const usuario = auth.getUsuario();
-  const nombreAgente = usuario?.nombre || 'Agente';
-  const esAdmin = usuario?.rol === 'admin';
-  const iniciales = nombreAgente
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((p) => p[0].toUpperCase())
-    .join('') || 'AG';
-
   return `
     <div class="sidebar">
       <div class="sidebar__nav">
-        <a class="nav-item nav-item--icon" href="../cotizar/"><span class="nav-item__badge">${ICON_ARROW_LEFT}</span><span>Volver a cotizar</span></a>
-        <a class="nav-item nav-item--icon nav-item--active" href="./"><span class="nav-item__badge">${ICON_CLOCK}</span><span>Historial de cotizaciones</span></a>
-        <a class="nav-item nav-item--icon" href="../configuracion/"><span class="nav-item__badge">${ICON_GEAR}</span><span>Configuración</span></a>
-        ${esAdmin ? `<a class="nav-item nav-item--icon" href="../admin/"><span class="nav-item__badge">${ICON_WRENCH}</span><span>Panel de administración</span></a>` : ''}
-        <div class="nav-item nav-item--icon" data-action="logout"><span class="nav-item__badge">${ICON_LOGOUT}</span><span>Cerrar sesión</span></div>
-        <div class="sidebar__agent">
-          <div class="sidebar__agent-avatar">${escapeHtml(iniciales)}</div>
-          <div>
-            <div class="sidebar__agent-name">${escapeHtml(nombreAgente)}</div>
-            <div class="sidebar__agent-role">${esAdmin ? 'Administrador' : 'Agente'}</div>
-          </div>
-        </div>
-        ${renderTrustFooter()}
+        ${renderSidebarFooter('historial')}
       </div>
     </div>
   `;

@@ -167,10 +167,10 @@ button {
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 11px 14px;
+  gap: 9px;
+  padding: 8px 12px;
   border-radius: 10px;
-  margin-bottom: 6px;
+  margin-bottom: 5px;
   background: #fff;
   border: 1px solid var(--tajy-border);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
@@ -192,8 +192,8 @@ button {
 }
 
 .ramo-row__badge {
-  width: 30px;
-  height: 30px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   background: #fff;
   color: var(--tajy-red);
@@ -201,7 +201,7 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 10.5px;
+  font-size: 10px;
   font-weight: 700;
   font-family: 'Sora', sans-serif;
   flex-shrink: 0;
@@ -215,10 +215,11 @@ button {
 }
 
 .ramo-row__label {
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 600;
   color: var(--tajy-ink);
   flex: 1;
+  line-height: 1.25;
 }
 
 .ramo-row--activa .ramo-row__label {
@@ -226,7 +227,7 @@ button {
 }
 
 .ramo-row__estado {
-  font-size: 9.5px;
+  font-size: 9px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--tajy-text-muted);
@@ -267,8 +268,8 @@ button {
 }
 
 .nav-item__badge {
-  width: 30px;
-  height: 30px;
+  width: 26px;
+  height: 26px;
   flex-shrink: 0;
   border-radius: 50%;
   background: #fff;
@@ -312,11 +313,11 @@ button {
 .nav-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 11px 14px;
+  gap: 9px;
+  padding: 8px 12px;
   border-radius: 10px;
-  margin-bottom: 6px;
-  font-size: 13px;
+  margin-bottom: 5px;
+  font-size: 12.5px;
   font-weight: 700;
   color: var(--tajy-ink);
   cursor: pointer;
@@ -335,9 +336,9 @@ button {
 .sidebar__agent {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px 14px;
-  margin-top: 10px;
+  gap: 9px;
+  padding: 9px 12px;
+  margin-top: 8px;
   border-radius: 10px;
   background: #fff;
   border: 1px solid var(--tajy-border);
@@ -345,8 +346,8 @@ button {
 }
 
 .sidebar__agent-avatar {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   background: var(--tajy-red);
   color: #fff;

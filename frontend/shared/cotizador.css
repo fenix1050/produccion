@@ -108,6 +108,70 @@ button {
   background: var(--tajy-border);
 }
 
+/* Variante experimental: bloque rojo sólido a la izquierda con el logo,
+   resto del topbar blanco con el breadcrumb adentro (mockup de referencia
+   de Kevin). Modificador aislado para no afectar el topbar base de las
+   otras pantallas mientras se evalúa. */
+.topbar--split {
+  padding: 0;
+  border-top: none;
+  align-items: stretch;
+}
+
+.topbar__red-block {
+  background: var(--tajy-red);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 264px;
+  padding: 12px 24px;
+  flex-shrink: 0;
+}
+
+.topbar__red-block .topbar__logo {
+  height: 32px;
+}
+
+.topbar__brand-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.topbar__brand-code {
+  font-family: 'Sora', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  color: #fff;
+}
+
+.topbar__brand-sub {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.topbar__crumb-area {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 28px;
+  font-size: 13px;
+}
+
+.topbar__crumb-item {
+  color: var(--tajy-text-muted);
+}
+
+.topbar__crumb-item--current {
+  color: var(--tajy-ink);
+  font-weight: 600;
+}
+
+.topbar__crumb-sep {
+  color: var(--tajy-text-muted);
+}
+
 .topbar__subtitle {
   font-family: 'Sora', sans-serif;
   font-weight: 700;

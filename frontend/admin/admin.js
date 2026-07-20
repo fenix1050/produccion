@@ -1,4 +1,5 @@
 import { api, auth } from '../shared/api.js';
+import { ICON_ARROW_LEFT, ICON_CLOCK, ICON_GEAR, ICON_LOGOUT, renderTrustFooter } from '../shared/nav-icons.js';
 
 // Panel de Administración del Cotizador Tajy — WU5, primera porción (Usuarios).
 // Mismo patrón Vanilla JS que cotizar.js: state + render + delegación de eventos por
@@ -904,8 +905,10 @@ function renderSidebar() {
       <div class="sidebar__section-label">Secciones</div>
       <div class="admin-nav">${items}</div>
       <div class="sidebar__footer">
-        <a class="nav-item" href="../cotizar/">🧮 Volver a cotizar</a>
-        <div class="nav-item" data-action="logout">🚪 Cerrar sesión</div>
+        <a class="nav-item nav-item--icon" href="../cotizar/"><span class="nav-item__badge">${ICON_ARROW_LEFT}</span><span>Volver a cotizar</span></a>
+        <a class="nav-item nav-item--icon" href="../historial/"><span class="nav-item__badge">${ICON_CLOCK}</span><span>Historial de cotizaciones</span></a>
+        <a class="nav-item nav-item--icon" href="../configuracion/"><span class="nav-item__badge">${ICON_GEAR}</span><span>Configuración</span></a>
+        <div class="nav-item nav-item--icon" data-action="logout"><span class="nav-item__badge">${ICON_LOGOUT}</span><span>Cerrar sesión</span></div>
         <div class="sidebar__agent">
           <div class="sidebar__agent-avatar">${escapeHtml(iniciales)}</div>
           <div>
@@ -913,6 +916,7 @@ function renderSidebar() {
             <div class="sidebar__agent-role">Administrador</div>
           </div>
         </div>
+        ${renderTrustFooter()}
       </div>
     </div>
   `;

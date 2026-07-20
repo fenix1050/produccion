@@ -4,9 +4,26 @@
    perfil de solo lectura y el toggle de mostrar/ocultar contraseña (login.js define el
    mismo patrón visual pero login.css no se carga en esta pantalla, así que se redefine). */
 
+.config-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 480px));
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 900px) {
+  .config-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .config-card {
   max-width: 480px;
-  margin-bottom: 24px;
+  margin-bottom: 0;
+}
+
+.config-card--actividad {
+  max-width: none;
 }
 
 .config-card .card__title {
@@ -43,6 +60,92 @@
   margin-bottom: 4px;
 }
 
+.config-perfil-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.config-perfil-avatar {
+  width: 52px;
+  height: 52px;
+  font-size: 18px;
+}
+
+.config-perfil-header__name {
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--tajy-ink, #1a1a1a);
+  margin-bottom: 4px;
+}
+
+.config-perfil-header__badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--tajy-pink, #fbeaea);
+  color: var(--tajy-red, #d8132e);
+}
+
+.config-perfil-divider {
+  border-top: 1px solid var(--tajy-border-light, #eee);
+  margin-bottom: 14px;
+}
+
+.config-field--icon {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.config-field__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--tajy-bg, #f4f3f1);
+  color: var(--tajy-red, #d8132e);
+  margin-top: 1px;
+}
+
+.config-actividad-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.config-actividad-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.config-actividad-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--tajy-pink, #fbeaea);
+  color: var(--tajy-red, #d8132e);
+}
+
+.config-actividad-item label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--tajy-text-body, #767a80);
+  margin-bottom: 2px;
+}
+
 .login-field--password {
   margin-bottom: 14px;
 }
@@ -53,6 +156,17 @@
 
 .login-field__password-wrap input {
   padding-right: 40px;
+  padding-left: 38px;
+}
+
+.login-field__prefix {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  color: var(--tajy-text-secondary, #8a8a8a);
+  pointer-events: none;
 }
 
 .login-field__toggle {

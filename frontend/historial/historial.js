@@ -250,13 +250,16 @@ function renderApp() {
 
 function renderTopbar() {
   return `
-    <div class="topbar">
-      <div class="topbar__brand">
-        <img class="topbar__logo" src="../../logo/logo%20rojo%20con%20negro.svg" alt="Aseguradora Tajy" />
-        <div class="topbar__divider"></div>
-        <div class="topbar__text">
-          <div class="topbar__subtitle">Historial de cotizaciones</div>
+    <div class="topbar topbar--split">
+      <div class="topbar__red-block">
+        <img class="topbar__logo" src="../../logo/logo.svg" alt="Aseguradora Tajy" />
+        <div class="topbar__brand-text">
+          <div class="topbar__brand-code">Tajy</div>
+          <div class="topbar__brand-sub">Sistema de Pólizas</div>
         </div>
+      </div>
+      <div class="topbar__crumb-area">
+        <span class="topbar__crumb-item topbar__crumb-item--current">Historial de cotizaciones</span>
       </div>
     </div>
   `;

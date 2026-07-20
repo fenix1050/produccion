@@ -7,6 +7,8 @@ export const ICON_GEAR = `<svg width="18" height="18" viewBox="0 0 24 24" fill="
 export const ICON_WRENCH = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M14.7 6.3a3.5 3.5 0 0 0-4.7 4.2L4.5 16l3.5 3.5 5.5-5.5a3.5 3.5 0 0 0 4.2-4.7l-2.6 2.6-2.1-2.1 2.6-2.5z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"></path></svg>`;
 export const ICON_LOGOUT = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M9 4H5.5A1.5 1.5 0 0 0 4 5.5v13A1.5 1.5 0 0 0 5.5 20H9M14 16l4-4-4-4M18 12H9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path></svg>`;
 export const ICON_SHIELD = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 3.5l7 2.6v5.4c0 4.4-3 7.9-7 9-4-1.1-7-4.6-7-9V6.1l7-2.6z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path></svg>`;
+export const ICON_X_CIRCLE = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.7"></circle><path d="M9.5 9.5l5 5M14.5 9.5l-5 5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path></svg>`;
+export const ICON_CHECK_CIRCLE = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.7"></circle><path d="M8.5 12.3l2.3 2.3 4.7-4.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path></svg>`;
 
 export function renderTrustFooter() {
   return `<div class="sidebar__trust">${ICON_SHIELD}<span>Tu información está segura con nosotros</span></div>`;

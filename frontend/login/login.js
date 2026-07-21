@@ -1,5 +1,6 @@
 import { api, auth } from '../shared/api.js';
 import { escapeHtml } from '../shared/dom.js';
+import { initLoginFx } from './login-fx.js';
 
 // Pantalla de login del Cotizador Tajy — WU4 (auth de frontend). Formulario
 // email/password contra POST /api/auth/login; guarda token+usuario y redirige
@@ -17,9 +18,17 @@ const state = {
   mostrarPassword: false,
 };
 
+let destroyFx = null;
+
 function render() {
+  if (destroyFx) {
+    destroyFx.forEach((fn) => fn());
+    destroyFx = null;
+  }
+
   app.innerHTML = `
-    <div class="login-diagonal"></div>
+    <canvas id="fx-canvas-bg"></canvas>
+    <div class="login-diagonal"><canvas id="fx-canvas"></canvas></div>
     <div class="login-card">
       <div class="login-card__tab"></div>
       <img class="login-card__logo" src="./assets/logo-rojo-con-negro.svg" alt="Aseguradora Tajy" />
@@ -54,6 +63,19 @@ function render() {
   document.getElementById('login-form').addEventListener('submit', onSubmit);
   document.getElementById('toggle-password').addEventListener('click', onTogglePassword);
   document.getElementById('forgot-link').addEventListener('click', onForgotPassword);
+
+  const diagonal = document.querySelector('.login-diagonal');
+  destroyFx = [
+    initLoginFx(document.getElementById('fx-canvas'), diagonal, {
+      particleColor: '255, 255, 255',
+    }),
+    initLoginFx(document.getElementById('fx-canvas-bg'), app, {
+      particleCount: 60,
+      particleColor: '216, 19, 46',
+      particleAlpha: 0.35,
+      linkAlpha: 0.1,
+    }),
+  ];
 }
 
 

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cotizador Tajy — Preview efecto login</title>
+  <link rel="stylesheet" href="./login.css" />
+  <style>
+    .login-diagonal { overflow: hidden; }
+    .login-diagonal canvas { position: absolute; inset: 0; pointer-events: none; }
+    #fx-canvas-bg { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+    .login-diagonal { z-index: 1; }
+    .login-card { z-index: 2; }
+  </style>
+</head>
+<body>
+  <div id="app" class="login-shell"></div>
+  <script type="module">
+    import { initLoginFx } from './login-fx.js';
+
+    document.getElementById('app').innerHTML = `
+      <canvas id="fx-canvas-bg"></canvas>
+      <div class="login-diagonal"><canvas id="fx-canvas"></canvas></div>
+      <div class="login-card">
+        <div class="login-card__tab"></div>
+        <h1 class="login-card__title">Bienvenido</h1>
+        <p class="login-card__subtitle">Ingresá tus credenciales para continuar</p>
+        <form class="login-form">
+          <div class="login-field">
+            <label>Email</label>
+            <input type="email" placeholder="correo@ejemplo.com" />
+          </div>
+          <div class="login-field login-field--password">
+            <label>Contraseña</label>
+            <input type="password" placeholder="Tu contraseña" />
+          </div>
+          <button type="submit" class="login-submit">Ingresar</button>
+        </form>
+        <p class="login-card__footer">Aseguradora Tajy Prop. Coop. S.A</p>
+      </div>
+    `;
+
+    const shell = document.getElementById('app');
+    const diagonal = document.querySelector('.login-diagonal');
+
+    initLoginFx(document.getElementById('fx-canvas'), diagonal, {
+      particleColor: '255, 255, 255',
+    });
+
+    initLoginFx(document.getElementById('fx-canvas-bg'), shell, {
+      particleCount: 60,
+      particleColor: '216, 19, 46',
+      particleAlpha: 0.35,
+      linkAlpha: 0.1,
+    });
+  </script>
+</body>
+</html>

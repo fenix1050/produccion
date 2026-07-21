@@ -2,7 +2,7 @@ import { api, auth } from '../shared/api.js';
 import { ICON_X_CIRCLE, ICON_CHECK_CIRCLE, ICON_RAMO_AUTO, ICON_RAMO_MRC, ICON_RAMO_INCENDIO, ICON_RAMO_VIDA_AP, ICON_RAMO_HOGAR } from '../shared/nav-icons.js';
 import { crearBadge } from '../shared/badge.js';
 import { escapeHtml } from '../shared/dom.js';
-import { renderSidebarFooter } from '../shared/sidebar.js';
+import { renderSidebarFooter, renderTopbarUser } from '../shared/sidebar.js';
 
 // Cotizador Tajy — App Shell + Datos + Resultado (Fase 6, alcance MRC plan Normal).
 // Recreación en Vanilla JS del handoff de diseño `design_handoff_cotizador/Cotizador-B.dc.html`
@@ -789,7 +789,7 @@ function renderApp() {
   }
 
   app.innerHTML = `
-    ${renderTopbar()}
+    ${renderTopbar(ramo)}
     <div class="app-body">
       ${renderSidebar()}
       <div class="main">
@@ -806,22 +806,24 @@ function renderApp() {
 // Se incrementa a mano cuando haya un cambio visible que valga la pena versionar.
 const COTIZADOR_VERSION = '1.0.1';
 
-function renderTopbar() {
+function renderTopbar(ramo) {
   return `
     <div class="topbar">
       <div class="topbar__red-block">
-        <img class="topbar__logo" src="../../logo/logo.svg" alt="Aseguradora Tajy" />
+        <img class="topbar__logo" src="../login/assets/logo-rojo-con-negro.svg" alt="Aseguradora Tajy" />
         <div class="topbar__brand-text">
-          <div class="topbar__brand-code">Tajy</div>
-          <div class="topbar__brand-sub">Sistema de Pólizas</div>
+          <div class="topbar__brand-sub">Sistema de Cotización de Pólizas</div>
         </div>
       </div>
       <div class="topbar__crumb-area">
-        <div class="topbar__breadcrumb">
-          <span class="topbar__crumb-item">Cotizaciones</span>
-          <span class="topbar__crumb-sep">›</span>
-          <span class="topbar__crumb-item topbar__crumb-item--current">Nueva cotización</span>
-        </div>
+        ${ramo ? `
+          <div class="topbar__breadcrumb">
+            <span class="topbar__crumb-item">Cotizaciones</span>
+            <span class="topbar__crumb-sep">›</span>
+            <span class="topbar__crumb-item topbar__crumb-item--current">Nueva cotización</span>
+          </div>
+        ` : '<div></div>'}
+        ${renderTopbarUser()}
       </div>
     </div>
   `;
@@ -861,7 +863,7 @@ function renderHeader(ramo) {
   return `
     <div class="main-header">
       <div>
-        <div class="main-header__title">Nueva cotización</div>
+        ${ramo ? '' : '<div class="main-header__title">Nueva cotización</div>'}
         <div class="main-header__subtitle">${escapeHtml(subtitle)}</div>
       </div>
       ${showTabs ? `

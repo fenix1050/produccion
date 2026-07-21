@@ -1,7 +1,7 @@
 import { api, auth } from '../shared/api.js';
 import { crearBadge } from '../shared/badge.js';
 import { escapeHtml } from '../shared/dom.js';
-import { renderSidebarFooter } from '../shared/sidebar.js';
+import { renderSidebarFooter, renderTopbarUser } from '../shared/sidebar.js';
 
 // Historial de cotizaciones (Fase 5/WU5) — mismo patrón Vanilla JS que admin.js: state +
 // renderApp() que reconstruye innerHTML + bindEvents() post-render + modal vía state.modal.
@@ -255,16 +255,16 @@ function renderTopbar() {
   return `
     <div class="topbar">
       <div class="topbar__red-block">
-        <img class="topbar__logo" src="../../logo/logo.svg" alt="Aseguradora Tajy" />
+        <img class="topbar__logo" src="../login/assets/logo-rojo-con-negro.svg" alt="Aseguradora Tajy" />
         <div class="topbar__brand-text">
-          <div class="topbar__brand-code">Tajy</div>
-          <div class="topbar__brand-sub">Sistema de Pólizas</div>
+          <div class="topbar__brand-sub">Sistema de Cotización de Pólizas</div>
         </div>
       </div>
       <div class="topbar__crumb-area">
         <div class="topbar__breadcrumb">
           <span class="topbar__crumb-item topbar__crumb-item--current">Historial de cotizaciones</span>
         </div>
+        ${renderTopbarUser()}
       </div>
     </div>
   `;

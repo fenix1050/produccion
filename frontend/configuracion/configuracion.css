@@ -6,9 +6,11 @@
 
 .config-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 480px));
-  gap: 24px;
-  margin-bottom: 24px;
+  grid-template-columns: repeat(2, minmax(0, 360px));
+  align-items: stretch;
+  justify-content: start;
+  gap: 20px;
+  margin-bottom: 20px;
 }
 
 @media (max-width: 900px) {
@@ -18,37 +20,33 @@
 }
 
 .config-card {
-  max-width: 480px;
+  max-width: 360px;
   margin-bottom: 0;
-}
-
-.config-card--actividad {
-  max-width: none;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .config-card .card__title {
-  margin-bottom: 16px;
+  padding: 12px 20px;
 }
 
-.config-card--perfil {
-  padding: 20px 26px;
+.config-card .card__body {
+  padding: 16px 20px;
 }
 
-.config-card--perfil .card__title {
-  margin-bottom: 12px;
+.config-card--actividad {
+  max-width: 740px;
+  height: auto;
 }
 
-.config-card--perfil .config-fields {
+.config-fields {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
 .config-field {
-  margin-bottom: 14px;
-}
-
-.config-card--perfil .config-field {
   margin-bottom: 0;
 }
 
@@ -157,6 +155,9 @@
 .login-field__password-wrap input {
   padding-right: 40px;
   padding-left: 38px;
+  border: 1.5px solid var(--tajy-border);
+  border-radius: 8px;
+  box-sizing: border-box;
 }
 
 .login-field__prefix {

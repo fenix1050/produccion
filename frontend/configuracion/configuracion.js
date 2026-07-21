@@ -177,27 +177,29 @@ function renderApp() {
           <div class="config-grid">
             <div class="panel card config-card config-card--perfil">
               <div class="card__title">Mi perfil</div>
-              ${renderPerfilHeader()}
-              <div class="config-fields">
-                <div class="config-field config-field--icon">
-                  <span class="config-field__icon">${ICON_USER}</span>
-                  <div>
-                    <label>Nombre</label>
-                    <div>${escapeHtml(usuario?.nombre ?? '—')}</div>
+              <div class="card__body">
+                ${renderPerfilHeader()}
+                <div class="config-fields">
+                  <div class="config-field config-field--icon">
+                    <span class="config-field__icon">${ICON_USER}</span>
+                    <div>
+                      <label>Nombre</label>
+                      <div>${escapeHtml(usuario?.nombre ?? '—')}</div>
+                    </div>
                   </div>
-                </div>
-                <div class="config-field config-field--icon">
-                  <span class="config-field__icon">${ICON_MAIL}</span>
-                  <div>
-                    <label>Email</label>
-                    <div>${escapeHtml(usuario?.email ?? '—')}</div>
+                  <div class="config-field config-field--icon">
+                    <span class="config-field__icon">${ICON_MAIL}</span>
+                    <div>
+                      <label>Email</label>
+                      <div>${escapeHtml(usuario?.email ?? '—')}</div>
+                    </div>
                   </div>
-                </div>
-                <div class="config-field config-field--icon">
-                  <span class="config-field__icon">${ICON_SHIELD}</span>
-                  <div>
-                    <label>Rol</label>
-                    <div>${escapeHtml(rolLabel)}</div>
+                  <div class="config-field config-field--icon">
+                    <span class="config-field__icon">${ICON_SHIELD}</span>
+                    <div>
+                      <label>Rol</label>
+                      <div>${escapeHtml(rolLabel)}</div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -205,34 +207,38 @@ function renderApp() {
 
             <div class="panel card config-card">
               <div class="card__title">Cambiar contraseña</div>
-              ${state.error ? `<div class="admin-banner admin-banner--error">${escapeHtml(state.error)}</div>` : ''}
-              ${state.exito ? `<div class="admin-banner admin-banner--success">${escapeHtml(state.exito)}</div>` : ''}
-              <form id="password-form" novalidate>
-                ${renderPasswordField('actual', 'Contraseña actual', 'current-password')}
-                ${renderPasswordField('nueva', 'Contraseña nueva', 'new-password')}
-                ${renderPasswordField('confirmar', 'Confirmar contraseña nueva', 'new-password')}
-                <button type="submit" class="btn-primary" ${state.enviando ? 'disabled' : ''}>
-                  ${state.enviando ? 'Guardando…' : 'Guardar contraseña'}
-                </button>
-              </form>
+              <div class="card__body">
+                ${state.error ? `<div class="admin-banner admin-banner--error">${escapeHtml(state.error)}</div>` : ''}
+                ${state.exito ? `<div class="admin-banner admin-banner--success">${escapeHtml(state.exito)}</div>` : ''}
+                <form id="password-form" novalidate>
+                  ${renderPasswordField('actual', 'Contraseña actual', 'current-password')}
+                  ${renderPasswordField('nueva', 'Contraseña nueva', 'new-password')}
+                  ${renderPasswordField('confirmar', 'Confirmar contraseña nueva', 'new-password')}
+                  <button type="submit" class="btn-primary" ${state.enviando ? 'disabled' : ''}>
+                    ${state.enviando ? 'Guardando…' : 'Guardar contraseña'}
+                  </button>
+                </form>
+              </div>
             </div>
           </div>
 
           <div class="panel card config-card config-card--actividad">
             <div class="card__title">Actividad reciente</div>
-            <div class="config-actividad-grid">
-              <div class="config-actividad-item">
-                <span class="config-actividad-icon">${ICON_CLOCK_SM}</span>
-                <div>
-                  <label>Último inicio de sesión</label>
-                  <div>${escapeHtml(formatearTiempoRelativo(usuario?.ultima_sesion))}</div>
+            <div class="card__body">
+              <div class="config-actividad-grid">
+                <div class="config-actividad-item">
+                  <span class="config-actividad-icon">${ICON_CLOCK_SM}</span>
+                  <div>
+                    <label>Último inicio de sesión</label>
+                    <div>${escapeHtml(formatearTiempoRelativo(usuario?.ultima_sesion))}</div>
+                  </div>
                 </div>
-              </div>
-              <div class="config-actividad-item">
-                <span class="config-actividad-icon">${ICON_MONITOR}</span>
-                <div>
-                  <label>Dispositivo</label>
-                  <div>${escapeHtml(detectarDispositivo())}</div>
+                <div class="config-actividad-item">
+                  <span class="config-actividad-icon">${ICON_MONITOR}</span>
+                  <div>
+                    <label>Dispositivo</label>
+                    <div>${escapeHtml(detectarDispositivo())}</div>
+                  </div>
                 </div>
               </div>
             </div>

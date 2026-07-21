@@ -2,34 +2,9 @@
    (app-shell, sidebar, panel, field-input, btn-primary/outline) — acá solo lo específico
    de este módulo: navegación de secciones admin, tabla de usuarios y modal. */
 
-.admin-nav {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.admin-nav__item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 11px 14px;
-  border-radius: 9px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--tajy-text-body);
-  cursor: pointer;
-}
-
-.admin-nav__item:hover {
-  background: var(--tajy-pink);
-}
-
-.admin-nav__item--active {
-  background: var(--tajy-red);
-  color: #fff;
-}
-
-.admin-nav__badge {
+/* Badge "Pronto" para secciones no disponibles del sidebar admin (nav-item--icon,
+   ver frontend/shared/cotizador.css) — el resto de la nav-item viene de ese archivo compartido. */
+.nav-item__badge-pill {
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
@@ -40,8 +15,8 @@
   margin-left: auto;
 }
 
-.admin-nav__item--active .admin-nav__badge {
-  background: rgba(255, 255, 255, 0.25);
+.nav-item--active .nav-item__badge-pill {
+  background: var(--tajy-red);
   color: #fff;
 }
 

@@ -237,7 +237,10 @@ function renderApp() {
           ${renderBanner()}
           ${renderFiltros()}
           <div class="panel card">
-            ${renderTabla()}
+            <div class="card__title">Cotizaciones</div>
+            <div class="card__body">
+              ${renderTabla()}
+            </div>
           </div>
           ${renderPaginacion()}
         </div>

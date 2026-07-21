@@ -908,11 +908,31 @@ button {
   font-size: 11.5px;
 }
 
+.live-summary__price-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--tajy-text-body);
+  margin-bottom: 6px;
+}
+
+.live-summary__price-label svg {
+  color: var(--tajy-text-muted);
+}
+
 .live-summary__price {
   font-family: var(--tajy-font-mono);
   font-size: 30px;
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1;
+  color: var(--tajy-red);
+}
+
+.live-summary__price-unit {
+  font-size: 18px;
+  font-weight: 600;
 }
 
 .live-summary__sub {
@@ -959,6 +979,19 @@ button {
 .live-summary__rows--dashed .live-summary__row:last-child {
   border-bottom: none;
   padding-bottom: 0;
+}
+
+.live-summary__row--icon .live-summary__row-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--tajy-text-body);
+}
+
+.live-summary__row-icon {
+  display: flex;
+  color: var(--tajy-red);
+  flex-shrink: 0;
 }
 
 .live-summary__hint {

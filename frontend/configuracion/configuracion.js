@@ -140,7 +140,7 @@ function renderPerfilHeader() {
 
 function renderTopbar() {
   return `
-    <div class="topbar topbar--split">
+    <div class="topbar">
       <div class="topbar__red-block">
         <img class="topbar__logo" src="../../logo/logo.svg" alt="Aseguradora Tajy" />
         <div class="topbar__brand-text">
@@ -149,7 +149,9 @@ function renderTopbar() {
         </div>
       </div>
       <div class="topbar__crumb-area">
-        <span class="topbar__crumb-item topbar__crumb-item--current">Configuración</span>
+        <div class="topbar__breadcrumb">
+          <span class="topbar__crumb-item topbar__crumb-item--current">Configuración</span>
+        </div>
       </div>
     </div>
   `;

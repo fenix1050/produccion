@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Diseño 2 — Cotizador Tajy (mockup de referencia)</title>
+<style>
+  /* Mockup de referencia "Diseño 2" — aprobado por Kevin el 2026-07-21 para
+     reemplazar el diseño activo del cotizador. Vive acá como snapshot de
+     consulta; NO es el código real del frontend — sirve de guía visual para
+     la migración. Íconos inline como SVG por las mismas restricciones que
+     tenía el preview original (sin CDN externo). */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #F5F5F5;
+    --fg:        #1A1A1A;
+    --card:      #ffffff;
+    --muted:     #EFEFEF;
+    --muted-fg:  #6B7280;
+    --border:    #E2E2E2;
+    --input-bg:  #FAFAFA;
+    --primary:   #d8132e;
+    --primary-h: #b80f27;
+    --primary-a: #9c0d20;
+    --primary-lt:#FDF0EE;
+    --radius:    0.625rem;
+    font-family: 'Inter', -apple-system, 'Segoe UI', sans-serif;
+    font-size: 16px;
+  }
+
+  body { background: var(--bg); color: var(--fg); height: 100vh; overflow: hidden; }
+
+  /* ── Layout — topbar de esquina a esquina arriba de todo, sidebar debajo ── */
+  #shell     { display: flex; flex-direction: column; width: 100%; height: 100vh; overflow: hidden; }
+  #app       { display: flex; flex: 1; overflow: hidden; }
+  #sidebar   { display: flex; flex-direction: column; width: 240px; flex-shrink: 0; background: #ffffff; color: var(--fg); border-right: 1px solid var(--border); }
+  #main      { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+  #body-wrap { display: flex; flex: 1; overflow: hidden; }
+  #form-area { flex: 1; overflow-y: auto; padding: 1.5rem 2rem; display: flex; flex-direction: column; gap: 1.25rem; }
+  #live-panel{ width: 288px; flex-shrink: 0; border-left: 1px solid var(--border); background: var(--card); display: flex; flex-direction: column; overflow-y: auto; }
+
+  * { scrollbar-width: thin; scrollbar-color: transparent transparent; }
+  *:hover { scrollbar-color: #ccc transparent; }
+
+  svg.lucide { width: 16px; height: 16px; flex-shrink: 0; stroke: currentColor; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* ── Sidebar ── */
+  .sb-scroll { flex: 1; overflow-y: auto; padding: 1rem 0.75rem; }
+  .sb-section-label { font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted-fg); font-weight: 600; padding: 0 0.5rem; margin-bottom: 0.5rem; }
+  .sb-nav { display: flex; flex-direction: column; gap: 2px; }
+  .sb-nav button {
+    display: flex; align-items: center; gap: 12px; width: 100%;
+    padding: 10px 12px; border-radius: var(--radius); border: none; cursor: pointer;
+    font-size: 13px; font-family: inherit;
+    color: var(--muted-fg); background: transparent;
+    transition: background .15s, color .15s; text-align: left;
+  }
+  .sb-nav button:hover  { background: var(--muted); color: var(--fg); }
+  .sb-nav button.active { background: var(--primary-lt); color: var(--primary); font-weight: 600; }
+  .sb-nav button svg { width: 16px; height: 16px; flex-shrink: 0; }
+  .sb-divider { border: none; border-top: 1px solid var(--border); margin: 1rem 0; }
+
+  .sb-footer { border-top: 1px solid var(--border); padding: 0.75rem; }
+  .sb-user { display: flex; align-items: center; gap: 12px; width: 100%; padding: 8px; border-radius: var(--radius); border: none; cursor: pointer; background: transparent; transition: background .15s; }
+  .sb-user:hover { background: var(--muted); }
+  .sb-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--primary); color: #fff; font-size: 11px; font-weight: 600; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .sb-user-info { flex: 1; text-align: left; }
+  .sb-user-info p:first-child { font-size: 12px; font-weight: 500; color: var(--fg); }
+  .sb-user-info p:last-child  { font-size: 10px; color: var(--muted-fg); }
+  .sb-user svg { width: 14px; height: 14px; color: var(--muted-fg); }
+
+  /* ── Topbar — bloque rojo con logo, mismo ancho que el sidebar (240px) ── */
+  #topbar { display: flex; align-items: stretch; background: var(--card); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .topbar-red-corner { width: 240px; flex-shrink: 0; background: var(--primary); display: flex; align-items: center; gap: 10px; padding: 0 14px; }
+  .topbar-red-corner svg { height: 36px; width: auto; flex-shrink: 0; }
+  .topbar-crumb-area { flex: 1; display: flex; align-items: center; justify-content: space-between; padding: 1rem 2rem; }
+  .breadcrumb { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted-fg); }
+  .breadcrumb span:last-child { color: var(--fg); font-weight: 500; }
+  .breadcrumb svg { width: 14px; height: 14px; }
+  .topbar-actions { display: flex; gap: 8px; }
+  .btn-outline { padding: 6px 16px; border-radius: var(--radius); font-size: 14px; font-weight: 500; border: 1px solid var(--border); background: transparent; color: var(--fg); cursor: pointer; transition: background .15s; font-family: inherit; }
+  .btn-outline:hover { background: var(--muted); }
+  .btn-outline-primary { padding: 6px 16px; border-radius: var(--radius); font-size: 14px; font-weight: 500; border: 1px solid var(--primary); background: var(--primary-lt); color: var(--primary); cursor: pointer; transition: background .15s; font-family: inherit; }
+  .btn-outline-primary:hover { background: #FADEDB; }
+
+  /* ── Form ── */
+  .plan-label { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted-fg); font-weight: 500; margin-bottom: 4px; display: block; }
+  .select-wrap { position: relative; }
+  .select-wrap svg { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--muted-fg); pointer-events: none; }
+  select, input[type="text"] { font-family: inherit; font-size: 14px; color: var(--fg); border: 1px solid var(--border); border-radius: var(--radius); background: var(--input-bg); outline: none; transition: border-color .15s, box-shadow .15s; }
+  select:focus, input[type="text"]:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(216,19,46,.12); }
+  #plan-select { appearance: none; padding: 8px 36px 8px 12px; min-width: 280px; font-weight: 500; cursor: pointer; }
+
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: calc(var(--radius) + 4px); overflow: hidden; }
+  .card-header { display: flex; align-items: center; gap: 10px; padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); background: #F8FAFF; }
+  .card-header svg { width: 16px; height: 16px; color: var(--primary); }
+  .card-header h2 { font-size: 14px; font-weight: 600; }
+  .card-body { padding: 1.25rem 1.5rem; display: flex; flex-direction: column; gap: 1.25rem; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 500; color: var(--muted-fg); }
+  .field label svg { width: 14px; height: 14px; }
+  .field input[type="text"] { padding: 10px 12px; width: 100%; }
+  .field select { appearance: none; padding: 10px 36px 10px 12px; width: 100%; cursor: pointer; }
+
+  .card-covs { padding: 1rem 1.5rem; border-top: 1px solid var(--border); }
+  .card-covs p { font-size: 12px; font-weight: 500; color: var(--muted-fg); margin-bottom: 0.75rem; }
+  .btn-add-cov { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: var(--radius); border: 1px dashed rgba(216,19,46,.4); background: transparent; color: var(--primary); font-size: 12px; font-weight: 500; cursor: pointer; transition: background .15s; font-family: inherit; }
+  .btn-add-cov:hover { background: var(--primary-lt); }
+  .btn-add-cov svg { width: 14px; height: 14px; }
+
+  .card-cta { display: flex; justify-content: flex-end; padding: 1rem 1.5rem; border-top: 1px solid var(--border); background: #F8FAFF; }
+  .btn-primary { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; border-radius: var(--radius); background: var(--primary); color: #fff; font-size: 14px; font-weight: 600; border: none; cursor: pointer; transition: background .15s; font-family: inherit; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+  .btn-primary:hover  { background: var(--primary-h); }
+  .btn-primary:active { background: var(--primary-a); }
+  .btn-primary svg { width: 16px; height: 16px; }
+
+  /* ── Live panel ── */
+  .lp-header { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); }
+  .lp-title { display: flex; align-items: center; gap: 8px; }
+  .lp-dot { width: 8px; height: 8px; border-radius: 50%; background: #34d399; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+  @media (prefers-reduced-motion: reduce) { .lp-dot { animation: none; } }
+  .lp-title h3 { font-size: 14px; font-weight: 600; }
+  .lp-subtitle { font-size: 12px; color: var(--muted-fg); margin-top: 4px; }
+  .lp-sublimits { flex: 1; padding: 1rem 1.25rem; }
+  .lp-section-label { font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted-fg); font-weight: 600; margin-bottom: 12px; }
+  .lp-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px dashed var(--border); }
+  .lp-item:last-child { border-bottom: none; }
+  .lp-item-left { display: flex; align-items: center; gap: 8px; }
+  .lp-item-left svg { width: 14px; height: 14px; flex-shrink: 0; }
+  .lp-item-left span { font-size: 12px; line-height: 1.3; }
+  .lp-item-empty { width: 14px; height: 14px; border-radius: 50%; border: 1px solid var(--border); flex-shrink: 0; }
+  .lp-amount { font-size: 12px; font-weight: 500; color: var(--fg); margin-left: 8px; white-space: nowrap; }
+  .lp-footer { padding: 1rem 1.25rem; border-top: 1px solid var(--border); background: #F8FAFF; }
+  .lp-breakdown { display: flex; flex-direction: column; gap: 8px; }
+  .lp-row { display: flex; justify-content: space-between; }
+  .lp-row span:first-child { font-size: 12px; color: var(--fg); }
+  .lp-row span:last-child  { font-size: 12px; font-weight: 500; color: var(--fg); }
+  .lp-total-row { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+  .lp-total-amount { font-size: 15px; font-weight: 700; color: var(--primary); }
+  .lp-total-note { font-size: 10px; color: var(--fg); margin-top: 2px; }
+  .btn-generate { margin-top: 1rem; width: 100%; padding: 10px; border-radius: var(--radius); background: var(--primary); color: #fff; font-size: 12px; font-weight: 600; border: none; cursor: pointer; transition: background .15s; font-family: inherit; }
+  .btn-generate:hover { background: var(--primary-h); }
+
+  button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+</style>
+</head>
+<body>
+
+<!-- Set de íconos inline (Lucide equivalentes) -->
+<svg style="display:none">
+  <symbol id="i-car" viewBox="0 0 24 24"><path d="M5 17h14M5 17a2 2 0 100-4 2 2 0 000 4zm14 0a2 2 0 100-4 2 2 0 000 4zM3 13l2-5a2 2 0 012-1.5h10A2 2 0 0119 8l2 5v3H3v-3z"/></symbol>
+  <symbol id="i-store" viewBox="0 0 24 24"><path d="M3 9l1-5h16l1 5M3 9v10a1 1 0 001 1h16a1 1 0 001-1V9M3 9h18M9 21v-6h6v6"/></symbol>
+  <symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 2c1 3-2 4-2 7a3 3 0 006 0c1-2-1-3-1-5 2 1 4 4 4 8a7 7 0 11-14 0c0-5 3-7 4-8 1 3-1 4-1 6a1.5 1.5 0 003 0c0-2-1-3 1-8z"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8M5 10v10a1 1 0 001 1h4v-6h4v6h4a1 1 0 001-1V10"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 00-.2-1.6l2-1.5-2-3.4-2.3.9a7 7 0 00-2.8-1.6L13.3 2h-2.6l-.4 2.8a7 7 0 00-2.8 1.6l-2.3-.9-2 3.4 2 1.5A7 7 0 005 12c0 .5.07 1.1.2 1.6l-2 1.6 2 3.4 2.3-1a7 7 0 002.8 1.7l.4 2.7h2.6l.4-2.7a7 7 0 002.8-1.7l2.3 1 2-3.4-2-1.6c.13-.5.2-1.1.2-1.6z"/></symbol>
+  <symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H5a1 1 0 01-1-1V4a1 1 0 011-1h4M16 17l5-5-5-5M21 12H9"/></symbol>
+  <symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></symbol>
+  <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s7-6.5 7-12a7 7 0 10-14 0c0 5.5 7 12 7 12z"/><circle cx="12" cy="9" r="2.5"/></symbol>
+  <symbol id="i-building" viewBox="0 0 24 24"><path d="M4 21V6l8-4 8 4v15M9 21v-5h6v5M9 10h.01M9 14h.01M15 10h.01M15 14h.01"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-check2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 12.5l2.5 2.5L16 9"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></symbol>
+  <symbol id="i-shieldcheck" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></symbol>
+  <symbol id="i-hearthandshake" viewBox="0 0 24 24"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/><path d="M12 5.36 8.87 8.5a2.13 2.13 0 0 0 0 3l.5.5a2.13 2.13 0 0 0 3 0L14 10.5"/></symbol>
+  <symbol id="i-house" viewBox="0 0 24 24"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+  <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/></symbol>
+  <symbol id="i-usercircle2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="10" r="3"/><path d="M7 20.66V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.66"/></symbol>
+</svg>
+
+<div id="shell">
+  <header id="topbar">
+    <div class="topbar-red-corner">
+      <svg viewBox="0 0 206.2 156" xmlns="http://www.w3.org/2000/svg"><g fill="#fff"><path d="m59.8 33.3-5.5.1c-3.7.4-7.8.1-11.5.5-3.7.3-7.6.3-11.4.7-2.5.2-5 .5-7.5.7s-4.7.3-7.2.5c-2.7.2-4.5.4-7.2-.5-2.2-.7-3-1.4-5.6-3.5-1.7-1.3-3.3-5.6-3.4-6.1-.1-.2-.4-2.5-.5-2.7-1.1-4.5 2.3-4.1 2.6-3.9l1 1c.5.8 1 1.8 1.4 2.2 1.4 1.4 9.2.9 10.6.9 7-.3 33.7-1.3 40.4-1.3 10.8 0 21.5-.7 31.8-1.2 4.7-.2 9.4-.4 14.1-.5s9.3 0 14.1.4c2.2.2 4.4.5 6.6.9 2.2.3 4.3.9 6.5 1.8 2.4 1 4.5 2.3 6.3 3.8s3.3 3.4 4.4 5.6c.2.4.4.8.6 1.2s.1.7-.3 1c-.2.2-.6.3-1 .3s-.8 0-1.2-.1c-1.1-.2-2-.6-2.9-1-2.2-.9-4.4-1.6-6.7-2.1s-4.6-.8-7-.9c-4.1-.3-8.1-.4-12.1-.4s-8 .1-12.1.3c-3.5.2-7 .3-10.5.6-3.5.2-7 .5-10.5.7h-.6c-.7 1.5-1.5 2.9-2.1 4.2-.7 1.3-1.3 2.7-2 4.1-3.7 7.6-7.4 15.1-11 22.6-3.6 7.4-7.2 15-10.8 22.6-2.9 6.2-5.7 12.4-8.3 18.6s-4.9 12.6-6.9 19.1c-.9 2.8-1.7 5.5-2.4 8.2s-1.3 5.5-1.7 8.3c-.2 1.5-.3 3.1-.4 4.7s-.3 3.1-.6 4.7c-.2 1-.4 2-.7 2.9-.3 1-.6 1.9-.9 2.8-.6 1.4-1.5 1.6-2.7.7-.7-.5-1.3-1.1-1.7-1.7-1.7-2.5-3-5-3.7-7.7-.7-2.6-1-5.4-.8-8.3.2-3.7.6-7.3 1.4-10.8s1.8-7 2.9-10.5c2.4-7.4 5.1-14.8 8-21.9 2.9-7.2 6.1-14.4 9.4-21.6 3-6.4 6-12.8 9.2-19.1 3.1-6.3 6.3-12.7 9.4-19.1z"/></g></svg>
+      <div style="color:#fff;">
+        <div style="font-size:12.5px; font-weight:700; letter-spacing:0.1px; white-space:nowrap;">Sistema de Cotización</div>
+      </div>
+    </div>
+    <div class="topbar-crumb-area">
+      <div class="breadcrumb">
+        <span>Cotizaciones</span>
+        <svg class="lucide"><use href="#i-chevron-right"/></svg>
+        <span>Nueva cotización</span>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn-outline">Datos</button>
+        <button class="btn-outline-primary">Detalle del plan</button>
+      </div>
+    </div>
+  </header>
+
+  <div id="app">
+  <aside id="sidebar">
+    <div class="sb-scroll">
+      <p class="sb-section-label">Cotizar</p>
+      <nav class="sb-nav" id="main-nav">
+        <button class="active" data-id="auto"><svg class="lucide"><use href="#i-car"/></svg> Auto Individual</button>
+        <button data-id="comercio"><svg class="lucide"><use href="#i-shield"/></svg> Multiriesgo Comercio</button>
+        <button data-id="incendio"><svg class="lucide"><use href="#i-flame"/></svg> Incendio</button>
+        <button data-id="vida"><svg class="lucide"><use href="#i-hearthandshake"/></svg> Vida y Accidentes Personales</button>
+        <button data-id="hogar"><svg class="lucide"><use href="#i-house"/></svg> Multiriesgo Hogar</button>
+      </nav>
+      <hr class="sb-divider" />
+      <p class="sb-section-label">Gestión</p>
+      <nav class="sb-nav">
+        <button><svg class="lucide"><use href="#i-history"/></svg> Historial de cotizaciones</button>
+        <button><svg class="lucide"><use href="#i-settings"/></svg> Configuración</button>
+      </nav>
+    </div>
+    <div class="sb-footer">
+      <button class="sb-user">
+        <div class="sb-avatar">KR</div>
+        <div class="sb-user-info"><p>Kevin Ruiz</p><p>Ejecutivo</p></div>
+        <svg class="lucide"><use href="#i-logout"/></svg>
+      </button>
+    </div>
+  </aside>
+
+  <div id="main">
+    <div id="body-wrap">
+      <main id="form-area">
+        <div>
+          <label class="plan-label" for="plan-select">Plan a presentar</label>
+          <div class="select-wrap" style="display:inline-block">
+            <select id="plan-select">
+              <option>MULTIRIESGO COMERCIO - NORMAL</option>
+              <option>MULTIRIESGO COMERCIO - PREMIUM</option>
+              <option>MULTIRIESGO COMERCIO - BÁSICO</option>
+            </select>
+            <svg class="lucide"><use href="#i-chevron-down"/></svg>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <svg class="lucide"><use href="#i-store"/></svg>
+            <h2>Multiriesgo Comercio</h2>
+          </div>
+          <div class="card-body">
+            <div class="grid-2">
+              <div class="field">
+                <label><svg class="lucide"><use href="#i-user"/></svg> Nombre del asegurado</label>
+                <input type="text" placeholder="Juan Pérez" />
+              </div>
+              <div class="field">
+                <label><svg class="lucide"><use href="#i-pin"/></svg> Ubicación del Riesgo</label>
+                <input type="text" placeholder="Av. España c/ GTA, Asunción" />
+              </div>
+            </div>
+            <div class="grid-2">
+              <div class="field">
+                <label><svg class="lucide"><use href="#i-building"/></svg> RUC / Cédula de Identidad</label>
+                <input type="text" placeholder="8.123.456-7" />
+              </div>
+              <div class="field">
+                <label><svg class="lucide"><use href="#i-pin"/></svg> Ciudad</label>
+                <div class="select-wrap">
+                  <select>
+                    <option value="">Seleccione una ciudad…</option>
+                    <option>Asunción</option><option>Lambaré</option>
+                    <option>Luque</option><option>San Lorenzo</option>
+                  </select>
+                  <svg class="lucide"><use href="#i-chevron-down"/></svg>
+                </div>
+              </div>
+            </div>
+            <div class="grid-2">
+              <div class="field">
+                <label><svg class="lucide"><use href="#i-alert"/></svg> Tipo de Riesgo</label>
+                <div class="select-wrap">
+                  <select>
+                    <option value="">Seleccione un tipo de riesgo…</option>
+                    <option>Comercio General</option>
+                    <option>Industria</option>
+                    <option>Servicios</option>
+                  </select>
+                  <svg class="lucide"><use href="#i-chevron-down"/></svg>
+                </div>
+              </div>
+              <div></div>
+            </div>
+            <div class="grid-2">
+              <div class="field">
+                <label>Incendio Edificio (Gs.)</label>
+                <input type="text" placeholder="450.000.000" />
+              </div>
+              <div class="field">
+                <label>Incendio Contenido (Gs.)</label>
+                <input type="text" placeholder="120.000.000" />
+              </div>
+            </div>
+          </div>
+          <div class="card-covs">
+            <p>Coberturas adicionales</p>
+            <button class="btn-add-cov"><svg class="lucide"><use href="#i-plus"/></svg> Agregar cobertura</button>
+          </div>
+          <div class="card-cta">
+            <button class="btn-primary">Ver detalle completo <svg class="lucide" style="stroke:#fff"><use href="#i-chevron-right"/></svg></button>
+          </div>
+        </div>
+      </main>
+
+      <aside id="live-panel">
+        <div class="lp-header">
+          <div class="lp-title"><div class="lp-dot"></div><h3>Cotización en vivo</h3></div>
+          <p class="lp-subtitle">Completá los datos del riesgo para ver la prima.</p>
+        </div>
+        <div class="lp-sublimits">
+          <p class="lp-section-label">Sublímites</p>
+          <div class="lp-item">
+            <div class="lp-item-left"><svg class="lucide" style="color:#10b981"><use href="#i-check2"/></svg><span>Incendio Edificio</span></div>
+            <span class="lp-amount">Gs. 2.500.000</span>
+          </div>
+          <div class="lp-item">
+            <div class="lp-item-left"><svg class="lucide" style="color:#10b981"><use href="#i-check2"/></svg><span>Incendio Contenido</span></div>
+            <span class="lp-amount">Gs. 1.250.000</span>
+          </div>
+          <div class="lp-item">
+            <div class="lp-item-left"><div class="lp-item-empty"></div><span>Robo y Asalto</span></div>
+            <span class="lp-amount">Gs. 750.000</span>
+          </div>
+          <div class="lp-item">
+            <div class="lp-item-left"><div class="lp-item-empty"></div><span>Responsabilidad Civil</span></div>
+            <span class="lp-amount">Gs. 500.000</span>
+          </div>
+        </div>
+        <div class="lp-footer">
+          <div class="lp-breakdown">
+            <div class="lp-row"><span>Incendio Edificio</span><span>Gs. 2.500.000</span></div>
+            <div class="lp-row"><span>Incendio Contenido</span><span>Gs. 1.250.000</span></div>
+            <div class="lp-row"><span>Electrodomésticos</span><span>Gs. 750.000</span></div>
+          </div>
+          <div class="lp-total-row">
+            <div><span style="font-size:12px;color:var(--fg)">Prima total</span><p class="lp-total-note">Prima por garantía</p></div>
+            <span class="lp-total-amount">Gs. 5.000.000</span>
+          </div>
+          <button class="btn-generate">Generar cotización</button>
+        </div>
+      </aside>
+    </div>
+  </div>
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll('#main-nav button').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      document.querySelectorAll('#main-nav button').forEach(function (b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+    });
+  });
+</script>
+</body>
+</html>

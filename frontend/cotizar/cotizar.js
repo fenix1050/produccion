@@ -794,7 +794,6 @@ function renderApp() {
       ${renderSidebar()}
       <div class="main">
         ${renderHeader(ramo)}
-        ${ramo && RAMOS_CON_CALCULO.includes(state.ramoId) && ramo.estado === 'disponible' ? renderPlanRow() : ''}
         ${contenido}
       </div>
     </div>
@@ -904,8 +903,36 @@ function renderPlanRow() {
 
   return `
     <div class="plan-row">
-      <div class="plan-row__label">Plan a presentar:</div>
-      <select class="field-input plan-row__select" data-action-select="select-plan">${options}</select>
+      <div class="plan-row__box">
+        <div class="plan-row__label">Plan a presentar</div>
+        <select class="field-input plan-row__select" data-action-select="select-plan">${options}</select>
+      </div>
+    </div>
+  `;
+}
+
+// Referencia visual de avance (1. Datos del plan → 2. Detalle del plan → 3. Carta oferta).
+// "Carta oferta" no tiene un state.view propio — se emite como acción (PDF) dentro de
+// "Detalle del plan" (ver emitirCartaOferta()) — así que ese paso queda siempre pendiente,
+// solo marca el recorrido esperado, no un estado navegable.
+function renderStepper() {
+  const pasos = [
+    { n: 1, label: 'Datos del plan', activo: state.view === 'form' },
+    { n: 2, label: 'Detalle del plan', activo: state.view === 'result' },
+    { n: 3, label: 'Carta oferta', activo: false },
+  ];
+
+  return `
+    <div class="stepper-row">
+      <div class="stepper">
+        ${pasos.map((p, i) => `
+          <div class="stepper__step">
+            <div class="stepper__circle ${p.activo ? 'stepper__circle--active' : ''}">${p.n}</div>
+            <div class="stepper__label ${p.activo ? 'stepper__label--active' : ''}">${escapeHtml(p.label)}</div>
+          </div>
+          ${i < pasos.length - 1 ? '<div class="stepper__connector"></div>' : ''}
+        `).join('')}
+      </div>
     </div>
   `;
 }
@@ -1070,10 +1097,10 @@ function renderDatosView(ramo) {
   return `
     <div class="datos-view panel">
       <div class="datos-view__form">
+        ${esCalculable && ramo.estado === 'disponible' ? renderStepper() + renderPlanRow() : ''}
         <div class="datos-view__form-inner">
           <div class="form-heading">
-            <div class="form-heading__badge">${RAMO_ICONOS[ramo.nombre] || ''}</div>
-            <div class="form-heading__label">${escapeHtml(ramo.label)}</div>
+            <div class="form-heading__label">Datos del asegurado</div>
           </div>
           <div class="datos-view__form-body">
             <div class="field-grid">
@@ -1133,7 +1160,7 @@ function renderCoberturasAdicionales(catalogoDisponible) {
   return `
     <div class="coberturas-adicionales">
       <label>Coberturas adicionales</label>
-      ${filas || '<div class="live-summary__pending">Todavía no agregaste coberturas adicionales.</div>'}
+      ${filas}
       <button type="button" class="btn-outline" data-action="add-cobertura-linea">+ Agregar cobertura</button>
     </div>
   `;
@@ -1271,6 +1298,7 @@ function renderResultadoView(ramo) {
     return `
       <div class="resultado-view panel">
         <div class="resultado-view__inner">
+          ${esCalculable ? renderStepper() : ''}
           <div class="resultado-hero">
             <div>
               <div class="resultado-hero__label">Plan ${escapeHtml(planLabel)} · ${escapeHtml(ramo.label)}</div>
@@ -1294,6 +1322,7 @@ function renderResultadoView(ramo) {
   return `
     <div class="resultado-view panel">
       <div class="resultado-view__inner">
+        ${renderStepper()}
         <div class="resultado-hero resultado-hero--slim">
           <div class="resultado-hero__label" style="margin-bottom:0;">Plan ${escapeHtml(planLabel)} · ${escapeHtml(ramo.label)} · ${escapeHtml(fp.nombre_display)}</div>
           <button class="btn-outline" data-action="show-tab" data-view="form">Editar datos / forma de pago</button>

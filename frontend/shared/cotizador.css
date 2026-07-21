@@ -26,7 +26,8 @@
   box-sizing: border-box;
 }
 
-html, body {
+html,
+body {
   height: 100%;
 }
 
@@ -495,7 +496,7 @@ button {
 }
 
 .main-header {
-  padding: 20px 36px;
+  padding: 14px 36px;
   border-bottom: 1px solid rgba(0, 0, 0, 0.08);
   background: #fff;
   display: flex;
@@ -565,24 +566,96 @@ button {
 }
 
 .plan-row {
-  padding: 14px 36px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  margin-bottom: 8px;
+}
+
+.plan-row__box {
+  max-width: 560px;
   background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 14px;
+  padding: 16px 24px;
   display: flex;
   align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
+  gap: 16px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+}
+
+.plan-row__box .plan-row__label {
+  flex-shrink: 0;
+}
+
+.plan-row__box .plan-row__select {
+  flex: 1;
+}
+
+/* ---- Stepper (1. Datos del plan → 2. Detalle del plan → 3. Carta oferta) ---- */
+
+.stepper-row {
+  margin-bottom: 0;
+}
+
+.stepper {
+  display: flex;
+  align-items: center;
+  max-width: 560px;
+  padding: 14px 24px;
+  background: #fff;
+}
+
+.stepper__step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.stepper__circle {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(0, 0, 0, 0.15);
+  color: var(--tajy-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.stepper__circle--active {
+  background: var(--tajy-red);
+  border-color: var(--tajy-red);
+  color: #fff;
+}
+
+.stepper__label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--tajy-text-muted);
+  white-space: nowrap;
+}
+
+.stepper__label--active {
+  color: var(--tajy-red);
+}
+
+.stepper__connector {
+  flex: 1;
+  height: 1px;
+  background: rgba(0, 0, 0, 0.12);
+  margin: 0 10px;
 }
 
 .plan-row__label {
   font-size: 12px;
   font-weight: 600;
-  color: #000;
+  color: var(--tajy-text-body);
 }
 
 .plan-row .plan-row__select {
-  width: 340px;
-  max-width: 100%;
+  width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -653,11 +726,12 @@ button {
   flex: 1;
   display: flex;
   overflow: hidden;
+  background: #fff;
 }
 
 .datos-view__form {
   flex: 1;
-  padding: 16px 36px;
+  padding: 0 36px 16px;
   overflow: auto;
 }
 
@@ -667,15 +741,12 @@ button {
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 14px;
   overflow: hidden;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
 }
 
 .form-heading {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  background: #F8FAFF;
   border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-  padding: 12px 24px;
+  padding: 16px 24px;
   margin-bottom: 0;
 }
 
@@ -683,24 +754,11 @@ button {
   padding: 16px 24px;
 }
 
-.form-heading__badge {
-  width: 28px;
-  height: 28px;
-  border-radius: 7px;
-  background: var(--tajy-pink);
-  color: var(--tajy-red);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: 'Sora', sans-serif;
-  font-weight: 700;
-  font-size: 11px;
-}
-
 .form-heading__label {
   font-family: 'Sora', sans-serif;
   font-weight: 700;
-  font-size: 17px;
+  font-size: 15px;
+  color: #000;
 }
 
 .field-grid {
@@ -778,7 +836,7 @@ button {
 }
 
 .form-cta {
-  margin-top: 26px;
+  margin-top: 10px;
 }
 
 /* ---- Live summary panel ---- */
@@ -787,8 +845,12 @@ button {
   width: 320px;
   flex-shrink: 0;
   background: #fff;
-  border-left: 1px solid rgba(0, 0, 0, 0.08);
-  padding: 26px 24px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 14px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+  margin: 8px 36px 16px 0;
+  padding: 16px 24px;
+  overflow: auto;
 }
 
 .live-summary__label {
@@ -813,8 +875,15 @@ button {
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: .4; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: .4;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1141,9 +1210,9 @@ button {
 }
 
 .coberturas-adicionales>.btn-outline {
-  align-self: flex-start;
-  padding: 8px 14px;
-  font-size: 12px;
+  border-style: dashed;
+  padding: 10px 14px;
+  font-size: 12.5px;
 }
 
 .cobertura-row__monto {
@@ -1263,7 +1332,6 @@ button {
 
   .live-summary {
     width: auto;
-    border-left: none;
-    border-top: 1px solid rgba(0, 0, 0, 0.08);
+    margin: 0 36px 16px;
   }
 }

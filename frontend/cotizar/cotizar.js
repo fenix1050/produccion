@@ -1340,34 +1340,40 @@ function renderResultadoView(ramo) {
           <div class="resultado-hero__label" style="margin-bottom:0;">Plan ${escapeHtml(planLabel)} · ${escapeHtml(ramo.label)} · ${escapeHtml(fp.nombre_display)}</div>
           <button class="btn-outline" data-action="show-tab" data-view="form">Editar datos / forma de pago</button>
         </div>
-        ${renderResumenContadoFinanciado()}
-        ${renderAjustesDescuentoRecargo(plan)}
-        <div class="card" style="margin-top:20px;">
-          <div class="card__title">Coberturas incluidas</div>
-          <div class="card__body">
-            ${[...coberturas]
-              // Los sub-límites fijos del plan no van en este listado de "Coberturas incluidas"
-              // (a pedido de Kevin, 2026-07-15) — se muestran aparte en renderSublimitesFijosMrc.
-              .filter((c) => !sublimitesFijosMrc().some((s) => s.codigo === c.codigo))
-              .sort((a, b) => (a.tipo_aplicacion === 'sublimite' ? 1 : 0) - (b.tipo_aplicacion === 'sublimite' ? 1 : 0))
-              .map((c) => `
-              <div class="cobertura-row">
-                <div class="cobertura-row__name">
-                  <div class="cobertura-row__check">✓</div>
-                  <div>
-                    ${crearBadge(c.tipo_aplicacion === 'sublimite' ? 'Sublímite' : 'Cobertura', c.tipo_aplicacion === 'sublimite' ? 'primary' : 'success')}
-                    ${escapeHtml(c.nombre)}
+        <div class="resultado-layout">
+          <div class="resultado-layout__main">
+            <div class="card">
+              <div class="card__title">Coberturas incluidas</div>
+              <div class="card__body">
+                ${[...coberturas]
+                  // Los sub-límites fijos del plan no van en este listado de "Coberturas incluidas"
+                  // (a pedido de Kevin, 2026-07-15) — se muestran aparte en renderSublimitesFijosMrc.
+                  .filter((c) => !sublimitesFijosMrc().some((s) => s.codigo === c.codigo))
+                  .sort((a, b) => (a.tipo_aplicacion === 'sublimite' ? 1 : 0) - (b.tipo_aplicacion === 'sublimite' ? 1 : 0))
+                  .map((c) => `
+                  <div class="cobertura-row">
+                    <div class="cobertura-row__name">
+                      <div class="cobertura-row__check">✓</div>
+                      <div>
+                        ${crearBadge(c.tipo_aplicacion === 'sublimite' ? 'Sublímite' : 'Cobertura', c.tipo_aplicacion === 'sublimite' ? 'primary' : 'success')}
+                        ${escapeHtml(c.nombre)}
+                      </div>
+                    </div>
+                    <div class="cobertura-row__bottom">
+                      ${renderFranquiciaSelect(c)}
+                      <div class="cobertura-row__monto">${typeof c.monto === 'number' ? `${fmtGs(c.monto)} Gs.` : escapeHtml(c.monto ?? '—')}</div>
+                    </div>
                   </div>
-                </div>
-                <div class="cobertura-row__bottom">
-                  ${renderFranquiciaSelect(c)}
-                  <div class="cobertura-row__monto">${typeof c.monto === 'number' ? `${fmtGs(c.monto)} Gs.` : escapeHtml(c.monto ?? '—')}</div>
-                </div>
+                `).join('')}
               </div>
-            `).join('')}
+            </div>
+            ${renderExclusionesYSublimites(plan)}
+          </div>
+          <div class="resultado-layout__aside">
+            ${renderResumenContadoFinanciado()}
+            ${renderAjustesDescuentoRecargo(plan)}
           </div>
         </div>
-        ${renderExclusionesYSublimites(plan)}
       </div>
       <div class="resultado-bottombar">
         <div>
@@ -1422,27 +1428,29 @@ function renderResumenContadoFinanciado() {
   }, 0);
 
   return `
-    <div class="resumen-sistema">
-      <div class="resumen-sistema__row resumen-sistema__row--header">
-        <span>Suma Asegurada total, Gs.</span>
-        <span>${fmtGs(sumaAsegurada)}</span>
+    <div class="card resumen-sistema">
+      <div class="resumen-sistema__total">
+        <span class="resumen-sistema__total-label">Suma Asegurada total</span>
+        <span class="resumen-sistema__total-value">${fmtGs(sumaAsegurada)} <em>Gs.</em></span>
       </div>
-      ${contado ? `
-        <div class="resumen-sistema__row resumen-sistema__row--contado">
-          <span>Costo Contado</span>
-          <span>Gs. ${fmtGs(contado.premio)} <em>IVA Incluido.-</em></span>
-        </div>
-      ` : ''}
-      ${financiado ? `
-        <div class="resumen-sistema__row resumen-sistema__row--financiado">
-          <span>Costo Financiado</span>
-          <span>Inicial y ${financiado.cantidad_cuotas} cuotas Gs. ${fmtGs(financiado.cuota)}</span>
-        </div>
-        <div class="resumen-sistema__row resumen-sistema__row--premio">
-          <span>Premio (Financiado)</span>
-          <span>Gs. ${fmtGs(financiado.premio)} <em>Inicial Gs. ${fmtGs(financiado.inicial)}</em></span>
-        </div>
-      ` : ''}
+      <div class="card__body resumen-sistema__body">
+        ${contado ? `
+          <div class="resumen-sistema__row">
+            <span>Costo Contado</span>
+            <span>Gs. ${fmtGs(contado.premio)} <em>IVA incluido</em></span>
+          </div>
+        ` : ''}
+        ${financiado ? `
+          <div class="resumen-sistema__row">
+            <span>Costo Financiado</span>
+            <span>Inicial y ${financiado.cantidad_cuotas} cuotas Gs. ${fmtGs(financiado.cuota)}</span>
+          </div>
+          <div class="resumen-sistema__row">
+            <span>Premio (Financiado)</span>
+            <span>Gs. ${fmtGs(financiado.premio)} <em>Inicial Gs. ${fmtGs(financiado.inicial)}</em></span>
+          </div>
+        ` : ''}
+      </div>
     </div>
   `;
 }
@@ -1500,7 +1508,7 @@ function renderAjusteField(prefijo, label, plan) {
 function renderAjustesDescuentoRecargo(plan) {
   if (!RAMOS_CON_AJUSTES.includes(state.ramoId)) return '';
   return `
-    <div class="card" style="margin-top:20px;">
+    <div class="card">
       <div class="card__title">Ajustes (opcional)</div>
       <div class="card__body">
         <div class="field-grid">
@@ -1536,7 +1544,7 @@ function renderExclusionesYSublimites(plan) {
   };
 
   return `
-    <div class="resultado-grid" style="margin-top:20px;">
+    <div class="resultado-grid">
       ${bloque('Exclusiones', plan.texto_exclusiones_generales, ICON_X_CIRCLE, '--tajy-red')}
       ${bloque('Sub-límites', plan.texto_sublimites_generales, ICON_CHECK_CIRCLE, '--tajy-green-fg')}
     </div>

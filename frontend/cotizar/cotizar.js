@@ -1,5 +1,5 @@
 import { api, auth } from '../shared/api.js';
-import { ICON_X_CIRCLE, ICON_CHECK_CIRCLE, ICON_RAMO_AUTO, ICON_RAMO_MRC, ICON_RAMO_INCENDIO, ICON_RAMO_VIDA_AP, ICON_RAMO_HOGAR } from '../shared/nav-icons.js';
+import { ICON_X_CIRCLE, ICON_CHECK_CIRCLE, ICON_RAMO_AUTO, ICON_RAMO_MRC, ICON_RAMO_INCENDIO, ICON_RAMO_VIDA_AP, ICON_RAMO_HOGAR, ICON_INFO, ICON_SUBLIMITE_AGUA, ICON_SUBLIMITE_ELECTRICOS, ICON_SUBLIMITE_GRANIZO, ICON_SUBLIMITE_MURALLAS, ICON_SUBLIMITE_GENERICO } from '../shared/nav-icons.js';
 import { crearBadge } from '../shared/badge.js';
 import { escapeHtml } from '../shared/dom.js';
 import { renderSidebarFooter, renderTopbarUser } from '../shared/sidebar.js';
@@ -174,6 +174,15 @@ const CODIGOS_COBERTURA_EXCLUIDOS_BASE = [
   'sublimite_cctv',
   'equipos_electronicos',
 ];
+
+// Ícono por código de sublímite en el panel "Cotización en vivo" — códigos reales de MRC
+// (migración 012/019), fallback genérico para cualquier código sin ícono propio definido.
+const SUBLIMITE_ICONOS = {
+  sublimite_danos_agua: ICON_SUBLIMITE_AGUA,
+  sublimite_equipos_electronicos: ICON_SUBLIMITE_ELECTRICOS,
+  sublimite_granizo: ICON_SUBLIMITE_GRANIZO,
+  sublimite_murallas_cercos: ICON_SUBLIMITE_MURALLAS,
+};
 
 // Sublímites de MRC fijos por defecto — leídos de `plan_coberturas.incluida_por_defecto` del
 // plan elegido (WU6, 2026-07-17), en vez de la vieja constante hardcodeada SUBLIMITES_FIJOS_MRC.
@@ -1206,7 +1215,8 @@ function renderLivePanelBody() {
   return `
     ${renderLiveLabel()}
     ${renderFormaPagoPills()}
-    <div class="live-summary__price">${fmtGs(fp.cuota || fp.premio)}</div>
+    <div class="live-summary__price-label">Prima total ${ICON_INFO}</div>
+    <div class="live-summary__price">${fmtGs(fp.cuota || fp.premio)} <span class="live-summary__price-unit">Gs.</span></div>
     <div class="live-summary__sub">Gs.${fp.codigo === 'contado' ? '' : ' / mes'} · ${fmtGs(fp.premio)} Gs. premio total</div>
     <div class="live-summary__divider"></div>
     ${renderCuotasSelect()}
@@ -1224,15 +1234,18 @@ function renderLivePanelBody() {
 // propio título en vez de mezclarse bajo "Coberturas adicionales".
 function renderSublimitesFijosMrc() {
   const filas = sublimitesFijosMrc().map((s) => `
-      <div class="live-summary__row">
-        <span>${escapeHtml(s.nombre)}</span>
+      <div class="live-summary__row live-summary__row--icon">
+        <span class="live-summary__row-name">
+          <span class="live-summary__row-icon">${SUBLIMITE_ICONOS[s.codigo] || ICON_SUBLIMITE_GENERICO}</span>
+          ${escapeHtml(s.nombre)}
+        </span>
         <span>${fmtGs(s.monto)} Gs.</span>
       </div>
     `).join('');
 
   return `
     <div class="live-summary__divider"></div>
-    <div class="live-summary__label">Sublímites</div>
+    <div class="live-summary__label">Sublímites incluidos</div>
     <div class="live-summary__rows live-summary__rows--dashed">${filas}</div>
   `;
 }

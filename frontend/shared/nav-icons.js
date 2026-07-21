@@ -25,6 +25,15 @@ export const ICON_ADMIN_COBERTURAS = `<svg width="18" height="18" viewBox="0 0 2
 export const ICON_ADMIN_TASAS = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 19h16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path><path d="M4.5 15l4.5-5 3.2 3 6.3-7.3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path><path d="M15.5 5.7h3v3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path></svg>`;
 export const ICON_ADMIN_PLANES = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M8 3.5h8a1 1 0 0 1 1 1V19a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path><path d="M9.5 3.5v-.3a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v.3" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path><path d="M9 9h6M9 12.5h6M9 16h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path></svg>`;
 
+// ---- Íconos del panel "Cotización en vivo" — info de la prima y sublímites de MRC (mismo
+// estilo self-authored 18x18, viewBox 24x24 que el resto del set) ----
+export const ICON_INFO = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.7"></circle><path d="M12 11v5.3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path><circle cx="12" cy="8.2" r="1" fill="currentColor"></circle></svg>`;
+export const ICON_SUBLIMITE_AGUA = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 3.5c2.6 3.3 5.5 6.9 5.5 10.3a5.5 5.5 0 1 1-11 0c0-3.4 2.9-7 5.5-10.3z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path></svg>`;
+export const ICON_SUBLIMITE_ELECTRICOS = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M8 9V5.5M16 9V5.5M7 9h10v3.5a5 5 0 0 1-5 5 5 5 0 0 1-5-5V9z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path><path d="M12 17.5v3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path></svg>`;
+export const ICON_SUBLIMITE_GRANIZO = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 3.5v17M4 8l16 8M20 8L4 16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path></svg>`;
+export const ICON_SUBLIMITE_MURALLAS = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path><path d="M8 6v6M16 6v6M4 12v6M12 12v6M20 12v6" stroke="currentColor" stroke-width="1.7"></path></svg>`;
+export const ICON_SUBLIMITE_GENERICO = ICON_SHIELD;
+
 export function renderTrustFooter() {
   return `<div class="sidebar__trust">${ICON_SHIELD}<span>Tu información está segura con nosotros</span></div>`;
 }

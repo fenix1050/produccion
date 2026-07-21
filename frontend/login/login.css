@@ -28,11 +28,26 @@ html, body {
   height: 100%;
   background: #d8132e;
   clip-path: polygon(35% 0, 100% 0, 100% 100%, 0 100%);
+  overflow: hidden;
+  z-index: 1;
+}
+
+.login-diagonal canvas {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+#fx-canvas-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
 }
 
 .login-card {
   position: relative;
-  z-index: 1;
+  z-index: 2;
   width: 340px;
   background: #ffffff;
   border-radius: 16px;

@@ -1141,24 +1141,28 @@ function renderLivePanelContent() {
   return `${renderLivePanelBody()}${state.ramoId === 'mrc' ? renderSublimitesFijosMrc() : ''}`;
 }
 
+function renderLiveLabel() {
+  return `<div class="live-summary__label"><span class="live-summary__dot"></span>Cotización en vivo</div>`;
+}
+
 function renderLivePanelBody() {
   if (!RAMOS_CON_CALCULO.includes(state.ramoId)) {
     return `
-      <div class="live-summary__label">Cotización en vivo</div>
+      ${renderLiveLabel()}
       <div class="live-summary__pending">Cálculo pendiente de confirmación de tasas para este ramo.</div>
     `;
   }
 
   if (state.previewError) {
     return `
-      <div class="live-summary__label">Cotización en vivo</div>
+      ${renderLiveLabel()}
       <div class="live-summary__error">${escapeHtml(state.previewError)}</div>
     `;
   }
 
   if (!state.preview) {
     return `
-      <div class="live-summary__label">Cotización en vivo</div>
+      ${renderLiveLabel()}
       <div class="live-summary__pending">${state.loadingPreview ? 'Calculando…' : 'Completá los datos del riesgo para ver la prima.'}</div>
     `;
   }
@@ -1167,7 +1171,7 @@ function renderLivePanelBody() {
   const coberturasCount = state.preview.coberturas?.length ?? 0;
 
   return `
-    <div class="live-summary__label">Cotización en vivo</div>
+    ${renderLiveLabel()}
     ${renderFormaPagoPills()}
     <div class="live-summary__price">${fmtGs(fp.cuota || fp.premio)}</div>
     <div class="live-summary__sub">Gs.${fp.codigo === 'contado' ? '' : ' / mes'} · ${fmtGs(fp.premio)} Gs. premio total</div>

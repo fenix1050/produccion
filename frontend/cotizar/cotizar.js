@@ -840,9 +840,10 @@ function renderSidebar() {
 
   return `
     <div class="sidebar">
-      <div class="sidebar__section-label">Sección a cotizar</div>
+      <div class="sidebar__section-label">Cotizar</div>
       <div class="ramo-list">${rows}</div>
       <div class="sidebar__footer">
+        <div class="sidebar__section-label">Gestión</div>
         ${renderSidebarFooter('cotizar')}
         <div class="sidebar__credit">Powered by <strong>Kevin Ruiz Diaz</strong> v${COTIZADOR_VERSION}</div>
       </div>

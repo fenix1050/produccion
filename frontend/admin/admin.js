@@ -2,6 +2,7 @@ import { api, auth } from '../shared/api.js';
 import { crearBadge } from '../shared/badge.js';
 import { escapeHtml } from '../shared/dom.js';
 import { renderSidebarFooter } from '../shared/sidebar.js';
+import { ICON_ADMIN_USUARIOS, ICON_ADMIN_COBERTURAS, ICON_ADMIN_TASAS, ICON_ADMIN_PLANES } from '../shared/nav-icons.js';
 
 // Panel de Administración del Cotizador Tajy — WU5, primera porción (Usuarios).
 // Mismo patrón Vanilla JS que cotizar.js: state + render + delegación de eventos por
@@ -9,11 +10,21 @@ import { renderSidebarFooter } from '../shared/sidebar.js';
 // se implementan en próximas porciones de WU5.
 
 const SECCIONES = [
-  { id: 'usuarios', label: 'Usuarios', icon: '👤', disponible: true, permiso: 'puede_gestionar_usuarios' },
-  { id: 'coberturas', label: 'Coberturas por plan', icon: '🛡️', disponible: true, permiso: 'puede_editar_coberturas' },
-  { id: 'tasas', label: 'Tasas', icon: '📈', disponible: true, permiso: 'puede_editar_tasas' },
-  { id: 'planes', label: 'Planes', icon: '📋', disponible: true, permiso: 'puede_editar_planes' },
+  { id: 'usuarios', label: 'Usuarios', disponible: true, permiso: 'puede_gestionar_usuarios' },
+  { id: 'coberturas', label: 'Coberturas por plan', disponible: true, permiso: 'puede_editar_coberturas' },
+  { id: 'tasas', label: 'Tasas', disponible: true, permiso: 'puede_editar_tasas' },
+  { id: 'planes', label: 'Planes', disponible: true, permiso: 'puede_editar_planes' },
 ];
+
+// Íconos SVG por sección — mismo estilo de línea (18x18) que el resto de la nav del
+// sidebar (ramos en cotizar.js, links de shared/sidebar.js), separado del array de
+// arriba para no mezclar datos de negocio con presentación.
+const SECCION_ICONOS = {
+  usuarios: ICON_ADMIN_USUARIOS,
+  coberturas: ICON_ADMIN_COBERTURAS,
+  tasas: ICON_ADMIN_TASAS,
+  planes: ICON_ADMIN_PLANES,
+};
 
 // Secciones visibles para el usuario logueado según sus permisos parciales
 // (mismo patrón que puede_editar_tasas, ver docs/ESTADO_PROYECTO.md sección 20a2).
@@ -884,20 +895,22 @@ function renderTopbar() {
 function renderSidebar() {
   const items = seccionesVisibles().map((s) => `
     <div
-      class="admin-nav__item ${s.id === state.seccion ? 'admin-nav__item--active' : ''}"
+      class="nav-item nav-item--icon ${s.id === state.seccion ? 'nav-item--active' : ''}"
       data-action="select-seccion"
       data-seccion="${s.id}"
     >
-      <span>${s.icon}</span>
+      <span class="nav-item__badge">${SECCION_ICONOS[s.id] ?? ''}</span>
       <span>${s.label}</span>
-      ${!s.disponible ? '<span class="admin-nav__badge">Pronto</span>' : ''}
+      ${!s.disponible ? '<span class="nav-item__badge-pill">Pronto</span>' : ''}
     </div>
   `).join('');
 
   return `
     <div class="sidebar">
-      <div class="sidebar__section-label">Secciones</div>
-      <div class="admin-nav">${items}</div>
+      <div class="sidebar__nav">
+        <div class="sidebar__section-label">Secciones</div>
+        ${items}
+      </div>
       <div class="sidebar__footer">
         <div class="sidebar__section-label">Gestión</div>
         ${renderSidebarFooter('admin')}
@@ -940,19 +953,23 @@ function renderProximamente(seccion) {
 
 function renderUsuarios() {
   return `
-    <div class="admin-toolbar">
-      <div class="admin-toolbar__title">Usuarios</div>
-      <button class="btn-primary" data-action="crear-usuario">+ Nuevo usuario</button>
+    <div class="panel card">
+      <div class="card__title card__title--toolbar">
+        <span>Usuarios</span>
+        <button class="btn-primary btn-primary--sm" data-action="crear-usuario">+ Nuevo usuario</button>
+      </div>
+      <div class="card__body">
+        ${renderTablaUsuarios()}
+      </div>
     </div>
     <div class="panel card">
-      ${renderTablaUsuarios()}
-    </div>
-    <div class="admin-toolbar">
-      <div class="admin-toolbar__title">Roles</div>
-      <button class="btn-primary" data-action="crear-rol">+ Crear rol</button>
-    </div>
-    <div class="panel card">
-      ${renderTablaRoles()}
+      <div class="card__title card__title--toolbar">
+        <span>Roles</span>
+        <button class="btn-primary btn-primary--sm" data-action="crear-rol">+ Crear rol</button>
+      </div>
+      <div class="card__body">
+        ${renderTablaRoles()}
+      </div>
     </div>
   `;
 }
@@ -1049,15 +1066,17 @@ function renderPlanes() {
   `).join('');
 
   return `
-    <div class="admin-toolbar">
-      <div class="admin-toolbar__title">Planes</div>
-      <select class="field-input" style="width: auto;" data-action="filtrar-ramo">
-        <option value="todos" ${state.ramoFiltro === 'todos' ? 'selected' : ''}>Todos los ramos</option>
-        ${opcionesRamo}
-      </select>
-    </div>
     <div class="panel card">
-      ${renderTablaPlanes()}
+      <div class="card__title card__title--toolbar">
+        <span>Planes</span>
+        <select class="field-input" style="width: auto;" data-action="filtrar-ramo">
+          <option value="todos" ${state.ramoFiltro === 'todos' ? 'selected' : ''}>Todos los ramos</option>
+          ${opcionesRamo}
+        </select>
+      </div>
+      <div class="card__body">
+        ${renderTablaPlanes()}
+      </div>
     </div>
   `;
 }
@@ -1196,24 +1215,28 @@ function renderTasas() {
   `).join('');
 
   return `
-    <div class="admin-toolbar">
-      <div class="admin-toolbar__title">Tasas</div>
-      <select class="field-input" style="width: auto;" data-action="seleccionar-ramo-tasas">
-        <option value="">Elegí un ramo…</option>
-        ${opcionesRamo}
-      </select>
-      ${puedeEditar && state.ramoTasasSeleccionado ? '<button class="btn-primary" data-action="crear-tasa">+ Nueva versión de tasa</button>' : ''}
-    </div>
     ${!puedeEditar ? '<div class="admin-banner admin-banner--error">Tu usuario no tiene permiso para editar tasas — podés ver el historial, pero no cargar versiones nuevas.</div>' : ''}
     <div class="panel card">
-      ${renderTablaTasas()}
+      <div class="card__title card__title--toolbar">
+        <span>Tasas</span>
+        <div class="card__title__actions">
+          <select class="field-input" style="width: auto;" data-action="seleccionar-ramo-tasas">
+            <option value="">Elegí un ramo…</option>
+            ${opcionesRamo}
+          </select>
+          ${puedeEditar && state.ramoTasasSeleccionado ? '<button class="btn-primary btn-primary--sm" data-action="crear-tasa">+ Nueva versión de tasa</button>' : ''}
+        </div>
+      </div>
+      <div class="card__body">
+        ${renderTablaTasas()}
+      </div>
     </div>
     ${ramoUsaRubrosActividad(state.ramoTasasSeleccionado) ? `
-      <div class="admin-toolbar">
-        <div class="admin-toolbar__title">Tasas por Tipo de Riesgo</div>
-      </div>
       <div class="panel card">
-        ${renderTablaRubrosActividad()}
+        <div class="card__title">Tasas por Tipo de Riesgo</div>
+        <div class="card__body">
+          ${renderTablaRubrosActividad()}
+        </div>
       </div>
     ` : ''}
   `;
@@ -1334,22 +1357,26 @@ function renderCoberturas() {
   `).join('');
 
   return `
-    <div class="admin-toolbar">
-      <div class="admin-toolbar__title">Coberturas por plan</div>
-      <select class="field-input" style="width: auto;" data-action="seleccionar-ramo-coberturas">
-        <option value="">Elegí un ramo…</option>
-        ${opcionesRamo}
-      </select>
-      ${state.ramoCoberturasSeleccionado ? `
-        <select class="field-input" style="width: auto;" data-action="seleccionar-plan-coberturas">
-          <option value="">Elegí un plan…</option>
-          ${opcionesPlan}
-        </select>
-      ` : ''}
-      ${state.planCoberturasSeleccionado ? '<button class="btn-primary" data-action="agregar-cobertura">+ Agregar cobertura</button>' : ''}
-    </div>
     <div class="panel card">
-      ${renderTablaCoberturasPlan()}
+      <div class="card__title card__title--toolbar">
+        <span>Coberturas por plan</span>
+        <div class="card__title__actions">
+          <select class="field-input" style="width: auto;" data-action="seleccionar-ramo-coberturas">
+            <option value="">Elegí un ramo…</option>
+            ${opcionesRamo}
+          </select>
+          ${state.ramoCoberturasSeleccionado ? `
+            <select class="field-input" style="width: auto;" data-action="seleccionar-plan-coberturas">
+              <option value="">Elegí un plan…</option>
+              ${opcionesPlan}
+            </select>
+          ` : ''}
+          ${state.planCoberturasSeleccionado ? '<button class="btn-primary btn-primary--sm" data-action="agregar-cobertura">+ Agregar cobertura</button>' : ''}
+        </div>
+      </div>
+      <div class="card__body">
+        ${renderTablaCoberturasPlan()}
+      </div>
     </div>
   `;
 }

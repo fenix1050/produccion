@@ -735,6 +735,15 @@ button {
   cursor: not-allowed;
 }
 
+/* Modificador para CTAs secundarios dentro de headers compactos (ej. card__title--toolbar
+   del panel admin) — mismo color/estados que .btn-primary, tamaño proporcional al resto
+   de los controles del header (field-input mide ~10px 11px de padding, 13px de font). */
+.btn-primary--sm {
+  padding: 8px 16px;
+  font-size: 12.5px;
+  border-radius: 8px;
+}
+
 .btn-outline {
   background: #fff;
   color: var(--tajy-red);
@@ -1007,6 +1016,20 @@ button {
 
 .card__body {
   padding: 20px 26px;
+}
+
+.card__title--toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.card__title__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .cobertura-row {

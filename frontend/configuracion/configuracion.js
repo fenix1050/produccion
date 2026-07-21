@@ -86,6 +86,7 @@ function renderSidebar() {
   return `
     <div class="sidebar">
       <div class="sidebar__nav">
+        <div class="sidebar__section-label">Gestión</div>
         ${renderSidebarFooter('configuracion')}
       </div>
     </div>

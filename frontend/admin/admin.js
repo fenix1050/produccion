@@ -897,6 +897,7 @@ function renderSidebar() {
       <div class="sidebar__section-label">Secciones</div>
       <div class="admin-nav">${items}</div>
       <div class="sidebar__footer">
+        <div class="sidebar__section-label">Gestión</div>
         ${renderSidebarFooter('admin')}
       </div>
     </div>

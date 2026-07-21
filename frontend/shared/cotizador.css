@@ -91,13 +91,14 @@ button {
 }
 
 .topbar__red-block {
-  background: var(--tajy-red);
+  background: #fff;
   display: flex;
   align-items: center;
   gap: 12px;
   width: 264px;
   padding: 12px 24px;
   flex-shrink: 0;
+  border-right: 1px solid var(--tajy-border);
 }
 
 .topbar__logo {
@@ -110,16 +111,11 @@ button {
   line-height: 1.25;
 }
 
-.topbar__brand-code {
-  font-family: 'Sora', sans-serif;
-  font-weight: 700;
-  font-size: 14px;
-  color: #fff;
-}
-
 .topbar__brand-sub {
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.85);
+  font-family: 'Sora', sans-serif;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--tajy-ink);
 }
 
 .topbar__crumb-area {
@@ -129,6 +125,7 @@ button {
   justify-content: space-between;
   padding: 16px 32px;
   font-size: 14px;
+  background: var(--tajy-red);
 }
 
 .topbar__breadcrumb {
@@ -138,16 +135,75 @@ button {
 }
 
 .topbar__crumb-item {
-  color: var(--tajy-text-muted);
+  color: rgba(255, 255, 255, 0.75);
 }
 
 .topbar__crumb-item--current {
-  color: var(--tajy-ink);
+  color: #fff;
   font-weight: 600;
 }
 
 .topbar__crumb-sep {
-  color: var(--tajy-text-muted);
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.topbar__user {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.topbar__bell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.topbar__bell:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.topbar__user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #fff;
+  color: var(--tajy-red);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Sora', sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.topbar__user-text {
+  line-height: 1.25;
+}
+
+.topbar__user-name {
+  font-weight: 600;
+  font-size: 13px;
+  color: #fff;
+}
+
+.topbar__user-role {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.topbar__user-chevron {
+  color: rgba(255, 255, 255, 0.75);
+  display: flex;
 }
 
 .topbar__actions {
@@ -412,46 +468,6 @@ button {
 .nav-item:hover {
   background: var(--tajy-bg);
   color: var(--tajy-ink);
-}
-
-.sidebar__agent {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px;
-  margin-top: 8px;
-  border-radius: 10px;
-  background: transparent;
-  border: none;
-  transition: background 0.15s ease;
-}
-
-.sidebar__agent:hover {
-  background: var(--tajy-bg);
-}
-
-.sidebar__agent-avatar {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: var(--tajy-red);
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.sidebar__agent-name {
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--tajy-ink);
-}
-
-.sidebar__agent-role {
-  font-size: 11px;
-  color: var(--tajy-text-secondary);
 }
 
 .sidebar__credit {

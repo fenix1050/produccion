@@ -4,7 +4,7 @@
 // secciones del panel admin, etc.) se sigue armando en cada archivo, por encima
 // de este bloque.
 
-import { ICON_ARROW_LEFT, ICON_CLOCK, ICON_GEAR, ICON_WRENCH, ICON_LOGOUT, renderTrustFooter } from './nav-icons.js';
+import { ICON_ARROW_LEFT, ICON_CLOCK, ICON_GEAR, ICON_WRENCH, ICON_LOGOUT, ICON_BELL, ICON_CHEVRON_DOWN, renderTrustFooter } from './nav-icons.js';
 import { auth } from './api.js';
 import { escapeHtml } from './dom.js';
 
@@ -29,30 +29,32 @@ function renderSidebarNavLinks(active) {
   return links.join('');
 }
 
-function renderSidebarAgent() {
+// active: 'cotizar' | 'historial' | 'configuracion' | 'admin' | null
+// El bloque de perfil del agente vive ahora en el topbar (renderTopbarUser) — ya no se
+// duplica acá abajo del sidebar (pedido de Kevin al migrar a "Diseño 2").
+export function renderSidebarFooter(active) {
+  return `${renderSidebarNavLinks(active)}${renderTrustFooter()}`;
+}
+
+// Bloque de usuario del topbar ("Diseño 2" — mockup docs/mockups/diseno-2-app-shell.html):
+// campanita de notificaciones (sin backend de notificaciones todavía, ícono inerte) + avatar
+// con iniciales + nombre/rol. Mismo dato de sesión que renderSidebarAgent, distinta ubicación.
+export function renderTopbarUser() {
   const usuario = auth.getUsuario();
   const nombreAgente = usuario?.nombre || 'Agente';
   const esAdmin = usuario?.rol === 'admin';
   const rolLabel = esAdmin ? 'Administrador' : usuario?.rol === 'agente' ? 'Agente' : 'Analista comercial';
-  const iniciales = nombreAgente
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((p) => p[0].toUpperCase())
-    .join('') || 'AG';
+  const inicial = nombreAgente.trim().charAt(0).toUpperCase() || 'A';
 
   return `
-    <div class="sidebar__agent">
-      <div class="sidebar__agent-avatar">${escapeHtml(iniciales)}</div>
-      <div>
-        <div class="sidebar__agent-name">${escapeHtml(nombreAgente)}</div>
-        <div class="sidebar__agent-role">${escapeHtml(rolLabel)}</div>
+    <div class="topbar__user">
+      <button class="topbar__bell" type="button" aria-label="Notificaciones">${ICON_BELL}</button>
+      <div class="topbar__user-avatar">${escapeHtml(inicial)}</div>
+      <div class="topbar__user-text">
+        <div class="topbar__user-name">${escapeHtml(nombreAgente)}</div>
+        <div class="topbar__user-role">${escapeHtml(rolLabel)}</div>
       </div>
+      <span class="topbar__user-chevron">${ICON_CHEVRON_DOWN}</span>
     </div>
   `;
-}
-
-// active: 'cotizar' | 'historial' | 'configuracion' | 'admin' | null
-export function renderSidebarFooter(active) {
-  return `${renderSidebarNavLinks(active)}${renderSidebarAgent()}${renderTrustFooter()}`;
 }

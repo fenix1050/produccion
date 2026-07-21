@@ -19,11 +19,15 @@
   --tajy-text-muted: #999;
   --tajy-text-body: #444;
   --tajy-text-dark: #333;
-  --tajy-font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --tajy-font-mono: 'Roboto Mono', ui-monospace, monospace;
 }
 
 * {
   box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
 }
 
 body {
@@ -31,6 +35,7 @@ body {
   font-family: 'Public Sans', system-ui, sans-serif;
   color: var(--tajy-ink);
   background: var(--tajy-bg);
+  overflow: hidden;
 }
 
 button {
@@ -64,58 +69,25 @@ button {
 .app-shell {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
 }
 
+/* App-shell topbar — "Diseño 2" (aprobado por Kevin el 2026-07-21, mockup
+   de referencia en docs/mockups/diseno-2-app-shell.html). Bloque rojo sólido
+   a la izquierda con el logo, mismo ancho que el sidebar real de esta app
+   (264px — el mockup usa 240px porque su sidebar de referencia es de 240px,
+   pero acá se alinea con `.sidebar` real), resto del topbar blanco con
+   breadcrumb + acciones opcionales a la derecha. Reemplazo directo del
+   topbar anterior — el diseño previo queda recuperable solo por git history. */
 .topbar {
   flex-shrink: 0;
   background: #fff;
   color: var(--tajy-ink);
-  border-top: 3px solid var(--tajy-red);
   border-bottom: 1px solid var(--tajy-border);
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 32px;
-}
-
-.topbar__brand {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-}
-
-.topbar__logo {
-  height: 40px;
-}
-
-.topbar__version {
-  font-size: 13px;
-  font-weight: 400;
-  letter-spacing: 0.2px;
-  white-space: nowrap;
-  color: var(--tajy-text-secondary);
-}
-
-.topbar__version strong {
-  font-weight: 700;
-  color: var(--tajy-ink);
-}
-
-.topbar__divider {
-  width: 1px;
-  align-self: stretch;
-  background: var(--tajy-border);
-}
-
-/* Variante experimental: bloque rojo sólido a la izquierda con el logo,
-   resto del topbar blanco con el breadcrumb adentro (mockup de referencia
-   de Kevin). Modificador aislado para no afectar el topbar base de las
-   otras pantallas mientras se evalúa. */
-.topbar--split {
-  padding: 0;
-  border-top: none;
   align-items: stretch;
+  padding: 0;
 }
 
 .topbar__red-block {
@@ -128,7 +100,7 @@ button {
   flex-shrink: 0;
 }
 
-.topbar__red-block .topbar__logo {
+.topbar__logo {
   height: 32px;
 }
 
@@ -154,9 +126,15 @@ button {
   flex: 1;
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  padding: 16px 32px;
+  font-size: 14px;
+}
+
+.topbar__breadcrumb {
+  display: flex;
+  align-items: center;
   gap: 8px;
-  padding: 0 28px;
-  font-size: 13px;
 }
 
 .topbar__crumb-item {
@@ -170,6 +148,45 @@ button {
 
 .topbar__crumb-sep {
   color: var(--tajy-text-muted);
+}
+
+.topbar__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.topbar__btn-outline {
+  padding: 6px 16px;
+  border-radius: 0.625rem;
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid var(--tajy-border);
+  background: transparent;
+  color: var(--tajy-ink);
+  cursor: pointer;
+  transition: background 0.15s;
+  font-family: inherit;
+}
+
+.topbar__btn-outline:hover {
+  background: var(--tajy-bg);
+}
+
+.topbar__btn-outline-primary {
+  padding: 6px 16px;
+  border-radius: 0.625rem;
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid var(--tajy-red);
+  background: var(--tajy-pink);
+  color: var(--tajy-red);
+  cursor: pointer;
+  transition: background 0.15s;
+  font-family: inherit;
+}
+
+.topbar__btn-outline-primary:hover {
+  background: #f5d9d9;
 }
 
 .topbar__subtitle {
@@ -187,7 +204,7 @@ button {
 .sidebar {
   width: 264px;
   flex-shrink: 0;
-  background: var(--tajy-bg);
+  background: #fff;
   color: var(--tajy-ink);
   border-right: 1px solid var(--tajy-border);
   display: flex;
@@ -218,80 +235,77 @@ button {
 }
 
 .sidebar__section-label {
-  font-size: 11px;
+  font-size: 10px;
   text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: #000;
+  letter-spacing: 0.1em;
+  color: var(--tajy-text-muted);
   font-weight: 700;
-  padding: 0 24px 8px;
-  text-align: center;
+  padding: 0 12px 8px;
+  text-align: left;
 }
 
 .ramo-list {
   padding: 0 14px;
 }
 
+/* Diseño 2 (docs/mockups/diseno-2-app-shell.html): nav plano sin tarjeta —
+   sin borde/sombra en reposo, ícono de línea (no badge circular con iniciales),
+   estado activo = fondo rosado + texto rojo. */
 .ramo-row {
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 8px 12px;
+  gap: 12px;
+  padding: 10px 12px;
   border-radius: 10px;
-  margin-bottom: 5px;
-  background: #fff;
-  border: 1px solid var(--tajy-border);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-  transition: background 0.18s ease, border-color 0.18s ease;
+  margin-bottom: 2px;
+  background: transparent;
+  border: none;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 .ramo-row:hover {
-  background: var(--tajy-pink);
-  border-color: var(--tajy-red);
+  background: var(--tajy-bg);
 }
 
 .ramo-row--activa {
   background: var(--tajy-pink);
-  border-color: var(--tajy-red);
 }
 
 .ramo-row--activa:hover {
   background: var(--tajy-pink);
 }
 
-.ramo-row__badge {
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  background: #fff;
-  color: var(--tajy-red);
-  border: 1.5px solid var(--tajy-red);
+.ramo-row__icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
-  font-weight: 700;
-  font-family: 'Sora', sans-serif;
-  flex-shrink: 0;
+  color: var(--tajy-text-secondary);
 }
 
-.ramo-row--activa .ramo-row__badge {
-  background: var(--tajy-red);
-  color: #fff;
-  border-color: var(--tajy-red);
-  box-shadow: 0 0 0 4px var(--tajy-red-soft);
+.ramo-row__icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.ramo-row--activa .ramo-row__icon {
+  color: var(--tajy-red);
 }
 
 .ramo-row__label {
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--tajy-ink);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--tajy-text-body);
   flex: 1;
   line-height: 1.25;
 }
 
 .ramo-row--activa .ramo-row__label {
-  font-weight: 700;
+  font-weight: 600;
+  color: var(--tajy-red);
 }
 
 .ramo-row__estado {
@@ -335,29 +349,29 @@ button {
   gap: 10px;
 }
 
+/* Diseño 2: ícono de línea inline, sin círculo de fondo. */
 .nav-item__badge {
-  width: 26px;
-  height: 26px;
+  width: 16px;
+  height: 16px;
   flex-shrink: 0;
-  border-radius: 50%;
-  background: #fff;
-  color: var(--tajy-red);
-  border: 1.5px solid var(--tajy-red);
+  color: var(--tajy-text-secondary);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
+.nav-item__badge svg {
+  width: 16px;
+  height: 16px;
+}
+
 .nav-item--active {
   background: var(--tajy-pink);
-  border-color: var(--tajy-red);
   color: var(--tajy-red);
 }
 
 .nav-item--active .nav-item__badge {
-  background: var(--tajy-red);
-  color: #fff;
-  border-color: var(--tajy-red);
+  color: var(--tajy-red);
 }
 
 .sidebar__trust {
@@ -381,36 +395,39 @@ button {
 .nav-item {
   display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 8px 12px;
+  gap: 12px;
+  padding: 10px 12px;
   border-radius: 10px;
-  margin-bottom: 5px;
-  font-size: 12.5px;
-  font-weight: 700;
-  color: var(--tajy-ink);
+  margin-bottom: 2px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--tajy-text-body);
   cursor: pointer;
-  background: #fff;
-  border: 1px solid var(--tajy-border);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-  transition: background 0.18s ease, border-color 0.18s ease;
+  background: transparent;
+  border: none;
+  transition: background 0.15s ease, color 0.15s ease;
   text-decoration: none;
 }
 
 .nav-item:hover {
-  background: var(--tajy-pink);
-  border-color: var(--tajy-red);
+  background: var(--tajy-bg);
+  color: var(--tajy-ink);
 }
 
 .sidebar__agent {
   display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 9px 12px;
+  gap: 10px;
+  padding: 8px;
   margin-top: 8px;
   border-radius: 10px;
-  background: #fff;
-  border: 1px solid var(--tajy-border);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  background: transparent;
+  border: none;
+  transition: background 0.15s ease;
+}
+
+.sidebar__agent:hover {
+  background: var(--tajy-bg);
 }
 
 .sidebar__agent-avatar {
@@ -458,6 +475,7 @@ button {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 0;
 }
 
 .main-header {
@@ -494,6 +512,12 @@ button {
   font-family: 'Sora', sans-serif;
   font-weight: 700;
   font-size: 18px;
+}
+
+.admin-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .main-header__subtitle {
@@ -617,19 +641,30 @@ button {
 
 .datos-view__form {
   flex: 1;
-  padding: 28px 36px;
+  padding: 16px 36px;
   overflow: auto;
 }
 
 .datos-view__form-inner {
   max-width: 560px;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 14px;
+  overflow: hidden;
 }
 
 .form-heading {
   display: flex;
   align-items: center;
   gap: 9px;
-  margin-bottom: 20px;
+  background: #F8FAFF;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 12px 24px;
+  margin-bottom: 0;
+}
+
+.datos-view__form-body {
+  padding: 16px 24px;
 }
 
 .form-heading__badge {
@@ -749,6 +784,18 @@ button {
   border-radius: 50%;
   background: var(--tajy-green-fg);
   flex-shrink: 0;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .4; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live-summary__dot {
+    animation: none;
+  }
 }
 
 .forma-pago-row {
@@ -810,6 +857,16 @@ button {
   flex-shrink: 0;
 }
 
+.live-summary__rows--dashed .live-summary__row {
+  border-bottom: 1px dashed var(--tajy-border-light);
+  padding-bottom: 8px;
+}
+
+.live-summary__rows--dashed .live-summary__row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
 .live-summary__hint {
   font-size: 11px;
   color: #bbb;
@@ -846,6 +903,9 @@ button {
 
 .resultado-view__inner {
   max-width: 820px;
+  /* Espacio para que la barra fija (position:fixed) no tape el último bloque de contenido
+     al scrollear hasta el final. */
+  padding-bottom: 84px;
 }
 
 .resultado-hero {
@@ -883,6 +943,44 @@ button {
   color: var(--tajy-text-secondary);
 }
 
+.resultado-hero--slim {
+  padding: 14px 20px;
+}
+
+.resultado-bottombar {
+  position: fixed;
+  left: 264px;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  background: #fff;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 -8px 20px rgba(0, 0, 0, 0.06);
+  padding: 16px 36px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.resultado-bottombar__price {
+  font-family: var(--tajy-font-mono);
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.resultado-bottombar__price span {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--tajy-text-secondary);
+}
+
+.resultado-bottombar__meta {
+  font-size: 12px;
+  color: var(--tajy-text-secondary);
+  margin-top: 3px;
+}
+
 .resultado-grid {
   display: grid;
   grid-template-columns: 1.3fr 1fr;
@@ -893,14 +991,22 @@ button {
   background: #fff;
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 14px;
-  padding: 24px 26px;
+  padding: 0;
+  overflow: hidden;
 }
 
 .card__title {
   font-family: 'Sora', sans-serif;
   font-weight: 700;
   font-size: 14.5px;
-  margin-bottom: 14px;
+  background: #F8FAFF;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 16px 26px;
+  margin-bottom: 0;
+}
+
+.card__body {
+  padding: 20px 26px;
 }
 
 .cobertura-row {
@@ -908,7 +1014,11 @@ button {
   flex-direction: column;
   gap: 6px;
   padding: 9px 0;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px dashed var(--tajy-border-light);
+}
+
+.cobertura-row:last-child {
+  border-bottom: none;
 }
 
 .cobertura-row__name {

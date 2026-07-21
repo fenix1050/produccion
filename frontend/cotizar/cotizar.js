@@ -21,8 +21,8 @@ const RAMOS_UI = [
   { nombre: 'hogar', code: 'MH', label: 'Multirriesgo Hogar', estado: 'proximamente' },
 ];
 
-// Íconos por ramo para el badge de la vista Datos (form-heading__badge) — no se usan en el
-// sidebar, que sigue mostrando el código de 2 letras (AU/MR/IN/VA/MH) sin cambios.
+// Íconos por ramo — se usan tanto en el badge de la vista Datos (form-heading__badge)
+// como en el nav del sidebar (.ramo-row__icon), Diseño 2 (docs/mockups/diseno-2-app-shell.html).
 const RAMO_ICONOS = {
   auto: ICON_RAMO_AUTO,
   mrc: ICON_RAMO_MRC,
@@ -808,7 +808,7 @@ const COTIZADOR_VERSION = '1.0.1';
 
 function renderTopbar() {
   return `
-    <div class="topbar topbar--split">
+    <div class="topbar">
       <div class="topbar__red-block">
         <img class="topbar__logo" src="../../logo/logo.svg" alt="Aseguradora Tajy" />
         <div class="topbar__brand-text">
@@ -817,9 +817,11 @@ function renderTopbar() {
         </div>
       </div>
       <div class="topbar__crumb-area">
-        <span class="topbar__crumb-item">Cotizaciones</span>
-        <span class="topbar__crumb-sep">›</span>
-        <span class="topbar__crumb-item topbar__crumb-item--current">Nueva cotización</span>
+        <div class="topbar__breadcrumb">
+          <span class="topbar__crumb-item">Cotizaciones</span>
+          <span class="topbar__crumb-sep">›</span>
+          <span class="topbar__crumb-item topbar__crumb-item--current">Nueva cotización</span>
+        </div>
       </div>
     </div>
   `;
@@ -831,7 +833,7 @@ function renderSidebar() {
     const estadoTexto = r.estado === 'pausa' ? 'En pausa' : r.estado === 'proximamente' ? 'Próximamente' : '';
     return `
       <div class="ramo-row ${activa ? 'ramo-row--activa' : ''} ${r.estado !== 'disponible' ? `ramo-row--${r.estado}` : ''}" data-action="select-ramo" data-ramo="${r.nombre}">
-        <div class="ramo-row__badge">${r.code}</div>
+        <div class="ramo-row__icon">${RAMO_ICONOS[r.nombre] || ''}</div>
         <div class="ramo-row__label">${r.label}</div>
         ${estadoTexto ? `<div class="ramo-row__estado">${estadoTexto}</div>` : ''}
       </div>
@@ -1071,22 +1073,24 @@ function renderDatosView(ramo) {
             <div class="form-heading__badge">${RAMO_ICONOS[ramo.nombre] || ''}</div>
             <div class="form-heading__label">${escapeHtml(ramo.label)}</div>
           </div>
-          <div class="field-grid">
-            ${CLIENT_FIELDS.map((f) => `
-              <div class="field ${f.span === 2 ? 'field--span2' : ''}">
-                <label>${f.label}</label>
-                <input class="field-input" type="text" inputmode="${f.money ? 'numeric' : 'text'}" data-field="${f.key}" ${f.money ? 'data-money="true"' : ''} placeholder="${f.placeholder}" value="${escapeHtml(f.money ? fmtGsInput(state.data[f.key]) : (state.data[f.key] ?? ''))}" />
-              </div>
-            `).join('')}
-            ${camposEspecificos}
+          <div class="datos-view__form-body">
+            <div class="field-grid">
+              ${CLIENT_FIELDS.map((f) => `
+                <div class="field ${f.span === 2 ? 'field--span2' : ''}">
+                  <label>${f.label}</label>
+                  <input class="field-input" type="text" inputmode="${f.money ? 'numeric' : 'text'}" data-field="${f.key}" ${f.money ? 'data-money="true"' : ''} placeholder="${f.placeholder}" value="${escapeHtml(f.money ? fmtGsInput(state.data[f.key]) : (state.data[f.key] ?? ''))}" />
+                </div>
+              `).join('')}
+              ${camposEspecificos}
+            </div>
+            <button
+              id="btn-ver-detalle"
+              class="btn-primary form-cta"
+              data-action="show-tab"
+              data-view="result"
+              ${puedeAvanzarADetalle() ? '' : 'disabled title="Corregí el capital declarado antes de avanzar — ver el mensaje de alerta"'}
+            >Ver detalle completo →</button>
           </div>
-          <button
-            id="btn-ver-detalle"
-            class="btn-primary form-cta"
-            data-action="show-tab"
-            data-view="result"
-            ${puedeAvanzarADetalle() ? '' : 'disabled title="Corregí el capital declarado antes de avanzar — ver el mensaje de alerta"'}
-          >Ver detalle completo →</button>
         </div>
       </div>
       <div class="live-summary" id="live-summary">${renderLivePanelContent()}</div>
@@ -1200,7 +1204,7 @@ function renderSublimitesFijosMrc() {
   return `
     <div class="live-summary__divider"></div>
     <div class="live-summary__label">Sublímites</div>
-    <div class="live-summary__rows">${filas}</div>
+    <div class="live-summary__rows live-summary__rows--dashed">${filas}</div>
   `;
 }
 
@@ -1288,42 +1292,45 @@ function renderResultadoView(ramo) {
   return `
     <div class="resultado-view panel">
       <div class="resultado-view__inner">
-        <div class="resultado-hero">
-          <div>
-            <div class="resultado-hero__label">Plan ${escapeHtml(planLabel)} · ${escapeHtml(ramo.label)} · ${escapeHtml(fp.nombre_display)}</div>
-            <div class="resultado-hero__price">${fmtGs(fp.cuota || fp.premio)} <span>Gs.${fp.codigo === 'contado' ? '' : ' / mes'}</span></div>
-          </div>
-          <div style="display:flex;gap:10px;">
-            <button class="btn-outline" data-action="show-tab" data-view="form">Editar datos / forma de pago</button>
-            <button class="btn-primary" data-action="emitir-carta" ${state.emitiendoCarta ? 'disabled' : ''}>${state.emitiendoCarta ? 'Generando…' : (state.editandoId ? 'Guardar cambios' : 'Emitir carta oferta')}</button>
-          </div>
+        <div class="resultado-hero resultado-hero--slim">
+          <div class="resultado-hero__label" style="margin-bottom:0;">Plan ${escapeHtml(planLabel)} · ${escapeHtml(ramo.label)} · ${escapeHtml(fp.nombre_display)}</div>
+          <button class="btn-outline" data-action="show-tab" data-view="form">Editar datos / forma de pago</button>
         </div>
         ${renderResumenContadoFinanciado()}
         ${renderAjustesDescuentoRecargo(plan)}
         <div class="card" style="margin-top:20px;">
           <div class="card__title">Coberturas incluidas</div>
-          ${[...coberturas]
-            // Los sub-límites fijos del plan no van en este listado de "Coberturas incluidas"
-            // (a pedido de Kevin, 2026-07-15) — se muestran aparte en renderSublimitesFijosMrc.
-            .filter((c) => !sublimitesFijosMrc().some((s) => s.codigo === c.codigo))
-            .sort((a, b) => (a.tipo_aplicacion === 'sublimite' ? 1 : 0) - (b.tipo_aplicacion === 'sublimite' ? 1 : 0))
-            .map((c) => `
-            <div class="cobertura-row">
-              <div class="cobertura-row__name">
-                <div class="cobertura-row__check">✓</div>
-                <div>
-                  ${crearBadge(c.tipo_aplicacion === 'sublimite' ? 'Sublímite' : 'Cobertura', c.tipo_aplicacion === 'sublimite' ? 'primary' : 'success')}
-                  ${escapeHtml(c.nombre)}
+          <div class="card__body">
+            ${[...coberturas]
+              // Los sub-límites fijos del plan no van en este listado de "Coberturas incluidas"
+              // (a pedido de Kevin, 2026-07-15) — se muestran aparte en renderSublimitesFijosMrc.
+              .filter((c) => !sublimitesFijosMrc().some((s) => s.codigo === c.codigo))
+              .sort((a, b) => (a.tipo_aplicacion === 'sublimite' ? 1 : 0) - (b.tipo_aplicacion === 'sublimite' ? 1 : 0))
+              .map((c) => `
+              <div class="cobertura-row">
+                <div class="cobertura-row__name">
+                  <div class="cobertura-row__check">✓</div>
+                  <div>
+                    ${crearBadge(c.tipo_aplicacion === 'sublimite' ? 'Sublímite' : 'Cobertura', c.tipo_aplicacion === 'sublimite' ? 'primary' : 'success')}
+                    ${escapeHtml(c.nombre)}
+                  </div>
+                </div>
+                <div class="cobertura-row__bottom">
+                  ${renderFranquiciaSelect(c)}
+                  <div class="cobertura-row__monto">${typeof c.monto === 'number' ? `${fmtGs(c.monto)} Gs.` : escapeHtml(c.monto ?? '—')}</div>
                 </div>
               </div>
-              <div class="cobertura-row__bottom">
-                ${renderFranquiciaSelect(c)}
-                <div class="cobertura-row__monto">${typeof c.monto === 'number' ? `${fmtGs(c.monto)} Gs.` : escapeHtml(c.monto ?? '—')}</div>
-              </div>
-            </div>
-          `).join('')}
+            `).join('')}
+          </div>
         </div>
         ${renderExclusionesYSublimites(plan)}
+      </div>
+      <div class="resultado-bottombar">
+        <div>
+          <div class="resultado-bottombar__price">${fmtGs(fp.cuota || fp.premio)} <span>Gs.${fp.codigo === 'contado' ? '' : ' / mes'}</span></div>
+          <div class="resultado-bottombar__meta">${fp.codigo === 'contado' ? 'Contado' : `Inicial + ${fp.cantidad_cuotas} cuotas`} · Premio ${fmtGs(fp.premio)} Gs.</div>
+        </div>
+        <button class="btn-primary" data-action="emitir-carta" ${state.emitiendoCarta ? 'disabled' : ''}>${state.emitiendoCarta ? 'Generando…' : (state.editandoId ? 'Guardar cambios' : 'Emitir carta oferta')}</button>
       </div>
     </div>
   `;
@@ -1451,9 +1458,11 @@ function renderAjustesDescuentoRecargo(plan) {
   return `
     <div class="card" style="margin-top:20px;">
       <div class="card__title">Ajustes (opcional)</div>
-      <div class="field-grid">
-        ${renderAjusteField('descuento', 'Descuento', plan)}
-        ${renderAjusteField('recargo', 'Recargo', plan)}
+      <div class="card__body">
+        <div class="field-grid">
+          ${renderAjusteField('descuento', 'Descuento', plan)}
+          ${renderAjusteField('recargo', 'Recargo', plan)}
+        </div>
       </div>
     </div>
   `;
@@ -1468,14 +1477,16 @@ function renderExclusionesYSublimites(plan) {
     return `
       <div class="card">
         <div class="card__title">${titulo}</div>
-        <ul class="texto-legal-list">
-          ${items.map((linea) => `
-            <li>
-              <span class="texto-legal-list__icon" style="color: var(${colorVar})">${icon}</span>
-              <span>${escapeHtml(linea)}</span>
-            </li>
-          `).join('')}
-        </ul>
+        <div class="card__body">
+          <ul class="texto-legal-list">
+            ${items.map((linea) => `
+              <li>
+                <span class="texto-legal-list__icon" style="color: var(${colorVar})">${icon}</span>
+                <span>${escapeHtml(linea)}</span>
+              </li>
+            `).join('')}
+          </ul>
+        </div>
       </div>
     `;
   };

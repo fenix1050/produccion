@@ -43,6 +43,66 @@
   cursor: not-allowed;
 }
 
+/* Fila resaltada al pasar el mouse — ayuda a leer una tabla ancha de 8 columnas sin perder
+   la fila entre número/cliente y acciones. */
+.admin-table tbody tr:hover {
+  background: var(--tajy-bg);
+}
+
+.historial-tabla__numero {
+  font-family: var(--tajy-font-mono);
+  font-weight: 700;
+  color: var(--tajy-ink);
+  white-space: nowrap;
+}
+
+/* Sin nowrap, cuando Cliente/Ramo/Plan se ven forzados a ocupar más ancho (texto largo),
+   esta columna queda apretada y el monto se parte en dos líneas ("Gs." / "1.530.800").
+   nowrap le garantiza a esta columna su ancho mínimo antes de repartir el resto.
+   Alineada a la izquierda igual que el resto de columnas: con alineación a la derecha el
+   primer dígito se corre según la cantidad de dígitos de cada monto y nunca queda parejo
+   con el título "PRIMA" de arriba — a la izquierda ambos arrancan siempre en el mismo lugar. */
+.historial-tabla__prima {
+  font-family: var(--tajy-font-mono);
+  font-weight: 700;
+  color: var(--tajy-ink);
+  white-space: nowrap;
+}
+
+.historial-tabla__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: nowrap;
+}
+
+/* "Ver detalle" es la acción frecuente (toda fila la tiene) — texto sin borde para que no
+   compita con "Carta Oferta", que es la acción condicional/secundaria y sí lleva borde. */
+.historial-tabla__btn-ghost {
+  background: none;
+  border: none;
+  color: var(--tajy-text-body);
+  font-weight: 700;
+  font-size: 12.5px;
+  padding: 6px 8px;
+  border-radius: 7px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.historial-tabla__btn-ghost:hover {
+  background: var(--tajy-pink);
+  color: var(--tajy-red);
+}
+
+.historial-tabla__btn-oferta {
+  padding: 6px 12px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
 .historial-modal-detalle {
   width: 520px;
   max-height: 80vh;

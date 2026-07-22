@@ -13,6 +13,17 @@ const PAGE_SIZE = 20;
 // backend/migrations/005_cotizaciones.sql: borrador / cotizada / aceptada / vencida / convertida).
 const ESTADOS = ['borrador', 'cotizada', 'aceptada', 'vencida', 'convertida'];
 
+// Variante de badge por estado — antes todo se mostraba en gris "neutral" sin distinción
+// visual entre un borrador y una cotización aceptada. Colores con significado real:
+// borrador = inactivo, cotizada = en curso, aceptada = éxito, vencida = alerta, convertida = cierre.
+const ESTADO_BADGE = {
+  borrador: 'neutral',
+  cotizada: 'info',
+  aceptada: 'success',
+  vencida: 'warning',
+  convertida: 'agent',
+};
+
 // Criterio real de disponibilidad de la Carta Oferta: hoy solo hay builder de páginas para
 // el calculador 'mrc' (ver BUILDERS_POR_CALCULADOR en backend/src/templates/oferta/index.js —
 // ofertaDisponibleParaRamo(ramo) devuelve true solo si ramo.calculador tiene builder). El join
@@ -201,7 +212,12 @@ function cerrarModal() {
   renderApp();
 }
 
-async function descargarOferta(id, numeroCotizacion) {
+async function descargarOferta(boton, id, numeroCotizacion) {
+  // El PDF tarda un rato en generarse (Puppeteer) y el botón no daba ninguna señal mientras
+  // tanto, así que un click impaciente terminaba en varias descargas del mismo archivo.
+  const textoOriginal = boton.textContent;
+  boton.disabled = true;
+  boton.textContent = 'Descargando…';
   try {
     const blob = await api.getBlob(`/cotizaciones/${id}/pdf-oferta`);
     const url = URL.createObjectURL(blob);
@@ -214,6 +230,9 @@ async function descargarOferta(id, numeroCotizacion) {
     URL.revokeObjectURL(url);
   } catch (err) {
     mostrarBanner('error', err.message || 'No se pudo descargar la Carta Oferta.');
+  } finally {
+    boton.disabled = false;
+    boton.textContent = textoOriginal;
   }
 }
 
@@ -345,19 +364,19 @@ function renderTabla() {
     const puedeOferta = ofertaDisponible(c);
     return `
       <tr>
-        <td>${escapeHtml(c.numero_cotizacion)}</td>
+        <td><span class="historial-tabla__numero">${escapeHtml(c.numero_cotizacion)}</span></td>
         <td>${escapeHtml(c.cliente_nombre ?? '—')}</td>
         <td>${escapeHtml(c.ramos?.nombre_display ?? '—')}</td>
         <td>${escapeHtml(c.planes?.nombre ?? '—')}</td>
         <td>${fmtFecha(c.created_at)}</td>
-        <td>${crearBadge(c.estado ?? '—', 'neutral')}</td>
-        <td>${prima != null ? escapeHtml(fmtGs(prima)) : '—'}</td>
+        <td>${crearBadge(c.estado ?? '—', ESTADO_BADGE[c.estado] ?? 'neutral')}</td>
+        <td class="historial-tabla__prima">${prima != null ? escapeHtml(fmtGs(prima)) : '—'}</td>
         <td>
-          <div class="admin-table__actions">
-            <button class="btn-outline" data-action="ver-detalle" data-id="${c.id}">Ver detalle</button>
+          <div class="historial-tabla__actions">
+            <button class="historial-tabla__btn-ghost" data-action="ver-detalle" data-id="${c.id}">Ver detalle</button>
             ${puedeOferta
-              ? `<button class="btn-outline" data-action="descargar-oferta" data-id="${c.id}" data-numero="${escapeHtml(c.numero_cotizacion)}">Descargar Carta Oferta</button>`
-              : `<button class="btn-outline historial-oferta-disabled" disabled title="Carta Oferta no disponible para este ramo todavía">Descargar Carta Oferta</button>`}
+              ? `<button class="btn-outline historial-tabla__btn-oferta" data-action="descargar-oferta" data-id="${c.id}" data-numero="${escapeHtml(c.numero_cotizacion)}">Carta Oferta</button>`
+              : `<button class="btn-outline historial-tabla__btn-oferta historial-oferta-disabled" disabled title="Carta Oferta no disponible para este ramo todavía">Carta Oferta</button>`}
           </div>
         </td>
       </tr>
@@ -527,7 +546,7 @@ function onActionClick(e) {
     return;
   }
   if (action === 'descargar-oferta') {
-    descargarOferta(Number(el.dataset.id), el.dataset.numero);
+    descargarOferta(el, Number(el.dataset.id), el.dataset.numero);
     return;
   }
   if (action === 'editar-cotizacion') {

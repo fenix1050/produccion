@@ -744,6 +744,42 @@ button {
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
 }
 
+.exclusiones-card {
+  width: 320px;
+  flex-shrink: 0;
+  margin: 8px 24px 16px 0;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+  overflow: auto;
+}
+
+.exclusiones-card .card__title {
+  background: #fff;
+  text-align: center;
+}
+
+.texto-legal-list {
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.texto-legal-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--tajy-text-dark);
+}
+
+.texto-legal-list__icon {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
 .form-heading {
   border-bottom: 1px solid rgba(0, 0, 0, 0.08);
   padding: 12px 24px;
@@ -1529,6 +1565,15 @@ button {
 @media (max-width: 900px) {
   .datos-view {
     flex-direction: column;
+  }
+
+  .datos-view__form-inner {
+    max-width: none;
+  }
+
+  .exclusiones-card {
+    width: auto;
+    margin: 0 36px 16px;
   }
 
   .live-summary {

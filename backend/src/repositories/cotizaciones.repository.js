@@ -80,7 +80,7 @@ export async function findCotizacionById(id) {
   const { data, error } = await supabase
     .from('cotizaciones')
     .select(
-      '*, cotizacion_variantes(*, cotizacion_plan_pago(*, formas_pago(*)), cotizacion_ajustes(*)), cotizacion_coberturas(*, coberturas_catalogo(codigo, incluye_en_suma_asegurada_total))'
+      '*, usuarios(nombre, email), cotizacion_variantes(*, cotizacion_plan_pago(*, formas_pago(*)), cotizacion_ajustes(*)), cotizacion_coberturas(*, coberturas_catalogo(codigo, incluye_en_suma_asegurada_total))'
     )
     .eq('id', id)
     .single();

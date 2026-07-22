@@ -17,7 +17,10 @@ function getBrowser() {
 
 /**
  * Renderiza un string HTML autocontenido (CSS inline/embebido, sin requests externos) a un
- * buffer PDF en A4. `headerTemplate`/`footerTemplate` (HTML de Puppeteer, contexto aislado sin
+ * buffer PDF en tamaño Oficio. `format: 'Legal'` (8.5"x14" = 215.9mm x 355.6mm) porque esa es
+ * la medida real que reportan los drivers de impresora para "Oficio" en Paraguay — confirmado
+ * contra `System.Drawing.Printing.PrinterSettings` de una impresora física (Kind=Legal), no un
+ * estándar ISO. `headerTemplate`/`footerTemplate` (HTML de Puppeteer, contexto aislado sin
  * acceso al CSS del documento) se repiten en CADA hoja física del PDF — a diferencia de dibujar
  * header/footer dentro del HTML de la página, que solo aparece una vez por página lógica y deja
  * sin marca las hojas de overflow cuando el contenido no entra en una sola hoja.
@@ -28,7 +31,7 @@ export async function renderHtmlToPdf(html, { headerTemplate, footerTemplate, ma
   try {
     await page.setContent(html, { waitUntil: 'networkidle0' });
     const pdf = await page.pdf({
-      format: 'A4',
+      format: 'Legal',
       printBackground: true,
       margin: margin ?? { top: '0', bottom: '0', left: '0', right: '0' },
       displayHeaderFooter: Boolean(headerTemplate || footerTemplate),
@@ -53,7 +56,7 @@ const PX_POR_MM = 96 / 25.4;
  * impresión de Puppeteer (usa el viewport normal, no el modo "print"), pero alcanza como
  * chequeo conservador: si ya excede el alto útil en pantalla, seguro tampoco entra impreso.
  */
-export async function measureContentHeightMm(bodyHtml, cssText, widthMm = 210) {
+export async function measureContentHeightMm(bodyHtml, cssText, widthMm = 215.9) {
   const browser = await getBrowser();
   const page = await browser.newPage();
   try {

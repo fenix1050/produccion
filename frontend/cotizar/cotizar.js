@@ -1389,28 +1389,30 @@ function renderResultadoView(ramo) {
             </div>
             <div class="coberturas-section">
               <div class="coberturas-section__title">Coberturas incluidas</div>
-              ${[...coberturas]
-                // Los sub-límites fijos del plan no van en este listado de "Coberturas incluidas"
-                // (a pedido de Kevin, 2026-07-15) — se muestran aparte en renderSublimitesFijosMrc.
-                .filter((c) => !sublimitesFijosMrc().some((s) => s.codigo === c.codigo))
-                .sort((a, b) => (a.tipo_aplicacion === 'sublimite' ? 1 : 0) - (b.tipo_aplicacion === 'sublimite' ? 1 : 0))
-                .map((c) => {
-                  const esSublimite = c.tipo_aplicacion === 'sublimite';
-                  return `
-                  <div class="cobertura-card">
-                    <div class="cobertura-card__status ${esSublimite ? 'cobertura-card__status--warning' : ''}">${esSublimite ? '!' : '✓'}</div>
-                    <div class="cobertura-card__icon">${SUBLIMITE_ICONOS[c.codigo] || ICON_SUBLIMITE_GENERICO}</div>
-                    <div class="cobertura-card__main">
-                      <div class="cobertura-card__name">${escapeHtml(c.nombre)}</div>
-                      ${renderFranquiciaSelect(c)}
+              <div class="coberturas-lista">
+                ${[...coberturas]
+                  // Los sub-límites fijos del plan no van en este listado de "Coberturas incluidas"
+                  // (a pedido de Kevin, 2026-07-15) — se muestran aparte en renderSublimitesFijosMrc.
+                  .filter((c) => !sublimitesFijosMrc().some((s) => s.codigo === c.codigo))
+                  .sort((a, b) => (a.tipo_aplicacion === 'sublimite' ? 1 : 0) - (b.tipo_aplicacion === 'sublimite' ? 1 : 0))
+                  .map((c) => {
+                    const esSublimite = c.tipo_aplicacion === 'sublimite';
+                    return `
+                    <div class="cobertura-card">
+                      <div class="cobertura-card__status ${esSublimite ? 'cobertura-card__status--warning' : ''}">${esSublimite ? '!' : '✓'}</div>
+                      <div class="cobertura-card__icon">${SUBLIMITE_ICONOS[c.codigo] || ICON_SUBLIMITE_GENERICO}</div>
+                      <div class="cobertura-card__main">
+                        <div class="cobertura-card__name">${escapeHtml(c.nombre)}</div>
+                        ${renderFranquiciaSelect(c)}
+                      </div>
+                      <div class="cobertura-card__monto">
+                        <span>Suma asegurada</span>
+                        <div>${typeof c.monto === 'number' ? `${fmtGs(c.monto)} <em>Gs.</em>` : escapeHtml(c.monto ?? '—')}</div>
+                      </div>
                     </div>
-                    <div class="cobertura-card__monto">
-                      <span>Suma asegurada</span>
-                      <div>${typeof c.monto === 'number' ? `${fmtGs(c.monto)} <em>Gs.</em>` : escapeHtml(c.monto ?? '—')}</div>
-                    </div>
-                  </div>
-                `;
-                }).join('')}
+                  `;
+                  }).join('')}
+              </div>
               <button class="cobertura-card__agregar" data-action="show-tab" data-view="form">${ICON_PLUS} Agregar cobertura adicional</button>
             </div>
           </div>

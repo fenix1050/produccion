@@ -1159,9 +1159,11 @@ button {
 /* ---- Card "datos del plan" (título + badges + Cambiar datos) ---- */
 
 .plan-info-card {
+  max-width: 640px;
   background: #fff;
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 14px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
   padding: 18px 26px;
   display: flex;
   justify-content: space-between;
@@ -1252,18 +1254,31 @@ button {
   color: var(--tajy-ink);
 }
 
-.cobertura-card {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
+.coberturas-lista {
+  max-width: 640px;
   background: #fff;
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 14px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+}
+
+.cobertura-card {
+  display: grid;
+  grid-template-columns: 19px 38px 1fr auto;
+  column-gap: 16px;
+  row-gap: 6px;
+  align-items: center;
   padding: 14px 24px;
 }
 
+.coberturas-lista .cobertura-card:not(:last-child) {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
 .cobertura-card__status {
+  grid-column: 1;
+  grid-row: 1 / 4;
   width: 19px;
   height: 19px;
   border-radius: 50%;
@@ -1274,7 +1289,7 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
+  align-self: center;
 }
 
 .cobertura-card__status--warning {
@@ -1283,6 +1298,8 @@ button {
 }
 
 .cobertura-card__icon {
+  grid-column: 2;
+  grid-row: 1 / 4;
   width: 38px;
   height: 38px;
   border-radius: 9px;
@@ -1291,38 +1308,44 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
+  align-self: center;
 }
 
 .cobertura-card__main {
-  flex: 1;
-  min-width: 180px;
+  display: contents;
 }
 
 .cobertura-card__name {
+  grid-column: 3;
+  grid-row: 1;
   font-weight: 700;
   font-size: 15px;
   color: var(--tajy-ink);
-  margin-bottom: 8px;
 }
 
 .cobertura-card__monto {
-  text-align: right;
-  flex-shrink: 0;
-  white-space: nowrap;
+  display: contents;
 }
 
 .cobertura-card__monto span {
-  display: block;
+  grid-column: 4;
+  grid-row: 2;
+  align-self: center;
+  text-align: right;
+  white-space: nowrap;
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--tajy-text-secondary);
-  margin-bottom: 4px;
 }
 
 .cobertura-card__monto div {
+  grid-column: 4;
+  grid-row: 3;
+  align-self: center;
+  text-align: right;
+  white-space: nowrap;
   font-family: var(--tajy-font-mono);
   font-size: 16px;
   font-weight: 700;
@@ -1387,15 +1410,19 @@ button {
 }
 
 .cobertura-row__franquicia-label {
+  grid-column: 3;
+  grid-row: 2;
+  align-self: center;
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--tajy-text-secondary);
-  margin-bottom: 4px;
 }
 
 .cobertura-row__franquicia {
+  grid-column: 3;
+  grid-row: 3;
   font-size: 13.5px;
   font-weight: 600;
   color: var(--tajy-text-dark);
@@ -1418,6 +1445,7 @@ button {
   background: #fff;
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 14px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
   overflow: hidden;
   display: flex;
   flex-direction: column;

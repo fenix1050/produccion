@@ -152,6 +152,7 @@ Contado: Inicial = Premio completo, Cuota = 0
 - **Plan Básico de Auto** (Fase 1/2 pausada): no implementado — tasa única fija 1,64% vs. tarifación por capital. Pendiente #4 de sección 11 de `PLAN_DESARROLLO.md`, no bloqueante.
 - **RLS en Supabase**: 29 tablas de `public` tienen RLS deshabilitado. Hoy no es explotable (frontend nunca habla directo con Supabase), pero queda como deuda técnica — requiere decisión de Kevin antes de actuar.
 - **Modal "Nuevo usuario"**: no tiene campos de tope propio (descuento/recargo máximo) — solo "Editar usuario" los tiene. Usuario recién creado queda sin tope (`NULL`, solo el tope del plan) hasta que se edite a mano (confirmado con Kevin como "revisamos después").
+- **Textos legales faltantes en catálogo MRC** (detectado 2026-07-22): `coberturas_catalogo.texto_legal`/`texto_exclusiones` quedaron en `NULL` desde la migración 012 (2026-07-10) para `cristales` (Rotura de Cristales, Vidrios o Espejos), `responsabilidad_civil` y `equipos_electronicos`. La Carta Oferta de MRC (`renderCoberturaItem` en `backend/src/templates/oferta/mrc.js`) solo imprime el bloque de texto legal/exclusiones si esos campos no son null, así que estas 3 coberturas aparecen sin texto en el PDF (solo el nombre) — comportamiento esperado dado el dato faltante, no un bug. Kevin no tiene todavía el texto oficial de estas 3 coberturas; falta cargarlo en una migración nueva cuando esté disponible.
 
 ## Al empezar una sesión nueva
 

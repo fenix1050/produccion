@@ -71,6 +71,11 @@ Este proyecto se construye **fase por fase**, en este orden fijo (detalle comple
 - Al terminar una tarea de la fase actual, marcarla como hecha (editar el checklist de este archivo) y decir qué queda pendiente de la fase.
 - Si una tarea de la fase actual depende de un pendiente de la sección 11 de `PLAN_DESARROLLO.md` que todavía no está confirmado (ej. RPF de Incendio en Fase 6), avisar y proponer seguir con otra tarea de la misma fase mientras se confirma — no bloquear todo el trabajo por un solo dato faltante.
 - No mezclar código de dos fases en el mismo commit/PR cuando se pueda evitar — facilita revisar el avance real.
+- Cuando termines una tarea, **debes** actualizar este archivo para reflejar el progreso realizado.
+- Despues de cada commit y/o push, **debes** guardalo todo en engram, para no perder contexto por si hay fallas.
+- No intentes adivinar, si no sabes algo pregunta.
+- Cuando termines una tarea, **debes** actualizar el check de la tarea en este archivo, y el plan de desarrollo. Hasta dar por finalizado el plan de desarrollo.
+- Cuando termines una tarea, **debes** actualizar el estado de desarrollo del proyecto en este archivo y el del .md del proyecto.
 
 ## Estado actual del proyecto
 

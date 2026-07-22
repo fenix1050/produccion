@@ -26,7 +26,7 @@ export const BASE_CSS = `
   }
   .page {
     position: relative;
-    width: 210mm;
+    width: 215.9mm;
     page-break-after: always;
   }
   .page:last-child { page-break-after: avoid; }
@@ -45,6 +45,16 @@ export const BASE_CSS = `
     font-size: 15px;
     font-weight: 700;
     margin-bottom: 5mm;
+    display: flex;
+    align-items: center;
+    gap: 3mm;
+  }
+  .cliente-banner__accent {
+    display: inline-block;
+    width: 4mm;
+    height: 6mm;
+    background: #d8132e;
+    flex-shrink: 0;
   }
   .title {
     font-size: 23px;
@@ -130,14 +140,14 @@ export const BASE_CSS = `
     padding: 1.5mm 3mm;
     margin-bottom: 2mm;
   }
-  .agente-box {
-    border: 1px solid #ddd;
-    padding: 3mm 5mm;
-    text-align: center;
-    width: 60mm;
-    margin: 6mm auto 3mm auto;
+  .agente-linea {
+    display: flex;
+    justify-content: center;
+    gap: 12mm;
+    margin: 6mm 0 3mm 0;
     font-size: 11.5px;
   }
+  .agente-linea strong { color: #d8132e; }
   .footer-legal {
     text-align: center;
     font-size: 10.5px;
@@ -246,10 +256,10 @@ ${pagesHtml}
 // hoja. Los márgenes de page.pdf() deben coincidir con el alto real de estos bloques.
 export const OFERTA_MARGIN = { top: '26mm', bottom: '15mm', left: '0', right: '0' };
 
-// Alto útil de contenido por hoja física (A4 = 297mm) descontando el header/footer fijo de
-// Puppeteer — usado para decidir si el layout de columnas 3/3 forzado entra en una sola hoja
-// antes de generar el PDF final (ver measureContentHeightMm en pdf.service.js).
-export const OFERTA_PAGE_HEIGHT_MM = 297 - 26 - 15;
+// Alto útil de contenido por hoja física (Oficio = Legal = 355.6mm) descontando el header/footer
+// fijo de Puppeteer — usado para decidir si el layout de columnas 3/3 forzado entra en una sola
+// hoja antes de generar el PDF final (ver measureContentHeightMm en pdf.service.js).
+export const OFERTA_PAGE_HEIGHT_MM = 355.6 - 26 - 15;
 
 export function buildHeaderTemplate(ramoLabel) {
   // position:fixed + top:0 ancla la barra al borde real de la hoja — sin esto, Chrome deja

@@ -92,7 +92,7 @@ export function buildMrcOfertaPages({ cotizacion, plan, ramo }) {
       <div>Fecha: ${fmtFecha(cotizacion.fecha || cotizacion.created_at)}</div>
       <div class="plan-name">${escapeHtml(plan.nombre)}</div>
     </div>
-    <div class="cliente-banner">Sr/a ${escapeHtml(cotizacion.cliente_nombre || 'Asegurado')} — Cotización Nro: ${escapeHtml(cotizacion.numero_cotizacion)}</div>
+    <div class="cliente-banner"><span class="cliente-banner__accent"></span>Sr/a ${escapeHtml(cotizacion.cliente_nombre || 'Asegurado')} — Cotización Nro: ${escapeHtml(cotizacion.numero_cotizacion)}</div>
     <h1 class="title">CARTA <strong>OFERTA</strong></h1>
 
     <table class="data-table">
@@ -124,16 +124,18 @@ export function buildMrcOfertaPages({ cotizacion, plan, ramo }) {
     <h2 class="section-title">PLAN <strong>DE PAGO</strong></h2>
     ${(cotizacion.cotizacion_variantes || []).map(renderVariantePlanPago).join('')}
 
-    <div class="agente-box">
-      <div>AGENTE</div>
-      <div style="margin-top:2mm;font-weight:700;">Aseguradora Tajy</div>
-    </div>
     <div class="footer-legal">
+      Este presupuesto es válido por ${cotizacion.vigencia_dias || 30} días. <br>
       Esta cotización no implica aceptación del riesgo, ni el consentimiento de cobertura alguna por parte del
 Asegurado. <br>
       La compañía se reserva el derecho de realizar la inspección para el seguro, y la exigencia de medidas
-de seguridad y adecuaciones que surjan de la misma. <br>
-      Este presupuesto es válido por ${cotizacion.vigencia_dias || 30} días.
+de seguridad y adecuaciones que surjan de la misma.
+    </div>
+    <div class="pie-agente">
+      <div class="agente-linea">
+        <span><strong>AGENTE:</strong> ${escapeHtml(cotizacion.usuarios?.nombre || 'Aseguradora Tajy')}</span>
+        ${cotizacion.usuarios?.email ? `<span><strong>EMAIL:</strong> ${escapeHtml(cotizacion.usuarios.email)}</span>` : ''}
+      </div>
     </div>
   `;
 

@@ -1,6 +1,5 @@
 import { api, auth } from '../shared/api.js';
-import { ICON_X_CIRCLE, ICON_CHECK_CIRCLE, ICON_RAMO_AUTO, ICON_RAMO_MRC, ICON_RAMO_INCENDIO, ICON_RAMO_VIDA_AP, ICON_RAMO_HOGAR, ICON_INFO, ICON_SUBLIMITE_AGUA, ICON_SUBLIMITE_ELECTRICOS, ICON_SUBLIMITE_GRANIZO, ICON_SUBLIMITE_MURALLAS, ICON_SUBLIMITE_GENERICO } from '../shared/nav-icons.js';
-import { crearBadge } from '../shared/badge.js';
+import { ICON_RAMO_AUTO, ICON_RAMO_MRC, ICON_RAMO_INCENDIO, ICON_RAMO_VIDA_AP, ICON_RAMO_HOGAR, ICON_INFO, ICON_SUBLIMITE_AGUA, ICON_SUBLIMITE_ELECTRICOS, ICON_SUBLIMITE_GRANIZO, ICON_SUBLIMITE_MURALLAS, ICON_SUBLIMITE_GENERICO, ICON_ARROW_LEFT as ICON_ARROW_LEFT_ROUND } from '../shared/nav-icons.js';
 import { escapeHtml } from '../shared/dom.js';
 import { renderSidebarFooter, renderTopbarUser } from '../shared/sidebar.js';
 
@@ -182,7 +181,14 @@ const SUBLIMITE_ICONOS = {
   sublimite_equipos_electronicos: ICON_SUBLIMITE_ELECTRICOS,
   sublimite_granizo: ICON_SUBLIMITE_GRANIZO,
   sublimite_murallas_cercos: ICON_SUBLIMITE_MURALLAS,
+  incendio_edificio: ICON_RAMO_HOGAR,
+  incendio_contenido: ICON_RAMO_INCENDIO,
 };
+
+// Ícono de precio para el footnote de "Detalle del plan" — no vive en nav-icons.js porque
+// es específico de esta franja de resumen, no de la navegación.
+const ICON_TAG = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M11.5 3.5H5a1.5 1.5 0 0 0-1.5 1.5v6.5a1.5 1.5 0 0 0 .44 1.06l8 8a1.5 1.5 0 0 0 2.12 0l6.5-6.5a1.5 1.5 0 0 0 0-2.12l-8-8A1.5 1.5 0 0 0 11.5 3.5z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"></path><circle cx="8.2" cy="8.2" r="1.4" fill="currentColor"></circle></svg>`;
+const ICON_PLUS = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path></svg>`;
 
 // Sublímites de MRC fijos por defecto — leídos de `plan_coberturas.incluida_por_defecto` del
 // plan elegido (WU6, 2026-07-17), en vez de la vieja constante hardcodeada SUBLIMITES_FIJOS_MRC.
@@ -1311,7 +1317,7 @@ function renderResultadoView(ramo) {
     return `
       <div class="resultado-view panel">
         <div class="resultado-view__inner">
-          ${esCalculable ? renderStepper() : ''}
+          ${esCalculable ? `<div style="margin-bottom:16px;">${renderStepper()}</div>` : ''}
           <div class="resultado-hero">
             <div>
               <div class="resultado-hero__label">Plan ${escapeHtml(planLabel)} · ${escapeHtml(ramo.label)}</div>
@@ -1335,52 +1341,50 @@ function renderResultadoView(ramo) {
   return `
     <div class="resultado-view panel">
       <div class="resultado-view__inner">
-        ${renderStepper()}
-        <div class="resultado-hero resultado-hero--slim">
-          <div class="resultado-hero__label" style="margin-bottom:0;">Plan ${escapeHtml(planLabel)} · ${escapeHtml(ramo.label)} · ${escapeHtml(fp.nombre_display)}</div>
-          <button class="btn-outline" data-action="show-tab" data-view="form">Editar datos / forma de pago</button>
-        </div>
         <div class="resultado-layout">
           <div class="resultado-layout__main">
-            <div class="card">
-              <div class="card__title">Coberturas incluidas</div>
-              <div class="card__body">
-                ${[...coberturas]
-                  // Los sub-límites fijos del plan no van en este listado de "Coberturas incluidas"
-                  // (a pedido de Kevin, 2026-07-15) — se muestran aparte en renderSublimitesFijosMrc.
-                  .filter((c) => !sublimitesFijosMrc().some((s) => s.codigo === c.codigo))
-                  .sort((a, b) => (a.tipo_aplicacion === 'sublimite' ? 1 : 0) - (b.tipo_aplicacion === 'sublimite' ? 1 : 0))
-                  .map((c) => `
-                  <div class="cobertura-row">
-                    <div class="cobertura-row__name">
-                      <div class="cobertura-row__check">✓</div>
-                      <div>
-                        ${crearBadge(c.tipo_aplicacion === 'sublimite' ? 'Sublímite' : 'Cobertura', c.tipo_aplicacion === 'sublimite' ? 'primary' : 'success')}
-                        ${escapeHtml(c.nombre)}
-                      </div>
-                    </div>
-                    <div class="cobertura-row__bottom">
+            ${renderStepper()}
+            <div class="plan-info-card">
+              <div>
+                <div class="plan-info-card__title">${escapeHtml(planLabel)}</div>
+                <div class="plan-info-card__pills">
+                  <span class="plan-info-card__badge plan-info-card__badge--neutral">${escapeHtml(ramo.label)}</span>
+                  <span class="plan-info-card__badge plan-info-card__badge--success">${escapeHtml(fp.nombre_display)}</span>
+                </div>
+              </div>
+              <button class="link-button" data-action="show-tab" data-view="form">${ICON_ARROW_LEFT_ROUND} Cambiar datos</button>
+            </div>
+            <div class="coberturas-section">
+              <div class="coberturas-section__title">Coberturas incluidas</div>
+              ${[...coberturas]
+                // Los sub-límites fijos del plan no van en este listado de "Coberturas incluidas"
+                // (a pedido de Kevin, 2026-07-15) — se muestran aparte en renderSublimitesFijosMrc.
+                .filter((c) => !sublimitesFijosMrc().some((s) => s.codigo === c.codigo))
+                .sort((a, b) => (a.tipo_aplicacion === 'sublimite' ? 1 : 0) - (b.tipo_aplicacion === 'sublimite' ? 1 : 0))
+                .map((c) => {
+                  const esSublimite = c.tipo_aplicacion === 'sublimite';
+                  return `
+                  <div class="cobertura-card">
+                    <div class="cobertura-card__status ${esSublimite ? 'cobertura-card__status--warning' : ''}">${esSublimite ? '!' : '✓'}</div>
+                    <div class="cobertura-card__icon">${SUBLIMITE_ICONOS[c.codigo] || ICON_SUBLIMITE_GENERICO}</div>
+                    <div class="cobertura-card__main">
+                      <div class="cobertura-card__name">${escapeHtml(c.nombre)}</div>
                       ${renderFranquiciaSelect(c)}
-                      <div class="cobertura-row__monto">${typeof c.monto === 'number' ? `${fmtGs(c.monto)} Gs.` : escapeHtml(c.monto ?? '—')}</div>
+                    </div>
+                    <div class="cobertura-card__monto">
+                      <span>Suma asegurada</span>
+                      <div>${typeof c.monto === 'number' ? `${fmtGs(c.monto)} <em>Gs.</em>` : escapeHtml(c.monto ?? '—')}</div>
                     </div>
                   </div>
-                `).join('')}
-              </div>
+                `;
+                }).join('')}
+              <button class="cobertura-card__agregar" data-action="show-tab" data-view="form">${ICON_PLUS} Agregar cobertura adicional</button>
             </div>
-            ${renderExclusionesYSublimites(plan)}
           </div>
           <div class="resultado-layout__aside">
-            ${renderResumenContadoFinanciado()}
-            ${renderAjustesDescuentoRecargo(plan)}
+            ${renderResumenCotizacion(plan, fp)}
           </div>
         </div>
-      </div>
-      <div class="resultado-bottombar">
-        <div>
-          <div class="resultado-bottombar__price">${fmtGs(fp.cuota || fp.premio)} <span>Gs.${fp.codigo === 'contado' ? '' : ' / mes'}</span></div>
-          <div class="resultado-bottombar__meta">${fp.codigo === 'contado' ? 'Contado' : `Inicial + ${fp.cantidad_cuotas} cuotas`} · Premio ${fmtGs(fp.premio)} Gs.</div>
-        </div>
-        <button class="btn-primary" data-action="emitir-carta" ${state.emitiendoCarta ? 'disabled' : ''}>${state.emitiendoCarta ? 'Generando…' : (state.editandoId ? 'Guardar cambios' : 'Emitir carta oferta')}</button>
       </div>
     </div>
   `;
@@ -1402,19 +1406,19 @@ function renderFranquiciaSelect(cobertura) {
   ).join('');
 
   return `
-    <div class="cobertura-row__franquicia-wrap">
-      <span class="cobertura-row__franquicia-label">Franquicia:</span>
-      <select class="cobertura-row__franquicia" data-franquicia-cobertura="${cobertura.codigo}">${opciones}</select>
-    </div>
+    <div class="cobertura-row__franquicia-label">Franquicia</div>
+    <select class="cobertura-row__franquicia" data-franquicia-cobertura="${cobertura.codigo}">${opciones}</select>
   `;
 }
 
-function renderResumenContadoFinanciado() {
+// Card único del sidebar de "Detalle del plan" — reemplaza los 2 cards separados que había
+// antes (resumen Contado/Financiado + Ajustes) por un único "Resumen de la cotización" con
+// secciones separadas por líneas finas, terminando en el botón de "Emitir carta oferta" (antes
+// vivía en una barra fija al pie de la pantalla — ver decisión de rediseño, 2026-07-22).
+function renderResumenCotizacion(plan, fp) {
   const variante = state.preview?.variantes?.[0];
-  if (!variante) return '';
-
-  const contado = variante.formasPago.find((f) => f.codigo === 'contado');
-  const financiado = variante.formasPago.find((f) => f.codigo === 'cobrador');
+  const contado = variante?.formasPago.find((f) => f.codigo === 'contado');
+  const financiado = variante?.formasPago.find((f) => f.codigo === 'cobrador');
   // Suma de las líneas de "Coberturas incluidas" que cuentan como suma asegurada propia
   // (Incendio Edificio/Contenido + coberturas adicionales que agregó el agente) — igual que
   // "Suma total Gs." en el Excel del cliente (Version 01 - Calculo Varios.xlsx). Los
@@ -1428,28 +1432,51 @@ function renderResumenContadoFinanciado() {
   }, 0);
 
   return `
-    <div class="card resumen-sistema">
-      <div class="resumen-sistema__total">
-        <span class="resumen-sistema__total-label">Suma Asegurada total</span>
-        <span class="resumen-sistema__total-value">${fmtGs(sumaAsegurada)} <em>Gs.</em></span>
+    <div class="resumen-sistema">
+      <div class="resumen-sistema__block">
+        <div class="resumen-sistema__title">Resumen de la cotización</div>
+        <div class="resumen-sistema__total-label">Suma asegurada total</div>
+        <div class="resumen-sistema__total-value">${fmtGs(sumaAsegurada)} <em>Gs.</em></div>
       </div>
-      <div class="card__body resumen-sistema__body">
-        ${contado ? `
+      ${contado ? `
+        <div class="resumen-sistema__divider"></div>
+        <div class="resumen-sistema__block">
+          <div class="resumen-sistema__block-title">Pago contado</div>
           <div class="resumen-sistema__row">
-            <span>Costo Contado</span>
-            <span>Gs. ${fmtGs(contado.premio)} <em>IVA incluido</em></span>
+            <span>Costo total</span>
+            <span>${fmtGs(contado.premio)} <em>Gs.</em></span>
           </div>
-        ` : ''}
-        ${financiado ? `
+        </div>
+      ` : ''}
+      ${financiado ? `
+        <div class="resumen-sistema__divider"></div>
+        <div class="resumen-sistema__block">
+          <div class="resumen-sistema__block-title">Financiado</div>
           <div class="resumen-sistema__row">
-            <span>Costo Financiado</span>
-            <span>Inicial y ${financiado.cantidad_cuotas} cuotas Gs. ${fmtGs(financiado.cuota)}</span>
+            <span>Inicial</span>
+            <span>${fmtGs(financiado.inicial)} <em>Gs.</em></span>
           </div>
           <div class="resumen-sistema__row">
-            <span>Premio (Financiado)</span>
-            <span>Gs. ${fmtGs(financiado.premio)} <em>Inicial Gs. ${fmtGs(financiado.inicial)}</em></span>
+            <span>${financiado.cantidad_cuotas} cuotas de</span>
+            <span>${fmtGs(financiado.cuota)} <em>Gs.</em></span>
           </div>
-        ` : ''}
+          <div class="resumen-sistema__subdivider"></div>
+          <div class="resumen-sistema__row resumen-sistema__row--stacked">
+            <span>Premio financiado</span>
+            <div>
+              <div>${fmtGs(financiado.premio)} <em>Gs.</em></div>
+              <small>Inicial Gs. ${fmtGs(financiado.inicial)}</small>
+            </div>
+          </div>
+        </div>
+      ` : ''}
+      ${renderAjustesDescuentoRecargo(plan)}
+      <div class="resumen-sistema__spacer"></div>
+      <div class="resumen-sistema__cta-wrap">
+        <button class="resumen-sistema__cta" data-action="emitir-carta" ${state.emitiendoCarta ? 'disabled' : ''}>
+          ${ICON_TAG} ${state.emitiendoCarta ? 'Generando…' : (state.editandoId ? 'Guardar cambios' : 'Emitir carta oferta')}
+        </button>
+        <div class="resumen-sistema__hint--center">Se generará la carta oferta con el detalle del plan seleccionado.</div>
       </div>
     </div>
   `;
@@ -1500,7 +1527,7 @@ function renderAjusteField(prefijo, label, plan) {
           style="flex:1;"
         />
       </div>
-      <small style="color:#888;">${tope != null ? `Tope aplicable: ${tope}% de la prima` : 'Sin tope confirmado para este plan'}</small>
+      <small style="color:#8a8a8a;font-size:11px;">${tope != null ? `Tope aplicable: ${tope}% de la prima` : 'Sin tope confirmado para este plan'}</small>
     </div>
   `;
 }
@@ -1508,45 +1535,13 @@ function renderAjusteField(prefijo, label, plan) {
 function renderAjustesDescuentoRecargo(plan) {
   if (!RAMOS_CON_AJUSTES.includes(state.ramoId)) return '';
   return `
-    <div class="card">
-      <div class="card__title">Ajustes (opcional)</div>
-      <div class="card__body">
-        <div class="field-grid">
-          ${renderAjusteField('descuento', 'Descuento', plan)}
-          ${renderAjusteField('recargo', 'Recargo', plan)}
-        </div>
+    <div class="resumen-sistema__divider"></div>
+    <div class="resumen-sistema__block">
+      <div class="resumen-sistema__block-title">Ajustes (opcionales)</div>
+      <div class="resumen-sistema__ajustes">
+        ${renderAjusteField('descuento', 'Descuento', plan)}
+        ${renderAjusteField('recargo', 'Recargo', plan)}
       </div>
-    </div>
-  `;
-}
-
-function renderExclusionesYSublimites(plan) {
-  if (!plan?.texto_exclusiones_generales && !plan?.texto_sublimites_generales) return '';
-
-  const bloque = (titulo, texto, icon, colorVar) => {
-    if (!texto) return '';
-    const items = texto.split('\n').filter(Boolean);
-    return `
-      <div class="card">
-        <div class="card__title">${titulo}</div>
-        <div class="card__body">
-          <ul class="texto-legal-list">
-            ${items.map((linea) => `
-              <li>
-                <span class="texto-legal-list__icon" style="color: var(${colorVar})">${icon}</span>
-                <span>${escapeHtml(linea)}</span>
-              </li>
-            `).join('')}
-          </ul>
-        </div>
-      </div>
-    `;
-  };
-
-  return `
-    <div class="resultado-grid">
-      ${bloque('Exclusiones', plan.texto_exclusiones_generales, ICON_X_CIRCLE, '--tajy-red')}
-      ${bloque('Sub-límites', plan.texto_sublimites_generales, ICON_CHECK_CIRCLE, '--tajy-green-fg')}
     </div>
   `;
 }

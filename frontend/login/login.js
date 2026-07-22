@@ -108,7 +108,7 @@ async function onSubmit(e) {
     const data = await api.post('/auth/login', { email, password });
     auth.setToken(data.token);
     auth.setUsuario(data.usuario);
-    window.location.href = '../cotizar/';
+    window.location.href = '../bienvenida/';
   } catch (err) {
     state.enviando = false;
     state.error = 'No se pudo iniciar sesión. Revisá el email y la contraseña.';

@@ -223,9 +223,15 @@ async function init() {
     state.ramosActivos = [];
   }
 
-  const editarId = new URLSearchParams(location.search).get('editar');
+  const params = new URLSearchParams(location.search);
+  const editarId = params.get('editar');
   if (editarId) {
     await cargarParaEditar(Number(editarId));
+  } else {
+    const ramoParam = params.get('ramo');
+    if (ramoParam) {
+      await selectRamo(ramoParam);
+    }
   }
 
   renderApp();

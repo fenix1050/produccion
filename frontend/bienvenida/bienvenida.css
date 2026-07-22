@@ -1,0 +1,296 @@
+/* Pantalla de Bienvenida post-login (WU7) — fondo neutro claro con glow rojo sutil,
+   ver logo/Diseño para pantalla de bienvenida/README.md (handoff v2, aprobado). Tokens
+   reutilizados de shared/cotizador.css: rojo #d8132e, negro #191919/--tajy-ink, gris
+   secundario #8a8a8a, fondo #f7f6f5, borde #e8e6e3, verde disponible #1e8a4c. */
+
+body {
+  overflow: auto;
+}
+
+.bv-shell {
+  position: relative;
+  min-height: 100vh;
+  background: #f7f6f5;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#fx-canvas-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  -webkit-mask-image: radial-gradient(circle at 88% 8%, rgba(0, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0) 42%);
+  mask-image: radial-gradient(circle at 88% 8%, rgba(0, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0) 42%);
+}
+
+.bv-container {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 36px 40px 56px;
+}
+
+.bv-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 32px;
+}
+
+.bv-header__logo {
+  height: 50px;
+  width: auto;
+}
+
+.bv-header__saludo {
+  font-size: 13px;
+  color: var(--tajy-text-secondary, #8a8a8a);
+}
+
+.bv-header__saludo b {
+  color: var(--tajy-ink, #191919);
+  font-weight: 700;
+}
+
+@keyframes bvFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.bv-fade {
+  animation: bvFadeIn 0.3s ease;
+}
+
+.bv-title {
+  font-family: 'Sora', sans-serif;
+  font-weight: 800;
+  font-size: 26px;
+  color: var(--tajy-ink, #191919);
+  margin: 0 0 6px;
+}
+
+.bv-title--sm {
+  font-size: 22px;
+}
+
+.bv-subtitle {
+  font-size: 14.5px;
+  color: var(--tajy-text-secondary, #8a8a8a);
+  margin: 0 0 32px;
+}
+
+/* ---- Grid de cards (estado welcome) ---- */
+
+.bv-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.bv-card {
+  display: block;
+  text-align: left;
+  width: 100%;
+  background: #fff;
+  border: 1px solid var(--tajy-border, #e8e6e3);
+  border-radius: 20px;
+  padding: 32px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  cursor: pointer;
+  font-family: inherit;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.bv-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  border-color: var(--tajy-ink, #191919);
+}
+
+.bv-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.bv-card__icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: var(--tajy-pink, #fbeaea);
+  color: var(--tajy-red, #d8132e);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bv-card__arrow {
+  color: #c9c7c4;
+  display: flex;
+}
+
+.bv-card__title {
+  font-family: 'Sora', sans-serif;
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--tajy-ink, #191919);
+  margin-bottom: 6px;
+}
+
+.bv-card__desc {
+  font-size: 13.5px;
+  color: var(--tajy-text-secondary, #8a8a8a);
+  line-height: 1.5;
+}
+
+/* ---- Volver (estados ramo/propuesta) ---- */
+
+.bv-volver {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  padding: 0;
+  margin-bottom: 20px;
+  color: var(--tajy-text-secondary, #8a8a8a);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.bv-volver:hover {
+  color: var(--tajy-ink, #191919);
+}
+
+/* ---- Selector de ramo ---- */
+
+.bv-ramo-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bv-ramo-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: #fff;
+  border: 1px solid var(--tajy-border, #e8e6e3);
+  border-radius: 14px;
+  padding: 14px 18px;
+}
+
+.bv-ramo-row--disponible {
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.bv-ramo-row--disponible:hover {
+  border-color: var(--tajy-ink, #191919);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+.bv-ramo-row--deshabilitada {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.bv-ramo-row__icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: var(--tajy-bg, #f7f6f5);
+  color: var(--tajy-ink, #191919);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.bv-ramo-row__label {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--tajy-ink, #191919);
+}
+
+.bv-ramo-row__badge {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 10px;
+}
+
+.bv-ramo-row__badge--disponible {
+  color: var(--tajy-green-fg, #1e8a4c);
+  background: var(--tajy-green-bg, #e9f7ee);
+}
+
+.bv-ramo-row__badge--pausa,
+.bv-ramo-row__badge--proximamente {
+  color: var(--tajy-text-muted, #999);
+  background: var(--tajy-bg, #f7f6f5);
+}
+
+/* ---- Placeholder Propuesta Formal ---- */
+
+.bv-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 48px 24px;
+}
+
+.bv-placeholder__icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--tajy-bg, #f7f6f5);
+  color: var(--tajy-text-secondary, #8a8a8a);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.bv-placeholder__title {
+  font-family: 'Sora', sans-serif;
+  font-weight: 800;
+  font-size: 20px;
+  color: var(--tajy-ink, #191919);
+  margin-bottom: 8px;
+}
+
+.bv-placeholder__text {
+  font-size: 13.5px;
+  color: var(--tajy-text-secondary, #8a8a8a);
+  max-width: 420px;
+  margin: 0;
+}
+
+@media (max-width: 720px) {
+  .bv-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .bv-container {
+    padding: 28px 20px 40px;
+  }
+}

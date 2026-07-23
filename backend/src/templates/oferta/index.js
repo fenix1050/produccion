@@ -1,6 +1,6 @@
 import { renderOferta, buildHeaderTemplate, buildFooterTemplate, OFERTA_MARGIN, OFERTA_PAGE_HEIGHT_MM, BASE_CSS } from './layout.js';
 import { buildMrcOfertaPages } from './mrc.js';
-import { measureContentHeightMm } from '../../services/pdf.service.js';
+import { measureContentHeightMm } from './pdf-utils.js';
 
 // Un builder de páginas por ramo (calculador). Incendio y Vida-AP quedan pendientes: todavía
 // no tienen texto oficial de Carta Oferta confirmado (ver CLAUDE.md, pendientes activos).

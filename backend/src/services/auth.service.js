@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import * as usuariosRepository from '../repositories/usuarios.repository.js';
 import { httpError } from '../utils/http-error.js';
 import { BCRYPT_ROUNDS } from '../utils/security.js';
+import { logSeguridad } from '../utils/seguridad-logger.js';
 
 // Acortado de 8h a 45m (2026-07-23, hardening de sesión): con token_version como
 // mecanismo de revocación server-side, ya no hace falta un TTL largo para tolerar la
@@ -10,27 +11,31 @@ import { BCRYPT_ROUNDS } from '../utils/security.js';
 const JWT_EXPIRES_IN = '45m';
 
 // Mensaje genérico a propósito: no debe diferir según si el email existe o no,
-// para no filtrar qué emails están registrados en el sistema.
-function credencialesInvalidas() {
+// para no filtrar qué emails están registrados en el sistema. El logging interno (motivo)
+// SÍ puede distinguir el caso, pero nunca expone password ni hash — solo el email y un
+// motivo genérico ('credenciales_invalidas' / 'usuario_inactivo'), ver logSeguridad.
+function credencialesInvalidas(email, motivo) {
+  logSeguridad('login_fallido', { email, motivo }, 'warn');
   return httpError(401, 'Email o contraseña incorrectos');
 }
 
 export async function login(email, password) {
   const usuario = await usuariosRepository.findByEmail(email);
   if (!usuario || !usuario.password_hash) {
-    throw credencialesInvalidas();
+    throw credencialesInvalidas(email, 'credenciales_invalidas');
   }
 
   if (!usuario.activo) {
-    throw credencialesInvalidas();
+    throw credencialesInvalidas(email, 'usuario_inactivo');
   }
 
   const passwordOk = await bcrypt.compare(password, usuario.password_hash);
   if (!passwordOk) {
-    throw credencialesInvalidas();
+    throw credencialesInvalidas(email, 'credenciales_invalidas');
   }
 
   await usuariosRepository.actualizarUltimaSesion(usuario.id);
+  logSeguridad('login_exitoso', { usuarioId: usuario.id, email: usuario.email }, 'warn');
 
   const token = jwt.sign(
     {

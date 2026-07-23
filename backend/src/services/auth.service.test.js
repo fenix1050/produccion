@@ -111,6 +111,39 @@ test('POST /api/auth/logout invalida el token con el que se llamó', async (t) =
   assert.equal(despues.error?.status, 401, 'el mismo token debe quedar inválido después del logout');
 });
 
+// --- Logging de seguridad (A09) ---
+
+test('login loguea login_fallido con console.warn cuando la contraseña es incorrecta, sin exponer password/hash', async (t) => {
+  const usuario = crearUsuarioMock();
+  mockearRepositorio(t, usuario);
+  const { login } = await import('./auth.service.js?case=log-login-fallido');
+
+  const warnSpy = t.mock.method(console, 'warn', () => {});
+
+  await assert.rejects(() => login(usuario.email, 'password-incorrecta'));
+
+  assert.equal(warnSpy.mock.calls.length, 1);
+  const [linea] = warnSpy.mock.calls[0].arguments;
+  assert.match(linea, /login_fallido/);
+  assert.doesNotMatch(linea, new RegExp(usuario.password_hash));
+  assert.doesNotMatch(linea, /password-incorrecta/);
+});
+
+test('login loguea login_exitoso con console.warn cuando las credenciales son correctas', async (t) => {
+  const usuario = crearUsuarioMock();
+  mockearRepositorio(t, usuario);
+  const { login } = await import('./auth.service.js?case=log-login-exitoso');
+
+  const warnSpy = t.mock.method(console, 'warn', () => {});
+
+  await login(usuario.email, PASSWORD_ACTUAL);
+
+  assert.equal(warnSpy.mock.calls.length, 1);
+  const [linea] = warnSpy.mock.calls[0].arguments;
+  assert.match(linea, /login_exitoso/);
+  assert.doesNotMatch(linea, new RegExp(PASSWORD_ACTUAL));
+});
+
 test('cambiarPassword invalida sesiones (tokens) emitidas antes del cambio', async (t) => {
   const usuario = crearUsuarioMock();
   mockearRepositorio(t, usuario);

@@ -30,7 +30,7 @@ export async function listarUsuarios(_req, res, next) {
 export async function crearUsuario(req, res, next) {
   try {
     const datos = crearUsuarioSchema.parse(req.body);
-    const usuario = await usuariosService.crearUsuario(datos);
+    const usuario = await usuariosService.crearUsuario(datos, req.usuario);
     res.status(201).json(usuario);
   } catch (err) {
     next(err);
@@ -79,7 +79,7 @@ export async function listarRoles(_req, res, next) {
 export async function crearRol(req, res, next) {
   try {
     const datos = crearRolSchema.parse(req.body);
-    const rol = await rolesService.crearRol(datos);
+    const rol = await rolesService.crearRol(datos, req.usuario);
     res.status(201).json(rol);
   } catch (err) {
     next(err);
@@ -89,7 +89,7 @@ export async function crearRol(req, res, next) {
 export async function editarRol(req, res, next) {
   try {
     const cambios = editarRolSchema.parse(req.body);
-    const rol = await rolesService.editarRol(req.params.id, cambios);
+    const rol = await rolesService.editarRol(req.params.id, cambios, req.usuario);
     res.json(rol);
   } catch (err) {
     next(err);

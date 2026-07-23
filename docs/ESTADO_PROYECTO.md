@@ -1199,3 +1199,85 @@ pero ahora el token es de corta duración y revocable del lado servidor:
   token con `token_version` vieja rechazado con 401, logout invalida el token con el que se llamó,
   y cambio de contraseña propio invalida tokens emitidos antes del cambio. Suite completa en verde
   (23 tests).
+
+## 28. Logging de eventos de seguridad (A09) + auditoría de mass assignment en admin (A01) — resuelto (2026-07-23)
+
+Cierra los dos hallazgos pendientes de la auditoría de seguridad referenciados en la sección 26.
+
+### A09 — Logging de eventos de seguridad
+
+No había ningún logging de eventos de seguridad en el proyecto. Se agregó
+`backend/src/utils/seguridad-logger.js` con `logSeguridad(evento, detalle, nivel)`: escribe a
+`console.warn`/`console.error` una línea JSON con `timestamp`, `evento` y `detalle`, filtrando
+(`[REDACTED]`) cualquier campo cuyo nombre contenga `token`/`password`/`passwordHash` antes de
+loguear — nunca se loguea un token, un `password_hash` ni una contraseña en texto plano.
+
+Instrumentado en:
+- `auth.service.js` → `login`: `login_fallido` (email + motivo genérico `credenciales_invalidas` /
+  `usuario_inactivo`, nunca la contraseña) y `login_exitoso` (usuarioId + email).
+- `admin/usuarios.service.js`:
+  - `editarUsuario` → `cambio_rol_usuario` cuando `cambios.rol_id` cambia el rol efectivo
+    (solicitante, usuario objetivo, rol anterior → nuevo) y `usuario_desactivado` cuando
+    `cambios.activo === false`.
+  - `resetearPassword` → `reset_password_por_admin` (quién resetea a quién).
+  - `eliminarUsuario` → `usuario_eliminado` (quién, a quién).
+  - `asegurarPuedeAsignarRol` → `intento_escalada_rol_admin_rechazado` (nivel `error`) cuando se
+    rechaza un intento de asignar el rol admin sin ser admin pleno.
+  - `asegurarNoAutoAjustaTope` (nueva, ver A01 más abajo) → `intento_auto_ajuste_tope_rechazado`.
+  - `roles.service.js` → `asegurarPuedeOtorgarPermisos` (nueva, ver A01) →
+    `intento_escalada_permisos_rol_rechazado` (nivel `error`).
+
+Verificado con tests que espían `console.warn`/`console.error` (`t.mock.method`) en
+`auth.service.test.js` (login_fallido no expone password/hash, login_exitoso se dispara) y de forma
+indirecta en los tests de escalada de `usuarios.service.test.js`/`roles.service.test.js` (los eventos
+aparecen en la salida de `npm test`, confirmando que corren sin romper el flujo).
+
+### A01 — Auditoría de mass assignment en endpoints admin
+
+Se revisaron los 4 puntos pedidos. Dos tenían gap real (mismo patrón de la sección 26: validar
+contra el permiso REAL del solicitante, no solo el estado actual del objetivo), dos no:
+
+1. **`crearUsuario` (gap real, corregido)** — a diferencia de `editarUsuario` (que desde la sección
+   26 ya llama `asegurarPuedeAsignarRol`), `crearUsuario(datos)` no recibía `solicitante` y no
+   validaba `rol_id` en absoluto: un usuario con `puede_gestionar_usuarios = true` podía dar de
+   alta directamente un usuario nuevo con `rol_id` del rol admin. Fix: `crearUsuario` ahora recibe
+   `solicitante` (`admin.controller.js` pasa `req.usuario`) y corre `asegurarPuedeAsignarRol` antes
+   de crear. Test: `crearUsuario rechaza con 403 si un solicitante no-admin intenta dar de alta un
+   usuario con rol_id del rol admin`.
+2. **CRUD de roles custom (gap real, corregido)** — `crearRol`/`editarRol` no validaban los 4
+   booleanos de permiso contra el solicitante: cualquier usuario con `puede_gestionar_usuarios`
+   (el único gate de ruta para `/admin/roles`) podía crear o editar un rol con los 4 permisos en
+   `true` (incluido `puede_gestionar_usuarios`) y después asignárselo a sí mismo vía `editarUsuario`
+   — ese endpoint solo bloquea el rol literal `'admin'`, no un rol custom con el mismo efecto
+   práctico. Fix: nueva `asegurarPuedeOtorgarPermisos(cambios, solicitante)` en
+   `roles.service.js` — un solicitante no-admin no puede setear en `true` ningún permiso que él
+   mismo no tenga (`puede_editar_tasas`/`puede_gestionar_usuarios`/`puede_editar_coberturas`/
+   `puede_editar_planes`); un `admin` pleno sigue sin restricción. `crearRol`/`editarRol` y sus
+   controllers ahora reciben/pasan `solicitante` (`req.usuario`). El chequeo de rol de sistema
+   (`es_sistema`) en `editarRol` sigue corriendo primero (409 antes que el 403 de permisos). Tests
+   en `roles.service.test.js` (archivo nuevo): rechazo al otorgar un permiso que no se tiene,
+   rechazo al auto-otorgarse `puede_gestionar_usuarios`, permitido otorgar un subconjunto que sí se
+   tiene, admin sin restricción, y que el 409 de rol de sistema sigue corriendo antes del chequeo
+   de permisos.
+3. **`planes.service.js` / `rubros-actividad.service.js` (sin gap)** — los schemas Zod
+   (`editarPlanSchema`, `editarRubroActividadSchema`, `editarPlanFormaPagoSchema`,
+   `editarPlanCoberturaSchema`, `agregarCoberturaAPlanSchema`) están acotados exactamente al
+   dominio de su propio permiso (`activo`/`prima_tecnica_minima`, `tasa_edificio`/
+   `tasa_contenido`, `tasa_rpf`/`habilitada`, etc.) y Zod usa modo `strip` por defecto: cualquier
+   campo fuera del schema (ej. `rol_id`, permisos) se descarta antes de llegar al service. No hay
+   overlap hacia otro dominio ni forma de escalar permisos desde estos endpoints.
+4. **Tope de descuento/recargo por usuario (gap real menor, corregido)** — no existe ningún otro
+   endpoint que escriba `descuento_maximo_pct`/`recargo_maximo_pct` fuera de `editarUsuario`
+   (`editarUsuarioSchema` es el único lugar que los declara), así que la pregunta original ("¿por
+   algún endpoint que no sea editarUsuario?") tiene respuesta negativa. Pero se detectó, dentro de
+   `editarUsuario` mismo, que un solicitante no-admin con `puede_gestionar_usuarios` podía editarse
+   a **sí mismo** y subir (o poner en `NULL`, heredando el tope más alto del plan) su propio tope,
+   usando el mismo permiso con el que ya gestiona a otros usuarios. Fix: nueva
+   `asegurarNoAutoAjustaTope(idObjetivo, cambios, solicitante)` — bloquea con 403 que un solicitante
+   no-admin toque `descuento_maximo_pct`/`recargo_maximo_pct` de su **propio** usuario (editar el
+   tope de otro usuario sigue permitido, igual que antes). Tests: rechazo de auto-ajuste, admin
+   editando su propio tope permitido, y edición del tope de otro usuario permitido para un
+   solicitante no-admin.
+
+Suite completa del backend verificada en verde: **36 tests** (los 23 previos + 13 nuevos de esta
+sección), corridos con `npm test` desde `/backend`.

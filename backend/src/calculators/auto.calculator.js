@@ -1,21 +1,18 @@
 export { calcularPlanPago } from './utils/plan-pago.js';
 import { sumarAjustes } from './utils/ajustes.js';
-import * as ramosRepository from '../repositories/ramos.repository.js';
 
 /**
  * @param {object} input
- * @param {number} input.planId
+ * @param {object} input.plan
  * @param {number} input.capital - Suma asegurada del vehículo (Gs.)
+ * @param {object} input.tasaCapital - Ya resuelta por cotizacion.service.js (resolverContextoRepositorios)
  * @param {Array<{monto: number, porcentaje: number}>} [input.descuentos]
  * @param {Array<{monto: number, porcentaje: number}>} [input.recargos]
  * @returns {Promise<{prima: number, detalle: object}>}
  */
-export async function calcularPrima({ planId, capital, descuentos = [], recargos = [] }) {
-  const plan = await ramosRepository.findPlanById(planId);
-  const tasaCapital = await ramosRepository.findTasaCapital(planId, capital);
-
+export async function calcularPrima({ plan, capital, tasaCapital, descuentos = [], recargos = [] }) {
   if (!tasaCapital) {
-    const err = new Error(`No hay tasa configurada para capital ${capital} en el plan ${planId}`);
+    const err = new Error(`No hay tasa configurada para capital ${capital} en el plan ${plan.id}`);
     err.status = 422;
     err.publicMessage = 'El capital ingresado está fuera de los rangos de tasa configurados.';
     throw err;

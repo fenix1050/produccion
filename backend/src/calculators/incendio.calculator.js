@@ -1,7 +1,5 @@
 export { calcularPlanPago } from './utils/plan-pago.js';
 import { sumarAjustes, topeEfectivo } from './utils/ajustes.js';
-import * as ramosRepository from '../repositories/ramos.repository.js';
-import * as coberturasRepository from '../repositories/coberturas.repository.js';
 
 const NOMBRE_PLAN_MAQUINARIA = 'MAQUINARIA BASICO';
 
@@ -36,17 +34,27 @@ const CODIGO_SUBLIMITE_VANDALISMO_MAQUINARIA = 'sublimite_vandalismo_maquinaria'
  * coberturas adicionales de MRC, que sí tarifican con su propia suma asegurada).
  *
  * @param {object} input
- * @param {number} input.planId
+ * @param {object} input.plan
  * @param {object} input.riesgoDatos - Edificio/Contenido: { rubro_actividad, capital_edificio,
  *   capital_contenido, sublimite_fenomenos_naturales_porcentaje? }. Maquinaria Básico:
  *   { capital_maquinaria, sublimite_vandalismo_porcentaje? }.
+ * @param {object|null} input.rubro - Ya resuelto por cotizacion.service.js (resolverContextoRepositorios)
+ * @param {Array<object>} input.catalogoRamo - Catálogo completo del ramo, ya resuelto
+ * @param {Array<object>} input.tasasRamo - Tasas por cobertura del ramo, ya resueltas
  * @param {Array<{monto?: number, porcentaje?: number}>} [input.descuentos]
  * @param {Array<{monto?: number, porcentaje?: number}>} [input.recargos]
  * @returns {Promise<{prima: number, detalle: object, coberturas: Array<{codigo:string, nombre:string, monto:number}>}>}
  */
-export async function calcularPrima({ planId, riesgoDatos, descuentos = [], recargos = [], usuario }) {
-  const plan = await ramosRepository.findPlanById(planId);
-
+export async function calcularPrima({
+  plan,
+  riesgoDatos,
+  descuentos = [],
+  recargos = [],
+  usuario,
+  rubro,
+  catalogoRamo,
+  tasasRamo,
+}) {
   if (!plan.prima_tecnica_minima) {
     const err = new Error(
       `El plan "${plan.nombre}" todavía no tiene RPF/prima técnica mínima confirmados — no se puede cotizar.`
@@ -56,14 +64,13 @@ export async function calcularPrima({ planId, riesgoDatos, descuentos = [], reca
     throw err;
   }
 
-  const catalogoRamo = await coberturasRepository.findCoberturasCatalogoByRamoId(plan.ramo_id);
   const catalogoPorCodigo = new Map(catalogoRamo.map((c) => [c.codigo, c]));
 
   const esMaquinariaBasico = plan.nombre === NOMBRE_PLAN_MAQUINARIA;
 
   const { primaBase: primaCalculada, detalle, coberturas } = esMaquinariaBasico
-    ? await calcularMaquinariaBasico({ plan, riesgoDatos, catalogoPorCodigo })
-    : await calcularEdificioYContenido({ plan, riesgoDatos, catalogoPorCodigo });
+    ? await calcularMaquinariaBasico({ plan, riesgoDatos, catalogoPorCodigo, tasasRamo })
+    : await calcularEdificioYContenido({ plan, riesgoDatos, catalogoPorCodigo, rubro });
 
   // A pedido de Kevin (2026-07-15): sí se pueden cotizar capitales que generen una prima menor
   // a la Prima Técnica Mínima del plan — no se bloquea con alerta. En ese caso se aplica el
@@ -88,7 +95,7 @@ export async function calcularPrima({ planId, riesgoDatos, descuentos = [], reca
   };
 }
 
-async function calcularEdificioYContenido({ plan, riesgoDatos, catalogoPorCodigo }) {
+async function calcularEdificioYContenido({ plan, riesgoDatos, catalogoPorCodigo, rubro }) {
   const capitalEdificio = riesgoDatos.capital_edificio ?? 0;
   const capitalContenido = riesgoDatos.capital_contenido ?? 0;
 
@@ -104,7 +111,6 @@ async function calcularEdificioYContenido({ plan, riesgoDatos, catalogoPorCodigo
     throw err;
   }
 
-  const rubro = await coberturasRepository.findRubroPorNombre(riesgoDatos.rubro_actividad);
   if (!rubro) {
     const err = new Error(`Tipo de Riesgo "${riesgoDatos.rubro_actividad}" no encontrado en rubros_actividad.`);
     err.status = 422;
@@ -173,7 +179,7 @@ async function calcularEdificioYContenido({ plan, riesgoDatos, catalogoPorCodigo
   };
 }
 
-async function calcularMaquinariaBasico({ plan, riesgoDatos, catalogoPorCodigo }) {
+async function calcularMaquinariaBasico({ plan, riesgoDatos, catalogoPorCodigo, tasasRamo }) {
   const capitalMaquinaria = riesgoDatos.capital_maquinaria ?? 0;
 
   if (
@@ -191,7 +197,6 @@ async function calcularMaquinariaBasico({ plan, riesgoDatos, catalogoPorCodigo }
   const catalogoMaquinaria = catalogoPorCodigo.get(CODIGO_INCENDIO_MAQUINARIA);
   const catalogoSublimiteVandalismo = catalogoPorCodigo.get(CODIGO_SUBLIMITE_VANDALISMO_MAQUINARIA);
 
-  const tasasRamo = await coberturasRepository.findTasasCoberturaRamo(plan.ramo_id);
   const tasaMaquinaria = tasasRamo.find(
     (t) => t.coberturas_catalogo?.codigo === CODIGO_INCENDIO_MAQUINARIA
   );

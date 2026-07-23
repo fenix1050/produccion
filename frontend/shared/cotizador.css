@@ -26,6 +26,30 @@
   box-sizing: border-box;
 }
 
+/* Banner de error/éxito reutilizado de admin.css/historial.css (misma clase, mismos
+   tokens --tajy-red/--tajy-green-*) — se declara acá también en vez de importar
+   admin.css entero, porque admin.css tiene selectores (.admin-content, .panel,
+   .nav-item--active) que colisionan con clases propias de este archivo. */
+.admin-banner {
+  padding: 12px 14px;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.admin-banner--error {
+  background: rgba(216, 19, 46, 0.08);
+  color: var(--tajy-red);
+  border: 1px solid var(--tajy-red-soft);
+}
+
+.admin-banner--success {
+  background: var(--tajy-green-bg);
+  color: var(--tajy-green-fg);
+  border: 1px solid rgba(30, 138, 76, 0.25);
+}
+
 html,
 body {
   height: 100%;

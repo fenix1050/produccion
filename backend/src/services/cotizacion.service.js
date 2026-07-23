@@ -14,7 +14,7 @@ export async function calcularPreview(body, usuario) {
   const { plan, ramo, datosValidados } = await validarYResolverContexto(body);
   const calculador = getCalculador(ramo.calculador);
 
-  return construirVariantes({ calculador, plan, datosValidados, usuario });
+  return construirVariantes({ calculador, plan, ramo, datosValidados, usuario });
 }
 
 /**
@@ -25,7 +25,7 @@ export async function crearCotizacion(body, usuario) {
   const { plan, ramo, datosValidados } = await validarYResolverContexto(body);
   const calculador = getCalculador(ramo.calculador);
 
-  const variantesCalculadas = await construirVariantes({ calculador, plan, datosValidados, usuario });
+  const variantesCalculadas = await construirVariantes({ calculador, plan, ramo, datosValidados, usuario });
 
   const cotizacion = await cotizacionesRepository.insertCotizacion({
     numero_cotizacion: `${ramo.nombre.toUpperCase()}-${await cotizacionesRepository.nextNumeroCorrelativo(ramo.id)}`,
@@ -112,7 +112,7 @@ export async function actualizarCotizacion(id, body, usuario) {
   }
 
   const calculador = getCalculador(ramo.calculador);
-  const variantesCalculadas = await construirVariantes({ calculador, plan, datosValidados, usuario });
+  const variantesCalculadas = await construirVariantes({ calculador, plan, ramo, datosValidados, usuario });
 
   // Orden deliberado: insertar los datos NUEVOS antes de tocar el header o borrar los viejos.
   // Si `insertarCoberturasYVariantes` falla acá (red, RPC del correlativo, etc.), la cotización
@@ -265,18 +265,66 @@ async function validarYResolverContexto(body) {
 }
 
 /**
+ * Resuelve, ANTES de invocar al calculador, todo el dato que hoy vive detrás de un repository
+ * (plan/tasas/catálogo/rubro/tarifas) — así los calculators quedan puros (sin `await` a ningún
+ * repository) y respetan la capa `routes → controllers → services → repositories`. Un `switch`
+ * por `ramo.calculador` porque cada ramo necesita datos distintos.
+ *
+ * Para MRC/Incendio se trae siempre `tasasRamo` (incluso para "Edificio y Contenido", que antes
+ * no la pedía) y se intenta resolver `rubro` siempre que venga `riesgo_datos.rubro_actividad`
+ * (incluso para "Maquinaria Básico", que antes no lo pedía en absoluto). Es un overfetch mínimo
+ * aceptado a propósito — una query de más, sin impacto en el resultado numérico — a cambio de no
+ * duplicar acá la lógica de "es Maquinaria Básico" que ya vive en incendio.calculator.js.
+ */
+async function resolverContextoRepositorios(ramo, plan, riesgoDatos, capital) {
+  switch (ramo.calculador) {
+    case 'auto':
+      return { tasaCapital: await ramosRepository.findTasaCapital(plan.id, capital) };
+    case 'mrc':
+    case 'incendio': {
+      const [rubro, catalogoRamo, tasasRamo] = await Promise.all([
+        riesgoDatos?.rubro_actividad
+          ? coberturasRepository.findRubroPorNombre(riesgoDatos.rubro_actividad)
+          : null,
+        coberturasRepository.findCoberturasCatalogoByRamoId(plan.ramo_id),
+        coberturasRepository.findTasasCoberturaRamo(plan.ramo_id),
+      ]);
+      return { rubro, catalogoRamo, tasasRamo };
+    }
+    case 'vida-ap': {
+      const [tarifas, catalogoRamo] = await Promise.all([
+        coberturasRepository.findTarifasGenericoByPlanId(plan.id),
+        coberturasRepository.findCoberturasCatalogoByRamoId(plan.ramo_id),
+      ]);
+      return { tarifas, catalogoRamo };
+    }
+    default:
+      return {};
+  }
+}
+
+/**
  * Arma las variantes (sin/con franquicia) según la regla de negocio de Auto
  * (ver sección 5 de PLAN_DESARROLLO.md). Otros ramos no tienen franquicia dual
  * todavía — devuelven siempre 1 variante sin franquicia hasta que se implementen.
  */
-async function construirVariantes({ calculador, plan, datosValidados, usuario }) {
+async function construirVariantes({ calculador, plan, ramo, datosValidados, usuario }) {
+  const contexto = await resolverContextoRepositorios(
+    ramo,
+    plan,
+    datosValidados.riesgo_datos,
+    datosValidados.capital_asegurado
+  );
+
   const { prima, detalle, coberturas } = await calculador.calcularPrima({
     planId: plan.id,
+    plan,
     capital: datosValidados.capital_asegurado,
     riesgoDatos: datosValidados.riesgo_datos,
     descuentos: datosValidados.descuentos,
     recargos: datosValidados.recargos,
     usuario,
+    ...contexto,
   });
 
   const formasPagoPlan = await ramosRepository.findFormasPagoDelPlan(plan.id);

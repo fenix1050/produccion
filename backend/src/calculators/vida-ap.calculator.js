@@ -1,6 +1,4 @@
 export { calcularPlanPago } from './utils/plan-pago.js';
-import * as ramosRepository from '../repositories/ramos.repository.js';
-import * as coberturasRepository from '../repositories/coberturas.repository.js';
 
 // Planes con tasa `permil_mensual` (Protección de Préstamos) o base "saldo declarado" (Aportes
 // y Ahorros) — ninguna fuente desglosa Prima/RPF/IVA para un producto de saldo mensual, y forzar
@@ -39,14 +37,14 @@ const NOMBRE_VIDA_DIRECTIVOS = 'VIDA DIRECTIVOS Y EMPLEADOS';
  * implementar — ver PLANES_NO_IMPLEMENTADOS arriba.
  *
  * @param {object} input
- * @param {number} input.planId
+ * @param {object} input.plan
  * @param {object} input.riesgoDatos - { capital_asegurado, edad, incluye_renta_diaria?,
  *   suma_renta_diaria?, capital_gastos_sepelio? }
+ * @param {Array<object>} input.tarifas - Ya resueltas por cotizacion.service.js (resolverContextoRepositorios)
+ * @param {Array<object>} input.catalogoRamo - Catálogo completo del ramo, ya resuelto
  * @returns {Promise<{prima: number, detalle: object, coberturas: Array<{codigo:string, nombre:string, monto:number}>}>}
  */
-export async function calcularPrima({ planId, riesgoDatos }) {
-  const plan = await ramosRepository.findPlanById(planId);
-
+export async function calcularPrima({ plan, riesgoDatos, tarifas, catalogoRamo }) {
   if (PLANES_NO_IMPLEMENTADOS.has(plan.nombre)) {
     const err = new Error(
       `El plan "${plan.nombre}" tarifica por saldo mensual — no se puede cotizar todavía sin desglose Prima/RPF/IVA confirmado.`
@@ -56,8 +54,6 @@ export async function calcularPrima({ planId, riesgoDatos }) {
     throw err;
   }
 
-  const tarifas = await coberturasRepository.findTarifasGenericoByPlanId(planId);
-  const catalogoRamo = await coberturasRepository.findCoberturasCatalogoByRamoId(plan.ramo_id);
   const catalogoPorCodigo = new Map(catalogoRamo.map((c) => [c.codigo, c]));
 
   let resultado;

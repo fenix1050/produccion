@@ -1,7 +1,5 @@
 export { calcularPlanPago } from './utils/plan-pago.js';
 import { sumarAjustes, topeEfectivo } from './utils/ajustes.js';
-import * as ramosRepository from '../repositories/ramos.repository.js';
-import * as coberturasRepository from '../repositories/coberturas.repository.js';
 
 // Códigos del catálogo (migración 012_seed_mrc.sql) cuya suma asegurada viene directo
 // del formulario (Capital Edificio / Capital Contenido).
@@ -52,15 +50,25 @@ const MINIMO_COBERTURAS_MRC = 3;
  * (hoy el caso de `sublimite_cctv`).
  *
  * @param {object} input
- * @param {number} input.planId
+ * @param {object} input.plan
  * @param {object} input.riesgoDatos - { rubro_actividad, capital_edificio, capital_contenido, ... }
+ * @param {object|null} input.rubro - Ya resuelto por cotizacion.service.js (resolverContextoRepositorios)
+ * @param {Array<object>} input.catalogoRamo - Catálogo completo del ramo, ya resuelto
+ * @param {Array<object>} input.tasasRamo - Tasas por cobertura del ramo, ya resueltas
  * @param {Array<{monto?: number, porcentaje?: number}>} [input.descuentos]
  * @param {Array<{monto?: number, porcentaje?: number}>} [input.recargos]
  * @returns {Promise<{prima: number, detalle: object, coberturas: Array<{codigo:string, nombre:string, monto:number}>}>}
  */
-export async function calcularPrima({ planId, riesgoDatos, descuentos = [], recargos = [], usuario }) {
-  const plan = await ramosRepository.findPlanById(planId);
-
+export async function calcularPrima({
+  plan,
+  riesgoDatos,
+  descuentos = [],
+  recargos = [],
+  usuario,
+  rubro,
+  catalogoRamo,
+  tasasRamo,
+}) {
   if (!plan.prima_tecnica_minima) {
     const err = new Error(
       `El plan "${plan.nombre}" todavía no tiene RPF/prima técnica mínima confirmados — no se puede cotizar.`
@@ -85,7 +93,6 @@ export async function calcularPrima({ planId, riesgoDatos, descuentos = [], reca
     throw err;
   }
 
-  const rubro = await coberturasRepository.findRubroPorNombre(riesgoDatos.rubro_actividad);
   if (!rubro) {
     const err = new Error(`Tipo de Riesgo "${riesgoDatos.rubro_actividad}" no encontrado en rubros_actividad.`);
     err.status = 422;
@@ -112,10 +119,8 @@ export async function calcularPrima({ planId, riesgoDatos, descuentos = [], reca
   // contra "Version 01 - Calculo Varios.xlsx", hoja MRC/DATOS: "Robo contenido" aparece dos
   // veces en una cotización real, Gs. 50.000.000 y Gs. 10.000.000, cada una con su propio
   // costo calculado por tasa).
-  const catalogoRamo = await coberturasRepository.findCoberturasCatalogoByRamoId(plan.ramo_id);
   const catalogoPorCodigo = new Map(catalogoRamo.map((c) => [c.codigo, c]));
 
-  const tasasRamo = await coberturasRepository.findTasasCoberturaRamo(plan.ramo_id);
   const tasaPorCodigo = new Map(
     tasasRamo.map((t) => [t.coberturas_catalogo?.codigo, { tasa_valor: t.tasa_valor, unidad: t.unidad }])
   );

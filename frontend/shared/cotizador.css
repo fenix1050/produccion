@@ -207,6 +207,62 @@ button {
   display: flex;
 }
 
+.topbar__user-menu-wrap {
+  position: relative;
+}
+
+.topbar__user-trigger {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: transparent;
+  border: none;
+  padding: 4px;
+  border-radius: 8px;
+  cursor: pointer;
+  font: inherit;
+  transition: background 0.15s;
+}
+
+.topbar__user-trigger:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.topbar__user-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 220px;
+  background: #fff;
+  border: 1px solid var(--tajy-border);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  padding: 6px;
+  z-index: 20;
+}
+
+.topbar__user-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  color: var(--tajy-ink);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+
+.topbar__user-menu-item:hover {
+  background: var(--tajy-red-soft);
+  color: var(--tajy-red);
+}
+
+.topbar__user-menu-item:hover .nav-item__badge {
+  color: var(--tajy-red);
+}
+
 .topbar__actions {
   display: flex;
   gap: 8px;

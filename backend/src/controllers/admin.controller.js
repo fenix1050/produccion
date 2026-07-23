@@ -36,7 +36,7 @@ export async function crearUsuario(req, res, next) {
 export async function editarUsuario(req, res, next) {
   try {
     const cambios = editarUsuarioSchema.parse(req.body);
-    const usuario = await adminService.editarUsuario(req.params.id, cambios);
+    const usuario = await adminService.editarUsuario(req.params.id, cambios, req.usuario);
     res.json(usuario);
   } catch (err) {
     next(err);
@@ -46,7 +46,16 @@ export async function editarUsuario(req, res, next) {
 export async function resetearPassword(req, res, next) {
   try {
     const { password } = resetPasswordSchema.parse(req.body);
-    await adminService.resetearPassword(req.params.id, password);
+    await adminService.resetearPassword(req.params.id, password, req.usuario);
+    res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function eliminarUsuario(req, res, next) {
+  try {
+    await adminService.eliminarUsuario(req.params.id, req.usuario);
     res.status(204).end();
   } catch (err) {
     next(err);
@@ -78,6 +87,15 @@ export async function editarRol(req, res, next) {
     const cambios = editarRolSchema.parse(req.body);
     const rol = await adminService.editarRol(req.params.id, cambios);
     res.json(rol);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function eliminarRol(req, res, next) {
+  try {
+    await adminService.eliminarRol(req.params.id);
+    res.status(204).end();
   } catch (err) {
     next(err);
   }

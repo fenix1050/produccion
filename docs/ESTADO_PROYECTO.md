@@ -1131,3 +1131,39 @@ al usuario admin verdadero. A partir de eso se hizo un endurecimiento puntual de
 - **Textos legales faltantes en 3 coberturas de MRC**: siguen pendientes de dato fuente de Kevin.
 - **Propuesta Formal**: la bienvenida ya la reserva como flujo futuro, pero sigue siendo placeholder;
   no hay pantalla funcional ni PDF final todavía.
+
+## 26. Auditoría de seguridad — hallazgos corregidos (2026-07-23)
+
+Se corrigieron 6 de 7 hallazgos de una auditoría de seguridad del backend, un commit por
+hallazgo, con la suite de tests (`npm test`, 19 tests) verde después de cada uno:
+
+- **[CRÍTICO] Escalada de privilegios en `editarUsuario`** — `asegurarPuedeModificarAdmin` solo
+  validaba el rol ACTUAL del usuario objetivo, nunca el rol RESULTANTE de aplicar `cambios.rol_id`
+  (sin restricción en el schema Zod). Un usuario con rol custom `puede_gestionar_usuarios=true`
+  podía autopromoverse a admin. Fix: nueva `asegurarPuedeAsignarRol` en
+  `backend/src/services/admin/usuarios.service.js` resuelve `rol_id` contra la tabla `roles` y
+  exige `solicitante.rol === 'admin'` si el destino es admin. Test agregado
+  (`usuarios.service.test.js`, con `node:test` + `mock.module`, requiere el flag
+  `--experimental-test-module-mocks` ya agregado al script `test` de `package.json`).
+- **[ALTO] CORS con fallback wildcard** — `backend/src/app.js` eliminó el `|| '*'`; ahora
+  `createApp()` lanza explícito al arrancar si falta `FRONTEND_URL`, mismo patrón que
+  `config/supabase.js` para las env vars de Supabase.
+- **[MEDIO] Sin cabeceras de seguridad HTTP** — se agregó `helmet()` como middleware global en
+  `app.js`, antes de las rutas.
+- **[MEDIO] Sin rate limiting en login** — nuevo `backend/src/middleware/rate-limit.js`
+  (`express-rate-limit`, key compuesta IP+email vía `ipKeyGenerator` para no penalizar una IP
+  compartida por los intentos fallidos de una sola cuenta), aplicado a `POST /login`.
+- **[MEDIO] `xlsx@0.18.5` desactualizado (CVEs de prototype pollution/ReDoS)** — se migró
+  `backend/src/services/tasas.service.js` (único consumidor real) de `xlsx` a `exceljs`,
+  manteniendo el contrato de `parsearYValidarTasasAuto`/`importarTasasAuto`. Verificado
+  end-to-end con un workbook de prueba generado con exceljs (4 pestañas, filas con huecos).
+  Nota: `exceljs` arrastra una dependencia transitiva de `uuid` con un advisory moderado (no
+  relacionado a parseo de archivos); no se forzó el downgrade que sugiere `npm audit fix --force`
+  porque instala una versión de `exceljs` más vieja, peor tradeoff que el moderado actual.
+- **[BAJO] Import de tasas sin validar tipo de archivo** — `admin-tasas.routes.js` agregó
+  `fileFilter` a `multer` (extensión `.xlsx` + mimetype OOXML); si no matchea, `req.file` queda
+  `undefined` y el controller ya lo traduce a 400.
+
+**No tocado a propósito** (fuera de este batch, por decisión explícita): el hallazgo de severidad
+Alto sobre JWT en `localStorage` sin revocación server-side — requiere decisión de arquitectura
+(cookie httpOnly + invalidación server-side), se aborda aparte.

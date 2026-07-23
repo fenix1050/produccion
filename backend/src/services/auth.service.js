@@ -57,7 +57,8 @@ export async function login(email, password) {
 }
 
 // Self-service: el propio usuario autenticado cambia su contraseña (a diferencia de
-// adminService.resetearPassword, acá SÍ se valida la contraseña actual con bcrypt.compare
+// usuariosService.resetearPassword (services/admin/usuarios.service.js), acá SÍ se valida
+// la contraseña actual con bcrypt.compare
 // antes de permitir el cambio). req.usuario (armado por middleware/auth.js) no trae
 // password_hash, por eso se vuelve a buscar el usuario completo por id acá.
 function passwordActualIncorrecta() {

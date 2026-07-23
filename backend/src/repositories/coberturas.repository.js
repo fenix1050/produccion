@@ -142,7 +142,7 @@ export async function eliminarPlanCobertura(id) {
  * Historial COMPLETO de tasas_cobertura_ramo de un ramo (todas las versiones por
  * vigente_desde, no solo la vigente) — a diferencia de findTasasCoberturaRamo, que
  * usan los calculadores en tiempo de cotización y trae todas las filas sin filtrar
- * por fecha (ver nota de bug en admin.service.js).
+ * por fecha (ver nota de bug en services/admin/tasas-cobertura.service.js).
  */
 export async function findTasasCoberturaRamoConHistorial(ramoId) {
   const { data, error } = await supabase

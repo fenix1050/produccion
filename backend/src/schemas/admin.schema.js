@@ -35,7 +35,7 @@ export const crearRolSchema = z.object({
 
 // Los roles nuevos (es_sistema = false) son totalmente editables, incluido el nombre.
 // Los roles del sistema (admin/agente) se rechazan en el service con 409 antes de
-// llegar a actualizar() — ver admin.service.js editarRol.
+// llegar a actualizar() — ver services/admin/roles.service.js editarRol.
 export const editarRolSchema = z.object({
   nombre: z.string().min(1).max(30).optional(),
   puede_editar_tasas: z.boolean().optional(),

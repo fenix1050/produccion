@@ -1,3 +1,4 @@
+import fs from 'node:fs/promises';
 import xlsx from 'xlsx';
 import { filaTasaCapitalSchema } from '../schemas/tasas.schema.js';
 import * as tasasRepository from '../repositories/tasas.repository.js';
@@ -59,20 +60,24 @@ export function parsearYValidarTasasAuto(workbook) {
  * @returns {Promise<Record<string, number>>} cantidad de filas importadas por plan
  */
 export async function importarTasasAuto(filePath) {
-  const workbook = xlsx.readFile(filePath);
-  const filasPorCodigo = parsearYValidarTasasAuto(workbook);
+  try {
+    const workbook = xlsx.readFile(filePath);
+    const filasPorCodigo = parsearYValidarTasasAuto(workbook);
 
-  const resumen = {};
+    const resumen = {};
 
-  for (const [codigo, filas] of Object.entries(filasPorCodigo)) {
-    const plan = await tasasRepository.findPlanByCodigoTasa(codigo);
-    if (!plan) {
-      throw httpError(400, `No hay ningún plan con codigo_tasa = "${codigo}"`);
+    for (const [codigo, filas] of Object.entries(filasPorCodigo)) {
+      const plan = await tasasRepository.findPlanByCodigoTasa(codigo);
+      if (!plan) {
+        throw httpError(400, `No hay ningún plan con codigo_tasa = "${codigo}"`);
+      }
+
+      await tasasRepository.reemplazarTasasCapitalDePlan(plan.id, filas);
+      resumen[plan.nombre] = filas.length;
     }
 
-    await tasasRepository.reemplazarTasasCapitalDePlan(plan.id, filas);
-    resumen[plan.nombre] = filas.length;
+    return resumen;
+  } finally {
+    await fs.unlink(filePath).catch(() => {});
   }
-
-  return resumen;
 }

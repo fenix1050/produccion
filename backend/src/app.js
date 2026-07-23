@@ -3,9 +3,16 @@ import cors from 'cors';
 import { router as apiRouter } from './routes/index.js';
 
 export function createApp() {
+  const { FRONTEND_URL } = process.env;
+  if (!FRONTEND_URL) {
+    throw new Error(
+      'Falta FRONTEND_URL en el .env — copiar .env.example y completar. No hay fallback a wildcard por seguridad.'
+    );
+  }
+
   const app = express();
 
-  app.use(cors({ origin: process.env.FRONTEND_URL || '*' }));
+  app.use(cors({ origin: FRONTEND_URL }));
   app.use(express.json({ limit: '2mb' }));
 
   app.get('/health', (_req, res) => res.json({ status: 'ok' }));

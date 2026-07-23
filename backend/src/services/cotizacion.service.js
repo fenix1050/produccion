@@ -6,6 +6,7 @@ import { getSchemaCotizar } from '../schemas/index.js';
 import { renderHtmlToPdf } from './pdf.service.js';
 import { buildOfertaHtml } from '../templates/oferta/index.js';
 import { httpError } from '../utils/http-error.js';
+import { withCache } from './cache.js';
 
 /**
  * Calcula una cotización SIN guardarla — usado para el preview en vivo del frontend.
@@ -268,6 +269,10 @@ async function validarYResolverContexto(body) {
  * aceptado a propósito — una query de más, sin impacto en el resultado numérico — a cambio de no
  * duplicar acá la lógica de "es Maquinaria Básico" que ya vive en incendio.calculator.js.
  */
+// Catálogo/tasas/rubro son datos que solo cambian cuando un admin edita coberturas, tasas
+// o rubros desde el panel admin (ver invalidarCacheCatalogos en esos endpoints) — el
+// cotizador los re-pide en cada preview mientras el agente edita el formulario, así que se
+// pasan por el caché en memoria de cache.js en vez de pegarle a Supabase en cada tecla.
 async function resolverContextoRepositorios(ramo, plan, riesgoDatos, capital) {
   switch (ramo.calculador) {
     case 'auto':
@@ -276,17 +281,25 @@ async function resolverContextoRepositorios(ramo, plan, riesgoDatos, capital) {
     case 'incendio': {
       const [rubro, catalogoRamo, tasasRamo] = await Promise.all([
         riesgoDatos?.rubro_actividad
-          ? coberturasRepository.findRubroPorNombre(riesgoDatos.rubro_actividad)
+          ? withCache(`rubro:${riesgoDatos.rubro_actividad}`, () =>
+              coberturasRepository.findRubroPorNombre(riesgoDatos.rubro_actividad)
+            )
           : null,
-        coberturasRepository.findCoberturasCatalogoByRamoId(plan.ramo_id),
-        coberturasRepository.findTasasCoberturaRamo(plan.ramo_id),
+        withCache(`catalogoRamo:${plan.ramo_id}`, () =>
+          coberturasRepository.findCoberturasCatalogoByRamoId(plan.ramo_id)
+        ),
+        withCache(`tasasRamo:${plan.ramo_id}`, () =>
+          coberturasRepository.findTasasCoberturaRamo(plan.ramo_id)
+        ),
       ]);
       return { rubro, catalogoRamo, tasasRamo };
     }
     case 'vida-ap': {
       const [tarifas, catalogoRamo] = await Promise.all([
         coberturasRepository.findTarifasGenericoByPlanId(plan.id),
-        coberturasRepository.findCoberturasCatalogoByRamoId(plan.ramo_id),
+        withCache(`catalogoRamo:${plan.ramo_id}`, () =>
+          coberturasRepository.findCoberturasCatalogoByRamoId(plan.ramo_id)
+        ),
       ]);
       return { tarifas, catalogoRamo };
     }

@@ -3,6 +3,7 @@ import * as rolesService from '../services/admin/roles.service.js';
 import * as planesService from '../services/admin/planes.service.js';
 import * as tasasCoberturaService from '../services/admin/tasas-cobertura.service.js';
 import * as rubrosActividadService from '../services/admin/rubros-actividad.service.js';
+import { invalidarCacheCatalogos } from '../services/cache.js';
 import {
   crearUsuarioSchema,
   editarUsuarioSchema,
@@ -158,6 +159,7 @@ export async function crearTasa(req, res, next) {
   try {
     const { ramo_id, ...datos } = crearTasaSchema.parse(req.body);
     const tasa = await tasasCoberturaService.crearVersionDeTasa(ramo_id, datos);
+    invalidarCacheCatalogos();
     res.status(201).json(tasa);
   } catch (err) {
     next(err);
@@ -167,6 +169,7 @@ export async function crearTasa(req, res, next) {
 export async function eliminarTasa(req, res, next) {
   try {
     await tasasCoberturaService.eliminarTasa(req.params.id);
+    invalidarCacheCatalogos();
     res.status(204).end();
   } catch (err) {
     next(err);
@@ -185,6 +188,7 @@ export async function editarRubroActividad(req, res, next) {
   try {
     const cambios = editarRubroActividadSchema.parse(req.body);
     const fila = await rubrosActividadService.editarRubroActividad(req.params.id, cambios);
+    invalidarCacheCatalogos();
     res.json(fila);
   } catch (err) {
     next(err);

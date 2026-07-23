@@ -56,30 +56,22 @@ export function requireRole(...roles) {
   };
 }
 
-export function requireTasasEdit(req, res, next) {
-  if (!req.usuario || !req.usuario.puede_editar_tasas) {
-    return next(httpError(403, 'No tenés permiso para editar tasas'));
-  }
-  next();
+function requirePermiso(campo, mensaje) {
+  return (req, res, next) => {
+    if (!req.usuario || !req.usuario[campo]) {
+      return next(httpError(403, mensaje));
+    }
+    next();
+  };
 }
 
-export function requireUsuariosEdit(req, res, next) {
-  if (!req.usuario || !req.usuario.puede_gestionar_usuarios) {
-    return next(httpError(403, 'No tenés permiso para gestionar usuarios'));
-  }
-  next();
-}
-
-export function requireCoberturasEdit(req, res, next) {
-  if (!req.usuario || !req.usuario.puede_editar_coberturas) {
-    return next(httpError(403, 'No tenés permiso para editar coberturas'));
-  }
-  next();
-}
-
-export function requirePlanesEdit(req, res, next) {
-  if (!req.usuario || !req.usuario.puede_editar_planes) {
-    return next(httpError(403, 'No tenés permiso para editar planes'));
-  }
-  next();
-}
+export const requireTasasEdit = requirePermiso('puede_editar_tasas', 'No tenés permiso para editar tasas');
+export const requireUsuariosEdit = requirePermiso(
+  'puede_gestionar_usuarios',
+  'No tenés permiso para gestionar usuarios'
+);
+export const requireCoberturasEdit = requirePermiso(
+  'puede_editar_coberturas',
+  'No tenés permiso para editar coberturas'
+);
+export const requirePlanesEdit = requirePermiso('puede_editar_planes', 'No tenés permiso para editar planes');

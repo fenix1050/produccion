@@ -8,7 +8,7 @@ import * as transporte from './transporte.calculator.js';
 import * as vidaAp from './vida-ap.calculator.js';
 
 // La clave coincide con la columna `ramos.calculador` en la base de datos.
-const REGISTRO = {
+export const REGISTRO = {
   auto,
   'auto-flota': autoFlota,
   incendio,

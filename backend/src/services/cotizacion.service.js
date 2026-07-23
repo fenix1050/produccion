@@ -68,8 +68,9 @@ export async function generarPdfOferta(id, usuario) {
   const cotizacion = await cotizacionesRepository.findCotizacionById(id);
   verificarPropiedad(cotizacion, usuario);
   const plan = await ramosRepository.findPlanById(cotizacion.plan_id);
-  const ramos = await ramosRepository.findRamosActivos();
-  const ramo = ramos.find((r) => r.id === cotizacion.ramo_id);
+  // Sin filtro de `activo`: la cotización ya existe (se creó cuando el ramo estaba activo),
+  // así que generar su PDF no debe fallar solo porque el ramo se dio de baja después.
+  const ramo = await ramosRepository.findRamoById(cotizacion.ramo_id);
 
   return renderOfertaPdf({ cotizacion, plan, ramo });
 }
@@ -245,9 +246,9 @@ async function insertarCoberturasYVariantes({ cotizacionId, ramoId, variantesCal
 
 async function validarYResolverContexto(body) {
   const plan = await ramosRepository.findPlanById(body.plan_id);
-  // TODO: reemplazar por un repository de ramos que traiga el ramo completo por id
-  const ramos = await ramosRepository.findRamosActivos();
-  const ramo = ramos.find((r) => r.id === plan.ramo_id);
+  // soloActivos: true — no se debe poder cotizar/editar sobre un ramo dado de baja
+  // (mismo comportamiento que el `.find()` sobre `findRamosActivos()` que reemplaza).
+  const ramo = await ramosRepository.findRamoById(plan.ramo_id, { soloActivos: true });
 
   const schema = getSchemaCotizar(ramo.calculador);
   const datosValidados = schema.parse(body);

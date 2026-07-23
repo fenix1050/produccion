@@ -6,6 +6,18 @@ export async function findRamosActivos() {
   return data;
 }
 
+// `soloActivos` preserva, cuando se pide, el mismo filtro que aplicaba `findRamosActivos()`
+// antes de que este método existiera. `validarYResolverContexto` (alta/edición de cotización)
+// lo necesita en true para no dejar cotizar un ramo dado de baja; `generarPdfOferta` lo deja en
+// false porque una cotización histórica no debe fallar solo porque el ramo se desactivó después.
+export async function findRamoById(ramoId, { soloActivos = false } = {}) {
+  let query = supabase.from('ramos').select('*').eq('id', ramoId);
+  if (soloActivos) query = query.eq('activo', true);
+  const { data, error } = await query.single();
+  if (error) throw error;
+  return data;
+}
+
 export async function findPlanesByRamoId(ramoId) {
   const { data, error } = await supabase
     .from('planes')

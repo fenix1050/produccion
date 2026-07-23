@@ -1,5 +1,6 @@
 export { calcularPlanPago } from './utils/plan-pago.js';
 import { sumarAjustes, topeEfectivo } from './utils/ajustes.js';
+import { httpError } from '../utils/http-error.js';
 
 // Códigos del catálogo (migración 012_seed_mrc.sql) cuya suma asegurada viene directo
 // del formulario (Capital Edificio / Capital Contenido).
@@ -70,12 +71,11 @@ export async function calcularPrima({
   tasasRamo,
 }) {
   if (!plan.prima_tecnica_minima) {
-    const err = new Error(
-      `El plan "${plan.nombre}" todavía no tiene RPF/prima técnica mínima confirmados — no se puede cotizar.`
+    throw httpError(
+      422,
+      `El plan "${plan.nombre}" todavía no tiene RPF/prima técnica mínima confirmados — no se puede cotizar.`,
+      'Este plan está pendiente de confirmación de tasas.'
     );
-    err.status = 422;
-    err.publicMessage = 'Este plan está pendiente de confirmación de tasas.';
-    throw err;
   }
 
   const capitalEdificio = riesgoDatos.capital_edificio ?? 0;
@@ -85,29 +85,30 @@ export async function calcularPrima({
     plan.responsabilidad_maxima_cotizable != null &&
     capitalEdificio + capitalContenido > plan.responsabilidad_maxima_cotizable
   ) {
-    const err = new Error(
-      `La suma de Capital Edificio + Capital Contenido supera la Responsabilidad Máx. Cotizable del plan "${plan.nombre}" (Gs. ${plan.responsabilidad_maxima_cotizable}).`
+    throw httpError(
+      422,
+      `La suma de Capital Edificio + Capital Contenido supera la Responsabilidad Máx. Cotizable del plan "${plan.nombre}" (Gs. ${plan.responsabilidad_maxima_cotizable}).`,
+      `El capital declarado supera el máximo cotizable para este plan (Gs. ${plan.responsabilidad_maxima_cotizable.toLocaleString('es-PY')}).`
     );
-    err.status = 422;
-    err.publicMessage = `El capital declarado supera el máximo cotizable para este plan (Gs. ${plan.responsabilidad_maxima_cotizable.toLocaleString('es-PY')}).`;
-    throw err;
   }
 
   if (!rubro) {
-    const err = new Error(`Tipo de Riesgo "${riesgoDatos.rubro_actividad}" no encontrado en rubros_actividad.`);
-    err.status = 422;
-    err.publicMessage = `El Tipo de Riesgo seleccionado no es válido.`;
-    throw err;
+    throw httpError(
+      422,
+      `Tipo de Riesgo "${riesgoDatos.rubro_actividad}" no encontrado en rubros_actividad.`,
+      `El Tipo de Riesgo seleccionado no es válido.`
+    );
   }
 
   const tasaEdificio = rubro.tasa_edificio;
   const tasaContenido = rubro.tasa_contenido;
 
   if (tasaEdificio == null || tasaContenido == null) {
-    const err = new Error(`Faltan tasa_edificio/tasa_contenido para el Tipo de Riesgo "${rubro.nombre}".`);
-    err.status = 422;
-    err.publicMessage = `El Tipo de Riesgo "${rubro.nombre}" todavía no tiene tasas confirmadas.`;
-    throw err;
+    throw httpError(
+      422,
+      `Faltan tasa_edificio/tasa_contenido para el Tipo de Riesgo "${rubro.nombre}".`,
+      `El Tipo de Riesgo "${rubro.nombre}" todavía no tiene tasas confirmadas.`
+    );
   }
 
   const costoEdificio = capitalEdificio * (tasaEdificio / 1000);
@@ -131,40 +132,38 @@ export async function calcularPrima({
   for (const linea of riesgoDatos.coberturas_adicionales ?? []) {
     const catalogoRow = catalogoPorCodigo.get(linea.codigo);
     if (!catalogoRow) {
-      const err = new Error(
-        `La cobertura "${linea.codigo}" no existe o no está activa en el catálogo del ramo MRC.`
+      throw httpError(
+        422,
+        `La cobertura "${linea.codigo}" no existe o no está activa en el catálogo del ramo MRC.`,
+        `La cobertura seleccionada no es válida.`
       );
-      err.status = 422;
-      err.publicMessage = `La cobertura seleccionada no es válida.`;
-      throw err;
     }
 
     if (linea.codigo === CODIGO_INCENDIO_EDIFICIO || linea.codigo === CODIGO_INCENDIO_CONTENIDO) {
-      const err = new Error(
-        `"${catalogoRow.nombre}" ya se cotiza mediante Capital Edificio/Contenido — no se puede agregar como cobertura adicional.`
+      throw httpError(
+        422,
+        `"${catalogoRow.nombre}" ya se cotiza mediante Capital Edificio/Contenido — no se puede agregar como cobertura adicional.`,
+        `"${catalogoRow.nombre}" ya está incluida a través del capital declarado.`
       );
-      err.status = 422;
-      err.publicMessage = `"${catalogoRow.nombre}" ya está incluida a través del capital declarado.`;
-      throw err;
     }
 
     const tasaInfo = tasaPorCodigo.get(linea.codigo);
     if (!tasaInfo || tasaInfo.tasa_valor == null) {
-      const err = new Error(`La cobertura "${catalogoRow.nombre}" todavía no tiene tasa confirmada.`);
-      err.status = 422;
-      err.publicMessage = `La cobertura "${catalogoRow.nombre}" todavía no tiene tasa confirmada.`;
-      throw err;
+      throw httpError(
+        422,
+        `La cobertura "${catalogoRow.nombre}" todavía no tiene tasa confirmada.`,
+        `La cobertura "${catalogoRow.nombre}" todavía no tiene tasa confirmada.`
+      );
     }
 
     // NOTA: unidad hoy siempre es 'permil' en MRC — si en el futuro aparece otra unidad
     // (ej. porcentaje directo) esta fórmula debe revisarse, no asumir permil ciegamente.
     if (tasaInfo.unidad !== 'permil') {
-      const err = new Error(
-        `Unidad de tasa "${tasaInfo.unidad}" no soportada todavía para "${catalogoRow.nombre}".`
+      throw httpError(
+        422,
+        `Unidad de tasa "${tasaInfo.unidad}" no soportada todavía para "${catalogoRow.nombre}".`,
+        `La cobertura "${catalogoRow.nombre}" tiene una unidad de tasa no soportada.`
       );
-      err.status = 422;
-      err.publicMessage = `La cobertura "${catalogoRow.nombre}" tiene una unidad de tasa no soportada.`;
-      throw err;
     }
 
     const costoLinea = linea.suma_asegurada * (tasaInfo.tasa_valor / 1000);
@@ -190,12 +189,11 @@ export async function calcularPrima({
     2 + coberturasAdicionalesValidadas.filter((c) => c.tipo_aplicacion === 'cobertura').length;
 
   if (cantidadCoberturas < MINIMO_COBERTURAS_MRC) {
-    const err = new Error(
-      `El plan "${plan.nombre}" requiere al menos ${MINIMO_COBERTURAS_MRC} coberturas — hay ${cantidadCoberturas} cargadas.`
+    throw httpError(
+      422,
+      `El plan "${plan.nombre}" requiere al menos ${MINIMO_COBERTURAS_MRC} coberturas — hay ${cantidadCoberturas} cargadas.`,
+      `Este plan requiere un mínimo de ${MINIMO_COBERTURAS_MRC} coberturas — agregá al menos una cobertura adicional para continuar.`
     );
-    err.status = 422;
-    err.publicMessage = `Este plan requiere un mínimo de ${MINIMO_COBERTURAS_MRC} coberturas — agregá al menos una cobertura adicional para continuar.`;
-    throw err;
   }
 
   const primaCalculada = costoEdificio + costoContenido + totalCoberturasAdicionales;

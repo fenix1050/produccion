@@ -1,5 +1,6 @@
 export { calcularPlanPago } from './utils/plan-pago.js';
 import { sumarAjustes } from './utils/ajustes.js';
+import { httpError } from '../utils/http-error.js';
 
 /**
  * @param {object} input
@@ -12,10 +13,11 @@ import { sumarAjustes } from './utils/ajustes.js';
  */
 export async function calcularPrima({ plan, capital, tasaCapital, descuentos = [], recargos = [] }) {
   if (!tasaCapital) {
-    const err = new Error(`No hay tasa configurada para capital ${capital} en el plan ${plan.id}`);
-    err.status = 422;
-    err.publicMessage = 'El capital ingresado está fuera de los rangos de tasa configurados.';
-    throw err;
+    throw httpError(
+      422,
+      `No hay tasa configurada para capital ${capital} en el plan ${plan.id}`,
+      'El capital ingresado está fuera de los rangos de tasa configurados.'
+    );
   }
 
   const primaBase = Math.max(capital * (tasaCapital.tasa_porcentaje / 100), plan.prima_tecnica_minima);

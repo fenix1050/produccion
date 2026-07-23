@@ -1,5 +1,6 @@
 export { calcularPlanPago } from './utils/plan-pago.js';
 import { sumarAjustes, topeEfectivo } from './utils/ajustes.js';
+import { httpError } from '../utils/http-error.js';
 
 const NOMBRE_PLAN_MAQUINARIA = 'MAQUINARIA BASICO';
 
@@ -56,12 +57,11 @@ export async function calcularPrima({
   tasasRamo,
 }) {
   if (!plan.prima_tecnica_minima) {
-    const err = new Error(
-      `El plan "${plan.nombre}" todavía no tiene RPF/prima técnica mínima confirmados — no se puede cotizar.`
+    throw httpError(
+      422,
+      `El plan "${plan.nombre}" todavía no tiene RPF/prima técnica mínima confirmados — no se puede cotizar.`,
+      'Este plan está pendiente de confirmación de tasas.'
     );
-    err.status = 422;
-    err.publicMessage = 'Este plan está pendiente de confirmación de tasas.';
-    throw err;
   }
 
   const catalogoPorCodigo = new Map(catalogoRamo.map((c) => [c.codigo, c]));
@@ -103,29 +103,30 @@ async function calcularEdificioYContenido({ plan, riesgoDatos, catalogoPorCodigo
     plan.responsabilidad_maxima_cotizable != null &&
     capitalEdificio + capitalContenido > plan.responsabilidad_maxima_cotizable
   ) {
-    const err = new Error(
-      `La suma de Capital Edificio + Capital Contenido supera la Responsabilidad Máx. Cotizable del plan "${plan.nombre}" (Gs. ${plan.responsabilidad_maxima_cotizable}).`
+    throw httpError(
+      422,
+      `La suma de Capital Edificio + Capital Contenido supera la Responsabilidad Máx. Cotizable del plan "${plan.nombre}" (Gs. ${plan.responsabilidad_maxima_cotizable}).`,
+      `El capital declarado supera el máximo cotizable para este plan (Gs. ${plan.responsabilidad_maxima_cotizable.toLocaleString('es-PY')}).`
     );
-    err.status = 422;
-    err.publicMessage = `El capital declarado supera el máximo cotizable para este plan (Gs. ${plan.responsabilidad_maxima_cotizable.toLocaleString('es-PY')}).`;
-    throw err;
   }
 
   if (!rubro) {
-    const err = new Error(`Tipo de Riesgo "${riesgoDatos.rubro_actividad}" no encontrado en rubros_actividad.`);
-    err.status = 422;
-    err.publicMessage = `El Tipo de Riesgo seleccionado no es válido.`;
-    throw err;
+    throw httpError(
+      422,
+      `Tipo de Riesgo "${riesgoDatos.rubro_actividad}" no encontrado en rubros_actividad.`,
+      `El Tipo de Riesgo seleccionado no es válido.`
+    );
   }
 
   const tasaEdificio = rubro.tasa_edificio;
   const tasaContenido = rubro.tasa_contenido;
 
   if (tasaEdificio == null || tasaContenido == null) {
-    const err = new Error(`Faltan tasa_edificio/tasa_contenido para el Tipo de Riesgo "${rubro.nombre}".`);
-    err.status = 422;
-    err.publicMessage = `El Tipo de Riesgo "${rubro.nombre}" todavía no tiene tasas confirmadas.`;
-    throw err;
+    throw httpError(
+      422,
+      `Faltan tasa_edificio/tasa_contenido para el Tipo de Riesgo "${rubro.nombre}".`,
+      `El Tipo de Riesgo "${rubro.nombre}" todavía no tiene tasas confirmadas.`
+    );
   }
 
   const costoEdificio = capitalEdificio * (tasaEdificio / 1000);
@@ -186,12 +187,11 @@ async function calcularMaquinariaBasico({ plan, riesgoDatos, catalogoPorCodigo, 
     plan.responsabilidad_maxima_cotizable != null &&
     capitalMaquinaria > plan.responsabilidad_maxima_cotizable
   ) {
-    const err = new Error(
-      `El Capital Maquinaria supera la Responsabilidad Máx. Cotizable del plan "${plan.nombre}" (${plan.responsabilidad_maxima_cotizable}).`
+    throw httpError(
+      422,
+      `El Capital Maquinaria supera la Responsabilidad Máx. Cotizable del plan "${plan.nombre}" (${plan.responsabilidad_maxima_cotizable}).`,
+      `El capital declarado supera el máximo cotizable para este plan.`
     );
-    err.status = 422;
-    err.publicMessage = `El capital declarado supera el máximo cotizable para este plan.`;
-    throw err;
   }
 
   const catalogoMaquinaria = catalogoPorCodigo.get(CODIGO_INCENDIO_MAQUINARIA);
@@ -202,10 +202,11 @@ async function calcularMaquinariaBasico({ plan, riesgoDatos, catalogoPorCodigo, 
   );
 
   if (!tasaMaquinaria || tasaMaquinaria.tasa_valor == null) {
-    const err = new Error(`Falta la tasa de "${CODIGO_INCENDIO_MAQUINARIA}" en tasas_cobertura_ramo.`);
-    err.status = 422;
-    err.publicMessage = 'Este plan todavía no tiene tasa confirmada.';
-    throw err;
+    throw httpError(
+      422,
+      `Falta la tasa de "${CODIGO_INCENDIO_MAQUINARIA}" en tasas_cobertura_ramo.`,
+      'Este plan todavía no tiene tasa confirmada.'
+    );
   }
 
   const costoMaquinaria = capitalMaquinaria * (tasaMaquinaria.tasa_valor / 1000);

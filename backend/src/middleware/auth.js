@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import * as usuariosRepository from '../repositories/usuarios.repository.js';
+import { httpError } from '../utils/http-error.js';
 
 /**
  * Verifica el JWT del header Authorization y adjunta `req.usuario`. Va a buscar el
@@ -12,25 +13,19 @@ export async function requireAuth(req, res, next) {
     const [scheme, token] = header.split(' ');
 
     if (scheme !== 'Bearer' || !token) {
-      const err = new Error('Falta el token de autenticación');
-      err.status = 401;
-      throw err;
+      throw httpError(401, 'Falta el token de autenticación');
     }
 
     let payload;
     try {
       payload = jwt.verify(token, process.env.JWT_SECRET);
     } catch {
-      const err = new Error('Token inválido o expirado');
-      err.status = 401;
-      throw err;
+      throw httpError(401, 'Token inválido o expirado');
     }
 
     const usuario = await usuariosRepository.findById(payload.sub);
     if (!usuario || !usuario.activo) {
-      const err = new Error('Usuario inválido o inactivo');
-      err.status = 401;
-      throw err;
+      throw httpError(401, 'Usuario inválido o inactivo');
     }
 
     req.usuario = {
@@ -55,9 +50,7 @@ export async function requireAuth(req, res, next) {
 export function requireRole(...roles) {
   return (req, res, next) => {
     if (!req.usuario || !roles.includes(req.usuario.rol)) {
-      const err = new Error('No tenés permiso para acceder a este recurso');
-      err.status = 403;
-      return next(err);
+      return next(httpError(403, 'No tenés permiso para acceder a este recurso'));
     }
     next();
   };
@@ -65,36 +58,28 @@ export function requireRole(...roles) {
 
 export function requireTasasEdit(req, res, next) {
   if (!req.usuario || !req.usuario.puede_editar_tasas) {
-    const err = new Error('No tenés permiso para editar tasas');
-    err.status = 403;
-    return next(err);
+    return next(httpError(403, 'No tenés permiso para editar tasas'));
   }
   next();
 }
 
 export function requireUsuariosEdit(req, res, next) {
   if (!req.usuario || !req.usuario.puede_gestionar_usuarios) {
-    const err = new Error('No tenés permiso para gestionar usuarios');
-    err.status = 403;
-    return next(err);
+    return next(httpError(403, 'No tenés permiso para gestionar usuarios'));
   }
   next();
 }
 
 export function requireCoberturasEdit(req, res, next) {
   if (!req.usuario || !req.usuario.puede_editar_coberturas) {
-    const err = new Error('No tenés permiso para editar coberturas');
-    err.status = 403;
-    return next(err);
+    return next(httpError(403, 'No tenés permiso para editar coberturas'));
   }
   next();
 }
 
 export function requirePlanesEdit(req, res, next) {
   if (!req.usuario || !req.usuario.puede_editar_planes) {
-    const err = new Error('No tenés permiso para editar planes');
-    err.status = 403;
-    return next(err);
+    return next(httpError(403, 'No tenés permiso para editar planes'));
   }
   next();
 }

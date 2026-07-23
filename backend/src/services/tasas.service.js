@@ -1,6 +1,7 @@
 import xlsx from 'xlsx';
 import { filaTasaCapitalSchema } from '../schemas/tasas.schema.js';
 import * as tasasRepository from '../repositories/tasas.repository.js';
+import { httpError } from '../utils/http-error.js';
 
 // Códigos de pestaña del Excel de tasas que corresponden a los 4 planes reales
 // de Auto (ver 010_planes_codigo_tasa.sql). El resto de las pestañas del archivo
@@ -22,9 +23,7 @@ export function parsearYValidarTasasAuto(workbook) {
   for (const codigo of CODIGOS_TASA_SOPORTADOS) {
     const hoja = workbook.Sheets[codigo];
     if (!hoja) {
-      const err = new Error(`No se encontró la pestaña "${codigo}" en el archivo de tasas`);
-      err.status = 400;
-      throw err;
+      throw httpError(400, `No se encontró la pestaña "${codigo}" en el archivo de tasas`);
     }
 
     // La hoja no tiene encabezados: cada fila es [capital_min, capital_max, tasa_porcentaje].
@@ -36,11 +35,10 @@ export function parsearYValidarTasasAuto(workbook) {
         const [capital_min, capital_max, tasa_porcentaje] = fila;
         const parseo = filaTasaCapitalSchema.safeParse({ capital_min, capital_max, tasa_porcentaje });
         if (!parseo.success) {
-          const err = new Error(
+          throw httpError(
+            400,
             `Pestaña "${codigo}", fila ${index + 1}: ${parseo.error.issues.map((i) => i.message).join('; ')}`
           );
-          err.status = 400;
-          throw err;
         }
         return parseo.data;
       });
@@ -69,9 +67,7 @@ export async function importarTasasAuto(filePath) {
   for (const [codigo, filas] of Object.entries(filasPorCodigo)) {
     const plan = await tasasRepository.findPlanByCodigoTasa(codigo);
     if (!plan) {
-      const err = new Error(`No hay ningún plan con codigo_tasa = "${codigo}"`);
-      err.status = 400;
-      throw err;
+      throw httpError(400, `No hay ningún plan con codigo_tasa = "${codigo}"`);
     }
 
     await tasasRepository.reemplazarTasasCapitalDePlan(plan.id, filas);

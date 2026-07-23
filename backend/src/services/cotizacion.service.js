@@ -5,6 +5,7 @@ import { getCalculador } from '../calculators/index.js';
 import { getSchemaCotizar } from '../schemas/index.js';
 import { renderHtmlToPdf } from './pdf.service.js';
 import { buildOfertaHtml } from '../templates/oferta/index.js';
+import { httpError } from '../utils/http-error.js';
 
 /**
  * Calcula una cotización SIN guardarla — usado para el preview en vivo del frontend.
@@ -88,12 +89,8 @@ export async function actualizarCotizacion(id, body, usuario) {
   verificarPropiedad(existente, usuario, 'No tenés permiso para editar esta cotización');
 
   if (Date.now() - new Date(existente.created_at).getTime() > VENTANA_EDICION_MS) {
-    const err = new Error(
-      'Ya pasaron más de 30 días desde que se generó esta cotización — no se puede editar.'
-    );
-    err.status = 422;
-    err.publicMessage = err.message;
-    throw err;
+    const mensaje = 'Ya pasaron más de 30 días desde que se generó esta cotización — no se puede editar.';
+    throw httpError(422, mensaje, mensaje);
   }
 
   const { plan, ramo, datosValidados } = await validarYResolverContexto(body);
@@ -105,10 +102,8 @@ export async function actualizarCotizacion(id, body, usuario) {
   // selectRamo) terminaría guardando riesgo_datos/coberturas de un ramo distinto bajo el
   // ramo_id original — detectado en review-risk/readability de esta misma feature.
   if (ramo.id !== existente.ramo_id) {
-    const err = new Error('No se puede cambiar el ramo de una cotización ya existente.');
-    err.status = 422;
-    err.publicMessage = err.message;
-    throw err;
+    const mensaje = 'No se puede cambiar el ramo de una cotización ya existente.';
+    throw httpError(422, mensaje, mensaje);
   }
 
   const calculador = getCalculador(ramo.calculador);
@@ -159,10 +154,7 @@ export async function generarPdfPropuestaFormal(_id) {
  */
 function verificarPropiedad(cotizacion, usuario, mensaje = 'No tenés permiso para ver esta cotización') {
   if (usuario.rol !== 'admin' && cotizacion.agente_id !== usuario.id) {
-    const err = new Error(mensaje);
-    err.status = 403;
-    err.publicMessage = mensaje;
-    throw err;
+    throw httpError(403, mensaje, mensaje);
   }
 }
 

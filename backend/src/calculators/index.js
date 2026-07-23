@@ -6,6 +6,7 @@ import * as mrc from './mrc.calculator.js';
 import * as tro from './tro.calculator.js';
 import * as transporte from './transporte.calculator.js';
 import * as vidaAp from './vida-ap.calculator.js';
+import { httpError } from '../utils/http-error.js';
 
 // La clave coincide con la columna `ramos.calculador` en la base de datos.
 export const REGISTRO = {
@@ -23,9 +24,7 @@ export const REGISTRO = {
 export function getCalculador(codigoRamo) {
   const calculador = REGISTRO[codigoRamo];
   if (!calculador) {
-    const err = new Error(`No hay calculador registrado para el ramo "${codigoRamo}"`);
-    err.status = 400;
-    throw err;
+    throw httpError(400, `No hay calculador registrado para el ramo "${codigoRamo}"`);
   }
   return calculador;
 }

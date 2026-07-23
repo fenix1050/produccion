@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs';
 import * as usuariosRepository from '../../repositories/usuarios.repository.js';
+import * as rolesRepository from '../../repositories/roles.repository.js';
 import { httpError } from '../../utils/http-error.js';
 import { BCRYPT_ROUNDS } from '../../utils/security.js';
 
@@ -34,12 +35,29 @@ function asegurarPuedeModificarAdmin(usuarioObjetivo, solicitante) {
   }
 }
 
+// cambios.rol_id llega sin restricción desde el schema Zod (cualquier id positivo): sin este
+// chequeo, un usuario con rol custom puede_gestionar_usuarios=true podía autopromoverse (o
+// promover a otro) al rol 'admin' mandando ese id directamente, evadiendo por completo el
+// chequeo de asegurarPuedeModificarAdmin (que solo mira el rol ACTUAL del objetivo).
+async function asegurarPuedeAsignarRol(rolId, solicitante) {
+  if (rolId === undefined) return;
+  const rolDestino = await rolesRepository.findById(rolId);
+  if (rolDestino?.nombre === 'admin' && solicitante.rol !== 'admin') {
+    throw httpError(
+      403,
+      'No tenés permiso para asignar el rol administrador',
+      'No tenés permiso para asignar el rol administrador'
+    );
+  }
+}
+
 export async function editarUsuario(id, cambios, solicitante) {
   const usuarioActual = await usuariosRepository.findById(id);
   if (!usuarioActual) {
     throw httpError(404, 'Usuario no encontrado');
   }
   asegurarPuedeModificarAdmin(usuarioActual, solicitante);
+  await asegurarPuedeAsignarRol(cambios.rol_id, solicitante);
 
   if (cambios.email && cambios.email !== usuarioActual.email) {
     const existente = await usuariosRepository.findByEmail(cambios.email);

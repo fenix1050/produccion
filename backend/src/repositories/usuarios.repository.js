@@ -24,7 +24,7 @@ function aplanar(usuario) {
 export async function findByEmail(email) {
   const { data, error } = await supabase
     .from('usuarios')
-    .select(`id, nombre, email, rol_id, ${CAMPOS_ROL}, activo, password_hash, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct`)
+    .select(`id, nombre, email, rol_id, ${CAMPOS_ROL}, activo, password_hash, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct, token_version`)
     .eq('email', email)
     .maybeSingle();
   if (error) throw error;
@@ -34,7 +34,7 @@ export async function findByEmail(email) {
 export async function findById(id) {
   const { data, error } = await supabase
     .from('usuarios')
-    .select(`id, nombre, email, rol_id, ${CAMPOS_ROL}, activo, password_hash, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct`)
+    .select(`id, nombre, email, rol_id, ${CAMPOS_ROL}, activo, password_hash, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct, token_version`)
     .eq('id', id)
     .maybeSingle();
   if (error) throw error;
@@ -90,6 +90,22 @@ export async function actualizar(id, cambios) {
 
 export async function actualizarPassword(id, password_hash) {
   const { error } = await supabase.from('usuarios').update({ password_hash }).eq('id', id);
+  if (error) throw error;
+}
+
+// Invalida de golpe cualquier JWT ya emitido para este usuario (requireAuth compara el
+// claim token_version del token contra este valor fresco de la DB). No usa un UPDATE con
+// expresión (`token_version + 1`) vía el cliente JS de Supabase porque el builder no
+// soporta referencias a columnas en el payload de `.update()` — se lee el valor actual y
+// se escribe el siguiente, aceptando la ventana de carrera teórica (mismo criterio que el
+// resto del repo, que no usa transacciones explícitas para estos UPDATE simples).
+export async function incrementarTokenVersion(id) {
+  const usuario = await findById(id);
+  if (!usuario) return;
+  const { error } = await supabase
+    .from('usuarios')
+    .update({ token_version: usuario.token_version + 1 })
+    .eq('id', id);
   if (error) throw error;
 }
 

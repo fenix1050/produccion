@@ -28,6 +28,13 @@ export async function requireAuth(req, res, next) {
       throw httpError(401, 'Usuario inválido o inactivo');
     }
 
+    // Compara contra el valor fresco de la DB, no contra el que traía el token viejo:
+    // logout, cambio de contraseña o reseteo por admin incrementan token_version, así que
+    // un token firmado con una versión anterior queda inválido aunque no haya expirado.
+    if (payload.token_version !== usuario.token_version) {
+      throw httpError(401, 'Token inválido o expirado');
+    }
+
     req.usuario = {
       id: usuario.id,
       rol: usuario.rol,

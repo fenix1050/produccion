@@ -4,7 +4,10 @@ import * as usuariosRepository from '../repositories/usuarios.repository.js';
 import { httpError } from '../utils/http-error.js';
 import { BCRYPT_ROUNDS } from '../utils/security.js';
 
-const JWT_EXPIRES_IN = '8h';
+// Acortado de 8h a 45m (2026-07-23, hardening de sesión): con token_version como
+// mecanismo de revocación server-side, ya no hace falta un TTL largo para tolerar la
+// falta de invalidación — un token robado ahora expira solo en minutos, no en horas.
+const JWT_EXPIRES_IN = '45m';
 
 // Mensaje genérico a propósito: no debe diferir según si el email existe o no,
 // para no filtrar qué emails están registrados en el sistema.
@@ -30,7 +33,12 @@ export async function login(email, password) {
   await usuariosRepository.actualizarUltimaSesion(usuario.id);
 
   const token = jwt.sign(
-    { sub: usuario.id, rol: usuario.rol, puede_editar_tasas: usuario.puede_editar_tasas },
+    {
+      sub: usuario.id,
+      rol: usuario.rol,
+      puede_editar_tasas: usuario.puede_editar_tasas,
+      token_version: usuario.token_version,
+    },
     process.env.JWT_SECRET,
     { expiresIn: JWT_EXPIRES_IN }
   );
@@ -77,4 +85,14 @@ export async function cambiarPassword(usuarioId, passwordActual, passwordNueva) 
 
   const password_hash = await bcrypt.hash(passwordNueva, BCRYPT_ROUNDS);
   await usuariosRepository.actualizarPassword(usuario.id, password_hash);
+  // Un cambio de contraseña propio debe cerrar cualquier otra sesión activa con la
+  // contraseña anterior (ej. un token robado que todavía no expiró).
+  await usuariosRepository.incrementarTokenVersion(usuario.id);
+}
+
+// Logout explícito: el único efecto es invalidar el token con el que se llamó (y
+// cualquier otro token vigente de este usuario) incrementando token_version. No hay
+// estado de sesión que borrar del lado server más allá de eso (Bearer, no cookies).
+export async function logout(usuarioId) {
+  await usuariosRepository.incrementarTokenVersion(usuarioId);
 }

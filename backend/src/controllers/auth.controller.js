@@ -31,3 +31,15 @@ export async function cambiarPassword(req, res, next) {
     next(err);
   }
 }
+
+// Invalida el token con el que se llamó (y cualquier otro vigente de este usuario) vía
+// token_version. req.usuario ya viene armado por requireAuth, que además ya validó que
+// el token es válido antes de llegar acá.
+export async function logout(req, res, next) {
+  try {
+    await authService.logout(req.usuario.id);
+    res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
+}

@@ -116,8 +116,8 @@ async function init() {
   }
 }
 
-function cerrarSesion() {
-  auth.clearSession();
+async function cerrarSesion() {
+  await auth.logout();
   window.location.href = '../login/';
 }
 

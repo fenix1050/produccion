@@ -5,8 +5,8 @@ if (!auth.isLoggedIn()) {
   window.location.href = '../login/';
 }
 
-document.getElementById('logout-link')?.addEventListener('click', (e) => {
+document.getElementById('logout-link')?.addEventListener('click', async (e) => {
   e.preventDefault();
-  auth.clearSession();
+  await auth.logout();
   window.location.href = '../login/';
 });

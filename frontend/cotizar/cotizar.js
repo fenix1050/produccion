@@ -358,8 +358,8 @@ function prefillDatosDesdeCotizacion(ramoNombre, plan, cotizacion) {
   if (cuotas != null) state.data.cuotas = cuotas;
 }
 
-function cerrarSesion() {
-  auth.clearSession();
+async function cerrarSesion() {
+  await auth.logout();
   window.location.href = '../login/';
 }
 

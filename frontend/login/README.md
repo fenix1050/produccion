@@ -84,4 +84,4 @@ Las 3 variantes comparten exactamente la misma tarjeta central; solo cambia el f
 - Íconos de mostrar/ocultar contraseña: dibujados en SVG inline dentro del archivo de diseño (no son imágenes externas) — se pueden recrear con cualquier librería de íconos (ej. un ojo / ojo tachado estándar).
 
 ## Files
-- `Login Tajy.dc.html` — prototipo completo. Las variantes finales a implementar son las secciones con id `3a`, `3b` y `3c` (buscar `id="3a"`, `id="3b"`, `id="3c"` en el archivo). El archivo también contiene exploraciones anteriores (`1a`–`1d`, `2a`–`2c`) que **no** forman parte de este handoff — se dejan solo como referencia de proceso.
+- `docs/mockups/Login Tajy.dc.html` — prototipo completo. Las variantes finales a implementar son las secciones con id `3a`, `3b` y `3c` (buscar `id="3a"`, `id="3b"`, `id="3c"` en el archivo). El archivo también contiene exploraciones anteriores (`1a`–`1d`, `2a`–`2c`) que **no** forman parte de este handoff — se dejan solo como referencia de proceso.

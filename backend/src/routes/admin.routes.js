@@ -41,6 +41,7 @@ router.delete('/plan-coberturas/:id', requireCoberturasEdit, adminController.eli
 // Tasas (gate: puede_editar_tasas)
 router.get('/ramos/:ramoId/tasas', requireTasasEdit, adminController.listarTasasDeRamo);
 router.post('/tasas', requireTasasEdit, adminController.crearTasa);
+router.delete('/tasas/:id', requireTasasEdit, adminController.eliminarTasa);
 router.get('/rubros-actividad', requireTasasEdit, adminController.listarRubrosActividad);
 router.put('/rubros-actividad/:id', requireTasasEdit, adminController.editarRubroActividad);
 

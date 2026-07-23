@@ -49,6 +49,16 @@ export async function editarUsuario(id, cambios, solicitante) {
   }
   asegurarPuedeModificarAdmin(usuarioActual, solicitante);
 
+  if (cambios.email && cambios.email !== usuarioActual.email) {
+    const existente = await usuariosRepository.findByEmail(cambios.email);
+    if (existente && String(existente.id) !== String(id)) {
+      const err = new Error('Ya existe un usuario con ese email');
+      err.status = 409;
+      err.publicMessage = err.message;
+      throw err;
+    }
+  }
+
   const usuario = await usuariosRepository.actualizar(id, cambios);
   if (!usuario) {
     const err = new Error('Usuario no encontrado');
@@ -226,6 +236,10 @@ export async function listarTasasDeRamo(ramoId) {
 
 export async function crearVersionDeTasa(ramoId, datos) {
   return coberturasRepository.crearTasaCoberturaRamo(ramoId, datos);
+}
+
+export async function eliminarTasa(id) {
+  return coberturasRepository.eliminarTasaCoberturaRamo(id);
 }
 
 // rubros_actividad no tiene vigente_desde/versionado (a diferencia de

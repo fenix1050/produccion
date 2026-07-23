@@ -160,6 +160,15 @@ export async function crearTasa(req, res, next) {
   }
 }
 
+export async function eliminarTasa(req, res, next) {
+  try {
+    await adminService.eliminarTasa(req.params.id);
+    res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function listarRubrosActividad(req, res, next) {
   try {
     res.json(await adminService.listarRubrosActividad(req.query.grupo));

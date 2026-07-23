@@ -154,6 +154,15 @@ export async function findTasasCoberturaRamoConHistorial(ramoId) {
   return data;
 }
 
+// Borra una versión puntual (ej. tasa cargada por error). No es un UPDATE de la fila —
+// la regla de "nunca UPDATE" es sobre el VALOR de una versión ya vigente; borrar una
+// versión mal cargada (típicamente la más reciente, antes de que se haya usado para
+// cotizar) simplemente hace que vuelva a regir la versión anterior.
+export async function eliminarTasaCoberturaRamo(id) {
+  const { error } = await supabase.from('tasas_cobertura_ramo').delete().eq('id', id);
+  if (error) throw error;
+}
+
 // Inserta una versión NUEVA — nunca UPDATE. Ver decisión de "versionado por
 // inserción" en docs/PLAN_ADMIN_FASE5.md.
 export async function crearTasaCoberturaRamo(ramoId, { cobertura_id, tasa_valor, unidad, vigente_desde }) {

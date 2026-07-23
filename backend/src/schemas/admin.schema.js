@@ -10,6 +10,8 @@ export const crearUsuarioSchema = z.object({
 });
 
 export const editarUsuarioSchema = z.object({
+  nombre: z.string().min(1, 'nombre es requerido').optional(),
+  email: z.string().email('email inválido').optional(),
   rol_id: z.number().int().positive().optional(),
   activo: z.boolean().optional(),
   // NULL = el usuario no tiene tope propio, se respeta el tope del plan tal cual.

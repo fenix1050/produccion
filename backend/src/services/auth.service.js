@@ -2,9 +2,9 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import * as usuariosRepository from '../repositories/usuarios.repository.js';
 import { httpError } from '../utils/http-error.js';
+import { BCRYPT_ROUNDS } from '../utils/security.js';
 
 const JWT_EXPIRES_IN = '8h';
-const BCRYPT_ROUNDS = 12;
 
 // Mensaje genérico a propósito: no debe diferir según si el email existe o no,
 // para no filtrar qué emails están registrados en el sistema.

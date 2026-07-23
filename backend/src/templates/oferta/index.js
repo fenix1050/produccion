@@ -18,7 +18,7 @@ export function ofertaDisponibleParaRamo(ramo) {
   return Boolean(BUILDERS_POR_CALCULADOR[ramo.calculador]);
 }
 
-export async function buildOfertaHtml({ cotizacion, plan, ramo }) {
+export async function buildOfertaHtml({ cotizacion, plan, ramo, page }) {
   const builder = BUILDERS_POR_CALCULADOR[ramo.calculador];
   if (!builder) {
     throw httpError(
@@ -33,8 +33,11 @@ export async function buildOfertaHtml({ cotizacion, plan, ramo }) {
 
   // El layout flex (3 bloques fijos por columna) no puede fragmentarse entre hojas — solo se
   // usa si entra en una sola página; si no, se cae al balanceado por column-count, que sí sabe
-  // paginar (ver mrc.js).
-  const alturaFlexMm = await measureContentHeightMm(paginaDosFlex, BASE_CSS);
+  // paginar (ver mrc.js). Se mide en la misma `page` que después renderiza el PDF final (la abre
+  // y cierra el caller, ver renderOfertaPdf en pdf.service.js) — measureContentHeightMm hace
+  // setContent con el candidato flex; buildOfertaHtml devuelve el HTML final para que el caller
+  // haga un segundo setContent con la página elegida antes de generar el PDF.
+  const alturaFlexMm = await measureContentHeightMm(page, paginaDosFlex, BASE_CSS);
   const entraEnUnaHoja = alturaFlexMm <= OFERTA_PAGE_HEIGHT_MM - MARGEN_SEGURIDAD_MM;
 
   if (!entraEnUnaHoja) {

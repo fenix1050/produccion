@@ -3,8 +3,7 @@ import * as cotizacionesRepository from '../repositories/cotizaciones.repository
 import * as coberturasRepository from '../repositories/coberturas.repository.js';
 import { getCalculador } from '../calculators/index.js';
 import { getSchemaCotizar } from '../schemas/index.js';
-import { renderHtmlToPdf } from './pdf.service.js';
-import { buildOfertaHtml } from '../templates/oferta/index.js';
+import { renderOfertaPdf } from './pdf.service.js';
 import { httpError } from '../utils/http-error.js';
 import { withCache } from './cache.js';
 
@@ -72,8 +71,7 @@ export async function generarPdfOferta(id, usuario) {
   const ramos = await ramosRepository.findRamosActivos();
   const ramo = ramos.find((r) => r.id === cotizacion.ramo_id);
 
-  const { html, headerTemplate, footerTemplate, margin } = await buildOfertaHtml({ cotizacion, plan, ramo });
-  return renderHtmlToPdf(html, { headerTemplate, footerTemplate, margin });
+  return renderOfertaPdf({ cotizacion, plan, ramo });
 }
 
 const VENTANA_EDICION_MS = 30 * 24 * 60 * 60 * 1000;

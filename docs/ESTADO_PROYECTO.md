@@ -478,9 +478,9 @@ fase:**
 ## 14. Cotizador de MRC end-to-end (plan Normal) — 2026-07-13
 
 Con el catálogo de MRC ya cerrado (sección 9), se implementó el primer calculador real del
-bloque priorizado y se conectó al frontend, siguiendo el diseño de referencia de
-`design_handoff_cotizador/` (handoff sumado en el mismo bloque de commits) adaptado a los ramos y
-datos reales del sistema.
+bloque priorizado y se conectó al frontend, siguiendo el diseño de referencia de un handoff de
+mockup (sumado en el mismo bloque de commits, luego migrado y eliminado tras la implementación de
+"Diseño 2") adaptado a los ramos y datos reales del sistema.
 
 - **`mrc.calculator.js`:** cubre solo `MULTIRRIESGO COMERCIO - NORMAL` (único plan con RPF y
   `prima_tecnica_minima` confirmados). Prima = `MAX(Capital_Edificio × Tasa(incendio_edificio) +

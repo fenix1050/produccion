@@ -4,9 +4,8 @@ import { escapeHtml } from '../shared/dom.js';
 import { renderSidebarFooter, renderTopbarUser } from '../shared/sidebar.js';
 
 // Cotizador Tajy — App Shell + Datos + Resultado (Fase 6, alcance MRC plan Normal).
-// Recreación en Vanilla JS del handoff de diseño `design_handoff_cotizador/Cotizador-B.dc.html`
-// (framework de mockup "x-dc" — NO se copia literal, es solo referencia visual/de copy).
-// La pantalla de Login del handoff no se implementa: no hay auth en el backend todavía.
+// Recreación en Vanilla JS del handoff de diseño original (mockup ya migrado y eliminado
+// tras la implementación de "Diseño 2" en frontend/cotizar).
 
 // ---- Metadata de ramos mostrados en el sidebar (5 ramos reales del sistema) ----
 // El código de 2 letras y el estado (disponible/pausa/próximamente) son decisión de UI —

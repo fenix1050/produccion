@@ -7,6 +7,7 @@ import * as rolesRepository from '../repositories/roles.repository.js';
 
 const BCRYPT_ROUNDS = 12;
 const CODIGO_UNIQUE_VIOLATION = '23505'; // Postgres: unique_violation
+const CODIGO_FOREIGN_KEY_VIOLATION = '23503'; // Postgres: foreign_key_violation
 
 // --- Usuarios ---
 
@@ -27,7 +28,27 @@ export async function crearUsuario({ nombre, email, rol_id, password }) {
   return usuariosRepository.crear({ nombre, email, rol_id, password_hash });
 }
 
-export async function editarUsuario(id, cambios) {
+// Un rol custom con puede_gestionar_usuarios no puede tocar (editar, desactivar, resetear
+// password) a un usuario admin — mismo criterio que eliminarUsuario más abajo. Un admin
+// editándose a sí mismo sigue permitido (acá solicitante.rol también es 'admin').
+function asegurarPuedeModificarAdmin(usuarioObjetivo, solicitante) {
+  if (usuarioObjetivo.rol === 'admin' && solicitante.rol !== 'admin') {
+    const err = new Error('No tenés permiso para modificar a un usuario administrador');
+    err.status = 403;
+    err.publicMessage = err.message;
+    throw err;
+  }
+}
+
+export async function editarUsuario(id, cambios, solicitante) {
+  const usuarioActual = await usuariosRepository.findById(id);
+  if (!usuarioActual) {
+    const err = new Error('Usuario no encontrado');
+    err.status = 404;
+    throw err;
+  }
+  asegurarPuedeModificarAdmin(usuarioActual, solicitante);
+
   const usuario = await usuariosRepository.actualizar(id, cambios);
   if (!usuario) {
     const err = new Error('Usuario no encontrado');
@@ -37,15 +58,54 @@ export async function editarUsuario(id, cambios) {
   return usuario;
 }
 
-export async function resetearPassword(id, password) {
+export async function resetearPassword(id, password, solicitante) {
   const usuario = await usuariosRepository.findById(id);
   if (!usuario) {
     const err = new Error('Usuario no encontrado');
     err.status = 404;
     throw err;
   }
+  asegurarPuedeModificarAdmin(usuario, solicitante);
+
   const password_hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
   await usuariosRepository.actualizarPassword(id, password_hash);
+}
+
+// solicitante: usuario autenticado que pide el borrado (req.usuario) — no puede eliminarse
+// a sí mismo (evita quedarse sin acceso por error) y, si el objetivo es rol 'admin', quien
+// pide el borrado también tiene que ser 'admin' — un rol custom con puede_gestionar_usuarios
+// (ej. "Jefe de Análisis de Riesgo") puede gestionar usuarios normales, pero no debería poder
+// borrar al admin real del sistema solo porque tiene ese permiso booleano.
+export async function eliminarUsuario(id, solicitante) {
+  const usuario = await usuariosRepository.findById(id);
+  if (!usuario) {
+    const err = new Error('Usuario no encontrado');
+    err.status = 404;
+    throw err;
+  }
+  if (String(id) === String(solicitante.id)) {
+    const err = new Error('No podés eliminar tu propio usuario');
+    err.status = 409;
+    err.publicMessage = err.message;
+    throw err;
+  }
+  if (usuario.rol === 'admin' && solicitante.rol !== 'admin') {
+    const err = new Error('No tenés permiso para eliminar a un usuario administrador');
+    err.status = 403;
+    err.publicMessage = err.message;
+    throw err;
+  }
+  try {
+    await usuariosRepository.eliminar(id);
+  } catch (err) {
+    if (err.code === CODIGO_FOREIGN_KEY_VIOLATION) {
+      const fk = new Error('Este usuario tiene cotizaciones asociadas y no se puede eliminar. Podés desactivarlo en su lugar.');
+      fk.status = 409;
+      fk.publicMessage = fk.message;
+      throw fk;
+    }
+    throw err;
+  }
 }
 
 // --- Roles (migración 031) ---
@@ -94,6 +154,36 @@ export async function editarRol(id, cambios) {
       dup.status = 409;
       dup.publicMessage = dup.message;
       throw dup;
+    }
+    throw err;
+  }
+}
+
+// Mismo criterio que editarRol: los roles del sistema son inmutables. Un rol custom en
+// uso (algún usuario con ese rol_id) tampoco se puede borrar — Postgres lo rechaza por
+// la FK usuarios.rol_id y acá lo traducimos a un 409 explicativo.
+export async function eliminarRol(id) {
+  const rol = await rolesRepository.findById(id);
+  if (!rol) {
+    const err = new Error('Rol no encontrado');
+    err.status = 404;
+    err.publicMessage = err.message;
+    throw err;
+  }
+  if (rol.es_sistema) {
+    const err = new Error('Este rol es del sistema y no se puede eliminar');
+    err.status = 409;
+    err.publicMessage = err.message;
+    throw err;
+  }
+  try {
+    await rolesRepository.eliminar(id);
+  } catch (err) {
+    if (err.code === CODIGO_FOREIGN_KEY_VIOLATION) {
+      const fk = new Error('Hay usuarios con este rol asignado. Reasignalos antes de eliminarlo.');
+      fk.status = 409;
+      fk.publicMessage = fk.message;
+      throw fk;
     }
     throw err;
   }

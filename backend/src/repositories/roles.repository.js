@@ -54,3 +54,8 @@ export async function actualizar(id, cambios) {
   if (error) throw error;
   return data;
 }
+
+export async function eliminar(id) {
+  const { error } = await supabase.from('roles').delete().eq('id', id);
+  if (error) throw error;
+}

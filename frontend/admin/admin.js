@@ -82,11 +82,13 @@ async function init() {
     window.location.href = '../login/';
     return;
   }
-  const usuario = auth.getUsuario();
-  if (usuario?.rol !== 'admin') {
-    // El panel admin es solo para rol 'admin' — a diferencia de un mensaje de acceso
-    // denegado, se redirige directo al cotizador (mismo patrón que la sesión expirada
-    // en shared/api.js, que también resuelve con un redirect en vez de una pantalla propia).
+  if (!auth.tieneAccesoAdmin()) {
+    // El panel admin es para rol 'admin' O cualquier rol custom con al menos un permiso
+    // parcial (migración 031) — antes exigía rol==='admin' a secas, lo que dejaba afuera
+    // a roles como "Jefe de Análisis de Riesgo" aunque tuvieran los 4 permisos en true.
+    // A quien no tiene ningún permiso se lo redirige directo al cotizador (mismo patrón
+    // que la sesión expirada en shared/api.js, que también resuelve con un redirect en
+    // vez de una pantalla propia).
     window.location.href = '../cotizar/';
     return;
   }
@@ -210,6 +212,20 @@ async function desactivarUsuario(usuarioId) {
   }
 }
 
+async function eliminarUsuario(usuarioId) {
+  const usuario = state.usuarios.find((u) => u.id === usuarioId);
+  if (!usuario) return;
+  if (!confirm(`¿Eliminar a ${usuario.nombre} definitivamente? Esta acción no se puede deshacer.`)) return;
+
+  try {
+    await api.delete(`/admin/usuarios/${usuarioId}`);
+    mostrarBanner('success', `${usuario.nombre} fue eliminado.`);
+    await cargarUsuarios();
+  } catch (err) {
+    mostrarBanner('error', err.message || 'No se pudo eliminar el usuario.');
+  }
+}
+
 async function guardarModalCrear(form) {
   const nombre = form.nombre.value.trim();
   const email = form.email.value.trim();
@@ -324,6 +340,20 @@ async function cargarRoles() {
   } finally {
     state.loadingRoles = false;
     renderApp();
+  }
+}
+
+async function eliminarRol(rolId) {
+  const rol = state.roles.find((r) => r.id === rolId);
+  if (!rol) return;
+  if (!confirm(`¿Eliminar el rol "${capitalizar(rol.nombre)}" definitivamente? Esta acción no se puede deshacer.`)) return;
+
+  try {
+    await api.delete(`/admin/roles/${rolId}`);
+    mostrarBanner('success', `Rol "${capitalizar(rol.nombre)}" eliminado.`);
+    await cargarRoles();
+  } catch (err) {
+    mostrarBanner('error', err.message || 'No se pudo eliminar el rol.');
   }
 }
 
@@ -886,7 +916,7 @@ function renderTopbar() {
         <div class="topbar__breadcrumb">
           <span class="topbar__crumb-item topbar__crumb-item--current">Panel de Administración</span>
         </div>
-        ${renderTopbarUser()}
+        ${renderTopbarUser('admin')}
       </div>
     </div>
   `;
@@ -993,9 +1023,14 @@ function renderTablaRoles() {
       <td>${crearBadge(r.puede_editar_tasas ? 'Sí' : 'No', r.puede_editar_tasas ? 'success' : 'neutral')}</td>
       <td>${crearBadge(r.puede_editar_planes ? 'Sí' : 'No', r.puede_editar_planes ? 'success' : 'neutral')}</td>
       <td>
-        ${r.es_sistema
-          ? '<button class="btn-outline" disabled title="Rol del sistema — no se puede editar">Editar</button>'
-          : `<button class="btn-outline" data-action="editar-rol" data-id="${r.id}">Editar</button>`}
+        <div class="admin-table__actions">
+          ${r.es_sistema
+            ? '<button class="btn-outline" disabled title="Rol del sistema — no se puede editar">Editar</button>'
+            : `<button class="btn-outline" data-action="editar-rol" data-id="${r.id}">Editar</button>`}
+          ${r.es_sistema
+            ? '<button class="btn-outline" disabled title="Rol del sistema — no se puede eliminar">Eliminar</button>'
+            : `<button class="btn-outline" data-action="eliminar-rol" data-id="${r.id}">Eliminar</button>`}
+        </div>
       </td>
     </tr>
   `).join('');
@@ -1028,7 +1063,18 @@ function renderTablaUsuarios() {
     return '<div class="empty-state__subtitle">Todavía no hay usuarios cargados.</div>';
   }
 
-  const filas = state.usuarios.map((u) => `
+  const usuarioActual = auth.getUsuario();
+  const usuarioActualId = usuarioActual?.id;
+  const solicitanteEsAdmin = usuarioActual?.rol === 'admin';
+
+  const filas = state.usuarios.map((u) => {
+    // Mismo criterio que el service (admin.service.js#asegurarPuedeModificarAdmin /
+    // #eliminarUsuario): un usuario admin solo puede ser tocado (editado, desactivado,
+    // password reseteado, eliminado) por otro admin, sin importar qué permisos booleanos
+    // tenga el rol custom de quien está mirando el panel.
+    const puedeModificar = u.rol !== 'admin' || solicitanteEsAdmin;
+    const puedeEliminar = u.id !== usuarioActualId && puedeModificar;
+    return `
     <tr>
       <td>${escapeHtml(u.nombre)}</td>
       <td>${escapeHtml(u.email)}</td>
@@ -1036,13 +1082,15 @@ function renderTablaUsuarios() {
       <td>${crearBadge(u.activo ? 'Activo' : 'Inactivo', u.activo ? 'success' : 'neutral')}</td>
       <td>
         <div class="admin-table__actions">
-          <button class="btn-outline" data-action="editar-usuario" data-id="${u.id}">Editar</button>
-          <button class="btn-outline" data-action="password-usuario" data-id="${u.id}">Resetear password</button>
-          ${u.activo ? `<button class="btn-outline" data-action="desactivar-usuario" data-id="${u.id}">Desactivar</button>` : ''}
+          ${puedeModificar ? `<button class="btn-outline" data-action="editar-usuario" data-id="${u.id}">Editar</button>` : ''}
+          ${puedeModificar ? `<button class="btn-outline" data-action="password-usuario" data-id="${u.id}">Resetear password</button>` : ''}
+          ${u.activo && puedeModificar ? `<button class="btn-outline" data-action="desactivar-usuario" data-id="${u.id}">Desactivar</button>` : ''}
+          ${puedeEliminar ? `<button class="btn-outline" data-action="eliminar-usuario" data-id="${u.id}">Eliminar</button>` : ''}
         </div>
       </td>
     </tr>
-  `).join('');
+  `;
+  }).join('');
 
   return `
     <table class="admin-table">
@@ -1791,6 +1839,10 @@ function onActionClick(e) {
     desactivarUsuario(Number(el.dataset.id));
     return;
   }
+  if (action === 'eliminar-usuario') {
+    eliminarUsuario(Number(el.dataset.id));
+    return;
+  }
   if (action === 'cerrar-modal' || action === 'cerrar-modal-backdrop') {
     cerrarModal();
     return;
@@ -1801,6 +1853,10 @@ function onActionClick(e) {
   }
   if (action === 'editar-rol') {
     abrirModalRolEditar(Number(el.dataset.id));
+    return;
+  }
+  if (action === 'eliminar-rol') {
+    eliminarRol(Number(el.dataset.id));
     return;
   }
   if (action === 'cerrar-modal-rol' || action === 'cerrar-modal-rol-backdrop') {

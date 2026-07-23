@@ -92,3 +92,8 @@ export async function actualizarPassword(id, password_hash) {
   const { error } = await supabase.from('usuarios').update({ password_hash }).eq('id', id);
   if (error) throw error;
 }
+
+export async function eliminar(id) {
+  const { error } = await supabase.from('usuarios').delete().eq('id', id);
+  if (error) throw error;
+}

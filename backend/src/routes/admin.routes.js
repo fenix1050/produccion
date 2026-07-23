@@ -24,11 +24,13 @@ router.get('/usuarios', requireUsuariosEdit, adminController.listarUsuarios);
 router.post('/usuarios', requireUsuariosEdit, adminController.crearUsuario);
 router.put('/usuarios/:id', requireUsuariosEdit, adminController.editarUsuario);
 router.put('/usuarios/:id/password', requireUsuariosEdit, adminController.resetearPassword);
+router.delete('/usuarios/:id', requireUsuariosEdit, adminController.eliminarUsuario);
 
 // Roles (migración 031) — sub-recurso de Usuarios, mismo gate que esa sección.
 router.get('/roles', requireUsuariosEdit, adminController.listarRoles);
 router.post('/roles', requireUsuariosEdit, adminController.crearRol);
 router.put('/roles/:id', requireUsuariosEdit, adminController.editarRol);
+router.delete('/roles/:id', requireUsuariosEdit, adminController.eliminarRol);
 
 // Coberturas por plan (gate: puede_editar_coberturas)
 router.get('/planes/:planId/coberturas', requireCoberturasEdit, adminController.listarCoberturasDePlan);

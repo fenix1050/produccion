@@ -94,6 +94,22 @@ export const api = {
   getBlob: (path) => requestBlob(path),
 };
 
+// Un usuario tiene algo que hacer en el panel admin si es rol 'admin' (acceso total) O
+// tiene al menos uno de los 4 permisos parciales de un rol custom (migración 031) — mismo
+// criterio que ya usa admin.js para filtrar qué secciones mostrarle una vez adentro
+// (seccionesVisibles), pero acá decide si vale la pena mostrarle la puerta de entrada.
+function tieneAccesoAdmin() {
+  const usuario = getUsuario();
+  if (!usuario) return false;
+  return (
+    usuario.rol === 'admin' ||
+    Boolean(usuario.puede_gestionar_usuarios) ||
+    Boolean(usuario.puede_editar_coberturas) ||
+    Boolean(usuario.puede_editar_tasas) ||
+    Boolean(usuario.puede_editar_planes)
+  );
+}
+
 export const auth = {
   getToken,
   setToken,
@@ -101,4 +117,5 @@ export const auth = {
   setUsuario,
   clearSession,
   isLoggedIn: () => Boolean(getToken()),
+  tieneAccesoAdmin,
 };

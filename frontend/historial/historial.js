@@ -263,7 +263,6 @@ function renderApp() {
     </div>
     ${state.modal ? renderModalDetalle() : ''}
   `;
-  bindEvents();
 }
 
 function renderTopbar() {
@@ -490,35 +489,49 @@ function renderModalDetalle() {
 }
 
 // ---------------------------------------------------------------------------
-// Eventos
+// Eventos — delegación única sobre #app (registrada una sola vez, junto al
+// init() del archivo). renderApp() reemplaza el innerHTML de #app en cada
+// render pero no el nodo #app en sí, así que estos listeners sobreviven a
+// cada re-render sin necesidad de volver a engancharlos (mismo patrón que
+// cotizar.js, líneas ~1590-1672, y admin.js).
 // ---------------------------------------------------------------------------
 
-function bindEvents() {
-  const form = document.getElementById('historial-filtros-form');
-  if (form) {
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      state.filtros.ramo_id = form.ramo_id.value;
-      state.filtros.cliente = form.cliente.value.trim();
-      state.filtros.fecha_desde = form.fecha_desde.value;
-      state.filtros.fecha_hasta = form.fecha_hasta.value;
-      state.filtros.estado = form.estado.value;
-      aplicarFiltros();
-    });
-  }
-
-  app.querySelectorAll('[data-action]').forEach((el) => {
-    el.addEventListener('click', onActionClick);
-  });
-
-  const backdrop = app.querySelector('.admin-modal-backdrop');
-  if (backdrop) {
-    backdrop.querySelector('.admin-modal')?.addEventListener('click', (e) => e.stopPropagation());
-  }
+// Respeta data-stop-propagation (el modal): si el click ocurrió dentro del
+// modal pero no sobre un elemento con su propio data-action, no debe
+// "escapar" hacia el data-action del backdrop que lo contiene (antes evitado
+// con e.stopPropagation() en el modal en cada bind).
+function resolveActionTarget(e) {
+  const target = e.target.closest('[data-action]');
+  if (!target || target.disabled) return null;
+  const stopEl = e.target.closest('[data-stop-propagation]');
+  if (stopEl && !stopEl.contains(target)) return null;
+  return target;
 }
 
-function onActionClick(e) {
-  const el = e.currentTarget;
+function onAppClick(e) {
+  const target = resolveActionTarget(e);
+  if (!target) return;
+  onActionClick(target);
+}
+
+function onAppSubmit(e) {
+  if (e.target.id !== 'historial-filtros-form') return;
+  e.preventDefault();
+  const form = e.target;
+  state.filtros.ramo_id = form.ramo_id.value;
+  state.filtros.cliente = form.cliente.value.trim();
+  state.filtros.fecha_desde = form.fecha_desde.value;
+  state.filtros.fecha_hasta = form.fecha_hasta.value;
+  state.filtros.estado = form.estado.value;
+  aplicarFiltros();
+}
+
+function registrarEventos() {
+  app.addEventListener('click', onAppClick);
+  app.addEventListener('submit', onAppSubmit);
+}
+
+function onActionClick(el) {
   const action = el.dataset.action;
 
   if (action === 'logout') {
@@ -554,4 +567,5 @@ function onActionClick(e) {
   }
 }
 
+registrarEventos();
 init();

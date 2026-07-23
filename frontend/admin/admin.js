@@ -922,7 +922,6 @@ function renderApp() {
     ${state.modalTasa ? renderModalTasa() : ''}
     ${state.modalCobertura ? renderModalCobertura() : ''}
   `;
-  bindEvents();
 
   const contenido = app.querySelector('.admin-content');
   if (contenido) contenido.scrollTop = scrollAnterior;
@@ -1770,71 +1769,78 @@ function renderModalTasa() {
 }
 
 // ---------------------------------------------------------------------------
-// Eventos
+// Eventos — delegación única sobre #app (registrada una sola vez más abajo,
+// junto al init() del archivo). renderApp() reemplaza el innerHTML de #app en
+// cada render pero no el nodo #app en sí, así que estos listeners sobreviven
+// a cada re-render sin necesidad de volver a engancharlos (mismo patrón que
+// cotizar.js, líneas ~1590-1672).
 // ---------------------------------------------------------------------------
 
-function bindEvents() {
-  app.querySelectorAll('[data-action]').forEach((el) => {
-    const evento = el.tagName === 'SELECT' || el.tagName === 'INPUT' ? 'change' : 'click';
-    el.addEventListener(evento, onActionClick);
-  });
+// Resuelve el elemento [data-action] real a partir del target del evento,
+// respetando data-stop-propagation: si el click ocurrió dentro de un
+// contenedor marcado (el modal) pero no sobre un elemento con su propio
+// data-action, no debe "escapar" hacia el data-action del backdrop que lo
+// contiene (antes evitado con e.stopPropagation() en el modal en cada bind).
+function resolveActionTarget(e) {
+  const target = e.target.closest('[data-action]');
+  if (!target || target.disabled) return null;
+  const stopEl = e.target.closest('[data-stop-propagation]');
+  if (stopEl && !stopEl.contains(target)) return null;
+  return target;
+}
 
-  app.querySelectorAll('[data-form-action]').forEach((form) => {
-    form.addEventListener('submit', onInlineFormSubmit);
-  });
+function onAppClick(e) {
+  const target = resolveActionTarget(e);
+  if (!target) return;
+  // SELECT/INPUT con data-action se despachan por 'change' (ver onAppChange),
+  // no acá, para no disparar la acción dos veces (mismo criterio que el
+  // bindEvents() original: evento = SELECT/INPUT ? 'change' : 'click').
+  if (target.tagName === 'SELECT' || target.tagName === 'INPUT') return;
+  onActionClick(target);
+}
 
-  const backdrop = app.querySelector('.admin-modal-backdrop');
-  if (backdrop) {
-    backdrop.querySelector('.admin-modal')?.addEventListener('click', (e) => e.stopPropagation());
+function onAppChange(e) {
+  const target = resolveActionTarget(e);
+  if (!target) return;
+  if (target.tagName !== 'SELECT' && target.tagName !== 'INPUT') return;
+  onActionClick(target);
+}
+
+function onAppSubmit(e) {
+  const inlineForm = e.target.closest('[data-form-action]');
+  if (inlineForm) {
+    e.preventDefault();
+    onInlineFormSubmit(inlineForm);
+    return;
   }
-
-  const form = document.getElementById('admin-modal-form');
-  if (form) {
-    form.addEventListener('submit', onModalSubmit);
+  if (e.target.id === 'admin-modal-form') {
+    e.preventDefault();
+    onModalSubmit(e.target);
+    return;
   }
-
-  const backdropTasa = app.querySelector('.admin-modal-backdrop[data-action="cerrar-modal-tasa-backdrop"]');
-  if (backdropTasa) {
-    backdropTasa.querySelector('.admin-modal')?.addEventListener('click', (e) => e.stopPropagation());
+  if (e.target.id === 'admin-modal-tasa-form') {
+    e.preventDefault();
+    guardarModalTasa(e.target);
+    return;
   }
-
-  const formTasa = document.getElementById('admin-modal-tasa-form');
-  if (formTasa) {
-    formTasa.addEventListener('submit', (e) => {
-      e.preventDefault();
-      guardarModalTasa(e.target);
-    });
+  if (e.target.id === 'admin-modal-cobertura-form') {
+    e.preventDefault();
+    guardarModalCobertura(e.target);
+    return;
   }
-
-  const backdropCobertura = app.querySelector('.admin-modal-backdrop[data-action="cerrar-modal-cobertura-backdrop"]');
-  if (backdropCobertura) {
-    backdropCobertura.querySelector('.admin-modal')?.addEventListener('click', (e) => e.stopPropagation());
-  }
-
-  const formCobertura = document.getElementById('admin-modal-cobertura-form');
-  if (formCobertura) {
-    formCobertura.addEventListener('submit', (e) => {
-      e.preventDefault();
-      guardarModalCobertura(e.target);
-    });
-  }
-
-  const backdropRol = app.querySelector('.admin-modal-backdrop[data-action="cerrar-modal-rol-backdrop"]');
-  if (backdropRol) {
-    backdropRol.querySelector('.admin-modal')?.addEventListener('click', (e) => e.stopPropagation());
-  }
-
-  const formRol = document.getElementById('admin-modal-rol-form');
-  if (formRol) {
-    formRol.addEventListener('submit', (e) => {
-      e.preventDefault();
-      guardarModalRol(e.target);
-    });
+  if (e.target.id === 'admin-modal-rol-form') {
+    e.preventDefault();
+    guardarModalRol(e.target);
   }
 }
 
-function onActionClick(e) {
-  const el = e.currentTarget;
+function registrarEventos() {
+  app.addEventListener('click', onAppClick);
+  app.addEventListener('change', onAppChange);
+  app.addEventListener('submit', onAppSubmit);
+}
+
+function onActionClick(el) {
   const action = el.dataset.action;
 
   if (action === 'select-seccion') {
@@ -1990,9 +1996,7 @@ function onActionClick(e) {
   }
 }
 
-function onInlineFormSubmit(e) {
-  e.preventDefault();
-  const form = e.target;
+function onInlineFormSubmit(form) {
   const accion = form.dataset.formAction;
   if (accion === 'prima-tecnica-minima') {
     guardarPrimaTecnicaMinima(form.dataset.id, form);
@@ -2005,13 +2009,12 @@ function onInlineFormSubmit(e) {
   }
 }
 
-function onModalSubmit(e) {
-  e.preventDefault();
-  const form = e.target;
+function onModalSubmit(form) {
   const tipo = state.modal.tipo;
   if (tipo === 'crear') guardarModalCrear(form);
   else if (tipo === 'editar') guardarModalEditar(form);
   else if (tipo === 'password') guardarModalPassword(form);
 }
 
+registrarEventos();
 init();

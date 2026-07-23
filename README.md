@@ -13,13 +13,13 @@ correlativo y numeración progresiva por rama.
 > Desarrollo por fases — ver el estado real de avance, decisiones tomadas y pendientes en
 > [`docs/ESTADO_PROYECTO.md`](docs/ESTADO_PROYECTO.md).
 
-## Ramos — estado actual (2026-07-20)
+## Ramos — estado actual (2026-07-23)
 
 | Rama | Estado | Detalles |
 |---|---|---|
-| **Multirriesgo Comercio** (MRC) | 🟢 **Producción** | Plan Normal cotiza end-to-end con Carta Oferta en PDF. Coberturas adicionales repetibles (incluidos sublímites: murallas, granizo, agua, equipos electrónicos). Panel admin: editor de tasas por Tipo de Riesgo, permisos granulares por sección. Tope de descuento/recargo por usuario. RPF confirmado para plan Normal; "Comercio Protección Total" desactivado (sin RPF). |
-| **Incendio** | 🟡 **Listo para cotizar** | Catálogo completo (2 planes, 5 coberturas). RPF confirmado (plano: Contado 0%, Cobrador 1.6%, Boca 1.35%, Tarjeta 1%). Falta calculador `incendio.js` y template de Carta Oferta (pendiente texto oficial). |
-| **Vida y Accidentes Personales** | 🟡 **Listo para cotizar** | Catálogo completo (7 planes, 11 coberturas, 44 filas de tarifación por edad). RPF confirmado (igual a Incendio). Falta calculador `vida-ap.js` y template de Carta Oferta (pendiente texto oficial). |
+| **Multirriesgo Comercio** (MRC) | 🟢 **Producción** | Plan Normal cotiza end-to-end con Carta Oferta en PDF. Coberturas adicionales repetibles (incluidos sublímites: murallas, granizo, agua, equipos electrónicos). Carta Oferta ajustada a tamaño Oficio real. `/frontend/cotizar` ya está rediseñado (Diseño 2) con stepper, panel en vivo y vista Detalle del plan reorganizada. RPF confirmado para plan Normal; `COMERCIO PROTECCION TOTAL` sigue desactivado (sin RPF). |
+| **Incendio** | 🟡 **Datos cerrados / calculador pendiente** | Catálogo completo (2 planes, 5 coberturas). RPF confirmado (plano: Contado 0%, Cobrador 1.6%, Boca 1.35%, Tarjeta 1%). Falta calculador `incendio.js` y template de Carta Oferta (pendiente texto oficial). |
+| **Vida y Accidentes Personales** | 🟡 **Datos cerrados / calculador pendiente** | Catálogo completo (7 planes, 11 coberturas, 44 filas de tarifación por edad). RPF confirmado (igual a Incendio). Falta calculador `vida-ap.js` y template de Carta Oferta (pendiente texto oficial). |
 | Auto individual | ⏸ Pausado | Schema y calculador completos (Fase 1). Pausado por prioridad del cliente — se retoma si se pide. |
 | Auto Flota | ⏸ Pausado | Planificado en Fase 2. Depende de retomar Auto individual. |
 | Multirriesgo Hogar | ⚪ Futuro | Planificado. |
@@ -34,17 +34,19 @@ Antes de tocar código, leé en este orden:
 2. **[`docs/PLAN_DESARROLLO.md`](docs/PLAN_DESARROLLO.md)** — arquitectura completa, schema SQL, motor de cálculo por ramo (fórmulas de prima/RPF/IVA/plan de pago), decisiones de diseño.
 3. **[`docs/ESTADO_PROYECTO.md`](docs/ESTADO_PROYECTO.md)** — **Documento de traspaso**: qué está implementado hoy (sección por sección), decisiones tomadas y por qué, pendientes abiertos, historial de cambios.
 
-**Nota:** `docs/ESTADO_PROYECTO.md` es el único documento que se actualiza con cada cambio importante — los otros dos (`CLAUDE.md`, `PLAN_DESARROLLO.md`) son referencias estables de arquitectura y reglas.
+**Nota:** `docs/ESTADO_PROYECTO.md` es el documento de traspaso más detallado, pero `CLAUDE.md` y `PLAN_DESARROLLO.md` también se mantienen sincronizados cuando cambia el estado real del proyecto.
 
 ## Características principales
 
 ### Cotizador (`/frontend/cotizar`)
+- Pantalla de bienvenida post-login (`/frontend/bienvenida`) para elegir acción y ramo antes de entrar al cotizador.
 - Selección de ramo (MRC/Incendio/Vida-AP funcionales; Auto pausado; Hogar próximamente).
 - Plan y coberturas: coberturas fijas + adicionales repetibles (mismo código, distinta suma asegurada).
 - Cálculo en vivo de prima, RPF, IVA y plan de pago (Contado 0% / Cobrador 1.6% / Boca de Cobranza 1.35% / Tarjeta 1%).
 - Descuentos y recargos manuales (tope por plan + tope individual por usuario, gana el más restrictivo).
 - **Carta Oferta en PDF** (MRC operativo; Incendio/Vida-AP pendientes de template).
 - MRC: premium experience (3 coberturas mín., responsabilidad máxima asegurable, Prima Técnica Mínima silenciosa).
+- UI visual ya migrada a **Diseño 2**: app shell nuevo, panel "Cotización en vivo" rediseñado, Detalle del plan en layout de 2 columnas/card fija, exclusiones visibles desde Datos.
 
 ### Panel Admin (`/frontend/admin`)
 - **Autenticación JWT** independiente, tokens auto-renovables.
@@ -53,12 +55,14 @@ Antes de tocar código, leé en este orden:
   - Usuarios se asignan a un rol (no booleanos sueltos).
   - Roles `admin`/`agente` del sistema no se pueden renombrar (inmutables).
 - **Secciones** (visibles solo si usuario tiene permiso):
-  - **Usuarios:** CRUD, resetear password, desactivar, tope de descuento/recargo individual.
+  - **Usuarios:** CRUD, resetear password, desactivar, eliminar si no tiene relaciones, tope de descuento/recargo individual.
   - **Coberturas por plan:** `plan_coberturas` (incluida por defecto, monto).
   - **Tasas:** fijas por cobertura (`tasas_cobertura_ramo`) + por Tipo de Riesgo (`rubros_actividad.tasa_edificio`/`tasa_contenido`, MRC/Incendio).
   - **Planes:** Prima Técnica Mínima, topología, responsabilidad máxima cotizable.
   - **Roles:** CRUD (custom roles solo; `admin`/`agente` protegidos).
 - Tope de descuento/recargo: `MIN(tope_plan, tope_usuario)` (always el más restrictivo).
+- **Guard de seguridad real:** ningún rol no-admin puede editar/desactivar/resetear/eliminar a un usuario admin, aunque tenga permisos sobre usuarios.
+- Acceso al panel movido al menú de perfil/topbar; la card de acceso también aparece en bienvenida solo si el usuario tiene permiso real.
 
 ### Historial y búsqueda (Fase 5 implementada)
 - Listado de cotizaciones: Número / Cliente / Ramo / Plan / Fecha / Estado / Prima.
@@ -68,6 +72,7 @@ Antes de tocar código, leé en este orden:
 - Descarga de Carta Oferta en PDF (disponible si ramo tiene calculador + template; MRC funcional).
 - **Permisos:** usuarios no-admin ven solo sus cotizaciones (IDOR cerrado); admin ve todas.
 - **Edición:** reabre el cotizador (mismo formulario) con ventana de 30 días desde creación.
+- UI pulida: acciones con mejor jerarquía visual, estados con color semántico y botón de PDF protegido contra doble click.
 
 ## Estructura
 
@@ -77,6 +82,7 @@ Antes de tocar código, leé en este orden:
                 Generador de PDF con Puppeteer
 
 /frontend       Vanilla JS (sin framework, sin build step)
+                /bienvenida       Selector post-login (acción + ramo)
                 /cotizar           Flujo de cotización
                 /admin             Panel admin con JWT + permisos granulares
                 /historial         Listado y búsqueda (Fase 5)
@@ -173,6 +179,7 @@ npx serve -l 5000 .
 
 ### URLs locales
 
+- Bienvenida: `http://localhost:5000/frontend/bienvenida/`
 - Cotizador: `http://localhost:5000/frontend/cotizar/`
 - Panel admin: `http://localhost:5000/frontend/admin/`
 - API backend: `http://localhost:3000/api/...`
@@ -181,7 +188,10 @@ El puerto `:5000` está hardcodeado en `backend/.env` para CORS — cambiar el p
 
 ### Acceder al panel admin
 
-Usuario de prueba: `test` / `password` (crear manualmente en Supabase `usuarios` si no existe).
+Usuario de prueba habitual: `test@test.com` / `a.123456`.
+
+> Si ese usuario no existe en tu base o fue limpiado, pedile a Kevin el acceso vigente o crealo
+> manualmente para ambiente local. No asumir que en todas las bases clonadas existe el mismo seed.
 
 **Permisos del panel admin:**
 
@@ -263,7 +273,7 @@ Usa Puppeteer (Chromium headless) para convertir HTML → PDF. Cada ramo puede t
 
 ## Estado actual
 
-**Última actualización:** 2026-07-20 — Fase 6/7 activa. MRC funcional end-to-end en Producción. Incendio y Vida/AP listos para cotizar (catálogos completos, RPF confirmado, calculadores pendientes). Panel admin con permisos granulares, editor de tasas por Tipo de Riesgo y tope de descuento/recargo por usuario implementados.
+**Última actualización:** 2026-07-23 — Fase 6/7 sigue cerrada en datos para MRC/Incendio/Vida-AP, con MRC operativo end-to-end. Además del núcleo funcional, el proyecto ya incorpora migración visual "Diseño 2", pantalla de bienvenida post-login, Carta Oferta MRC en tamaño Oficio real, mejoras visuales de Historial y hardening del panel admin con guard anti-admin.
 
 Ver `docs/ESTADO_PROYECTO.md` para el detalle completo de:
 - Qué está implementado sección por sección

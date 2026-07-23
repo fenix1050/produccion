@@ -296,13 +296,11 @@ CREATE TABLE cotizacion_plan_pago (
 -- Snapshot de coberturas elegidas en ESA cotización (con su texto legal al momento,
 -- para que si el catálogo cambia después, el PDF viejo no se vea afectado)
 --
--- ⚠ PENDIENTE (detectado 2026-07-13, no bloquea Fase 6/7): esta tabla todavía no se usa desde
--- ningún lado del backend. `crearCotizacion` (cotizacion.service.js) persiste cotización +
--- variantes + planes de pago, pero NO inserta filas acá — las líneas de "coberturas
--- adicionales" que arma el agente en MRC (ver mrc.calculator.js, `coberturas_adicionales`)
--- solo existen en memoria durante el cálculo, no quedan guardadas contra la cotización
--- persistida. Hay que resolver esto antes de Historial (Fase 5) o Carta Oferta/Propuesta
--- Formal (Fase 2/4/8), donde hace falta reconstruir qué coberturas tenía cada cotización.
+-- ✅ Resuelto (2026-07-13): `crearCotizacion` ya inserta snapshot de coberturas en esta tabla,
+-- incluyendo nombre/texto legal/exclusiones al momento de cotizar. La Carta Oferta y el
+-- Historial reconstruyen desde acá lo que tenía la cotización, no recalculando contra el catálogo
+-- vivo. Queda vigente solo la nota de abajo: las columnas de la migración 011 asociadas al diseño
+-- viejo de "sublímite como tope sin prima" siguen sin uso.
 --
 -- Las columnas `tipo_aplicacion`/`sublimite_porcentaje`/`sublimite_monto_maximo` (migración 011)
 -- quedaron sin uso — el diseño que representaban ("sublímite = tope sin prima propia") se
@@ -474,9 +472,13 @@ CREATE TABLE recargo_antiguedad_tabla (
 
 **Fórmula de cuotas — unificada y confirmada (aplica a TODOS los ramos):**
 ```
-Cada uno de los 12 pagos (Inicial + 11 cuotas) = REDONDEAR.SUP(Premio / 12, 1000)
+Cuota = REDONDEAR.INF(Premio / (cuotas + 1), 1000)
+Inicial = Premio − (cuotas × Cuota)
+Contado = Inicial igual al Premio completo, Cuota = 0
 ```
-Esto reemplaza las versiones anteriores (que no cerraban exacto) tanto para Auto como para Incendio/Hogar/Comercio/TRO/Transporte/Flota. Confirmado por vos: "se usa el premio dividido 12 y se redondea hacia arriba, para tener un monto entero — lo mismo pasa con Auto."
+Esto reemplaza las versiones anteriores que asumían `Inicial = Cuota` o redondeo hacia arriba. La
+versión correcta quedó confirmada contra capturas reales del sistema de escritorio: la Cuota
+redondea hacia ABAJO y el Inicial absorbe el resto para que la suma cierre exacto.
 
 **RPF — corregido con la pantalla real del cotizador (v2):** es una **tasa fija por forma de pago**, NO escalonada por cantidad de cuotas. Es igual en los 5 planes de Auto que me mostraste: Contado=0%, Crédito (Cobrador)=1,6%, Boca de Cobranza=1,35%, Tarjeta de Crédito=1%. La tabla escalonada de `Calculo_RPF.xlsx` y la que aparecía en los manuales de Incendio/Hogar quedan descartadas para el cálculo real — se guardan en `plan_formas_pago` por si a futuro un plan específico necesita una tasa distinta.
 
@@ -740,26 +742,35 @@ Mismo patrón visual que Siniestros Tajy (sidebar, Vanilla JS, sin framework).
 - Plantilla y generación de la Propuesta Formal en PDF (réplica del documento real)
 - Firmas y checkbox de forma de pago elegida
 
-**Fase 5 — Historial y administración**
-- Listado con filtros, búsqueda, reimpresión de PDF
-- Panel admin: gestión de planes/coberturas, reimportación de tasas — incluye (pedido 2026-07-13,
-  ver `docs/ESTADO_PROYECTO.md` sección 8) que un rol admin pueda definir qué coberturas quedan
-  fijas por defecto por ramo (hoy hardcodeado en `mrc.calculator.js`) y editar las tasas de
-  `tasas_cobertura_ramo` sin migración SQL
+**Fase 5 — Historial y administración** — ✅ Base funcional implementada (2026-07-19), con
+iteraciones visuales y de seguridad agregadas después.
+- ✅ Listado con filtros, detalle, edición y descarga/reimpresión de PDF para MRC.
+- ✅ Panel admin operativo: usuarios, roles, coberturas por plan, tasas, planes.
+- ✅ Roles configurables + permisos granulares por sección.
+- ✅ Editor de tasas de `tasas_cobertura_ramo` y de `rubros_actividad` sin migración SQL.
+- ✅ Hardening posterior ya commiteado: acceso al admin desde el perfil, borrado controlado de
+  usuarios/roles sin uso y guard real para proteger al usuario admin.
+- Pendientes de esta línea: reimportación de tasas vía UI, editor de `tarifas_generico` (Vida/AP),
+  `tasas_capital` (Auto), y decidir si las coberturas fijas por ramo/plán deben salir del
+  hardcode existente hacia configuración explícita.
 
-**Fase 6 — Incendio / Multirriesgo Hogar / MRC / TRO / Transporte** — ▶ ACTIVA (2026-07-10). Orden interno acordado con Kevin: **MRC primero**, luego Incendio, Hogar y TRO quedan fuera de esta fase (se retoman después, no las pidió el cliente todavía).
+**Fase 6 — Incendio / Multirriesgo Hogar / MRC / TRO / Transporte** — ▶ ACTIVA (2026-07-10), con
+MRC ya operativo y el resto parcialmente cerrado en datos. Orden interno acordado con Kevin: **MRC
+primero**, luego Incendio; Hogar y TRO quedan fuera de esta fase por ahora (se retoman cuando el
+cliente los pida).
 - Cargar `rubros_actividad`, `tasas_cobertura_ramo` y planes de MRC/Incendio según los manuales oficiales y las propuestas manuales ya recibidas (ver `docs/cotizaciones-ejemplo/` o equivalente)
-- Implementar los calculadores (`mrc.js`, `incendio.js`) sobre el motor unificado (RPF fijo por forma de pago + cuotas = REDONDEAR.SUP(Premio/12,1000)) — **hecho para MRC plan Normal** (2026-07-13); `incendio.js`/`vida-ap.js` y "Comercio Protección Total" siguen bloqueados hasta recibir el Excel de tasas/RPF del dpto. técnico (pendiente #10, sección 11)
-- Formularios dinámicos por ramo en el frontend (rubro, m², suma por línea de cobertura, etc.) — hecho para MRC
+- Implementar los calculadores (`mrc.js`, `incendio.js`) sobre el motor unificado (RPF fijo por forma de pago + cuota hacia abajo + inicial que absorbe el resto) — **hecho para MRC plan Normal** (2026-07-13). `incendio.js` sigue pendiente solo por implementación; **ya no está bloqueado por RPF/datos**. "Comercio Protección Total" sigue pendiente por falta de RPF confirmado.
+- Formularios dinámicos por ramo en el frontend (rubro, m², suma por línea de cobertura, etc.) — **hecho para MRC**, luego pulido visualmente en las iteraciones 2026-07-21/22.
 - ~~UI para tildar cada cobertura como `cobertura` propia o `sublimite` de otra~~ — **rediseñado** (2026-07-13, ver sección 11 pendiente #11): en vez de un toggle por cotización, el agente arma "Coberturas incluidas" agregando líneas del catálogo (repetibles, con suma asegurada propia); el badge cobertura/sublímite es de solo lectura desde `coberturas_catalogo.categoria`. `cotizacion_coberturas.tipo_aplicacion` quedó sin uso.
-- UI de edición de tasas dentro de rango, restringida a roles con `puede_editar_tasas = true` — sigue pendiente, ahora explícitamente pedida por Kevin como parte del panel admin de Fase 5 (coberturas fijas por ramo + tasas editables)
-- Plantillas PDF por ramo
+- UI de edición de tasas dentro de rango, restringida a roles con `puede_editar_tasas = true` — **hecha para MRC/Incendio** en el panel admin (tasas de cobertura + rubros de actividad). Sigue pendiente la parte de Vida/AP y Auto.
+- Plantillas PDF por ramo — **hecho para MRC**; Incendio/Hogar/TRO/Transporte siguen pendientes.
 - Hogar y TRO quedan pendientes de fase futura (mismo esqueleto que MRC/Incendio, se suman cuando el cliente los pida)
 
-**Fase 7 — Vida y Accidentes Personales** — ▶ ACTIVA junto con Fase 6 (2026-07-10), tercer ramo solicitado por el cliente
+**Fase 7 — Vida y Accidentes Personales** — ▶ ACTIVA junto con Fase 6 (2026-07-10), con catálogo y
+RPF ya cerrados; falta el calculador y su template.
 - `RamoCalculator` con tarificación por franja etaria (`vida-ap.js`)
 - Formulario dinámico de personas aseguradas (edad, sexo, capital por ítem)
-- Carga de tablas de tasas por edad de cada sub-producto (Protección de Préstamos, AP, Vida Directivos, etc.) — mismo bloqueo: falta confirmación del dpto. técnico
+- Carga de tablas de tasas por edad de cada sub-producto (Protección de Préstamos, AP, Vida Directivos, etc.) — ✅ cerrada vía migraciones 015/016
 
 **Fase 8 — Deploy**
 - Backend a Railway/Render (con Puppeteer configurado)
@@ -771,7 +782,7 @@ Mismo patrón visual que Siniestros Tajy (sidebar, Vanilla JS, sin framework).
 ## 11. Pendientes / decisiones abiertas
 
 **Resueltos por los manuales oficiales, las pantallas reales del cotizador y tus últimas respuestas** (dejo la referencia por trazabilidad):
-- ~~Fórmula de Cuota~~ → unificada: cada pago = REDONDEAR.SUP(Premio/12, 1000), igual en todos los ramos
+- ~~Fórmula de Cuota~~ → unificada: `Cuota = REDONDEAR.INF(Premio/(cuotas+1), 1000)` e `Inicial = Premio − cuotas×Cuota`, igual en todos los ramos
 - ~~RPF de Auto~~ → tasa fija por forma de pago (Cobrador 1,6% / Boca de Cobranza 1,35% / Tarjeta 1%), confirmada contra la pantalla real del cotizador — descarta la tabla escalonada por cuotas
 - ~~Reglas de tarificación de Vida y AP~~ → definidas en el manual correspondiente (sección 5)
 - ~~Piso mínimo Auto~~ → `Prima Técnica Mínima` por plan, tomada directo de la pantalla real (Premium 3.190.000, Superior 2.695.000, Fuerte 2.365.000, Noble 1.661.000, Básico 645.000)
@@ -780,7 +791,7 @@ Mismo patrón visual que Siniestros Tajy (sidebar, Vanilla JS, sin framework).
 
 **Siguen abiertos:**
 1. **Coberturas con costo propio en Auto:** definir si alguna cobertura opcional tiene impacto en la prima o todas están ya contempladas en la tasa del plan.
-2. **RPF de Incendio/Hogar/MRC/TRO:** confirmado que Auto usa tasa fija por forma de pago (no escalonada) — falta el mismo dato (los 3 valores fijos: Cobrador/Boca de Cobranza/Tarjeta) para estos otros ramos, ya que el manual mostraba la tabla escalonada vieja.
+2. **RPF de Hogar/TRO/Transporte y planes no confirmados fuera del bloque actual:** Incendio y Vida/AP YA quedaron confirmados con RPF plano (migración 023), y MRC Normal también. Sigue abierto lo no confirmado fuera de ese cierre: Hogar/TRO/Transporte y el plan `COMERCIO PROTECCION TOTAL`.
 3. **Textos fijos por plan** (Asistencia al Viajero, servicios de grúa, Carta Verde): confirmar si son iguales para todos los planes de Auto o varían por plan.
 4. **Plan Básico:** confirmar el resto de su configuración — no usa tasa por capital sino una "Tasa Única" fija (1,64%) sobre la cobertura de RC, distinto al resto de los planes.
 5. **Recargo por marca (BMW/Mercedes/Land Rover/Porsche):** el manual dice "a partir de julio" pero no da la regla completa de cuándo se activa/desactiva por temporada.
@@ -788,7 +799,7 @@ Mismo patrón visual que Siniestros Tajy (sidebar, Vanilla JS, sin framework).
 7. **Auto - Flota:** confirmar si la bonificación por cantidad de vehículos (5%/10%/20%) y el recargo por antigüedad se aplican en el orden que asumí (recargo primero, bonificación después sobre el total).
 8. **Máximos de descuento/recargo por plan** (`descuento_maximo`, `recargo_maximo`): ya tengo Premium/Superior (20%/100%) y Fuerte (55%/100%) — faltan Noble y Básico, y el resto de los planes que todavía no me mostraste.
 9. **Franquicia de Importación Directa actualizada a Gs. 350.000** (antes 220.000) — falta: (a) los criterios que hacen variar ese monto base, y (b) el nuevo monto del add-on para sacar la franquicia (el de Gs. 909.091 estaba calculado sobre el valor viejo).
-10. **RPF fijo de MRC, Incendio y Vida/AP:** solicitado al dpto. técnico (2026-07-10); llegó vía Excel para MRC (plan Normal, 2026-07-13) — `mrc.calculator.js` cerrado end-to-end para ese plan. Sigue pendiente para "Comercio Protección Total", Incendio (salvo "Maquinaria Básico") y los 7 planes de Vida/AP.
+10. **RPF fijo del bloque priorizado:** resuelto para MRC Normal, Incendio y los 7 planes de Vida/AP. Sigue pendiente solo `COMERCIO PROTECCION TOTAL` dentro de MRC; mientras no se confirme, ese plan debe seguir desactivado.
 11. **Regla "cobertura vs. sublímite" en MRC — REDISEÑADA (2026-07-13), reemplaza la resolución anterior de esta misma sección (2026-07-10):**
     - La primera resolución (columna `cotizacion_coberturas.tipo_aplicacion`/`sublimite_porcentaje`/`sublimite_monto_maximo`, migración 011: "sublímite = tope de indemnización dentro de la cobertura principal, sin prima adicional") **se descartó** — Kevin confirmó contra una Propuesta Formal real que los sub-límites de MRC (murallas, granizo, agua, equipos electrónicos, valores ventanilla) SÍ tienen tasa y prima propia, no son un tope sin costo. La migración 011 queda como columnas sin uso en `cotizacion_coberturas` (no se revirtió el schema, simplemente no se lee/escribe desde el calculador).
     - **Diseño real implementado:** en "Coberturas incluidas" solo Incendio Edificio/Contenido quedan fijos por defecto. El resto de las coberturas del catálogo (`coberturas_catalogo`, ambas categorías "Coberturas Principales" y "Sublímites") las agrega el agente como líneas explícitas con su propia suma asegurada, **pudiendo repetir la misma cobertura varias veces** con sumas distintas (confirmado: "Robo contenido" aparece 2 veces en una cotización real). Cada línea se tarifica con `tasas_cobertura_ramo` y suma a la prima total. El badge "Cobertura"/"Sublímite" que ve el agente es de solo lectura, tomado de `coberturas_catalogo.categoria` — no es un toggle que cambia la tasa.

@@ -159,6 +159,7 @@ const state = {
   // "Editar" dentro de la ventana de 30 días). null = flujo normal de alta. Si está seteado,
   // emitirCartaOferta() hace PUT /cotizaciones/:id en vez de POST /cotizaciones.
   editandoId: null,
+  banner: null, // { tipo: 'error'|'success', texto }
 };
 
 // Códigos que no deben ofrecerse en "Coberturas adicionales": las 2 fijas ya tienen su propio
@@ -250,13 +251,13 @@ async function cargarParaEditar(id) {
   try {
     cotizacion = await api.get(`/cotizaciones/${id}`);
   } catch (err) {
-    alert(err.message || 'No se pudo cargar la cotización para editar.');
+    mostrarBanner('error', err.message || 'No se pudo cargar la cotización para editar.');
     return;
   }
 
   const ramo = state.ramosActivos.find((r) => r.id === cotizacion.ramo_id);
   if (!ramo) {
-    alert('No se encontró el ramo de esta cotización.');
+    mostrarBanner('error', 'No se encontró el ramo de esta cotización.');
     return;
   }
 
@@ -365,6 +366,11 @@ function cerrarSesion() {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+function mostrarBanner(tipo, texto) {
+  state.banner = { tipo, texto };
+  renderApp();
+}
 
 function ramoInfo(nombre) {
   return RAMOS_UI.find((r) => r.nombre === nombre) || null;
@@ -732,7 +738,7 @@ async function emitirCartaOferta() {
     const url = URL.createObjectURL(blob);
     window.open(url, '_blank');
   } catch (err) {
-    alert(err.message || 'No se pudo generar la Carta Oferta.');
+    mostrarBanner('error', err.message || 'No se pudo generar la Carta Oferta.');
   } finally {
     state.emitiendoCarta = false;
     renderApp();
@@ -803,10 +809,16 @@ function renderApp() {
       ${renderSidebar()}
       <div class="main">
         ${renderHeader(ramo)}
+        ${renderBanner()}
         ${contenido}
       </div>
     </div>
   `;
+}
+
+function renderBanner() {
+  if (!state.banner) return '';
+  return `<div class="admin-banner admin-banner--${state.banner.tipo}">${escapeHtml(state.banner.texto)}</div>`;
 }
 
 // Versión del cotizador mostrada en el topbar y en el pie de página del sidebar (chrome de

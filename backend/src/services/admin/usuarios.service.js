@@ -1,8 +1,8 @@
 import bcrypt from 'bcryptjs';
 import * as usuariosRepository from '../../repositories/usuarios.repository.js';
 import { httpError } from '../../utils/http-error.js';
+import { BCRYPT_ROUNDS } from '../../utils/security.js';
 
-const BCRYPT_ROUNDS = 12;
 const CODIGO_FOREIGN_KEY_VIOLATION = '23503'; // Postgres: foreign_key_violation
 
 // --- Usuarios ---

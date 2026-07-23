@@ -178,6 +178,8 @@ function abrirModalEditar(usuarioId) {
     usuario,
     error: '',
     guardando: false,
+    nombre: usuario.nombre,
+    email: usuario.email,
     rol_id: usuario.rol_id ?? rolActual?.id ?? '',
     activo: Boolean(usuario.activo),
     descuento_maximo_pct: usuario.descuento_maximo_pct,
@@ -266,12 +268,19 @@ async function guardarModalCrear(form) {
 
 async function guardarModalEditar(form) {
   const usuario = state.modal.usuario;
+  const nombre = form.nombre.value.trim();
+  const email = form.email.value.trim();
   const rol_id = Number(form.rol_id.value);
   const activo = form.activo.checked;
   // Campo vacío = sin tope propio (usa el tope del plan tal cual) -> se manda null.
   const descuentoMaximoPct = form.descuento_maximo_pct.value === '' ? null : Number(form.descuento_maximo_pct.value);
   const recargoMaximoPct = form.recargo_maximo_pct.value === '' ? null : Number(form.recargo_maximo_pct.value);
 
+  if (!nombre || !email) {
+    state.modal.error = 'Completá nombre y email.';
+    renderApp();
+    return;
+  }
   if (!rol_id) {
     state.modal.error = 'Elegí un rol.';
     renderApp();
@@ -284,6 +293,8 @@ async function guardarModalEditar(form) {
 
   try {
     await api.put(`/admin/usuarios/${usuario.id}`, {
+      nombre,
+      email,
       rol_id,
       activo,
       descuento_maximo_pct: descuentoMaximoPct,
@@ -637,6 +648,22 @@ async function guardarRubroActividadTasas(id, form) {
   }
 }
 
+async function eliminarTasa(id) {
+  const ramoId = state.ramoTasasSeleccionado;
+  const entry = state.tasasPorRamo[ramoId];
+  const tasa = entry?.historial.find((t) => t.id === id);
+  const nombreCobertura = tasa?.coberturas_catalogo?.nombre ?? 'esta tasa';
+  if (!confirm(`¿Eliminar la versión de "${nombreCobertura}" cargada el ${tasa?.vigente_desde ?? ''}? Si era la vigente, vuelve a regir la versión anterior.`)) return;
+
+  try {
+    await api.delete(`/admin/tasas/${id}`);
+    mostrarBanner('success', 'Tasa eliminada.');
+    await cargarTasasDeRamo(ramoId);
+  } catch (err) {
+    mostrarBanner('error', err.message || 'No se pudo eliminar la tasa.');
+  }
+}
+
 async function cargarTasasDeRamo(ramoId) {
   state.tasasPorRamo[ramoId] = { loading: true, error: '', historial: state.tasasPorRamo[ramoId]?.historial ?? [] };
   renderApp();
@@ -878,6 +905,11 @@ async function guardarModalCobertura(form) {
 // ---------------------------------------------------------------------------
 
 function renderApp() {
+  // app.innerHTML se reemplaza entero en cada render, así que .admin-content es un nodo
+  // nuevo con scrollTop = 0 — sin esto, cualquier acción (ej. "Editar" en una tasa) tira
+  // al usuario arriba de todo aunque estaba scrolleado abajo.
+  const scrollAnterior = app.querySelector('.admin-content')?.scrollTop ?? 0;
+
   app.innerHTML = `
     ${renderTopbar()}
     <div class="app-body">
@@ -901,6 +933,9 @@ function renderApp() {
     ${state.modalCobertura ? renderModalCobertura() : ''}
   `;
   bindEvents();
+
+  const contenido = app.querySelector('.admin-content');
+  if (contenido) contenido.scrollTop = scrollAnterior;
 }
 
 function renderTopbar() {
@@ -1360,6 +1395,8 @@ function renderTablaTasas() {
     return '<div class="empty-state__subtitle">Este ramo todavía no tiene tasas cargadas.</div>';
   }
 
+  const puedeEditar = Boolean(auth.getUsuario()?.puede_editar_tasas);
+
   // El historial ya viene ordenado por vigente_desde descendente — la primera fila de
   // cada cobertura es la vigente, el resto queda como versión anterior.
   const vistaPorCobertura = new Set();
@@ -1374,6 +1411,7 @@ function renderTablaTasas() {
         <td>${t.unidad === 'permil' ? '‰' : '%'}</td>
         <td>${escapeHtml(t.vigente_desde)}</td>
         <td>${crearBadge(esVigente ? 'Vigente' : 'Histórica', esVigente ? 'success' : 'neutral')}</td>
+        <td>${puedeEditar ? `<button class="btn-outline" data-action="eliminar-tasa" data-id="${t.id}">Eliminar</button>` : ''}</td>
       </tr>
     `;
   }).join('');
@@ -1387,6 +1425,7 @@ function renderTablaTasas() {
           <th>Unidad</th>
           <th>Vigente desde</th>
           <th>Estado</th>
+          <th></th>
         </tr>
       </thead>
       <tbody>${filas}</tbody>
@@ -1585,6 +1624,14 @@ function renderModal() {
   } else if (m.tipo === 'editar') {
     titulo = `Editar ${escapeHtml(m.usuario.nombre)}`;
     cuerpo = `
+      <div class="admin-modal__field">
+        <label>Nombre</label>
+        <input class="field-input" type="text" name="nombre" value="${escapeHtml(m.nombre)}" />
+      </div>
+      <div class="admin-modal__field">
+        <label>Email</label>
+        <input class="field-input" type="email" name="email" value="${escapeHtml(m.email)}" />
+      </div>
       <div class="admin-modal__field">
         <label>Rol</label>
         <select class="field-input" name="rol_id">
@@ -1902,6 +1949,10 @@ function onActionClick(e) {
   }
   if (action === 'crear-tasa') {
     abrirModalTasa();
+    return;
+  }
+  if (action === 'eliminar-tasa') {
+    eliminarTasa(Number(el.dataset.id));
     return;
   }
   if (action === 'cerrar-modal-tasa' || action === 'cerrar-modal-tasa-backdrop') {

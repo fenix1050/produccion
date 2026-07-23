@@ -117,7 +117,7 @@ body {
 .bv-card:hover {
   transform: translateY(-3px);
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-  border-color: var(--tajy-ink, #191919);
+  border-color: var(--tajy-red, #d8132e);
 }
 
 .bv-card__top {
@@ -202,7 +202,7 @@ body {
 }
 
 .bv-ramo-row--disponible:hover {
-  border-color: var(--tajy-ink, #191919);
+  border-color: var(--tajy-red, #d8132e);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
 }
 

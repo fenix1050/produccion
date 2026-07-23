@@ -1582,7 +1582,6 @@ app.addEventListener('click', (e) => {
   const action = target.dataset.action;
   if (action === 'logout') cerrarSesion();
   else if (action === 'select-ramo') selectRamo(target.dataset.ramo);
-  else if (action === 'select-plan') selectPlan(Number(target.dataset.planId));
   else if (action === 'select-forma-pago') selectFormaPago(target.dataset.forma);
   else if (action === 'show-tab') setView(target.dataset.view);
   else if (action === 'add-cobertura-linea') addCoberturaLinea();

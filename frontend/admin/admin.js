@@ -3,6 +3,7 @@ import { crearBadge } from '../shared/badge.js';
 import { escapeHtml } from '../shared/dom.js';
 import { renderSidebarFooter, renderTopbarUser } from '../shared/sidebar.js';
 import { ICON_ADMIN_USUARIOS, ICON_ADMIN_COBERTURAS, ICON_ADMIN_TASAS, ICON_ADMIN_PLANES } from '../shared/nav-icons.js';
+import { fmtGsConPrefijo as fmtGs, capitalizar } from '../shared/format.js';
 
 // Panel de Administración del Cotizador Tajy — WU5, primera porción (Usuarios).
 // Mismo patrón Vanilla JS que cotizar.js: state + render + delegación de eventos por
@@ -118,17 +119,6 @@ async function init() {
 function cerrarSesion() {
   auth.clearSession();
   window.location.href = '../login/';
-}
-
-function fmtGs(n) {
-  const num = Math.round(Number(n) || 0);
-  return `Gs. ${num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')}`;
-}
-
-
-function capitalizar(texto) {
-  const str = String(texto ?? '');
-  return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
 function mostrarBanner(tipo, texto) {

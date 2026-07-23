@@ -2,6 +2,7 @@ import { api, auth } from '../shared/api.js';
 import { crearBadge } from '../shared/badge.js';
 import { escapeHtml } from '../shared/dom.js';
 import { renderSidebarFooter, renderTopbarUser } from '../shared/sidebar.js';
+import { fmtGsConPrefijo as fmtGs } from '../shared/format.js';
 
 // Historial de cotizaciones (Fase 5/WU5) — mismo patrón Vanilla JS que admin.js: state +
 // renderApp() que reconstruye innerHTML + bindEvents() post-render + modal vía state.modal.
@@ -65,11 +66,6 @@ async function init() {
 function cerrarSesion() {
   auth.clearSession();
   window.location.href = '../login/';
-}
-
-function fmtGs(n) {
-  const num = Math.round(Number(n) || 0);
-  return `Gs. ${num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')}`;
 }
 
 function fmtFecha(iso) {

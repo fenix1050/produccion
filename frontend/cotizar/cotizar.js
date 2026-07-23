@@ -2,6 +2,7 @@ import { api, auth } from '../shared/api.js';
 import { ICON_RAMO_AUTO, ICON_RAMO_MRC, ICON_RAMO_INCENDIO, ICON_RAMO_VIDA_AP, ICON_RAMO_HOGAR, ICON_INFO, ICON_SUBLIMITE_AGUA, ICON_SUBLIMITE_ELECTRICOS, ICON_SUBLIMITE_GRANIZO, ICON_SUBLIMITE_MURALLAS, ICON_SUBLIMITE_GENERICO, ICON_ARROW_LEFT as ICON_ARROW_LEFT_ROUND, ICON_X_CIRCLE } from '../shared/nav-icons.js';
 import { escapeHtml } from '../shared/dom.js';
 import { renderSidebarFooter, renderTopbarUser } from '../shared/sidebar.js';
+import { fmtGs, fmtGsInput } from '../shared/format.js';
 
 // Cotizador Tajy — App Shell + Datos + Resultado (Fase 6, alcance MRC plan Normal).
 // Recreación en Vanilla JS del handoff de diseño original (mockup ya migrado y eliminado
@@ -364,18 +365,6 @@ function cerrarSesion() {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-function fmtGs(n) {
-  const num = Math.round(Number(n) || 0);
-  return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-}
-
-// Como fmtGs, pero para inputs editables: un capital vacío debe mostrarse vacío,
-// no "0" (fmtGs normal trata undefined/"" como 0 para totales/montos ya calculados).
-function fmtGsInput(digits) {
-  if (digits === undefined || digits === null || digits === '') return '';
-  return fmtGs(digits);
-}
 
 function ramoInfo(nombre) {
   return RAMOS_UI.find((r) => r.nombre === nombre) || null;

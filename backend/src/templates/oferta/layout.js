@@ -258,7 +258,7 @@ export const OFERTA_MARGIN = { top: '26mm', bottom: '15mm', left: '0', right: '0
 
 // Alto útil de contenido por hoja física (Oficio = Legal = 355.6mm) descontando el header/footer
 // fijo de Puppeteer — usado para decidir si el layout de columnas 3/3 forzado entra en una sola
-// hoja antes de generar el PDF final (ver measureContentHeightMm en pdf.service.js).
+// hoja antes de generar el PDF final (ver measureContentHeightMm en pdf-utils.js).
 export const OFERTA_PAGE_HEIGHT_MM = 355.6 - 26 - 15;
 
 export function buildHeaderTemplate(ramoLabel) {

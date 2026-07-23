@@ -1,6 +1,7 @@
 import { renderOferta, buildHeaderTemplate, buildFooterTemplate, OFERTA_MARGIN, OFERTA_PAGE_HEIGHT_MM, BASE_CSS } from './layout.js';
 import { buildMrcOfertaPages } from './mrc.js';
 import { measureContentHeightMm } from './pdf-utils.js';
+import { httpError } from '../../utils/http-error.js';
 
 // Un builder de páginas por ramo (calculador). Incendio y Vida-AP quedan pendientes: todavía
 // no tienen texto oficial de Carta Oferta confirmado (ver CLAUDE.md, pendientes activos).
@@ -20,10 +21,11 @@ export function ofertaDisponibleParaRamo(ramo) {
 export async function buildOfertaHtml({ cotizacion, plan, ramo }) {
   const builder = BUILDERS_POR_CALCULADOR[ramo.calculador];
   if (!builder) {
-    const err = new Error(`Carta Oferta no implementada todavía para el ramo "${ramo.nombre}".`);
-    err.status = 422;
-    err.publicMessage = `La Carta Oferta de ${ramo.nombre_display ?? ramo.nombre} todavía no está disponible.`;
-    throw err;
+    throw httpError(
+      422,
+      `Carta Oferta no implementada todavía para el ramo "${ramo.nombre}".`,
+      `La Carta Oferta de ${ramo.nombre_display ?? ramo.nombre} todavía no está disponible.`
+    );
   }
 
   const ramoLabel = ramo.nombre_display ?? ramo.nombre;

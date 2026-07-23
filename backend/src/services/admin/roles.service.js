@@ -1,4 +1,5 @@
 import * as rolesRepository from '../../repositories/roles.repository.js';
+import { httpError } from '../../utils/http-error.js';
 
 const CODIGO_UNIQUE_VIOLATION = '23505'; // Postgres: unique_violation
 const CODIGO_FOREIGN_KEY_VIOLATION = '23503'; // Postgres: foreign_key_violation
@@ -14,10 +15,7 @@ export async function crearRol(datos) {
     return await rolesRepository.crear(datos);
   } catch (err) {
     if (err.code === CODIGO_UNIQUE_VIOLATION) {
-      const dup = new Error('Ya existe un rol con ese nombre');
-      dup.status = 409;
-      dup.publicMessage = dup.message;
-      throw dup;
+      throw httpError(409, 'Ya existe un rol con ese nombre', 'Ya existe un rol con ese nombre');
     }
     throw err;
   }
@@ -30,25 +28,16 @@ export async function crearRol(datos) {
 export async function editarRol(id, cambios) {
   const rol = await rolesRepository.findById(id);
   if (!rol) {
-    const err = new Error('Rol no encontrado');
-    err.status = 404;
-    err.publicMessage = err.message;
-    throw err;
+    throw httpError(404, 'Rol no encontrado', 'Rol no encontrado');
   }
   if (rol.es_sistema) {
-    const err = new Error('Este rol es del sistema y no se puede editar');
-    err.status = 409;
-    err.publicMessage = err.message;
-    throw err;
+    throw httpError(409, 'Este rol es del sistema y no se puede editar', 'Este rol es del sistema y no se puede editar');
   }
   try {
     return await rolesRepository.actualizar(id, cambios);
   } catch (err) {
     if (err.code === CODIGO_UNIQUE_VIOLATION) {
-      const dup = new Error('Ya existe un rol con ese nombre');
-      dup.status = 409;
-      dup.publicMessage = dup.message;
-      throw dup;
+      throw httpError(409, 'Ya existe un rol con ese nombre', 'Ya existe un rol con ese nombre');
     }
     throw err;
   }
@@ -60,25 +49,20 @@ export async function editarRol(id, cambios) {
 export async function eliminarRol(id) {
   const rol = await rolesRepository.findById(id);
   if (!rol) {
-    const err = new Error('Rol no encontrado');
-    err.status = 404;
-    err.publicMessage = err.message;
-    throw err;
+    throw httpError(404, 'Rol no encontrado', 'Rol no encontrado');
   }
   if (rol.es_sistema) {
-    const err = new Error('Este rol es del sistema y no se puede eliminar');
-    err.status = 409;
-    err.publicMessage = err.message;
-    throw err;
+    throw httpError(409, 'Este rol es del sistema y no se puede eliminar', 'Este rol es del sistema y no se puede eliminar');
   }
   try {
     await rolesRepository.eliminar(id);
   } catch (err) {
     if (err.code === CODIGO_FOREIGN_KEY_VIOLATION) {
-      const fk = new Error('Hay usuarios con este rol asignado. Reasignalos antes de eliminarlo.');
-      fk.status = 409;
-      fk.publicMessage = fk.message;
-      throw fk;
+      throw httpError(
+        409,
+        'Hay usuarios con este rol asignado. Reasignalos antes de eliminarlo.',
+        'Hay usuarios con este rol asignado. Reasignalos antes de eliminarlo.'
+      );
     }
     throw err;
   }

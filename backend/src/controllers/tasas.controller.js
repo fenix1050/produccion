@@ -1,11 +1,10 @@
 import * as tasasService from '../services/tasas.service.js';
+import { httpError } from '../utils/http-error.js';
 
 export async function importar(req, res, next) {
   try {
     if (!req.file) {
-      const err = new Error('Falta el archivo .xlsx en el campo "archivo"');
-      err.status = 400;
-      throw err;
+      throw httpError(400, 'Falta el archivo .xlsx en el campo "archivo"');
     }
     const resumen = await tasasService.importarTasasAuto(req.file.path);
     res.json({ importado: resumen });

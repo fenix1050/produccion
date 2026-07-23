@@ -1,4 +1,5 @@
 import { supabase } from '../config/supabase.js';
+import { httpError } from '../utils/http-error.js';
 
 export async function nextNumeroCorrelativo(ramoId) {
   // Incrementa y devuelve el próximo número correlativo del ramo vía RPC
@@ -91,10 +92,7 @@ export async function findCotizacionById(id) {
     // sin que cada caller tenga que repetir el chequeo (antes solo `actualizarCotizacion` lo hacía
     // con un try/catch que además tapaba errores reales de conexión — detectado en review-reliability).
     if (error.code === 'PGRST116') {
-      const notFound = new Error('Cotización no encontrada');
-      notFound.status = 404;
-      notFound.publicMessage = notFound.message;
-      throw notFound;
+      throw httpError(404, 'Cotización no encontrada', 'Cotización no encontrada');
     }
     throw error;
   }

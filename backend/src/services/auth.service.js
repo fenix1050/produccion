@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import * as usuariosRepository from '../repositories/usuarios.repository.js';
+import { httpError } from '../utils/http-error.js';
 
 const JWT_EXPIRES_IN = '8h';
 const BCRYPT_ROUNDS = 12;
@@ -8,9 +9,7 @@ const BCRYPT_ROUNDS = 12;
 // Mensaje genérico a propósito: no debe diferir según si el email existe o no,
 // para no filtrar qué emails están registrados en el sistema.
 function credencialesInvalidas() {
-  const err = new Error('Email o contraseña incorrectos');
-  err.status = 401;
-  return err;
+  return httpError(401, 'Email o contraseña incorrectos');
 }
 
 export async function login(email, password) {
@@ -62,9 +61,7 @@ export async function login(email, password) {
 // antes de permitir el cambio). req.usuario (armado por middleware/auth.js) no trae
 // password_hash, por eso se vuelve a buscar el usuario completo por id acá.
 function passwordActualIncorrecta() {
-  const err = new Error('Contraseña actual incorrecta');
-  err.status = 401;
-  return err;
+  return httpError(401, 'Contraseña actual incorrecta');
 }
 
 export async function cambiarPassword(usuarioId, passwordActual, passwordNueva) {

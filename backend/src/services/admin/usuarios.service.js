@@ -70,6 +70,12 @@ export async function editarUsuario(id, cambios, solicitante) {
   if (!usuario) {
     throw httpError(404, 'Usuario no encontrado');
   }
+  // Desactivación (soft-delete): aunque ya queda bloqueado por el chequeo de `activo` en
+  // requireAuth, también se invalida el token_version por consistencia con el resto de
+  // los puntos que cierran sesiones (logout, cambio de contraseña, reset por admin).
+  if (cambios.activo === false) {
+    await usuariosRepository.incrementarTokenVersion(id);
+  }
   return usuario;
 }
 
@@ -82,6 +88,9 @@ export async function resetearPassword(id, password, solicitante) {
 
   const password_hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
   await usuariosRepository.actualizarPassword(id, password_hash);
+  // El reseteo por admin también debe cerrar cualquier sesión abierta con la contraseña
+  // anterior — mismo criterio que el cambio de contraseña self-service.
+  await usuariosRepository.incrementarTokenVersion(id);
 }
 
 // solicitante: usuario autenticado que pide el borrado (req.usuario) — no puede eliminarse

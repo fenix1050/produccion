@@ -110,12 +110,28 @@ function tieneAccesoAdmin() {
   );
 }
 
+// Best-effort: avisa al backend para invalidar el token (token_version) ANTES de limpiar
+// la sesión local. Si la llamada falla (red caída, token ya vencido/inválido) igual hay
+// que limpiar localStorage y dejar al usuario deslogueado del lado cliente — no bloquear
+// el logout local por un error de red o un 401 esperable (el token ya no sirve de todos
+// modos).
+async function logout() {
+  try {
+    await api.post('/auth/logout');
+  } catch {
+    // intencional: logout del cliente sigue adelante pase lo que pase acá
+  } finally {
+    clearSession();
+  }
+}
+
 export const auth = {
   getToken,
   setToken,
   getUsuario,
   setUsuario,
   clearSession,
+  logout,
   isLoggedIn: () => Boolean(getToken()),
   tieneAccesoAdmin,
 };

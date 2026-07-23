@@ -1164,6 +1164,38 @@ hallazgo, con la suite de tests (`npm test`, 19 tests) verde después de cada un
   `fileFilter` a `multer` (extensión `.xlsx` + mimetype OOXML); si no matchea, `req.file` queda
   `undefined` y el controller ya lo traduce a 400.
 
-**No tocado a propósito** (fuera de este batch, por decisión explícita): el hallazgo de severidad
-Alto sobre JWT en `localStorage` sin revocación server-side — requiere decisión de arquitectura
-(cookie httpOnly + invalidación server-side), se aborda aparte.
+**Actualización 2026-07-23 — este hallazgo ya quedó resuelto** (ver sección 27): sigue Bearer en
+`localStorage` (decisión explícita de Kevin, no se migró a cookie httpOnly), pero ahora hay TTL
+corto (45m) + invalidación server-side vía `token_version` + logout explícito.
+
+## 27. Sesión JWT sin revocación — resuelto (2026-07-23)
+
+Cierra el hallazgo [ALTO] que había quedado explícitamente fuera del batch de la sección 26. Sigue
+Bearer en `Authorization` header / `localStorage` (Kevin confirmó no migrar a cookies httpOnly),
+pero ahora el token es de corta duración y revocable del lado servidor:
+
+- **TTL acortado**: `JWT_EXPIRES_IN` bajó de `8h` a `45m` en `backend/src/services/auth.service.js`.
+  No había convención de env var ya establecida para esto en el proyecto, así que quedó como
+  constante top-level (mismo patrón que antes).
+- **Invalidación server-side vía `token_version`**: migración `032_token_version.sql` agrega
+  `usuarios.token_version INTEGER NOT NULL DEFAULT 0` (aplicada contra Supabase real). El JWT lleva
+  ese valor como claim; `requireAuth` (`backend/src/middleware/auth.js`) lo compara contra el valor
+  fresco de la DB en cada request y devuelve 401 "Token inválido o expirado" si no coincide.
+  `usuariosRepository.incrementarTokenVersion(id)` (lee y reescribe, sin expresión de columna en el
+  builder de Supabase JS) se llama en los 4 puntos que deben cerrar sesiones: logout explícito,
+  cambio de contraseña propio, reset de contraseña por admin, y desactivación de usuario
+  (`editarUsuario` con `activo: false`).
+- **Nuevo endpoint `POST /api/auth/logout`**: protegido con `requireAuth`, incrementa
+  `token_version` del usuario autenticado y devuelve 204. Capas completas
+  (`routes/auth.routes.js` → `controllers/auth.controller.js` → `services/auth.service.js`).
+- **Frontend centralizado**: `auth.logout()` en `frontend/shared/api.js` llama al endpoint nuevo
+  ANTES de limpiar `localStorage`, best-effort (si falla por red o token ya vencido, igual limpia
+  sesión y redirige — no bloquea el logout del cliente). Reemplaza las 6 implementaciones
+  duplicadas de `cerrarSesion`/handler de logout que había sueltas en `cotizar.js`, `admin.js`,
+  `historial.js`, `configuracion.js` y los dos guards (`configuracion-guard.js`,
+  `historial-guard.js`), que antes solo hacían `clearSession()` sin avisarle al backend.
+- **Tests nuevos** (`backend/src/services/auth.service.test.js`, mismo patrón `node:test` +
+  `mock.module` con estado mutable compartido entre `auth.service.js` y `middleware/auth.js`):
+  token con `token_version` vieja rechazado con 401, logout invalida el token con el que se llamó,
+  y cambio de contraseña propio invalida tokens emitidos antes del cambio. Suite completa en verde
+  (23 tests).

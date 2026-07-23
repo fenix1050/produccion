@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ajusteSchema } from './shared/ajuste.schema.js';
 
 // Datos específicos del riesgo para Incendio — dos formas según el plan (ver
 // incendio.calculator.js): "Edificio y Contenido" (rubro + 2 capitales, tasa por rubro) o
@@ -14,13 +15,6 @@ export const riesgoIncendioSchema = z.object({
   sublimite_fenomenos_naturales_porcentaje: z.number().min(0).max(100).optional(),
   capital_maquinaria: z.number().nonnegative().optional(),
   sublimite_vandalismo_porcentaje: z.number().min(0).max(100).optional(),
-});
-
-const ajusteSchema = z.object({
-  descripcion: z.string(),
-  catalogo_id: z.number().int().optional(),
-  porcentaje: z.number().optional(),
-  monto: z.number().optional(),
 });
 
 // Body de POST /api/cotizaciones/calcular y POST /api/cotizaciones para ramo = 'incendio'.

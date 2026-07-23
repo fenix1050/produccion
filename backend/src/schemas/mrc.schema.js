@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ajusteSchema } from './shared/ajuste.schema.js';
 
 // Datos específicos del riesgo para MRC (Multirriesgo Comercio) — van dentro de
 // `cotizaciones.riesgo_datos` (JSONB). Cédula/dirección viven acá porque `cotizaciones`
@@ -30,13 +31,6 @@ export const riesgoMrcSchema = z
     message: 'Debe indicar al menos un capital (edificio o contenido) mayor a cero',
     path: ['capital_edificio'],
   });
-
-const ajusteSchema = z.object({
-  descripcion: z.string(),
-  catalogo_id: z.number().int().optional(),
-  porcentaje: z.number().optional(),
-  monto: z.number().optional(),
-});
 
 // Body de POST /api/cotizaciones/calcular y POST /api/cotizaciones para ramo = 'mrc'.
 export const cotizarMrcSchema = z.object({

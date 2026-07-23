@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ajusteSchema } from './shared/ajuste.schema.js';
 
 // Datos específicos del riesgo para Auto — van dentro de `cotizaciones.riesgo_datos` (JSONB).
 export const riesgoAutoSchema = z.object({
@@ -9,13 +10,6 @@ export const riesgoAutoSchema = z.object({
   via_importacion: z.enum(['REPRESENTANTE', 'IMPORTACION DIRECTA']),
   asientos: z.number().int().positive().default(5),
   area_circulacion: z.string().optional(), // informativo, no afecta tasa (ver PLAN_DESARROLLO.md sección 4)
-});
-
-const ajusteSchema = z.object({
-  descripcion: z.string(),
-  catalogo_id: z.number().int().optional(),
-  porcentaje: z.number().optional(),
-  monto: z.number().optional(),
 });
 
 // Body de POST /api/cotizaciones/calcular y POST /api/cotizaciones

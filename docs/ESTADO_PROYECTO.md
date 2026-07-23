@@ -5,14 +5,15 @@ Documento de traspaso. Complementa a `CLAUDE.md` (contexto operativo y metodolog
 Este archivo responde una pregunta puntual: **¿qué se hizo, por qué, y qué falta, en este
 momento del desarrollo?**
 
-Última actualización: **2026-07-20 — Fase 6/7 cerrada con catálogo en los 3 ramos priorizados
-(MRC → Incendio → Vida/AP) y cotizador end-to-end funcionando para MRC** (plan Normal). 
-Implementado: "coberturas adicionales" repetibles, Carta Oferta en PDF con layout dinámico, 
-panel admin con permisos granulares por sección, tope de descuento/recargo por usuario, 
-editor de tasas por Tipo de Riesgo, y edición de cotizaciones con ventana de 30 días. 
-Supabase conectado, migraciones 001→031 aplicadas. `mrc.calculator.js` implementado y conectado. 
-Historial con filtros, búsqueda, descarga de PDF y permisos por dueño operativo. 
-Pendiente activo: calculadores de Incendio y Vida/AP (datos confirmados, solo falta lógica).
+Última actualización: **2026-07-23 — Fase 6/7 sigue cerrada a nivel de catálogo/datos, pero el
+frontend y el panel admin recibieron iteraciones reales ya commiteadas**. Además de lo ya cerrado
+hasta 2026-07-20, hoy también están reflejados: migración visual completa al app shell
+"Diseño 2" (2026-07-21), rediseño de las vistas Datos/Detalle del plan de MRC, nueva pantalla de
+bienvenida post-login con selector de ramo (2026-07-22), Carta Oferta de MRC ajustada a tamaño
+Oficio real, pulido visual del Historial, y hardening del panel admin (2026-07-23) con guard real
+para que ningún rol no-admin pueda modificar usuarios admin. Pendientes activos: calculadores de
+Incendio y Vida/AP, templates de Carta Oferta para esos 2 ramos, y textos legales faltantes en 3
+coberturas de MRC.
 
 **Nota para trabajar desde otra PC:** `docs/insumos/` (Excels/PDFs con tasas reales y
 cotizaciones de clientes) y `.codegraph/` están en `.gitignore` — no vienen en el `git clone`.
@@ -24,8 +25,9 @@ ahí si querés tener el índice disponible.
 
 ## 1. Resumen ejecutivo
 
-**Fase 6/7 Cerrada (2026-07-20)** — Sistema de cotización end-to-end para MRC en producción, 
-Incendio y Vida/AP listos para cotizar, panel admin funcional con permisos granulares.
+**Base funcional cerrada + iteración visual/operativa activa (último cambio verificado: 2026-07-23)**
+— MRC sigue operativo end-to-end; Incendio y Vida/AP siguen listos en datos pero sin calculador;
+encima de esa base ya se consolidaron cambios reales de UX, navegación y seguridad/admin.
 
 - **Priorización confirmada (2026-07-10):** MRC → Incendio → Vida/AP (Auto pausado).
 - **Catálogos cerrados (2026-07-10/12):** 3 ramos con coberturas, tasas y planes cargados contra 
@@ -37,6 +39,26 @@ Incendio y Vida/AP listos para cotizar, panel admin funcional con permisos granu
   de Riesgo (rubros_actividad), tope de descuento/recargo por usuario.
 - **Historial Fase 5 (2026-07-19):** listado con filtros (ramo/cliente/fecha/estado), paginación, 
   detalle, descarga de PDF (MRC), permisos por dueño (IDOR cerrado), edición con ventana de 30 días.
+- **Migración visual "Diseño 2" cerrada (2026-07-21):** app shell completo migrado al mockup
+  aprobado por Kevin (`75791d0`, `2b2e1b7`, `5958c0c`) — topbar, sidebar, cards y vistas de
+  cotizar/historial/admin/configuración. El porqué fue explícito: hacer la app más clara y agradable
+  para uso real, no seguir con un look "de sistema viejo".
+- **Cotizador MRC rediseñado por iteraciones reales (2026-07-21/22):** vista Datos con cards,
+  stepper y panel "Cotización en vivo" más claro (`c4d5e46`, `5173166`, `1f9b4aa`), Detalle del
+  plan reordenado en layout 2 columnas y después en card de resumen fija (`b9746d2`, `70686b9`),
+  y exclusiones del plan visibles ya desde Datos (`b62355e`). Motivo: Kevin vio la pantalla real,
+  la consideró visualmente floja, y pidió dejar de parecer un reporte gris para pasar a una UI más
+  legible para el agente.
+- **Bienvenida post-login (2026-07-22/23):** nueva pantalla intermedia `frontend/bienvenida/`
+  (`f3e1682`, `e3cd3aa`) para separar "Cotizar" de "Propuesta Formal", elegir ramo antes de entrar
+  a `/cotizar`, y mostrar acceso al admin solo cuando el usuario tiene permiso real.
+- **Carta Oferta MRC afinada para impresión real (2026-07-22):** el PDF pasó a tamaño Oficio/Legal
+  (`f38f0e7`) porque A4 no coincidía con la impresión real reportada por drivers paraguayos; se
+  ajustó también el footer con agente/email y se limpió texto decorativo sobrante.
+- **Panel admin endurecido (2026-07-23):** acceso movido al menú de perfil, borrado de usuarios/
+  roles sin uso y guard de seguridad real para proteger al usuario admin (`db8a1d2`). Esto no fue
+  cosmético: Kevin detectó un hueco real donde un rol custom con permisos de usuarios podía tocar al
+  admin verdadero.
 - **Bugfixes críticos (2026-07-18/19):** Inicial/Cuota corregidos (hacia ABAJO), redondeo RPF/IVA 
   hacia arriba confirmado, ownership de cotizaciones validado real en 403.
 - **Supabase real conectado:** migraciones 001→031 aplicadas, 14 usuarios/planes configurados, 
@@ -59,11 +81,16 @@ Incendio y Vida/AP listos para cotizar, panel admin funcional con permisos granu
                            tasas_cobertura_ramo y rubros_actividad para MRC/Incendio
     /schemas               auto, tasas, mrc
     /config                 supabase.js (cliente)
-    .env                    creado en esta sesión — NO versionado (.gitignore ya lo cubre)
-  /migrations             001 a 011, ver sección 4
+    .env                    local — NO versionado (.gitignore ya lo cubre)
+  /migrations             001 a 031, ver sección 4
 
 /frontend
-  /cotizar /historial /admin /shared    (estructura creada, sin implementación de UI todavía)
+  /bienvenida            pantalla post-login para elegir acción/ramo
+  /cotizar               flujo MRC con stepper, panel en vivo y rediseño "Diseño 2"
+  /historial             listado real con filtros, detalle y descarga de Carta Oferta
+  /admin                 SPA operativa con usuarios, roles, coberturas, tasas y planes
+  /configuracion         vista visual alineada al mismo app shell
+  /shared                sidebar/topbar, auth/fetch wrappers, iconos y estilos comunes
 
 /docs
   /insumos                manuales de suscripción (Incendio/Hogar/Comercio/TRO, Riesgos
@@ -72,8 +99,9 @@ Incendio y Vida/AP listos para cotizar, panel admin funcional con permisos granu
                            — insumo para el catálogo de coberturas de MRC/Incendio, próximo paso
 ```
 
-Coincide con lo que describe `CLAUDE.md`. Falta `backend/src/templates/` (plantillas HTML
-para los PDF) — no bloquea Fase 6, se crea en Fase 4/8.
+Coincide con lo que describe `CLAUDE.md`. `backend/src/templates/` YA existe para Carta Oferta de
+MRC (layout compartido + template de ramo); siguen pendientes los templates de Incendio/Vida-AP y
+la Propuesta Formal.
 
 ## 3. Motor de cálculo de Auto individual (Fase 1, sin cambios en esta sesión)
 
@@ -1030,3 +1058,76 @@ Agregar templates de Carta Oferta para ambos ramos (pendiente texto oficial), (3
 **Migraciones aplicadas:** 001–031 contra Supabase real (28 migraciones de catálogo + motor, 3 de 
 config/permisos). **Código estable:** auto.calculator (Fase 1), mrc.calculator (Fase 6), backend 
 robusto con error handling explícito y validaciones Zod, frontend Vanilla JS sin dependencies.
+
+## 22. Migración visual "Diseño 2" + rediseño del cotizador — 2026-07-21/22
+
+Después de cerrar Fase 6/7 a nivel de negocio, Kevin pidió una línea de trabajo NO formal de fase:
+mejorar cómo se ve y se usa la app real. La decisión no fue "cambiar por cambiar"; el motivo fue
+explícito: el look anterior se sentía demasiado gris, rígido y parecido a un reporte de sistema,
+cuando el objetivo es que un agente no técnico pueda usarlo con comodidad.
+
+- **App shell completo migrado a "Diseño 2"** (`75791d0`, `2b2e1b7`, `5958c0c`): topbar, sidebar,
+  cards y navegación de `cotizar`, `historial`, `admin` y `configuracion` se alinearon al mockup
+  `docs/mockups/diseno-2-app-shell.html`, aprobado por Kevin el 2026-07-21.
+- **Convenciones que quedaron fijas** por esta migración: sidebar/topbar de 264px, headers de card
+  celestes `#F8FAFF`, acciones dentro del header de card (no en toolbars separados), íconos SVG de
+  línea en la navegación, y preferencia por layouts compactos antes que "estirar para llenar".
+- **Vista Datos del cotizador MRC** (`c4d5e46`, `5173166`, `1f9b4aa`): "Plan a presentar", "Datos
+  del asegurado" y "Cotización en vivo" pasan a cards; aparece un stepper de 3 pasos; el panel en
+  vivo muestra la prima total en rojo con ícono informativo y sublímites con íconos propios; y se
+  ajustaron paddings/gaps para que con 1 cobertura adicional el formulario todavía no scrollee.
+- **Vista Detalle del plan** (`b9746d2`, `70686b9`, `b62355e`): deja atrás la tabla gris tipo
+  reporte y se reorganiza como experiencia de checkout — resumen fijo a la derecha, coberturas como
+  cards, botón claro para volver a editar datos, y exclusiones del plan visibles ya desde la etapa
+  de Datos. El porqué fue directo: Kevin vio la captura real y pidió que "quede bien visualmente",
+  no solo que funcione.
+
+## 23. Navegación post-login, PDF MRC en Oficio y hallazgo de textos faltantes — 2026-07-22
+
+- **Pantalla de bienvenida post-login** (`f3e1682`): se agregó `frontend/bienvenida/` como pantalla
+  intermedia entre Login y Cotizar. Tiene 3 estados (elegir acción, elegir ramo y placeholder de
+  Propuesta Formal) y `/cotizar` ahora acepta `?ramo=` para entrar con el ramo ya preseleccionado.
+  Motivo: separar mejor la intención del usuario y no mandar siempre directo al cotizador.
+- **Card de "Panel de Administración" en bienvenida** (`e3cd3aa`): se muestra solo si el usuario
+  realmente tiene acceso administrativo (`tieneAccesoAdmin()`), incluyendo roles custom con
+  permisos parciales. Motivo: el acceso dejó de ser equivalente a `rol === 'admin'`.
+- **Carta Oferta de MRC en tamaño Oficio real** (`f38f0e7`): el PDF pasó de A4 a Legal/Oficio
+  (215,9 × 355,6 mm), porque ese tamaño coincidió con lo que reporta una impresora física en
+  Paraguay; medidas probadas "casi oficio" dejaban el pie desalineado al imprimir. También se sumó
+  AGENTE/EMAIL al footer y se limpió el texto "Gracias por confiar en nosotros".
+- **Hallazgo documentado, no bug de código**: 3 coberturas de MRC quedaron con
+  `texto_legal`/`texto_exclusiones` en `NULL` desde la migración 012: `cristales`,
+  `responsabilidad_civil` y `equipos_electronicos`. La Carta Oferta no imprime texto para ellas
+  porque el dato no existe; Kevin todavía no tiene el texto oficial. Esto queda como pendiente real
+  de datos, no de implementación.
+- **Historial más claro al usarlo** (`3dea406`): acciones con jerarquía visual más limpia,
+  colores semánticos por estado y bloqueo del botón de descarga mientras se genera el PDF para
+  evitar clics duplicados.
+
+## 24. Hardening del panel admin — 2026-07-23
+
+Kevin detectó un problema REAL, no teórico: un rol custom con permisos sobre usuarios podía tocar
+al usuario admin verdadero. A partir de eso se hizo un endurecimiento puntual del panel admin.
+
+- **Acceso al panel movido al perfil del topbar** (`db8a1d2`): el link "Panel de administración"
+  sale del sidebar y pasa al dropdown del perfil. Esto acompaña el app shell nuevo y evita duplicar
+  navegación.
+- **`tieneAccesoAdmin()` corregido**: el frontend ahora considera acceso administrativo tanto para
+  `rol = admin` como para cualquier usuario con permisos parciales (`puede_gestionar_usuarios`,
+  `puede_editar_coberturas`, `puede_editar_tasas`, `puede_editar_planes`). Antes dejaba afuera a
+  roles custom válidos, aunque en backend sí tuvieran permiso real.
+- **Guard anti-admin a nivel service**: ningún usuario/rol que no sea `admin` puede editar,
+  desactivar, resetear password ni eliminar a un usuario admin. Importante: el gate vive en
+  `backend/src/services/admin.service.js`, no solo en botones ocultos de UI.
+- **Eliminar usuarios/roles sin uso**: se agregaron endpoints y botones de borrado duro. No hay
+  `ON DELETE CASCADE`; si existen cotizaciones o usuarios asociados, Postgres devuelve `23503` y el
+  backend lo traduce a 409 con mensaje explicativo. Decisión correcta para este dominio: mejor
+  fallar explícitamente que borrar historial por accidente.
+
+## 25. Pendientes vigentes después de la sincronización (verificados contra Engram + git)
+
+- **Calculadores `incendio.js` y `vida-ap.js`**: siguen pendientes solo por implementación.
+- **Templates de Carta Oferta para Incendio y Vida/AP**: siguen bloqueados por texto oficial.
+- **Textos legales faltantes en 3 coberturas de MRC**: siguen pendientes de dato fuente de Kevin.
+- **Propuesta Formal**: la bienvenida ya la reserva como flujo futuro, pero sigue siendo placeholder;
+  no hay pantalla funcional ni PDF final todavía.

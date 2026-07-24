@@ -20,7 +20,12 @@
 }
 
 .config-card {
-  max-width: 460px;
+  /* Sin max-width fijo: en 2 columnas el track de .config-grid (minmax(0, 460px)) ya
+     acota el ancho; en 1 columna (@media max-width: 980px) debe poder estirarse a 1fr
+     igual que .config-card--actividad. Un max-width propio acá dejaba las cards de
+     "Mi perfil"/"Cambiar contraseña" ancladas a 460px mientras la de abajo ocupaba todo
+     el ancho disponible — desalineado y con "zona muerta" visible entre ~940-981px de
+     viewport, justo antes/después del breakpoint (detectado en auditoría UX 2026-07-23). */
   margin-bottom: 0;
   display: flex;
   flex-direction: column;
@@ -131,13 +136,18 @@
   gap: 16px;
 }
 
-.config-field--icon > div {
+.config-field__dl {
+  margin: 0;
+}
+
+.config-field--icon dd {
+  margin: 0;
   font-size: 14px;
   font-weight: 600;
   color: var(--tajy-ink, #1a1a1a);
 }
 
-.config-field--icon label {
+.config-field--icon dt {
   font-size: 13.5px;
   font-weight: 500;
   color: #8a94a6;

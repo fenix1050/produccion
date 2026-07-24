@@ -1302,3 +1302,112 @@ contra el permiso REAL del solicitante, no solo el estado actual del objetivo), 
 
 Suite completa del backend verificada en verde: **36 tests** (los 23 previos + 13 nuevos de esta
 sección), corridos con `npm test` desde `/backend`.
+
+## 29. Auditoría integral consolidada + cierre de los 2 hallazgos críticos (2026-07-24)
+
+Kevin pidió un informe ejecutivo consolidado citando 6 auditorías previas (Arquitectura, Código,
+Seguridad, Performance, Base de datos, UX/UI). Al verificar contra Engram y este documento, solo
+Seguridad (sección 26-28) y una auditoría parcial de schema/índices (migración 033) estaban
+realmente documentadas — se le avisó explícitamente y se corrieron las 4 auditorías faltantes vía
+sub-agentes de solo lectura antes de consolidar el informe (publicado como Artifact). Score final:
+**70/100** (Arquitectura 7.5, Código 7.0, Seguridad 8.5, Performance 8.0, Escalabilidad 6.5,
+Mantenibilidad 6.5, UX 6.5, UI 7.5, Accesibilidad 5.5, Documentación 7.5, Testing 5.0/10).
+
+De esa auditoría salieron 2 hallazgos críticos, ambos cerrados el mismo día:
+
+### Sublímites de MRC desincronizados entre el PDF y el catálogo — resuelto
+
+`backend/src/templates/oferta/mrc.js` tenía `SUBLIMITES_FIJOS_MRC` hardcodeado (al que le faltaba
+`sublimite_murallas_cercos` — confirmado contra `migrations/012_seed_mrc.sql`, las 4 filas de
+`plan_coberturas` para MRC Normal tienen `incluida_por_defecto = TRUE`: agua, equipos_electronicos,
+murallas_cercos, granizo) y `TEXTO_DISTRIBUCION_CAPITAL` con montos de sublímites en texto plano.
+El frontend ya leía estos montos dinámicamente desde `plan_coberturas` desde WU6 (2026-07-17), pero
+el PDF —documento contractual— seguía con los valores viejos: un admin podía cambiar un sublímite y
+el PDF seguía mostrando el monto anterior.
+
+Fix: `cotizacion.service.js` (`generarPdfOferta`) ahora también trae
+`ramosRepository.findCoberturasByPlanId(plan.id)` y lo pasa como `planCoberturas` a través de
+`pdf.service.js` → `templates/oferta/index.js` → `buildMrcOfertaPages`. En `mrc.js`,
+`sublimitesFijosMrc(planCoberturas)` deriva el set de sublímites fijos en vivo (mismo criterio que
+el frontend: `incluida_por_defecto === true`, excluyendo `incendio_edificio`/`incendio_contenido`),
+y `buildTextoDistribucionCapital(...)` arma el texto con los montos reales vía `fmtGs()`. Las líneas
+de distribución fija que no vienen del catálogo (Incendio/Robo 50%/50%) quedaron intactas. Test de
+regresión nuevo: `backend/src/templates/oferta/mrc.test.js` (4 casos, incluido uno que falla contra
+el código viejo para confirmar que el bug quedaba cubierto).
+
+**Deuda residual no tocada, fuera de alcance**: `sublimite_cctv` también quedó marcado
+`incluida_por_defecto = TRUE` en la migración 012, pero no tiene tasa cargada en
+`tasas_cobertura_ramo` (nunca puede aparecer en una cotización real) — gap de datos preexistente,
+no relacionado a este bug.
+
+### Cero tests unitarios en los motores de cálculo — resuelto
+
+Solo existía `ramo-calculator.contract.test.js` (verifica forma, no valores). Se agregaron:
+`mrc.calculator.test.js` (16 casos), `incendio.calculator.test.js` (13 casos),
+`vida-ap.calculator.test.js` (15 casos) — 44 casos nuevos cubriendo: piso de prima técnica mínima
+(activado y no activado), las 4 formas de pago simultáneas con RPF fijo correcto, redondeo de RPF
+hacia arriba / Cuota hacia abajo con un caso no redondo, invariante `inicial + cuotas×cuota ===
+premio`, tope de descuento/recargo (`MIN` entre plan y usuario en ambos sentidos), casos de error
+(rubro sin tasa, capital fuera de rango, mínimo de coberturas MRC, edad fuera de rango en Vida
+Directivos), y confirmación explícita de que Vida-AP no tiene piso de prima técnica mínima. No se
+encontraron discrepancias entre el código real y las reglas de negocio documentadas.
+
+Suite completa verificada en verde: **84 tests** (40 previos + 44 nuevos), corridos con `npm test`
+desde `/backend`, estables en 3 corridas consecutivas.
+
+**Corrección de un dato desactualizado detectado en el camino**: este documento y CLAUDE.md decían
+"`incendio.js`/`vida-ap.js` — lógica de cálculo pendiente". Era incorrecto: ambos ya estaban
+implementados (245 y 294 líneas respectivamente) desde antes de esta sesión. Corregido en ambos
+archivos.
+
+**Pendientes de la auditoría integral que quedan sin agendar**: ver informe completo (score por
+dimensión, tabla de priorización, Top 30 ROI) en el Artifact publicado / engram obs #259. Checklist
+resumido abajo — Kevin lo va resolviendo antes de lanzar a producción sin restricciones.
+
+## 30. Roadmap pre-producción — pendientes de la auditoría integral (2026-07-24)
+
+Los 2 🔴 críticos ya se cerraron (sección 29). Esto es lo que falta, ordenado igual que el informe
+ejecutivo (Sprint 1-4). Marcar con `[x]` a medida que se resuelva cada uno — no mezclar con el
+checklist de fases de arriba, este es transversal a fases.
+
+### Sprint 1 — accesibilidad y feedback del flujo principal
+- [ ] Selección de ramo navegable por teclado (`cotizar.js:878`, `bienvenida.js:131`) — hoy solo
+  funciona con mouse, rompe con teclado/lector de pantalla.
+- [ ] Fix de contraste `--tajy-text-secondary` (`cotizador.css:22`, 3.44:1, falla WCAG AA) — mismo
+  fix que ya se aplicó a `--tajy-text-muted`.
+- [ ] Banners de error reales en los 8 puntos de carga silenciosa de `cotizar.js` (líneas 229, 277,
+  285, 420, 437, 477, 491) — hoy solo van a `console.error`, el agente ve un formulario vacío sin
+  explicación.
+
+### Sprint 2 — mantenibilidad puntual
+- [ ] Extraer `mostrarBanner()` (duplicada literal en `cotizar.js:376` y `admin.js:128`) a
+  `frontend/shared/`.
+- [ ] Helper compartido para el esqueleto repetido de `mrc.calculator.js`/`incendio.calculator.js`
+  (guards de piso técnico, tope, capital×tasa).
+- [ ] Unificar cache de catálogos: hoy el mismo dato se cachea cuando lo pide el motor de cálculo
+  pero no cuando lo piden directo `cotizar.js`/`admin.js`.
+- [ ] Reemplazar `confirm()` nativo por el modal propio en las 5 acciones destructivas de admin
+  (`admin.js:210,224,364,668,860`).
+
+### Sprint 3 — escalabilidad y hardening restante
+- [ ] Punto único de registro de ramo (hoy fragmentado en 4 archivos: `calculators/index.js`,
+  `cotizacion.service.js`, `templates/oferta/index.js`, `cotizar.js`) — condición para sumar
+  Incendio/Vida-AP/Auto sin fricción creciente.
+- [ ] Habilitar RLS en las 30 tablas de Supabase (con revisión de policies).
+- [ ] Cola de concurrencia + single-pass render en Puppeteer (`pdf.service.js:20-44`) — hoy N PDFs
+  simultáneos abren N páginas sobre un solo proceso Chromium.
+- [ ] Validación inline por campo en el formulario de cotizar (hoy solo deshabilita el botón con
+  mensaje genérico).
+- [ ] Breakpoint intermedio responsive (900-1200px) en `cotizador.css:1281,1830`.
+
+### Sprint 4 — cierre de roadmap de seguridad + modularización
+- [ ] Migrar sesión JWT a cookie httpOnly + SameSite (decisión de arquitectura, resuelve CORS/CSRF)
+  — ya estaba en el roadmap de seguridad aceptado (sección 27).
+- [ ] Logging de seguridad a sink centralizado (Sentry/Logtail) en vez de `console.warn`/`error`.
+- [ ] Automatizar `npm audit`/Dependabot en CI.
+- [ ] Arrancar modularización de `cotizar.js` (1739 líneas) / `admin.js` (2101 líneas) por
+  responsabilidad (fetch/render/estado) — inversión de mediano plazo, no bloqueante por sí sola.
+
+**Condición dura antes de lanzar a producción sin restricciones**: al menos Sprint 1 completo
+(accesibilidad + feedback del flujo principal) — el resto es iterable en producción, pero no debería
+quedar como "deuda aceptada" indefinida. Ver conclusión completa y veredicto en el informe ejecutivo.

@@ -106,9 +106,16 @@ Este proyecto se construye **fase por fase**, en este orden fijo (detalle comple
 - [x] **Carta Oferta de MRC en tamaño Oficio real** (2026-07-22, commit `f38f0e7`): el PDF pasó de A4 a Legal/Oficio (215,9×355,6 mm), con footer afinado y línea AGENTE/EMAIL. Se hizo porque una medida "casi oficio" dejaba el pie desalineado al imprimir contra drivers reales de impresora paraguayos.
 - [x] **Historial — mejora visual de tabla y descarga protegida** (2026-07-22, commit `3dea406`): acciones con jerarquía más clara, colores semánticos por estado, fix del wrap en Número y deshabilitado temporal del botón de Carta Oferta durante la descarga para evitar doble click.
 - [x] **Panel admin — acceso desde menú de perfil + borrado controlado + guard anti-admin** (2026-07-23, commit `db8a1d2`): el link al panel sale del sidebar y pasa al dropdown del perfil; usuarios/roles sin uso se pueden eliminar; y ningún rol no-admin puede editar/desactivar/resetear/eliminar a un usuario admin. Se corrigió además `tieneAccesoAdmin()` para contemplar roles custom con permisos parciales, no solo `rol === 'admin'`.
-- [ ] Calculadores `incendio.js` / `vida-ap.js` — lógica de cálculo pendiente, datos 100% confirmados (RPF plano, Prima Técnica Mínima o sin piso, tarifación por edad ya en 44 filas). Siguiente paso: implementación.
+- [x] **Corrección (dato desactualizado, detectado en auditoría integral 2026-07-24)**: `incendio.calculator.js` (245 líneas) y `vida-ap.calculator.js` (294 líneas) YA estaban implementados con lógica de cálculo completa — esta línea decía "pendiente" por error. Lo que sí faltaba y ahora está cerrado: tests unitarios de los 3 calculators (mrc/incendio/vida-ap), agregados el 2026-07-24 (44 casos nuevos, 84/84 tests en verde). Siguen sin template de Carta Oferta propio (requieren texto oficial de cada ramo).
+- [x] **Auditoría integral consolidada** (2026-07-24): se corrieron las auditorías de Arquitectura/Código/Performance/UX-UI que faltaban y se cerraron los 2 hallazgos críticos detectados — ver informe en engram (obs #259) y detalle abajo en "Pendientes activos".
 
-**Próximo paso confirmado con Kevin:** implementar calculadores de Incendio y Vida/AP (lógica solo, datos listos), agregar templates de Carta Oferta (requieren texto oficial), o retomar Fase 2 (Auto) si se pide.
+**Próximo paso confirmado con Kevin:** agregar templates de Carta Oferta de Incendio y Vida/AP (requieren texto oficial), o retomar Fase 2 (Auto) si se pide.
+
+**Roadmap pre-producción (auditoría integral 2026-07-24, ver detalle y sprints en `docs/ESTADO_PROYECTO.md` sección 30) — Kevin lo va resolviendo antes de lanzar a producción sin restricciones:**
+- Sprint 1: navegación por teclado en selección de ramo, fix de contraste `--tajy-text-secondary`, banners de error en los 8 puntos de carga silenciosa de `cotizar.js`.
+- Sprint 2: extraer `mostrarBanner()` duplicada a shared/, helper compartido MRC/Incendio, unificar cache de catálogos, reemplazar `confirm()` nativo en admin.
+- Sprint 3: punto único de registro de ramo, habilitar RLS en Supabase, cola de concurrencia en Puppeteer, validación inline por campo, breakpoint responsive intermedio.
+- Sprint 4: sesión JWT a cookie httpOnly, logging de seguridad centralizado, automatizar npm audit, modularizar cotizar.js/admin.js.
 
 **Fase 1 de Auto (schema base, importador de tasas) sigue como estaba** — pausado, no se retoma hasta que el cliente lo pida.
 
@@ -151,7 +158,8 @@ Contado: Inicial = Premio completo, Cuota = 0
 
 ## Pendientes activos que pueden afectar el código
 
-- **Calculadores `incendio.js` / `vida-ap.js`** (Fase 6/7): lógica de cálculo, no datos. Todos los datos confirmados: RPF plano (Contado 0% / Cobrador 1,6% / Boca 1,35% / Tarjeta 1%, fijo para todos los planes), Prima Técnica Mínima (Incendio Gs. 409.091; Vida/AP = sin piso). Bloqueados solo por implementación. Migración 023 ya cargó `plan_formas_pago` con los valores.
+- **Calculadores `incendio.js` / `vida-ap.js`**: implementación ya cerrada (contradice una línea vieja de este mismo archivo — corregida 2026-07-24). RPF plano (Contado 0% / Cobrador 1,6% / Boca 1,35% / Tarjeta 1%, fijo para todos los planes), Prima Técnica Mínima (Incendio Gs. 409.091; Vida/AP = sin piso), y ahora con tests unitarios reales (2026-07-24). Falta solo el template de Carta Oferta de cada uno.
+- **Sublímites de MRC en el PDF de Carta Oferta desincronizados del catálogo — resuelto (2026-07-24)**: `backend/src/templates/oferta/mrc.js` tenía montos hardcodeados (`TEXTO_DISTRIBUCION_CAPITAL`) y un array `SUBLIMITES_FIJOS_MRC` al que le faltaba `sublimite_murallas_cercos`. Ahora ambos se derivan en vivo de `plan_coberturas` (mismo criterio que ya usaba el frontend desde WU6), con test de regresión en `mrc.test.js`.
 - **Templates de Carta Oferta para Incendio y Vida/AP** (Fase 6/7): pendientes de texto oficial de cada ramo. MRC ya implementado con layout dinámico + failover. Los dispatchers de `templates/oferta/index.js` cortan con 422 explicativo mientras no haya template.
 - **RPF de "COMERCIO PROTECCION TOTAL"** (MRC, Fase 6/7): no confirmado — plan desactivado (`activo = FALSE`) desde migración 022 (2026-07-13), no aparece en selector. Se reactivaría al confirmar RPF.
 - **Auto individual (Fase 1/2, pausada)**: schema y calculador completos, fase pausada por prioridad del cliente. No se retoma hasta que se reactive.

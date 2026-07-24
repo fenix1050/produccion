@@ -8,6 +8,12 @@ import { fmtGs, fmtGsInput } from '../shared/format.js';
 // Recreación en Vanilla JS del handoff de diseño original (mockup ya migrado y eliminado
 // tras la implementación de "Diseño 2" en frontend/cotizar).
 
+// id del elemento del panel "Cotización en vivo" que explica por qué está bloqueado el avance a
+// "Detalle del plan" (capital insuficiente, prima por debajo de la mínima, cálculo aún pendiente).
+// Referenciado por aria-describedby desde el botón/tab deshabilitados para que el motivo sea
+// accesible por lector de pantalla, no solo por el tooltip `title` (ver syncAvanceButtons()).
+const MOTIVO_BLOQUEO_ID = 'motivo-bloqueo-avance';
+
 // ---- Metadata de ramos mostrados en el sidebar (5 ramos reales del sistema) ----
 // El código de 2 letras y el estado (disponible/pausa/próximamente) son decisión de UI —
 // no vienen de la base. El resto de los ramos seedeados (auto-flota, tro, transporte) no
@@ -758,12 +764,27 @@ function syncAvanceButtons() {
   if (boton) {
     boton.disabled = !habilitado;
     boton.title = title;
+    aplicarAriaBloqueo(boton, habilitado);
   }
 
   const tab = document.getElementById('tab-detalle-plan');
   if (tab) {
     tab.disabled = !habilitado;
     tab.title = title;
+    aplicarAriaBloqueo(tab, habilitado);
+  }
+}
+
+// El `title` (tooltip) no es accesible para lectores de pantalla ni por tacto — acá se agrega
+// la vía accesible equivalente: `aria-disabled` + `aria-describedby` apuntando al mensaje real
+// del motivo, ya visible en el panel "Cotización en vivo" (ver MOTIVO_BLOQUEO_ID).
+function aplicarAriaBloqueo(el, habilitado) {
+  if (habilitado) {
+    el.removeAttribute('aria-disabled');
+    el.removeAttribute('aria-describedby');
+  } else {
+    el.setAttribute('aria-disabled', 'true');
+    el.setAttribute('aria-describedby', MOTIVO_BLOQUEO_ID);
   }
 }
 
@@ -894,7 +915,7 @@ function renderHeader(ramo) {
             class="tab-btn ${state.view === 'result' ? 'tab-btn--active' : ''}"
             data-action="show-tab"
             data-view="result"
-            ${bloqueado ? 'disabled title="Corregí el capital declarado antes de avanzar — ver el mensaje de alerta"' : ''}
+            ${bloqueado ? `disabled title="Corregí el capital declarado antes de avanzar — ver el mensaje de alerta" aria-disabled="true" aria-describedby="${MOTIVO_BLOQUEO_ID}"` : ''}
           >Detalle del plan</button>
         </div>
       ` : ''}
@@ -1079,7 +1100,7 @@ function camposEspecificosParaRamo(ramo, plan) {
         ${campoCapital}
         ${campoEdad}
         <div class="field field--span2">
-          <label style="display:flex;align-items:center;gap:8px;">
+          <label class="field-checkbox-label">
             <input type="checkbox" data-field="incluyeRentaDiaria" ${incluyeRenta ? 'checked' : ''} />
             Incluir Renta Diaria
           </label>
@@ -1099,7 +1120,7 @@ function camposEspecificosParaRamo(ramo, plan) {
 
   return `
     <div class="field field--span2">
-      <div class="live-summary__pending" style="margin-top:4px;">
+      <div class="live-summary__pending live-summary__pending--gap">
         Este ramo todavía no tiene su calculador conectado en el cotizador — el formulario de datos
         específicos se agrega en otra tarea. Podés cargar los datos del cliente mientras tanto.
       </div>
@@ -1138,7 +1159,7 @@ function renderDatosView(ramo) {
               class="btn-primary form-cta"
               data-action="show-tab"
               data-view="result"
-              ${puedeAvanzarADetalle() ? '' : 'disabled title="Corregí el capital declarado antes de avanzar — ver el mensaje de alerta"'}
+              ${puedeAvanzarADetalle() ? '' : `disabled title="Corregí el capital declarado antes de avanzar — ver el mensaje de alerta" aria-disabled="true" aria-describedby="${MOTIVO_BLOQUEO_ID}"`}
             >Ver detalle completo →</button>
           </div>
         </div>
@@ -1165,7 +1186,7 @@ function renderExclusionesCard(plan) {
         <ul class="texto-legal-list">
           ${items.map((linea) => `
             <li>
-              <span class="texto-legal-list__icon" style="color: var(--tajy-red)">${ICON_X_CIRCLE}</span>
+              <span class="texto-legal-list__icon texto-legal-list__icon--danger">${ICON_X_CIRCLE}</span>
               <span>${escapeHtml(linea)}</span>
             </li>
           `).join('')}
@@ -1237,14 +1258,14 @@ function renderLivePanelBody() {
   if (state.previewError) {
     return `
       ${renderLiveLabel()}
-      <div class="live-summary__error">${escapeHtml(state.previewError)}</div>
+      <div class="live-summary__error" id="${MOTIVO_BLOQUEO_ID}">${escapeHtml(state.previewError)}</div>
     `;
   }
 
   if (!state.preview) {
     return `
       ${renderLiveLabel()}
-      <div class="live-summary__pending">${state.loadingPreview ? 'Calculando…' : 'Completá los datos del riesgo para ver la prima.'}</div>
+      <div class="live-summary__pending" id="${MOTIVO_BLOQUEO_ID}">${state.loadingPreview ? 'Calculando…' : 'Completá los datos del riesgo para ver la prima.'}</div>
     `;
   }
 
@@ -1303,7 +1324,7 @@ function renderCuotasSelect() {
     .join('');
 
   return `
-    <div class="field" style="margin-bottom:14px;">
+    <div class="field field--gap-bottom">
       <label>Cantidad de cuotas</label>
       <select class="field-input" data-field="cuotas">${opciones}</select>
     </div>
@@ -1331,14 +1352,39 @@ function renderFormaPagoPills() {
   return `
     <div class="forma-pago-row">
       <div class="forma-pago-row__label">Forma de pago:</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;">${pills}</div>
+      <div class="forma-pago-row__pills">${pills}</div>
     </div>
   `;
 }
 
+// Reemplaza el innerHTML completo del panel "Cotización en vivo" en cada recálculo (ver
+// DEBOUNCE_MS en calcularPreview()) — eso recrea el <select> de cuotas aunque su valor no haya
+// cambiado, perdiendo el foco si el agente lo estaba navegando con teclado en ese momento.
+// Se restaura el foco explícitamente después del re-render en vez de reescribir el motor de
+// render, que también sirve para otros campos vivos dentro de este panel (ej. selects de forma
+// de pago) por el mismo motivo.
 function renderLivePanel() {
   const el = document.getElementById('live-summary');
-  if (el) el.innerHTML = renderLivePanelContent();
+  if (!el) return;
+
+  const activo = document.activeElement;
+  const enElPanel = Boolean(activo && el.contains(activo));
+  const campoField = enElPanel ? activo.dataset?.field : null;
+  const campoId = enElPanel && !campoField ? activo.id : null;
+  const selectionStart = enElPanel && typeof activo.selectionStart === 'number' ? activo.selectionStart : null;
+  const selectionEnd = enElPanel && typeof activo.selectionEnd === 'number' ? activo.selectionEnd : null;
+
+  el.innerHTML = renderLivePanelContent();
+
+  if (!campoField && !campoId) return;
+  const restaurado = campoField
+    ? el.querySelector(`[data-field="${campoField}"]`)
+    : (campoId ? document.getElementById(campoId) : null);
+  if (!restaurado) return;
+  restaurado.focus({ preventScroll: true });
+  if (selectionStart != null && selectionEnd != null && typeof restaurado.setSelectionRange === 'function') {
+    restaurado.setSelectionRange(selectionStart, selectionEnd);
+  }
 }
 
 function renderResultadoView(ramo) {
@@ -1350,7 +1396,7 @@ function renderResultadoView(ramo) {
     return `
       <div class="resultado-view panel">
         <div class="resultado-view__inner">
-          ${esCalculable ? `<div style="margin-bottom:16px;">${renderStepper()}</div>` : ''}
+          ${esCalculable ? `<div class="stepper-wrap">${renderStepper()}</div>` : ''}
           <div class="resultado-hero">
             <div>
               <div class="resultado-hero__label">Plan ${escapeHtml(planLabel)} · ${escapeHtml(ramo.label)}</div>
@@ -1358,7 +1404,7 @@ function renderResultadoView(ramo) {
             </div>
             <button class="btn-primary" data-action="emitir-carta" disabled title="Requiere una cotización calculada">Emitir carta oferta</button>
           </div>
-          <div class="empty-state" style="padding:12px 0;">
+          <div class="empty-state empty-state--compact">
             <div class="empty-state__subtitle">
               ${esCalculable ? 'Completá los datos del riesgo en la pestaña "Datos" para ver el detalle del plan.' : 'Cálculo pendiente de confirmación de tasas para este ramo.'}
             </div>
@@ -1539,7 +1585,7 @@ function renderAjusteField(prefijo, label, plan) {
   return `
     <div class="field">
       <label>${label}</label>
-      <div style="display:flex;gap:6px;">
+      <div class="field-row">
         <input
           class="field-input"
           type="text"
@@ -1549,7 +1595,6 @@ function renderAjusteField(prefijo, label, plan) {
           placeholder="Gs."
           value="${escapeHtml(fmtGsInput(state.data[`${prefijo}Monto`]))}"
           ${porcentajeCargado ? 'disabled' : ''}
-          style="flex:1;"
         />
         <input
           class="field-input"
@@ -1559,10 +1604,9 @@ function renderAjusteField(prefijo, label, plan) {
           placeholder="%"
           value="${escapeHtml(String(state.data[`${prefijo}Porcentaje`] ?? ''))}"
           ${montoCargado ? 'disabled' : ''}
-          style="flex:1;"
         />
       </div>
-      <small style="color:#8a8a8a;font-size:11px;">${tope != null ? `Tope aplicable: ${tope}% de la prima` : 'Sin tope confirmado para este plan'}</small>
+      <small class="field-row-hint">${tope != null ? `Tope aplicable: ${tope}% de la prima` : 'Sin tope confirmado para este plan'}</small>
     </div>
   `;
 }

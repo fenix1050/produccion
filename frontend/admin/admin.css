@@ -62,8 +62,16 @@
   border: 1px solid rgba(30, 138, 76, 0.25);
 }
 
+/* Contenedor de scroll horizontal — mismo patrón que .historial-tabla-scroll
+   (historial.css, commit a0c51a1): antes la tabla se recortaba en silencio en
+   viewports angostos, sin scrollbar visible ni forma de ver las columnas perdidas. */
+.admin-table-scroll {
+  overflow-x: auto;
+}
+
 .admin-table {
   width: 100%;
+  min-width: 560px;
   border-collapse: collapse;
   font-size: 13px;
 }
@@ -80,6 +88,12 @@
   top: 0;
   background: #fff;
   z-index: 1;
+  /* Refuerzo visual del header sticky: sin esto, el encabezado "flota" sobre las
+     filas al scrollear la tabla sin ninguna señal de que quedó fijo (hallazgo de
+     auditoría UX/UI). Sombra sutil y permanente en vez de un listener de scroll —
+     es indistinguible en el estado inicial (top: 0, sin nada debajo todavía) y
+     evita depender de JS para algo puramente visual. */
+  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.05);
 }
 
 .admin-table td {
@@ -237,4 +251,63 @@
   justify-content: flex-end;
   gap: 10px;
   margin-top: 18px;
+}
+
+/* Badge de renderProximamente() — distingue "no implementado" (limitación real del
+   sistema) de los "empty-state__subtitle" sueltos de las tablas ("sin datos": la
+   sección funciona, todavía no hay filas). Ver hallazgo de auditoría UX/UI. */
+.admin-badge-proximamente {
+  display: inline-block;
+  margin-left: 8px;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--tajy-text-muted);
+  background: var(--tajy-border-light);
+  padding: 3px 9px;
+  border-radius: 999px;
+  vertical-align: middle;
+}
+
+/* ---------------------------------------------------------------------------
+   Responsive — panel admin (mobile/tablet). No es un rediseño mobile-first
+   completo: prioriza que nada se rompa visualmente (recorte de contenido,
+   modales/formularios cortados) en viewports angostos. Deuda pendiente:
+   ver nota en el resumen de la auditoría.
+   --------------------------------------------------------------------------- */
+@media (max-width: 720px) {
+  .admin-content {
+    padding: 16px;
+  }
+
+  .admin-toolbar {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .card__title--toolbar {
+    flex-wrap: wrap;
+  }
+
+  .admin-inline-form {
+    flex-wrap: wrap;
+  }
+
+  .admin-valor-fijo {
+    flex-wrap: wrap;
+  }
+
+  .admin-valor-fijo span {
+    min-width: 0;
+  }
+
+  .field-input--sm {
+    width: 90px;
+  }
+
+  .admin-modal {
+    width: 100%;
+    padding: 18px;
+  }
 }

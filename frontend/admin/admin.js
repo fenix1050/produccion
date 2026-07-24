@@ -2,7 +2,7 @@ import { api, auth } from '../shared/api.js';
 import { crearBadge } from '../shared/badge.js';
 import { escapeHtml } from '../shared/dom.js';
 import { renderSidebarFooter, renderTopbarUser } from '../shared/sidebar.js';
-import { ICON_ADMIN_USUARIOS, ICON_ADMIN_COBERTURAS, ICON_ADMIN_TASAS, ICON_ADMIN_PLANES } from '../shared/nav-icons.js';
+import { ICON_ADMIN_USUARIOS, ICON_ADMIN_COBERTURAS, ICON_ADMIN_TASAS, ICON_ADMIN_PLANES, ICON_WRENCH } from '../shared/nav-icons.js';
 import { fmtGsConPrefijo as fmtGs, capitalizar } from '../shared/format.js';
 
 // Panel de Administración del Cotizador Tajy — WU5, primera porción (Usuarios).
@@ -996,11 +996,20 @@ function renderSeccion() {
   return renderProximamente(seccion);
 }
 
+// Distinto del resto de los "empty-state__subtitle" sueltos que se usan en las tablas
+// (esos son "sin datos": la sección existe y funciona, simplemente no cargó filas
+// todavía). Este es "no implementado": una limitación real del sistema, no un problema
+// temporal de datos — así que además del título/subtítulo lleva ícono + badge
+// "Próximamente" para que no se confundan a simple vista (hallazgo de auditoría UX/UI).
 function renderProximamente(seccion) {
   return `
     <div class="empty-state">
-      <div class="empty-state__title">${escapeHtml(seccion?.label ?? '')}</div>
-      <div class="empty-state__subtitle">Esta sección todavía no está implementada — próximamente.</div>
+      <div class="empty-state__icon">${ICON_WRENCH}</div>
+      <div class="empty-state__title">
+        ${escapeHtml(seccion?.label ?? '')}
+        <span class="admin-badge-proximamente">Próximamente</span>
+      </div>
+      <div class="empty-state__subtitle">Esta funcionalidad todavía no está disponible en el panel — no es un problema de datos ni de conexión, es una sección en desarrollo.</div>
     </div>
   `;
 }
@@ -1060,19 +1069,21 @@ function renderTablaRoles() {
   `).join('');
 
   return `
-    <table class="admin-table">
-      <thead>
-        <tr>
-          <th>Rol</th>
-          <th>Gestiona usuarios</th>
-          <th>Edita coberturas</th>
-          <th>Edita tasas</th>
-          <th>Edita planes</th>
-          <th>Acciones</th>
-        </tr>
-      </thead>
-      <tbody>${filas}</tbody>
-    </table>
+    <div class="admin-table-scroll">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Rol</th>
+            <th>Gestiona usuarios</th>
+            <th>Edita coberturas</th>
+            <th>Edita tasas</th>
+            <th>Edita planes</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>${filas}</tbody>
+      </table>
+    </div>
   `;
 }
 
@@ -1117,18 +1128,20 @@ function renderTablaUsuarios() {
   }).join('');
 
   return `
-    <table class="admin-table">
-      <thead>
-        <tr>
-          <th>Nombre</th>
-          <th>Email</th>
-          <th>Rol</th>
-          <th>Estado</th>
-          <th>Acciones</th>
-        </tr>
-      </thead>
-      <tbody>${filas}</tbody>
-    </table>
+    <div class="admin-table-scroll">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Email</th>
+            <th>Rol</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>${filas}</tbody>
+      </table>
+    </div>
   `;
 }
 
@@ -1190,18 +1203,20 @@ function renderTablaPlanes() {
   `).join('');
 
   return `
-    <table class="admin-table">
-      <thead>
-        <tr>
-          <th>Plan</th>
-          <th>Ramo</th>
-          <th>Estado</th>
-          <th>Prima técnica mínima</th>
-          <th>Formas de pago</th>
-        </tr>
-      </thead>
-      <tbody>${filas}</tbody>
-    </table>
+    <div class="admin-table-scroll">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Plan</th>
+            <th>Ramo</th>
+            <th>Estado</th>
+            <th>Prima técnica mínima</th>
+            <th>Formas de pago</th>
+          </tr>
+        </thead>
+        <tbody>${filas}</tbody>
+      </table>
+    </div>
   `;
 }
 
@@ -1231,16 +1246,18 @@ function renderFormasPagoDelPlan(planId) {
   `).join('');
 
   return `
-    <table class="admin-table admin-table--nested">
-      <thead>
-        <tr>
-          <th>Forma de pago</th>
-          <th>Tasa RPF (%)</th>
-          <th>Estado</th>
-        </tr>
-      </thead>
-      <tbody>${filas}</tbody>
-    </table>
+    <div class="admin-table-scroll">
+      <table class="admin-table admin-table--nested">
+        <thead>
+          <tr>
+            <th>Forma de pago</th>
+            <th>Tasa RPF (%)</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody>${filas}</tbody>
+      </table>
+    </div>
   `;
 }
 
@@ -1335,16 +1352,18 @@ function renderTablaRubrosActividad() {
   `).join('');
 
   return `
-    <table class="admin-table admin-table--nested">
-      <thead>
-        <tr>
-          <th>Tipo de Riesgo</th>
-          <th>Categoría</th>
-          <th colspan="2">Tasa Edificio / Contenido (‰)</th>
-        </tr>
-      </thead>
-      <tbody>${filas}</tbody>
-    </table>
+    <div class="admin-table-scroll">
+      <table class="admin-table admin-table--nested">
+        <thead>
+          <tr>
+            <th>Tipo de Riesgo</th>
+            <th>Categoría</th>
+            <th colspan="2">Tasa Edificio / Contenido (‰)</th>
+          </tr>
+        </thead>
+        <tbody>${filas}</tbody>
+      </table>
+    </div>
   `;
 }
 
@@ -1406,19 +1425,21 @@ function renderTablaTasas() {
   }).join('');
 
   return `
-    <table class="admin-table">
-      <thead>
-        <tr>
-          <th>Cobertura</th>
-          <th>Tasa</th>
-          <th>Unidad</th>
-          <th>Vigente desde</th>
-          <th>Estado</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>${filas}</tbody>
-    </table>
+    <div class="admin-table-scroll">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Cobertura</th>
+            <th>Tasa</th>
+            <th>Unidad</th>
+            <th>Vigente desde</th>
+            <th>Estado</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>${filas}</tbody>
+      </table>
+    </div>
   `;
 }
 
@@ -1502,18 +1523,20 @@ function renderTablaCoberturasPlan() {
   `).join('');
 
   return `
-    <table class="admin-table">
-      <thead>
-        <tr>
-          <th>Cobertura</th>
-          <th>Categoría</th>
-          <th>Por defecto</th>
-          <th colspan="2">Monto / Franquicia</th>
-          <th>Acciones</th>
-        </tr>
-      </thead>
-      <tbody>${filas}</tbody>
-    </table>
+    <div class="admin-table-scroll">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Cobertura</th>
+            <th>Categoría</th>
+            <th>Por defecto</th>
+            <th colspan="2">Monto / Franquicia</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>${filas}</tbody>
+      </table>
+    </div>
   `;
 }
 

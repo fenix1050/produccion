@@ -18,7 +18,15 @@ function renderSidebarNavLinks(active) {
   links.push(`<a class="nav-item nav-item--icon ${active === 'historial' ? 'nav-item--active' : ''}" href="${active === 'historial' ? './' : '../historial/'}"><span class="nav-item__badge">${ICON_CLOCK}</span><span>Historial de cotizaciones</span></a>`);
   links.push(`<a class="nav-item nav-item--icon ${active === 'configuracion' ? 'nav-item--active' : ''}" href="${active === 'configuracion' ? './' : '../configuracion/'}"><span class="nav-item__badge">${ICON_GEAR}</span><span>Configuración</span></a>`);
 
-  links.push(`<div class="nav-item nav-item--icon" data-action="logout"><span class="nav-item__badge">${ICON_LOGOUT}</span><span>Cerrar sesión</span></div>`);
+  // <button> nativo en vez del <div data-action="logout"> anterior — el div no era
+  // alcanzable por teclado (Tab no lo enfocaba, Enter/Space no lo activaban). Un
+  // <button type="button"> resuelve foco + activación por teclado gratis, sin el
+  // parche de role="button" + tabindex. El reset visual (background/border
+  // transparentes, cursor, font-family heredada) ya lo cubren las reglas globales
+  // `button { font-family: inherit; }` y `.nav-item { background: transparent;
+  // border: none; cursor: pointer; }` de shared/cotizador.css, así que no hace
+  // falta CSS nuevo para que quede idéntico a los demás nav-item (que son <a>).
+  links.push(`<button type="button" class="nav-item nav-item--icon" data-action="logout"><span class="nav-item__badge">${ICON_LOGOUT}</span><span>Cerrar sesión</span></button>`);
 
   return links.join('');
 }

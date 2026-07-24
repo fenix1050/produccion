@@ -193,11 +193,12 @@ Stub / no implementados, cada uno con TODO explícito en el código:
 
 ## 7. Riesgo de seguridad detectado — RLS deshabilitado (no resuelto, requiere decisión de Kevin)
 
-Al listar las tablas del proyecto Supabase real vía MCP, las **29 tablas de `public` tienen Row
-Level Security deshabilitado**. Esto significa que si alguna vez se usa la clave `anon`/
-`publishable` de este proyecto desde el frontend (o cualquier cliente que no sea el backend con
-la `service_role` key), esa clave podría leer o escribir cualquier fila de cualquier tabla sin
-restricción.
+Al listar las tablas del proyecto Supabase real vía MCP, las **30 tablas de `public` tienen Row
+Level Security deshabilitado** (re-confirmado 2026-07-23 vía `get_advisors`/`list_tables`; sube
+de 29 a 30 porque la migración 031 sumó la tabla `roles`, que tampoco tiene RLS). Esto significa
+que si alguna vez se usa la clave `anon`/`publishable` de este proyecto desde el frontend (o
+cualquier cliente que no sea el backend con la `service_role` key), esa clave podría leer o
+escribir cualquier fila de cualquier tabla sin restricción.
 
 **No es explotable hoy:** `CLAUDE.md` establece como regla no negociable que el frontend nunca
 habla directo con Supabase, todo pasa por la API Express. Mientras esa regla se respete, el
@@ -210,12 +211,32 @@ riesgo es teórico. Se señala igual como deuda técnica porque:
 **No se tocó nada de esto todavía.** Queda pendiente decidir con Kevin cuándo abordarlo (no
 bloquea Fase 6).
 
+### Migración 033 (2026-07-23) — índices FK e hijacking de `search_path`
+
+Auditoría de schema (30 tablas, 32 migraciones) detectó dos hallazgos adicionales, ambos
+corregidos vía `mcp__supabase__apply_migration`:
+
+- **Índices faltantes en foreign keys de alto tráfico**: `cotizaciones.ramo_id`,
+  `cotizaciones.estado`, `cotizacion_coberturas.cotizacion_id`,
+  `cotizacion_variantes.cotizacion_id`. Para `cotizaciones.agente_id` se usó un índice
+  **compuesto** `(agente_id, created_at DESC)` en vez de uno suelto: `findCotizaciones`
+  (`backend/src/repositories/cotizaciones.repository.js`) siempre ordena por `created_at DESC`,
+  y `cotizacion.service.js` siempre filtra por `agente_id` cuando el usuario no es admin — el
+  compuesto cubre filtro + orden sin sort adicional para ese caso, que es el más frecuente
+  (agente viendo su propio historial).
+- **`siguiente_correlativo` sin `search_path` fijo** (lint de seguridad de Supabase, riesgo de
+  hijacking de search_path): `ALTER FUNCTION siguiente_correlativo(int) SET search_path = public`.
+
+Verificado con `get_advisors`: el lint de `search_path` ya no aparece en `security`; los índices
+nuevos aparecen como `unused_index` en `performance` (esperado, INFO, recién creados sin tráfico
+todavía). RLS sigue igual, sin cambios (ver arriba).
+
 ## 8. Pendientes abiertos
 
 - **Carta Oferta de MRC en PDF — implementada (2026-07-14/15)**: el texto oficial recibido el
   2026-07-13 ya se usa en el template de MRC. Ver secciones 18 y 19. Quedan pendientes los
   templates de Carta Oferta para Incendio y Vida/AP, porque requieren su texto oficial específico.
-- **RLS deshabilitado** en las 29 tablas — ver sección 7, requiere decisión de Kevin antes de
+- **RLS deshabilitado** en las 30 tablas — ver sección 7, requiere decisión de Kevin antes de
   actuar.
 - **`cotizacion_coberturas` resuelto (2026-07-13)** — `crearCotizacion` ahora persiste ahí el
   detalle de coberturas devuelto por el calculador (snapshot de nombre/texto legal/exclusiones

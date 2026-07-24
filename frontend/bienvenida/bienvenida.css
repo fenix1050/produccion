@@ -120,6 +120,11 @@ body {
   border-color: var(--tajy-red, #d8132e);
 }
 
+.bv-card:focus-visible {
+  outline: 2px solid #d8132e;
+  outline-offset: 2px;
+}
+
 .bv-card__top {
   display: flex;
   align-items: center;

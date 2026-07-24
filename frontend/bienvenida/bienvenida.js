@@ -65,7 +65,7 @@ function render() {
         <img class="bv-header__logo" src="./assets/logo-rojo-con-negro.svg" alt="Aseguradora Tajy" />
         <div class="bv-header__saludo">Hola, <b>${escapeHtml(nombre)}</b></div>
       </header>
-      <div class="bv-fade" key="${state.view}">
+      <div class="bv-fade">
         ${state.view === 'welcome' ? renderWelcome() : ''}
         ${state.view === 'ramo' ? renderRamo() : ''}
         ${state.view === 'propuesta' ? renderPropuesta() : ''}
@@ -124,8 +124,11 @@ function renderRamo() {
   const filas = RAMOS_UI.map((r) => {
     const disponible = r.estado === 'disponible' && ramoActivo(r.nombre);
     const estadoLabel = ESTADO_LABEL[r.estado] || '';
+    const atributos = disponible
+      ? `data-action="select-ramo" data-ramo="${r.nombre}"`
+      : `aria-disabled="true" title="${escapeHtml(estadoLabel)}"`;
     return `
-      <div class="bv-ramo-row ${disponible ? 'bv-ramo-row--disponible' : 'bv-ramo-row--deshabilitada'}" ${disponible ? `data-action="select-ramo" data-ramo="${r.nombre}"` : ''}>
+      <div class="bv-ramo-row ${disponible ? 'bv-ramo-row--disponible' : 'bv-ramo-row--deshabilitada'}" ${atributos}>
         <div class="bv-ramo-row__icon">${RAMO_ICONOS[r.nombre] || ''}</div>
         <div class="bv-ramo-row__label">${r.label}</div>
         <div class="bv-ramo-row__badge bv-ramo-row__badge--${r.estado}">${estadoLabel}</div>

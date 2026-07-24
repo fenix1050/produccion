@@ -18,7 +18,7 @@ export function ofertaDisponibleParaRamo(ramo) {
   return Boolean(BUILDERS_POR_CALCULADOR[ramo.calculador]);
 }
 
-export async function buildOfertaHtml({ cotizacion, plan, ramo, page }) {
+export async function buildOfertaHtml({ cotizacion, plan, ramo, planCoberturas, page }) {
   const builder = BUILDERS_POR_CALCULADOR[ramo.calculador];
   if (!builder) {
     throw httpError(
@@ -29,7 +29,7 @@ export async function buildOfertaHtml({ cotizacion, plan, ramo, page }) {
   }
 
   const ramoLabel = ramo.nombre_display ?? ramo.nombre;
-  const { paginaUno, paginaDosFlex, paginaDosBalanceada } = builder({ cotizacion, plan, ramo });
+  const { paginaUno, paginaDosFlex, paginaDosBalanceada } = builder({ cotizacion, plan, ramo, planCoberturas });
 
   // El layout flex (3 bloques fijos por columna) no puede fragmentarse entre hojas — solo se
   // usa si entra en una sola página; si no, se cae al balanceado por column-count, que sí sabe

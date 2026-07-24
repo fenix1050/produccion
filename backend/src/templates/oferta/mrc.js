@@ -2,15 +2,65 @@ import { escapeHtml, fmtGs, fmtFecha } from './layout.js';
 
 const ORDEN_FORMAS_PAGO = ['contado', 'cobrador', 'boca_cobranza', 'tarjeta_credito'];
 
-// Sub-límites fijos de MRC (frontend/cotizar/cotizar.js: SUBLIMITES_FIJOS_MRC) — van siempre
-// incluidos con monto fijo, sin franquicia elegible, así que no muestran texto de franquicia
-// en la Carta Oferta (a pedido de Kevin, 2026-07-15): solo los sub-límites cargados
-// manualmente por el agente (ej. "Robo valores ventanilla") muestran su franquicia.
-const SUBLIMITES_FIJOS_MRC = ['sublimite_danos_agua', 'sublimite_equipos_electronicos', 'sublimite_granizo'];
+// Códigos de catálogo que NUNCA son sub-límites fijos de MRC aunque vinieran marcados
+// `incluida_por_defecto` — Incendio Edificio/Contenido no viven en `plan_coberturas` (se
+// cotizan por Capital Edificio/Contenido, campo propio del formulario), pero se excluyen igual
+// por defensividad ante un dato inesperado. Mismo criterio que `sublimitesFijosMrc()` en
+// frontend/cotizar/cotizar.js.
+const CODIGOS_COBERTURA_EXCLUIDOS_BASE = ['incendio_edificio', 'incendio_contenido'];
+
+// Antes esto era una constante hardcodeada (`SUBLIMITES_FIJOS_MRC`) con 3 códigos "que alguien
+// recordó" al escribirla — se le olvidó `sublimite_murallas_cercos`, así que ese sub-límite
+// quedaba mal en la tabla de Sumas Aseguradas y cobraba franquicia indebidamente. Ahora se deriva
+// de `planCoberturas` (el mismo catálogo vigente que edita el panel admin y que ya lee el
+// frontend dinámicamente desde WU6, 2026-07-17) — así nunca vuelve a desincronizarse.
+function sublimitesFijosMrc(planCoberturas) {
+  return (planCoberturas || [])
+    .filter(
+      (pc) =>
+        pc.incluida_por_defecto &&
+        pc.coberturas_catalogo?.codigo &&
+        !CODIGOS_COBERTURA_EXCLUIDOS_BASE.includes(pc.coberturas_catalogo.codigo)
+    )
+    .map((pc) => ({ codigo: pc.coberturas_catalogo.codigo, monto: Number(pc.monto) || 0 }));
+}
 
 // `cotizacion_coberturas` no tiene columna `codigo` propia (solo `cobertura_id`) — el código
 // del catálogo viene de la relación `coberturas_catalogo` que trae findCotizacionById.
 const codigoDe = (cobertura) => cobertura.coberturas_catalogo?.codigo;
+
+// Arma el texto de "Distribución del capital asegurado" con los montos VIGENTES de
+// `plan_coberturas.monto` (el mismo dato que edita el panel admin), en vez de las 4 cifras
+// hardcodeadas que traía el texto original. Las líneas de Incendio/Robo 50%/50% son realmente
+// fijas — no dependen de ningún sub-límite del plan — así que se dejan literales, con la misma
+// redacción exacta que antes. Defensivo: si un código esperado no vino en `planCoberturas`
+// (plan sin ese sub-límite configurado), la línea se omite en vez de romper el render.
+function buildTextoDistribucionCapital(sublimitesFijos) {
+  const montoPorCodigo = new Map(sublimitesFijos.map((s) => [s.codigo, s.monto]));
+  const montoEquipos = montoPorCodigo.get('sublimite_equipos_electronicos');
+  const montoAgua = montoPorCodigo.get('sublimite_danos_agua');
+  const montoMurallas = montoPorCodigo.get('sublimite_murallas_cercos');
+  const montoGranizo = montoPorCodigo.get('sublimite_granizo');
+
+  const lineas = ['Incendio: Mercaderías 50% / Contenido General 50%', 'Robo: Mercaderías 50% / Contenido General 50%'];
+
+  if (montoEquipos != null) lineas.push(`Equipos Electrónicos: ${fmtGs(montoEquipos)}`);
+  if (montoAgua != null) lineas.push(`Daños por agua: ${fmtGs(montoAgua)}`);
+
+  // El texto original muestra murallas y granizo en el mismo renglón, separados por " | "
+  // (formato que se preserva acá) — solo cuando ambos montos están disponibles.
+  if (montoMurallas != null && montoGranizo != null) {
+    lineas.push(
+      `Daños a murallas/cercos/rejas: ${fmtGs(montoMurallas)} por vigencia | Daños por granizo: ${fmtGs(montoGranizo)} por vigencia (edificio)`
+    );
+  } else if (montoMurallas != null) {
+    lineas.push(`Daños a murallas/cercos/rejas: ${fmtGs(montoMurallas)} por vigencia`);
+  } else if (montoGranizo != null) {
+    lineas.push(`Daños por granizo: ${fmtGs(montoGranizo)} por vigencia (edificio)`);
+  }
+
+  return lineas.join('\n');
+}
 
 const TEXTO_COBERTURAS_PRINCIPALES = [
   'Incendio, Rayo y Explosión',
@@ -26,12 +76,6 @@ const TEXTO_COBERTURAS_PRINCIPALES = [
   'Responsabilidad Civil',
   'Equipos Electrónicos',
 ];
-
-const TEXTO_DISTRIBUCION_CAPITAL = `Incendio: Mercaderías 50% / Contenido General 50%
-Robo: Mercaderías 50% / Contenido General 50%
-Equipos Electrónicos: Gs. 5.000.000
-Daños por agua: Gs. 2.500.000
-Daños a murallas/cercos/rejas: Gs. 1.000.000 por vigencia | Daños por granizo: Gs. 5.000.000 por vigencia (edificio)`;
 
 const TEXTO_FRANQUICIAS_ESTANDAR = `Itapúa/Alto Paraná: 10% mín. Gs. 500.000 (Caída de Rayo)
 Robo contenido/tránsito/caja fuerte/RC: 10% mín. Gs. 500.000
@@ -52,15 +96,21 @@ Cláusula de cobranza (todas las formas de pago excepto Segucoop).`;
 /**
  * Arma el contenido HTML (páginas 1 y 2) de la Carta Oferta de MRC. `cotizacion` viene con
  * `cotizacion_variantes(*, cotizacion_plan_pago(*, formas_pago(*)))` y `cotizacion_coberturas(*)`
- * ya resueltos por findCotizacionById.
+ * ya resueltos por findCotizacionById. `planCoberturas` es el catálogo VIGENTE del plan
+ * (`plan_coberturas` + `coberturas_catalogo`, ver ramosRepository.findCoberturasByPlanId) —
+ * necesario para que los sub-límites fijos reflejen los montos actuales del admin, no los que
+ * tenía la migración de carga original.
  */
-export function buildMrcOfertaPages({ cotizacion, plan, ramo }) {
+export function buildMrcOfertaPages({ cotizacion, plan, ramo, planCoberturas }) {
   const riesgo = cotizacion.riesgo_datos || {};
+  const sublimitesFijos = sublimitesFijosMrc(planCoberturas);
+  const codigosSublimitesFijos = sublimitesFijos.map((s) => s.codigo);
+
   // Orden fijo (a pedido de Kevin, 2026-07-15): Incendio Edificio y Contenido siempre primero
   // (en ese orden), después el resto de coberturas, y por último los sub-límites. Dentro de los
   // sub-límites, los cargados manualmente por el agente (con franquicia elegida) van antes que
-  // los 3 fijos por defecto (agua/equipos electrónicos/granizo, que no muestran franquicia —
-  // ver SUBLIMITES_FIJOS_MRC y textoFranquicia).
+  // los fijos por defecto (agua/equipos electrónicos/murallas/granizo, que no muestran
+  // franquicia — ver codigosSublimitesFijos y textoFranquicia).
   const ordenPrioridad = (codigo) => {
     if (codigo === 'incendio_edificio') return 0;
     if (codigo === 'incendio_contenido') return 1;
@@ -108,10 +158,11 @@ export function buildMrcOfertaPages({ cotizacion, plan, ramo }) {
         <th>Suma Asegurada</th>
         <th>Franquicia</th>
       </tr>
-      <!-- Los 3 sub-límites fijos (agua/equipos electrónicos/granizo) no van en esta tabla: ya
-      figuran con su monto en "Distribución del capital asegurado" (a pedido de Kevin, 2026-07-15). -->
+      <!-- Los sub-límites fijos (agua/equipos electrónicos/murallas/granizo) no van en esta
+      tabla: ya figuran con su monto en "Distribución del capital asegurado" (a pedido de Kevin,
+      2026-07-15). -->
       ${coberturasCotizadas
-        .filter((c) => !SUBLIMITES_FIJOS_MRC.includes(codigoDe(c)))
+        .filter((c) => !codigosSublimitesFijos.includes(codigoDe(c)))
         .map(renderFilaSumaAsegurada)
         .join('')}
       <tr class="sumas-table__total">
@@ -158,7 +209,7 @@ de seguridad y adecuaciones que surjan de la misma.
     },
     {
       titulo: 'Distribución del capital asegurado',
-      contenido: `<div class="legal-block">${escapeHtml(TEXTO_DISTRIBUCION_CAPITAL)}</div>`,
+      contenido: `<div class="legal-block">${escapeHtml(buildTextoDistribucionCapital(sublimitesFijos))}</div>`,
     },
     {
       titulo: 'Franquicias',
@@ -274,13 +325,12 @@ function renderCoberturaItem(cobertura) {
 function renderFilaSumaAsegurada(cobertura) {
   const badgeClass = cobertura.tipo_aplicacion === 'sublimite' ? 'badge--sublimite' : 'badge--cobertura';
   const badgeLabel = cobertura.tipo_aplicacion === 'sublimite' ? 'Sublímite' : 'Cobertura';
-  const esSublimiteFijo = SUBLIMITES_FIJOS_MRC.includes(codigoDe(cobertura));
 
   return `
     <tr>
       <td><span class="badge ${badgeClass}">${badgeLabel}</span>${escapeHtml(cobertura.nombre_snapshot)}</td>
       <td>${fmtGs(cobertura.monto)}</td>
-      <td>${esSublimiteFijo ? '' : escapeHtml(textoFranquicia(cobertura.franquicia))}</td>
+      <td>${escapeHtml(textoFranquicia(cobertura.franquicia))}</td>
     </tr>
   `;
 }

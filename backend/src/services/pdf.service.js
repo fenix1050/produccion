@@ -17,11 +17,17 @@ import { buildOfertaHtml } from '../templates/oferta/index.js';
  * header/footer dentro del HTML de la página, que solo aparece una vez por página lógica y deja
  * sin marca las hojas de overflow cuando el contenido no entra en una sola hoja.
  */
-export async function renderOfertaPdf({ cotizacion, plan, ramo }) {
+export async function renderOfertaPdf({ cotizacion, plan, ramo, planCoberturas }) {
   const browser = await getBrowser();
   const page = await browser.newPage();
   try {
-    const { html, headerTemplate, footerTemplate, margin } = await buildOfertaHtml({ cotizacion, plan, ramo, page });
+    const { html, headerTemplate, footerTemplate, margin } = await buildOfertaHtml({
+      cotizacion,
+      plan,
+      ramo,
+      planCoberturas,
+      page,
+    });
     // `waitUntil: 'load'`, no 'networkidle0' -- verificado empíricamente: un segundo setContent()
     // en la MISMA página que ya hizo networkidle0 antes (measureContentHeightMm) nunca resuelve la
     // espera de red inactiva y cuelga hasta el timeout de Puppeteer (30s). 'load' alcanza igual acá

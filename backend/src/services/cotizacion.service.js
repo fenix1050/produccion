@@ -71,8 +71,12 @@ export async function generarPdfOferta(id, usuario) {
   // Sin filtro de `activo`: la cotización ya existe (se creó cuando el ramo estaba activo),
   // así que generar su PDF no debe fallar solo porque el ramo se dio de baja después.
   const ramo = await ramosRepository.findRamoById(cotizacion.ramo_id);
+  // Catálogo VIGENTE del plan (montos/incluida_por_defecto actuales) — necesario para que los
+  // sub-límites fijos de la Carta Oferta (ej. MRC) reflejen cambios del admin, en vez de quedar
+  // hardcodeados con el valor de cuando se cargó la migración original.
+  const planCoberturas = await ramosRepository.findCoberturasByPlanId(cotizacion.plan_id);
 
-  return renderOfertaPdf({ cotizacion, plan, ramo });
+  return renderOfertaPdf({ cotizacion, plan, ramo, planCoberturas });
 }
 
 const VENTANA_EDICION_MS = 30 * 24 * 60 * 60 * 1000;

@@ -1,6 +1,6 @@
 import { api, auth } from '../shared/api.js';
 import { crearBadge } from '../shared/badge.js';
-import { escapeHtml } from '../shared/dom.js';
+import { escapeHtml, enfocarPrimerElemento, atraparFoco } from '../shared/dom.js';
 import { renderSidebarFooter, renderTopbarUser } from '../shared/sidebar.js';
 import { fmtGsConPrefijo as fmtGs } from '../shared/format.js';
 
@@ -52,6 +52,10 @@ const state = {
 };
 
 const app = document.getElementById('app');
+
+// Elemento que disparó la apertura del modal de detalle ("Ver detalle") — se
+// restaura el foco ahí al cerrar (focus trap, WU accesibilidad).
+let elementoDisparadorModal = null;
 
 async function init() {
   renderApp();
@@ -191,8 +195,10 @@ function irPaginaSiguiente() {
 
 async function verDetalle(id) {
   const row = state.cotizaciones.find((c) => c.id === id);
+  elementoDisparadorModal = document.activeElement;
   state.modal = { row, detalle: null, loading: true, error: '' };
   renderApp();
+  enfocarPrimerElemento(app.querySelector('.admin-modal'));
   try {
     state.modal.detalle = await api.get(`/cotizaciones/${id}`);
   } catch (err) {
@@ -200,12 +206,19 @@ async function verDetalle(id) {
   } finally {
     state.modal.loading = false;
     renderApp();
+    // El contenido cambia de "Cargando…" a los datos reales/botones — el nodo del modal
+    // es nuevo (innerHTML completo) así que el foco puesto arriba ya no aplica, se repone.
+    enfocarPrimerElemento(app.querySelector('.admin-modal'));
   }
 }
 
 function cerrarModal() {
   state.modal = null;
   renderApp();
+  if (elementoDisparadorModal) {
+    elementoDisparadorModal.focus();
+    elementoDisparadorModal = null;
+  }
 }
 
 async function descargarOferta(boton, id, numeroCotizacion) {
@@ -352,7 +365,7 @@ function renderFiltros() {
 
 function renderTabla() {
   if (state.loading) {
-    return '<div class="empty-state__subtitle">Cargando cotizaciones…</div>';
+    return '<div class="empty-state__subtitle"><span class="spinner" aria-hidden="true"></span> Cargando cotizaciones…</div>';
   }
   if (state.error) {
     return `<div class="admin-banner admin-banner--error">${escapeHtml(state.error)}</div>`;
@@ -440,7 +453,7 @@ function renderModalDetalle() {
   const m = state.modal;
   const row = m.row;
 
-  let cuerpo = '<div class="empty-state__subtitle">Cargando detalle…</div>';
+  let cuerpo = '<div class="empty-state__subtitle"><span class="spinner" aria-hidden="true"></span> Cargando detalle…</div>';
   if (m.error) {
     cuerpo = `<div class="admin-modal__error">${escapeHtml(m.error)}</div>`;
   } else if (!m.loading && m.detalle) {
@@ -552,10 +565,16 @@ function onAppSubmit(e) {
   aplicarFiltros();
 }
 
-// Escape cierra el modal de detalle si está abierto.
+// Escape cierra el modal de detalle si está abierto. Tab/Shift+Tab quedan atrapados
+// dentro del modal (focus trap) mientras esté abierto.
 function onKeydown(e) {
   if (e.key === 'Escape' && state.modal) {
     cerrarModal();
+    return;
+  }
+  if (e.key === 'Tab' && state.modal) {
+    const modalAbierto = app.querySelector('.admin-modal');
+    if (modalAbierto) atraparFoco(e, modalAbierto);
   }
 }
 

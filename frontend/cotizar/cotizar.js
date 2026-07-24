@@ -1007,31 +1007,37 @@ function renderRamoNoDisponible(ramo) {
   `;
 }
 
+// id="campo-..." derivado del data-field (camelCase -> kebab-case) para asociar cada
+// <label for="..."> con su input/select sin tener que hardcodear un id por campo.
+function idParaCampo(fieldKey) {
+  return `campo-${fieldKey.replace(/([A-Z])/g, '-$1').toLowerCase()}`;
+}
+
 // Campos "Tipo de Riesgo"/"Ciudad"/capitales del esqueleto MRC — reusado por MRC e Incendio
 // (plan "Edificio y Contenido"), que comparten el mismo motor de tasas por rubro.
 function camposEdificioContenido(sublimiteField) {
   return `
     <div class="field">
-      <label>Tipo de Riesgo</label>
-      <select class="field-input" data-field="rubroActividad">
+      <label for="${idParaCampo('rubroActividad')}">Tipo de Riesgo</label>
+      <select class="field-input" id="${idParaCampo('rubroActividad')}" data-field="rubroActividad">
         <option value="">Seleccioná un tipo de riesgo…</option>
         ${state.rubros.map((r) => `<option value="${escapeHtml(r.nombre)}" ${state.data.rubroActividad === r.nombre ? 'selected' : ''}>${escapeHtml(r.nombre)}</option>`).join('')}
       </select>
     </div>
     <div class="field">
-      <label>Ciudad</label>
-      <select class="field-input" data-field="ciudad">
+      <label for="${idParaCampo('ciudad')}">Ciudad</label>
+      <select class="field-input" id="${idParaCampo('ciudad')}" data-field="ciudad">
         <option value="">Seleccioná una ciudad…</option>
         ${CIUDADES.map((c) => `<option value="${c}" ${state.data.ciudad === c ? 'selected' : ''}>${c}</option>`).join('')}
       </select>
     </div>
     <div class="field">
-      <label>Incendio Edificio (Gs.)</label>
-      <input class="field-input" type="text" inputmode="numeric" data-field="capitalEdificio" data-money="true" placeholder="450.000.000" value="${fmtGsInput(state.data.capitalEdificio)}" />
+      <label for="${idParaCampo('capitalEdificio')}">Incendio Edificio (Gs.)</label>
+      <input class="field-input" id="${idParaCampo('capitalEdificio')}" type="text" inputmode="numeric" data-field="capitalEdificio" data-money="true" placeholder="450.000.000" value="${fmtGsInput(state.data.capitalEdificio)}" />
     </div>
     <div class="field">
-      <label>Incendio Contenido (Gs.)</label>
-      <input class="field-input" type="text" inputmode="numeric" data-field="capitalContenido" data-money="true" placeholder="120.000.000" value="${fmtGsInput(state.data.capitalContenido)}" />
+      <label for="${idParaCampo('capitalContenido')}">Incendio Contenido (Gs.)</label>
+      <input class="field-input" id="${idParaCampo('capitalContenido')}" type="text" inputmode="numeric" data-field="capitalContenido" data-money="true" placeholder="120.000.000" value="${fmtGsInput(state.data.capitalContenido)}" />
     </div>
     ${sublimiteField || ''}
   `;
@@ -1040,8 +1046,8 @@ function camposEdificioContenido(sublimiteField) {
 function campoSublimitePorcentaje(field, label) {
   return `
     <div class="field">
-      <label>${label}</label>
-      <input class="field-input" type="number" min="0" max="50" data-field="${field}" placeholder="0-50" value="${escapeHtml(state.data[field] ?? '')}" />
+      <label for="${idParaCampo(field)}">${label}</label>
+      <input class="field-input" id="${idParaCampo(field)}" type="number" min="0" max="50" data-field="${field}" placeholder="0-50" value="${escapeHtml(state.data[field] ?? '')}" />
     </div>
   `;
 }
@@ -1063,8 +1069,8 @@ function camposEspecificosParaRamo(ramo, plan) {
     if (plan.nombre === 'MAQUINARIA BASICO') {
       return `
         <div class="field">
-          <label>Capital Maquinaria (USD)</label>
-          <input class="field-input" type="text" inputmode="numeric" data-field="capitalMaquinaria" data-money="true" placeholder="50.000" value="${fmtGsInput(state.data.capitalMaquinaria)}" />
+          <label for="${idParaCampo('capitalMaquinaria')}">Capital Maquinaria (USD)</label>
+          <input class="field-input" id="${idParaCampo('capitalMaquinaria')}" type="text" inputmode="numeric" data-field="capitalMaquinaria" data-money="true" placeholder="50.000" value="${fmtGsInput(state.data.capitalMaquinaria)}" />
         </div>
         ${campoSublimitePorcentaje('sublimiteVandalismoPorcentaje', 'Sublímite Vandalismo (%)')}
       `;
@@ -1078,8 +1084,8 @@ function camposEspecificosParaRamo(ramo, plan) {
     }
     const campoCapital = `
       <div class="field">
-        <label>Capital Asegurado (Gs.)</label>
-        <input class="field-input" type="text" inputmode="numeric" data-field="capitalAsegurado" data-money="true" placeholder="100.000.000" value="${fmtGsInput(state.data.capitalAsegurado)}" />
+        <label for="${idParaCampo('capitalAsegurado')}">Capital Asegurado (Gs.)</label>
+        <input class="field-input" id="${idParaCampo('capitalAsegurado')}" type="text" inputmode="numeric" data-field="capitalAsegurado" data-money="true" placeholder="100.000.000" value="${fmtGsInput(state.data.capitalAsegurado)}" />
       </div>
     `;
 
@@ -1089,8 +1095,8 @@ function camposEspecificosParaRamo(ramo, plan) {
 
     const campoEdad = `
       <div class="field">
-        <label>Edad</label>
-        <input class="field-input" type="number" min="0" max="99" data-field="edad" placeholder="35" value="${escapeHtml(state.data.edad ?? '')}" />
+        <label for="${idParaCampo('edad')}">Edad</label>
+        <input class="field-input" id="${idParaCampo('edad')}" type="number" min="0" max="99" data-field="edad" placeholder="35" value="${escapeHtml(state.data.edad ?? '')}" />
       </div>
     `;
 
@@ -1107,8 +1113,8 @@ function camposEspecificosParaRamo(ramo, plan) {
         </div>
         ${incluyeRenta ? `
           <div class="field">
-            <label>Suma Renta Diaria (Gs.)</label>
-            <input class="field-input" type="text" inputmode="numeric" data-field="sumaRentaDiaria" data-money="true" placeholder="50.000" value="${fmtGsInput(state.data.sumaRentaDiaria)}" />
+            <label for="${idParaCampo('sumaRentaDiaria')}">Suma Renta Diaria (Gs.)</label>
+            <input class="field-input" id="${idParaCampo('sumaRentaDiaria')}" type="text" inputmode="numeric" data-field="sumaRentaDiaria" data-money="true" placeholder="50.000" value="${fmtGsInput(state.data.sumaRentaDiaria)}" />
           </div>
         ` : ''}
       `;
@@ -1148,8 +1154,8 @@ function renderDatosView(ramo) {
             <div class="field-grid">
               ${CLIENT_FIELDS.map((f) => `
                 <div class="field ${f.span === 2 ? 'field--span2' : ''}">
-                  <label>${f.label}</label>
-                  <input class="field-input" type="text" inputmode="${f.money ? 'numeric' : 'text'}" data-field="${f.key}" ${f.money ? 'data-money="true"' : ''} placeholder="${f.placeholder}" value="${escapeHtml(f.money ? fmtGsInput(state.data[f.key]) : (state.data[f.key] ?? ''))}" />
+                  <label for="${idParaCampo(f.key)}">${f.label}</label>
+                  <input class="field-input" id="${idParaCampo(f.key)}" type="text" inputmode="${f.money ? 'numeric' : 'text'}" data-field="${f.key}" ${f.money ? 'data-money="true"' : ''} placeholder="${f.placeholder}" value="${escapeHtml(f.money ? fmtGsInput(state.data[f.key]) : (state.data[f.key] ?? ''))}" />
                 </div>
               `).join('')}
               ${camposEspecificos}
@@ -1206,14 +1212,21 @@ function renderCoberturasAdicionales(catalogoDisponible) {
     </option>
   `).join('');
 
+  // Cada fila es repetible (el agente puede agregar varias líneas de cobertura), así que
+  // el id de cada campo usa l.id (clave estable de la fila, ver agregarCoberturaLinea) para
+  // no duplicar ids en el DOM. Los <label> son visualmente ocultos (.sr-only): el layout ya
+  // usa el placeholder como pista visual y agregar 2 labels visibles por fila no entra.
   const filas = state.coberturasAdicionales.map((l) => `
     <div class="cobertura-adicional-row" data-linea-id="${l.id}">
-      <select class="field-input" data-linea-id="${l.id}" data-linea-field="codigo">
+      <label class="sr-only" for="cobertura-linea-${l.id}-codigo">Cobertura de la línea</label>
+      <select class="field-input" id="cobertura-linea-${l.id}-codigo" data-linea-id="${l.id}" data-linea-field="codigo">
         <option value="">Seleccioná una cobertura…</option>
         ${opciones(l.codigo)}
       </select>
+      <label class="sr-only" for="cobertura-linea-${l.id}-suma">Suma asegurada de la línea (Gs.)</label>
       <input
         class="field-input"
+        id="cobertura-linea-${l.id}-suma"
         type="text"
         inputmode="numeric"
         data-linea-id="${l.id}"
@@ -1227,8 +1240,8 @@ function renderCoberturasAdicionales(catalogoDisponible) {
   `).join('');
 
   return `
-    <div class="coberturas-adicionales">
-      <label>Coberturas adicionales</label>
+    <div class="coberturas-adicionales" role="group" aria-labelledby="coberturas-adicionales-label">
+      <label id="coberturas-adicionales-label">Coberturas adicionales</label>
       ${filas}
       <button type="button" class="btn-outline" data-action="add-cobertura-linea">+ Agregar cobertura</button>
     </div>
@@ -1325,8 +1338,8 @@ function renderCuotasSelect() {
 
   return `
     <div class="field field--gap-bottom">
-      <label>Cantidad de cuotas</label>
-      <select class="field-input" data-field="cuotas">${opciones}</select>
+      <label for="${idParaCampo('cuotas')}">Cantidad de cuotas</label>
+      <select class="field-input" id="${idParaCampo('cuotas')}" data-field="cuotas">${opciones}</select>
     </div>
   `;
 }
@@ -1582,26 +1595,34 @@ function renderAjusteField(prefijo, label, plan) {
   const montoCargado = state.data[`${prefijo}Monto`] != null && state.data[`${prefijo}Monto`] !== '';
   const porcentajeCargado = state.data[`${prefijo}Porcentaje`] != null && state.data[`${prefijo}Porcentaje`] !== '';
 
+  // Un solo <label> visual describe 2 inputs (monto/porcentaje, mutuamente excluyentes) —
+  // for/id de a uno solo no alcanza acá, así que se asocian los dos con aria-labelledby
+  // sobre el mismo id de label (técnica WCAG válida para "un label, varios controles").
+  const labelId = `${idParaCampo(prefijo)}-label`;
   return `
     <div class="field">
-      <label>${label}</label>
+      <label id="${labelId}">${label}</label>
       <div class="field-row">
         <input
           class="field-input"
+          id="${idParaCampo(`${prefijo}Monto`)}"
           type="text"
           inputmode="numeric"
           data-field="${prefijo}Monto"
           data-money="true"
           placeholder="Gs."
+          aria-labelledby="${labelId}"
           value="${escapeHtml(fmtGsInput(state.data[`${prefijo}Monto`]))}"
           ${porcentajeCargado ? 'disabled' : ''}
         />
         <input
           class="field-input"
+          id="${idParaCampo(`${prefijo}Porcentaje`)}"
           type="number"
           min="0"
           data-field="${prefijo}Porcentaje"
           placeholder="%"
+          aria-labelledby="${labelId}"
           value="${escapeHtml(String(state.data[`${prefijo}Porcentaje`] ?? ''))}"
           ${montoCargado ? 'disabled' : ''}
         />

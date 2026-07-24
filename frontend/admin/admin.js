@@ -1,6 +1,6 @@
 import { api, auth } from '../shared/api.js';
 import { crearBadge } from '../shared/badge.js';
-import { escapeHtml } from '../shared/dom.js';
+import { escapeHtml, enfocarPrimerElemento, atraparFoco } from '../shared/dom.js';
 import { renderSidebarFooter, renderTopbarUser } from '../shared/sidebar.js';
 import { ICON_ADMIN_USUARIOS, ICON_ADMIN_COBERTURAS, ICON_ADMIN_TASAS, ICON_ADMIN_PLANES, ICON_WRENCH } from '../shared/nav-icons.js';
 import { fmtGsConPrefijo as fmtGs, capitalizar } from '../shared/format.js';
@@ -78,6 +78,10 @@ const state = {
 
 const app = document.getElementById('app');
 
+// Elemento que disparó la apertura del modal actualmente abierto (botón "Editar",
+// "Nuevo usuario", etc.) — se restaura el foco ahí al cerrar (focus trap, WU accesibilidad).
+let elementoDisparadorModal = null;
+
 async function init() {
   if (!auth.isLoggedIn()) {
     window.location.href = '../login/';
@@ -146,6 +150,7 @@ async function cargarUsuarios() {
 }
 
 function abrirModalCrear() {
+  elementoDisparadorModal = document.activeElement;
   const rolDefault = state.roles.find((r) => r.nombre === 'agente') ?? state.roles[0];
   state.modal = {
     tipo: 'crear',
@@ -157,11 +162,13 @@ function abrirModalCrear() {
     password: '',
   };
   renderApp();
+  enfocarPrimerElemento(app.querySelector('.admin-modal'));
 }
 
 function abrirModalEditar(usuarioId) {
   const usuario = state.usuarios.find((u) => u.id === usuarioId);
   if (!usuario) return;
+  elementoDisparadorModal = document.activeElement;
   const rolActual = state.roles.find((r) => r.nombre === usuario.rol);
   state.modal = {
     tipo: 'editar',
@@ -176,18 +183,25 @@ function abrirModalEditar(usuarioId) {
     recargo_maximo_pct: usuario.recargo_maximo_pct,
   };
   renderApp();
+  enfocarPrimerElemento(app.querySelector('.admin-modal'));
 }
 
 function abrirModalPassword(usuarioId) {
   const usuario = state.usuarios.find((u) => u.id === usuarioId);
   if (!usuario) return;
+  elementoDisparadorModal = document.activeElement;
   state.modal = { tipo: 'password', usuario, error: '', guardando: false, password: '' };
   renderApp();
+  enfocarPrimerElemento(app.querySelector('.admin-modal'));
 }
 
 function cerrarModal() {
   state.modal = null;
   renderApp();
+  if (elementoDisparadorModal) {
+    elementoDisparadorModal.focus();
+    elementoDisparadorModal = null;
+  }
 }
 
 async function desactivarUsuario(usuarioId) {
@@ -359,6 +373,7 @@ async function eliminarRol(rolId) {
 }
 
 function abrirModalRolCrear() {
+  elementoDisparadorModal = document.activeElement;
   state.modalRol = {
     tipo: 'crear',
     error: '',
@@ -370,11 +385,13 @@ function abrirModalRolCrear() {
     puede_editar_planes: false,
   };
   renderApp();
+  enfocarPrimerElemento(app.querySelector('.admin-modal'));
 }
 
 function abrirModalRolEditar(rolId) {
   const rol = state.roles.find((r) => r.id === rolId);
   if (!rol || rol.es_sistema) return; // roles del sistema no son editables desde el panel
+  elementoDisparadorModal = document.activeElement;
   state.modalRol = {
     tipo: 'editar',
     rolId: rol.id,
@@ -387,11 +404,16 @@ function abrirModalRolEditar(rolId) {
     puede_editar_planes: Boolean(rol.puede_editar_planes),
   };
   renderApp();
+  enfocarPrimerElemento(app.querySelector('.admin-modal'));
 }
 
 function cerrarModalRol() {
   state.modalRol = null;
   renderApp();
+  if (elementoDisparadorModal) {
+    elementoDisparadorModal.focus();
+    elementoDisparadorModal = null;
+  }
 }
 
 async function guardarModalRol(form) {
@@ -680,6 +702,7 @@ async function cargarCatalogoDeRamo(ramoId) {
 }
 
 function abrirModalTasa() {
+  elementoDisparadorModal = document.activeElement;
   state.modalTasa = {
     error: '',
     guardando: false,
@@ -689,11 +712,16 @@ function abrirModalTasa() {
     vigente_desde: new Date().toISOString().slice(0, 10),
   };
   renderApp();
+  enfocarPrimerElemento(app.querySelector('.admin-modal'));
 }
 
 function cerrarModalTasa() {
   state.modalTasa = null;
   renderApp();
+  if (elementoDisparadorModal) {
+    elementoDisparadorModal.focus();
+    elementoDisparadorModal = null;
+  }
 }
 
 async function guardarModalTasa(form) {
@@ -840,6 +868,7 @@ async function eliminarCoberturaDelPlan(planCoberturaId, planId) {
 }
 
 function abrirModalCobertura() {
+  elementoDisparadorModal = document.activeElement;
   state.modalCobertura = {
     error: '',
     guardando: false,
@@ -849,11 +878,16 @@ function abrirModalCobertura() {
     franquicia: '',
   };
   renderApp();
+  enfocarPrimerElemento(app.querySelector('.admin-modal'));
 }
 
 function cerrarModalCobertura() {
   state.modalCobertura = null;
   renderApp();
+  if (elementoDisparadorModal) {
+    elementoDisparadorModal.focus();
+    elementoDisparadorModal = null;
+  }
 }
 
 async function guardarModalCobertura(form) {
@@ -1039,7 +1073,7 @@ function renderUsuarios() {
 
 function renderTablaRoles() {
   if (state.loadingRoles) {
-    return '<div class="empty-state__subtitle">Cargando roles…</div>';
+    return '<div class="empty-state__subtitle"><span class="spinner" aria-hidden="true"></span> Cargando roles…</div>';
   }
   if (state.rolesError) {
     return `<div class="admin-banner admin-banner--error">${escapeHtml(state.rolesError)}</div>`;
@@ -1089,7 +1123,7 @@ function renderTablaRoles() {
 
 function renderTablaUsuarios() {
   if (state.loadingUsuarios) {
-    return '<div class="empty-state__subtitle">Cargando usuarios…</div>';
+    return '<div class="empty-state__subtitle"><span class="spinner" aria-hidden="true"></span> Cargando usuarios…</div>';
   }
   if (state.usuariosError) {
     return `<div class="admin-banner admin-banner--error">${escapeHtml(state.usuariosError)}</div>`;
@@ -1168,7 +1202,7 @@ function renderPlanes() {
 
 function renderTablaPlanes() {
   if (state.loadingPlanes) {
-    return '<div class="empty-state__subtitle">Cargando planes…</div>';
+    return '<div class="empty-state__subtitle"><span class="spinner" aria-hidden="true"></span> Cargando planes…</div>';
   }
   if (state.planesError) {
     return `<div class="admin-banner admin-banner--error">${escapeHtml(state.planesError)}</div>`;
@@ -1223,7 +1257,7 @@ function renderTablaPlanes() {
 function renderFormasPagoDelPlan(planId) {
   const entry = state.formasPagoPorPlan[planId];
   if (!entry || entry.loading) {
-    return '<div class="empty-state__subtitle">Cargando formas de pago…</div>';
+    return '<div class="empty-state__subtitle"><span class="spinner" aria-hidden="true"></span> Cargando formas de pago…</div>';
   }
   if (entry.error) {
     return `<div class="admin-banner admin-banner--error">${escapeHtml(entry.error)}</div>`;
@@ -1334,7 +1368,7 @@ function renderTasas() {
 function renderTablaRubrosActividad() {
   const entry = state.rubrosActividad;
   if (entry.loading) {
-    return '<div class="empty-state__subtitle">Cargando tipos de riesgo…</div>';
+    return '<div class="empty-state__subtitle"><span class="spinner" aria-hidden="true"></span> Cargando tipos de riesgo…</div>';
   }
   if (entry.error) {
     return `<div class="admin-banner admin-banner--error">${escapeHtml(entry.error)}</div>`;
@@ -1394,7 +1428,7 @@ function renderTablaTasas() {
 
   const entry = state.tasasPorRamo[state.ramoTasasSeleccionado];
   if (!entry || entry.loading) {
-    return '<div class="empty-state__subtitle">Cargando tasas…</div>';
+    return '<div class="empty-state__subtitle"><span class="spinner" aria-hidden="true"></span> Cargando tasas…</div>';
   }
   if (entry.error) {
     return `<div class="admin-banner admin-banner--error">${escapeHtml(entry.error)}</div>`;
@@ -1484,7 +1518,7 @@ function renderTablaCoberturasPlan() {
   }
   const planesEntry = state.planesPorRamoCob[state.ramoCoberturasSeleccionado];
   if (!planesEntry || planesEntry.loading) {
-    return '<div class="empty-state__subtitle">Cargando planes…</div>';
+    return '<div class="empty-state__subtitle"><span class="spinner" aria-hidden="true"></span> Cargando planes…</div>';
   }
   if (planesEntry.error) {
     return `<div class="admin-banner admin-banner--error">${escapeHtml(planesEntry.error)}</div>`;
@@ -1495,7 +1529,7 @@ function renderTablaCoberturasPlan() {
 
   const entry = state.coberturasDelPlan[state.planCoberturasSeleccionado];
   if (!entry || entry.loading) {
-    return '<div class="empty-state__subtitle">Cargando coberturas…</div>';
+    return '<div class="empty-state__subtitle"><span class="spinner" aria-hidden="true"></span> Cargando coberturas…</div>';
   }
   if (entry.error) {
     return `<div class="admin-banner admin-banner--error">${escapeHtml(entry.error)}</div>`;
@@ -1858,17 +1892,25 @@ function onAppSubmit(e) {
 }
 
 // Escape cierra el modal que esté abierto (uno solo a la vez, en el orden en
-// que se abrieron los 4 posibles: usuario/rol/tasa/cobertura).
+// que se abrieron los 4 posibles: usuario/rol/tasa/cobertura). Tab/Shift+Tab quedan
+// atrapados dentro del modal (focus trap) — se resuelve el contenedor en vivo porque
+// renderApp() reconstruye el DOM del modal en cada render.
 function onKeydown(e) {
-  if (e.key !== 'Escape') return;
-  if (state.modal) {
-    cerrarModal();
-  } else if (state.modalRol) {
-    cerrarModalRol();
-  } else if (state.modalTasa) {
-    cerrarModalTasa();
-  } else if (state.modalCobertura) {
-    cerrarModalCobertura();
+  if (e.key === 'Escape') {
+    if (state.modal) {
+      cerrarModal();
+    } else if (state.modalRol) {
+      cerrarModalRol();
+    } else if (state.modalTasa) {
+      cerrarModalTasa();
+    } else if (state.modalCobertura) {
+      cerrarModalCobertura();
+    }
+    return;
+  }
+  if (e.key === 'Tab') {
+    const modalAbierto = app.querySelector('.admin-modal');
+    if (modalAbierto) atraparFoco(e, modalAbierto);
   }
 }
 

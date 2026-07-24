@@ -77,8 +77,8 @@ Este proyecto se construye **fase por fase**, en este orden fijo (detalle comple
 - No intentes adivinar, si no sabes algo pregunta.
 - Cuando termines una tarea, **debes** actualizar el check de la tarea en este archivo, y el plan de desarrollo. Hasta dar por finalizado el plan de desarrollo.
 - Cuando termines una tarea, **debes** actualizar el estado de desarrollo del proyecto en este archivo y el del .md del proyecto.
-  Cuando encuentres una suposición errónea durante una sesión, sugiere una corrección en CLAUDE.md.
-  Revisa este archivo CLAUDE.md y sugiere mejoras.
+- Cuando encuentres una suposición errónea durante una sesión, sugiere una corrección en CLAUDE.md.
+- Revisa este archivo CLAUDE.md y sugiere mejoras.
 
 ## Estado actual del proyecto
 

@@ -1378,8 +1378,32 @@ checklist de fases de arriba, este es transversal a fases.
 - [ ] Banners de error reales en los 8 puntos de carga silenciosa de `cotizar.js` (líneas 229, 277,
   285, 420, 437, 477, 491) — hoy solo van a `console.error`, el agente ve un formulario vacío sin
   explicación.
+- [ ] **Insert de cotización multi-tabla sin rollback ante fallo parcial** (`cotizacion.service.js`
+  líneas 25-46 y 171-249) — si `insertPlanesPago` u otro insert intermedio falla después de que la
+  fila principal y una variante ya se guardaron, queda una cotización huérfana en Historial con
+  numeración correlativa consumida y sin plan de pago. Solución: envolver todo el conjunto en una
+  función Postgres vía `supabase.rpc(...)` (mismo patrón que `siguiente_correlativo`), o agregar
+  limpieza compensatoria en el catch. Hallazgo del QA integral del 2026-07-24 (ver artifact/engram).
+- [ ] **"Emitir carta oferta" no valida ramo antes de persistir en Incendio/Vida-AP**
+  (`cotizar.js:721-752`, a diferencia de `historial.js:28-33` que sí tiene el guard) — cada intento
+  fallido hace `POST /cotizaciones` (201, consume correlativo) antes de descubrir con el PDF que el
+  ramo no tiene template (422), dejando cotizaciones huérfanas acumulativas. Solución: exponer
+  `ofertaDisponibleParaRamo` desde `/api/ramos` y usarlo para deshabilitar el botón en `cotizar.js`
+  igual que ya hace Historial. Hallazgo del QA integral del 2026-07-24.
+- [ ] **Race condition en el preview de cálculo en vivo de MRC** (`cotizar.js:526-716`,
+  `scheduleCalculate`/`calcularPreview`) — el debounce protege el timer pero no las peticiones ya en
+  vuelo; con red lenta, una respuesta vieja puede resolver después de una más nueva y pisar
+  `state.preview` con una prima incorrecta para los datos actuales en pantalla. Solución: número de
+  secuencia incremental o `AbortController` para descartar respuestas obsoletas. Hallazgo del QA
+  integral del 2026-07-24.
 
 ### Sprint 2 — mantenibilidad puntual
+- [ ] Label de rol hardcodeado en sidebar/topbar (`frontend/shared/sidebar.js:52`) — solo contempla
+  `admin`/`agente`, cualquier rol custom (creado desde el panel de Admin) muestra siempre el texto
+  fijo "Analista comercial" en vez de su nombre real. Cosmético, sin impacto de seguridad ni de
+  permisos (los booleanos de permiso sí se leen y aplican bien). Fix: mostrar `usuario.rol`
+  capitalizado cuando no matchea los 2 casos especiales. Hallazgo del QA integral del 2026-07-24
+  (continuación con usuario admin real).
 - [ ] Extraer `mostrarBanner()` (duplicada literal en `cotizar.js:376` y `admin.js:128`) a
   `frontend/shared/`.
 - [ ] Helper compartido para el esqueleto repetido de `mrc.calculator.js`/`incendio.calculator.js`
@@ -1407,6 +1431,24 @@ checklist de fases de arriba, este es transversal a fases.
 - [ ] Automatizar `npm audit`/Dependabot en CI.
 - [ ] Arrancar modularización de `cotizar.js` (1739 líneas) / `admin.js` (2101 líneas) por
   responsabilidad (fetch/render/estado) — inversión de mediano plazo, no bloqueante por sí sola.
+
+### QA funcional en vivo — continuación con usuario admin real (2026-07-24)
+
+La primera pasada del QA integral (arriba) no había podido verificar el panel de Admin por falta de
+credenciales de rol admin. Kevin pasó el usuario admin real (`kevinruiz@tajy.com.py`) y se repitió esa
+parte del QA en vivo con Playwright. Resultado: **CRUD de usuarios, roles con permisos granulares,
+coberturas por plan, editor de tasas (`rubros_actividad` por UPDATE directo, `tasas_cobertura_ramo`
+versionado por INSERT — confirmado, coincide con lo documentado) y tope de descuento/recargo por
+usuario funcionan correctamente**, igual que el guard de "ningún rol no-admin puede tocar al admin
+real" (commit `db8a1d2`) — confirmado con 403 real vía API directa y con los botones Editar/Eliminar
+directamente no renderizados en la fila del admin para un rol custom. Todos los datos de prueba
+creados en esta pasada (usuario, rol, versión de tasa, edición temporal) se revirtieron/eliminaron al
+cierre. El único hallazgo nuevo fue el bug cosmético del label de rol, ya sumado al Sprint 2 arriba.
+
+**Pendiente de acción manual de Kevin — no resuelto por el QA:** quedó un usuario de prueba huérfano
+de una sesión de QA anterior, `qa.test.ownership+1784502107843@tajy.com.py` (rol Agente, inactivo), que
+el agente de QA no pudo eliminar porque el clasificador de permisos del entorno bloqueó el DELETE.
+Hay que borrarlo a mano desde el panel de Usuarios.
 
 **Condición dura antes de lanzar a producción sin restricciones**: al menos Sprint 1 completo
 (accesibilidad + feedback del flujo principal) — el resto es iterable en producción, pero no debería

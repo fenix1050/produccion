@@ -38,6 +38,21 @@
   box-sizing: border-box;
 }
 
+/* Utilidad compartida para labels accesibles sin equivalente visual — ej. las filas
+   repetibles de "Coberturas adicionales" en cotizar.js, donde el layout ya usa
+   placeholder como pista visual y no hay lugar para un <label> visible por fila. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* Banner de error/éxito reutilizado de admin.css/historial.css (misma clase, mismos
    tokens --tajy-red/--tajy-green-*) — se declara acá también en vez de importar
    admin.css entero, porque admin.css tiene selectores (.admin-content, .panel,
@@ -1054,10 +1069,11 @@ button {
 
 /* Utilidad compartida de spinner — muchas pantallas mostraban solo texto
    "Cargando…" sin ningún indicador visual de progreso. Uso:
-   <span class="spinner" role="status" aria-label="Cargando"></span> junto
-   al texto, o envolviendo el texto en un contenedor con display:flex/gap.
-   Pendiente aplicar en los "Cargando…" de admin.js/historial.js — ver
-   resumen de la tarea de accesibilidad para el detalle de qué queda. */
+   <span class="spinner" aria-hidden="true"></span> junto al texto visible
+   "Cargando…" (aria-hidden porque el texto de al lado ya lo anuncia a lectores
+   de pantalla — un aria-label duplicado sería redundante). Aplicado en los
+   "Cargando…" de admin.js (roles/usuarios/planes/formas de pago/tipos de
+   riesgo/tasas/coberturas) e historial.js (tabla y modal de detalle). */
 .spinner {
   display: inline-block;
   width: 16px;

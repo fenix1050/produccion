@@ -1411,3 +1411,37 @@ checklist de fases de arriba, este es transversal a fases.
 **Condición dura antes de lanzar a producción sin restricciones**: al menos Sprint 1 completo
 (accesibilidad + feedback del flujo principal) — el resto es iterable en producción, pero no debería
 quedar como "deuda aceptada" indefinida. Ver conclusión completa y veredicto en el informe ejecutivo.
+
+## 31. Pendientes operativos puntuales (movidos desde CLAUDE.md, 2026-07-24)
+
+Detalle de items que CLAUDE.md antes traía completos en "Pendientes activos que pueden afectar el
+código" — se centralizan acá para que CLAUDE.md quede corto y este documento siga siendo la única
+fuente de detalle histórico/pendiente.
+
+- **Corrección de dato desactualizado (auditoría integral 2026-07-24)**: `incendio.calculator.js`
+  (245 líneas) y `vida-ap.calculator.js` (294 líneas) YA estaban implementados con lógica de
+  cálculo completa — una línea vieja de CLAUDE.md decía "pendiente" por error. Lo que sí faltaba y
+  ahora está cerrado: tests unitarios de los 3 calculators (mrc/incendio/vida-ap), agregados el
+  2026-07-24 (44 casos nuevos, 84/84 tests en verde). Siguen sin template de Carta Oferta propio
+  (requieren texto oficial de cada ramo).
+- **Sublímites de MRC en el PDF de Carta Oferta desincronizados del catálogo — resuelto
+  (2026-07-24)**: `backend/src/templates/oferta/mrc.js` tenía montos hardcodeados
+  (`TEXTO_DISTRIBUCION_CAPITAL`) y un array `SUBLIMITES_FIJOS_MRC` al que le faltaba
+  `sublimite_murallas_cercos`. Ahora ambos se derivan en vivo de `plan_coberturas` (mismo criterio
+  que ya usaba el frontend desde WU6), con test de regresión en `mrc.test.js`.
+- **Modal "Nuevo usuario" sin campos de tope propio**: no tiene campos de tope propio
+  (descuento/recargo máximo) — solo "Editar usuario" los tiene. Usuario recién creado queda sin
+  tope (`NULL`, solo el tope del plan) hasta que se edite a mano (confirmado con Kevin como
+  "revisamos después").
+- **Textos legales faltantes en catálogo MRC** (detectado 2026-07-22):
+  `coberturas_catalogo.texto_legal`/`texto_exclusiones` quedaron en `NULL` desde la migración 012
+  (2026-07-10) para `cristales` (Rotura de Cristales, Vidrios o Espejos), `responsabilidad_civil` y
+  `equipos_electronicos`. La Carta Oferta de MRC (`renderCoberturaItem` en
+  `backend/src/templates/oferta/mrc.js`) solo imprime el bloque de texto legal/exclusiones si esos
+  campos no son null, así que estas 3 coberturas aparecen sin texto en el PDF (solo el nombre) —
+  comportamiento esperado dado el dato faltante, no un bug. Kevin no tiene todavía el texto oficial
+  de estas 3 coberturas; falta cargarlo en una migración nueva cuando esté disponible.
+- **Propuesta Formal en bienvenida sigue como placeholder** (2026-07-22): la nueva pantalla
+  `frontend/bienvenida/` ya separa el flujo "Cotizar" de "Elaborar una Propuesta Formal", pero el
+  segundo todavía muestra solo "Próximamente". No confundir esta navegación nueva con Fase 4
+  cerrada: la Propuesta Formal sigue pendiente a nivel funcional y de PDF.

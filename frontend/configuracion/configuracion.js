@@ -126,7 +126,7 @@ function renderPasswordField(campo, label, autocomplete) {
 
 function renderRequisitosPassword(valorActual) {
   return `
-    <div class="config-pass-requisitos">
+    <div class="config-pass-requisitos" aria-live="polite">
       ${REQUISITOS_PASSWORD.map((req) => `
         <div class="config-pass-req${req.test(valorActual) ? ' config-pass-req--met' : ''}" data-req="${req.clave}">
           <span class="config-pass-req__icon">${ICON_CHECK_SM}</span>
@@ -209,24 +209,24 @@ function renderApp() {
                 <div class="config-fields">
                   <div class="config-field config-field--icon">
                     <span class="config-field__icon">${ICON_USER}</span>
-                    <div>
-                      <label>Nombre</label>
-                      <div>${escapeHtml(usuario?.nombre ?? '—')}</div>
-                    </div>
+                    <dl class="config-field__dl">
+                      <dt>Nombre</dt>
+                      <dd>${escapeHtml(usuario?.nombre ?? '—')}</dd>
+                    </dl>
                   </div>
                   <div class="config-field config-field--icon">
                     <span class="config-field__icon">${ICON_MAIL}</span>
-                    <div>
-                      <label>Email</label>
-                      <div>${escapeHtml(usuario?.email ?? '—')}</div>
-                    </div>
+                    <dl class="config-field__dl">
+                      <dt>Email</dt>
+                      <dd>${escapeHtml(usuario?.email ?? '—')}</dd>
+                    </dl>
                   </div>
                   <div class="config-field config-field--icon">
                     <span class="config-field__icon">${ICON_SHIELD}</span>
-                    <div>
-                      <label>Rol</label>
-                      <div>${escapeHtml(rolLabel)}</div>
-                    </div>
+                    <dl class="config-field__dl">
+                      <dt>Rol</dt>
+                      <dd>${escapeHtml(rolLabel)}</dd>
+                    </dl>
                   </div>
                 </div>
               </div>

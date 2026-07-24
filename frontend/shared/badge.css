@@ -37,8 +37,11 @@
 }
 
 .badge--primary {
-  color: var(--tajy-red);
-  background: var(--tajy-red-soft);
+  /* --tajy-red sobre --tajy-red-soft (rojo a 25% de opacidad) daba ~3.4:1,
+     por debajo de WCAG AA (4.5:1) para texto de 12px. --tajy-maroon sobre
+     --tajy-pink (fondo opaco de la misma paleta) da >11:1. */
+  color: var(--tajy-maroon);
+  background: var(--tajy-pink);
 }
 
 .badge--success {

@@ -290,10 +290,13 @@
 }
 
 .config-pass-req--met {
-  color: var(--tajy-success, #1f9d55);
+  /* --tajy-success ahora está definida en cotizador.css (alias de
+     --tajy-green-fg) — antes el fallback #1f9d55 de acá era un verde
+     distinto al --tajy-green-fg (#1e8a4c) usado en el resto de la app. */
+  color: var(--tajy-success);
 }
 
 .config-pass-req--met .config-pass-req__icon {
   color: #fff;
-  background: var(--tajy-success, #1f9d55);
+  background: var(--tajy-success);
 }

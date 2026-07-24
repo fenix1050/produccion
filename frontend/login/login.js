@@ -34,7 +34,7 @@ function render() {
       <img class="login-card__logo" src="./assets/logo-rojo-con-negro.svg" alt="Aseguradora Tajy" />
       <h1 class="login-card__title">Bienvenido</h1>
       <p class="login-card__subtitle">Ingresá tus credenciales para continuar</p>
-      ${state.error ? `<div class="login-card__error">${escapeHtml(state.error)}</div>` : ''}
+      ${state.error ? `<div class="login-card__error" role="alert">${escapeHtml(state.error)}</div>` : ''}
       <form class="login-form" id="login-form" novalidate>
         <div class="login-field">
           <label for="email">Email</label>
@@ -80,11 +80,15 @@ function render() {
 
 
 function onTogglePassword() {
-  const input = document.getElementById('password');
-  const valorActual = input.value;
+  // Actualizamos solo el input y el ícono en vez de llamar a render(): un
+  // re-render completo destruye y recrea el botón, perdiendo el foco del
+  // teclado. Así el foco queda predecible en el propio botón toggle.
   state.mostrarPassword = !state.mostrarPassword;
-  render();
-  document.getElementById('password').value = valorActual;
+  const input = document.getElementById('password');
+  const toggle = document.getElementById('toggle-password');
+  input.type = state.mostrarPassword ? 'text' : 'password';
+  toggle.innerHTML = state.mostrarPassword ? ICON_EYE_OFF : ICON_EYE;
+  toggle.focus();
 }
 
 function onForgotPassword(e) {

@@ -789,6 +789,10 @@ button {
   padding: 24px;
 }
 
+.empty-state--compact {
+  padding: 12px 0;
+}
+
 .empty-state__icon {
   width: 64px;
   height: 64px;
@@ -872,6 +876,10 @@ button {
   margin-top: 1px;
 }
 
+.texto-legal-list__icon--danger {
+  color: var(--tajy-red);
+}
+
 .form-heading {
   border-bottom: 1px solid rgba(0, 0, 0, 0.08);
   padding: 12px 24px;
@@ -905,10 +913,34 @@ button {
   grid-column: 1 / span 2;
 }
 
+.field--gap-bottom {
+  margin-bottom: 14px;
+}
+
 .field label {
   font-size: 12px;
   font-weight: 600;
   color: var(--tajy-text-body);
+}
+
+.field-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.field-row {
+  display: flex;
+  gap: 6px;
+}
+
+.field-row .field-input {
+  flex: 1;
+}
+
+.field-row-hint {
+  color: #8a8a8a;
+  font-size: 11px;
 }
 
 .field-input {
@@ -1064,6 +1096,12 @@ button {
   font-size: 11.5px;
 }
 
+.forma-pago-row__pills {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
 .live-summary__price-label {
   display: flex;
   align-items: center;
@@ -1168,6 +1206,10 @@ button {
   line-height: 1.5;
 }
 
+.live-summary__pending--gap {
+  margin-top: 4px;
+}
+
 .live-summary__error {
   font-size: 12px;
   color: var(--tajy-red);
@@ -1186,6 +1228,10 @@ button {
   overflow-y: auto;
   overflow-x: hidden;
   background: #fff;
+}
+
+.stepper-wrap {
+  margin-bottom: 16px;
 }
 
 .resultado-view__inner {
@@ -1532,6 +1578,56 @@ button {
   border-style: dashed;
   padding: 10px 14px;
   font-size: 12.5px;
+}
+
+/* Fallback móvil: el layout de .cobertura-card y .cobertura-adicional-row asume espacio
+   horizontal de escritorio (columnas fijas + 1fr); en viewports angostos (ej. 375px) se
+   colapsan a una disposición más vertical para que el nombre/monto no queden apretados. */
+@media (max-width: 640px) {
+  .cobertura-card {
+    grid-template-columns: 40px 1fr;
+    grid-template-rows: auto auto auto;
+    column-gap: 12px;
+    row-gap: 4px;
+    padding: 12px 16px;
+  }
+
+  .cobertura-card__status {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .cobertura-card__icon {
+    grid-column: 1;
+    grid-row: 2 / 4;
+    width: 32px;
+    height: 32px;
+  }
+
+  .cobertura-card__name {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .cobertura-card__monto span {
+    grid-column: 2;
+    grid-row: 2;
+    text-align: left;
+  }
+
+  .cobertura-card__monto div {
+    grid-column: 2;
+    grid-row: 3;
+    text-align: left;
+  }
+
+  .cobertura-adicional-row {
+    grid-template-columns: 1fr;
+  }
+
+  .cobertura-adicional-row__quitar {
+    width: 100%;
+  }
 }
 
 .cobertura-row__franquicia-label {

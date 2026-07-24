@@ -73,6 +73,7 @@ export const crearTasaSchema = z.object({
 export const editarRubroActividadSchema = z.object({
   tasa_edificio: z.number().nonnegative().optional(),
   tasa_contenido: z.number().nonnegative().optional(),
+  categoria: z.string().min(1).max(20).optional(),
 });
 
 // ---- Planes ----

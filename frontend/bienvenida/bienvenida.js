@@ -15,7 +15,7 @@ const ICON_ARROW_UP_RIGHT = `<svg width="16" height="16" viewBox="0 0 24 24" fil
 // Mismos ramos/estado que muestra `frontend/cotizar/cotizar.js` (RAMOS_UI) — el código de
 // estado UI (disponible/pausa/proximamente) no viene de la base, es decisión de UI.
 const RAMOS_UI = [
-  { nombre: 'auto', label: 'Auto Individual', estado: 'pausa' },
+  { nombre: 'auto', label: 'Auto', estado: 'proximamente' },
   { nombre: 'mrc', label: 'Multirriesgo Comercio', estado: 'disponible' },
   { nombre: 'incendio', label: 'Incendio', estado: 'disponible' },
   { nombre: 'vida-ap', label: 'Vida y Accidentes Personales', estado: 'disponible' },

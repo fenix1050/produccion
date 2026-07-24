@@ -19,7 +19,7 @@ const MOTIVO_BLOQUEO_ID = 'motivo-bloqueo-avance';
 // no vienen de la base. El resto de los ramos seedeados (auto-flota, tro, transporte) no
 // se muestran acá: no fueron pedidos para este flujo.
 const RAMOS_UI = [
-  { nombre: 'auto', code: 'AU', label: 'Auto Individual', estado: 'pausa' },
+  { nombre: 'auto', code: 'AU', label: 'Auto', estado: 'proximamente' },
   { nombre: 'mrc', code: 'MR', label: 'Multirriesgo Comercio', estado: 'disponible' },
   { nombre: 'incendio', code: 'IN', label: 'Incendio', estado: 'disponible' },
   { nombre: 'vida-ap', code: 'VA', label: 'Vida y Accidentes Personales', estado: 'disponible' },
@@ -996,8 +996,8 @@ function renderEmptyState() {
 }
 
 function renderRamoNoDisponible(ramo) {
-  const mensaje = ramo.estado === 'pausa'
-    ? 'Auto Individual está en pausa (Fase 2 pausada por prioridad de Kevin) — no se puede cotizar desde acá por ahora.'
+  const mensaje = ramo.nombre === 'auto'
+    ? 'Auto todavía no está disponible (Fase 2 pausada por prioridad de Kevin) — no se puede cotizar desde acá por ahora.'
     : 'Multirriesgo Hogar todavía no fue solicitado por el cliente — próximamente.';
   return `
     <div class="empty-state">

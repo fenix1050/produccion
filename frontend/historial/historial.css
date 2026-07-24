@@ -3,12 +3,21 @@
    modal ya definidas en admin/admin.css (admin-table, admin-banner, admin-modal, admin-pill,
    admin-toolbar) — acá solo lo específico de esta pantalla: filtros y paginación. */
 
+/* auto-fit + minmax en vez de un solo breakpoint fijo de 7 a 2 columnas: los campos se van
+   acomodando de a poco (5 → 4 → 3 → 2 → 1) según el ancho disponible, sin un salto brusco ni
+   necesidad de hardcodear breakpoints exactos por resolución. */
 .historial-filtros {
   display: grid;
-  grid-template-columns: repeat(5, 1fr) auto auto;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 10px;
   align-items: end;
   margin-bottom: 18px;
+}
+
+.historial-filtros__acciones {
+  display: flex;
+  gap: 10px;
+  align-items: center;
 }
 
 .historial-filtros__campo {
@@ -120,8 +129,42 @@
   margin-bottom: 6px;
 }
 
+/* Contenedor de scroll horizontal de la tabla — antes la tabla se recortaba en silencio en
+   viewports angostos (sin scrollbar visible ni forma de ver las columnas perdidas). El degradé
+   del borde derecho es la señal sutil de que hay más contenido a la derecha; se oculta solo
+   cuando el scroll llegó al final (ver actualizarIndicadorScrollTabla() en historial.js). */
+.historial-tabla-scroll {
+  position: relative;
+  overflow-x: auto;
+}
+
+.historial-tabla-scroll::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 28px;
+  background: linear-gradient(to right, transparent, rgba(0, 0, 0, 0.08));
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity 0.15s ease;
+}
+
+.historial-tabla-scroll.historial-tabla-scroll--al-final::after {
+  opacity: 0;
+}
+
+.historial-tabla-scroll .admin-table {
+  min-width: 860px;
+}
+
+.historial-paginacion__total {
+  margin-right: auto;
+}
+
 @media (max-width: 1100px) {
-  .historial-filtros {
-    grid-template-columns: repeat(2, 1fr);
+  .historial-filtros__campo {
+    min-width: 0;
   }
 }

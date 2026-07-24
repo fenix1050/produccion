@@ -213,6 +213,8 @@ async function descargarOferta(boton, id, numeroCotizacion) {
   // tanto, así que un click impaciente terminaba en varias descargas del mismo archivo.
   const textoOriginal = boton.textContent;
   boton.disabled = true;
+  boton.setAttribute('aria-disabled', 'true');
+  boton.setAttribute('aria-label', 'Descargando la Carta Oferta, esperá a que termine');
   boton.textContent = 'Descargando…';
   try {
     const blob = await api.getBlob(`/cotizaciones/${id}/pdf-oferta`);
@@ -228,6 +230,8 @@ async function descargarOferta(boton, id, numeroCotizacion) {
     mostrarBanner('error', err.message || 'No se pudo descargar la Carta Oferta.');
   } finally {
     boton.disabled = false;
+    boton.removeAttribute('aria-disabled');
+    boton.removeAttribute('aria-label');
     boton.textContent = textoOriginal;
   }
 }
@@ -263,6 +267,7 @@ function renderApp() {
     </div>
     ${state.modal ? renderModalDetalle() : ''}
   `;
+  actualizarIndicadorScrollTabla();
 }
 
 function renderTopbar() {
@@ -312,33 +317,35 @@ function renderFiltros() {
   return `
     <form class="historial-filtros" id="historial-filtros-form">
       <div class="historial-filtros__campo">
-        <label>Ramo</label>
-        <select class="field-input" name="ramo_id">
+        <label for="historial-filtro-ramo">Ramo</label>
+        <select class="field-input" id="historial-filtro-ramo" name="ramo_id">
           <option value="">Todos</option>
           ${opcionesRamo}
         </select>
       </div>
       <div class="historial-filtros__campo">
-        <label>Cliente</label>
-        <input class="field-input" type="text" name="cliente" placeholder="Nombre del cliente" value="${escapeHtml(state.filtros.cliente)}" />
+        <label for="historial-filtro-cliente">Cliente</label>
+        <input class="field-input" id="historial-filtro-cliente" type="text" name="cliente" placeholder="Nombre del cliente" value="${escapeHtml(state.filtros.cliente)}" />
       </div>
       <div class="historial-filtros__campo">
-        <label>Fecha desde</label>
-        <input class="field-input" type="date" name="fecha_desde" value="${escapeHtml(state.filtros.fecha_desde)}" />
+        <label for="historial-filtro-desde">Fecha desde</label>
+        <input class="field-input" id="historial-filtro-desde" type="date" name="fecha_desde" value="${escapeHtml(state.filtros.fecha_desde)}" />
       </div>
       <div class="historial-filtros__campo">
-        <label>Fecha hasta</label>
-        <input class="field-input" type="date" name="fecha_hasta" value="${escapeHtml(state.filtros.fecha_hasta)}" />
+        <label for="historial-filtro-hasta">Fecha hasta</label>
+        <input class="field-input" id="historial-filtro-hasta" type="date" name="fecha_hasta" value="${escapeHtml(state.filtros.fecha_hasta)}" />
       </div>
       <div class="historial-filtros__campo">
-        <label>Estado</label>
-        <select class="field-input" name="estado">
+        <label for="historial-filtro-estado">Estado</label>
+        <select class="field-input" id="historial-filtro-estado" name="estado">
           <option value="">Todos</option>
           ${opcionesEstado}
         </select>
       </div>
-      <button class="btn-primary" type="submit">Buscar</button>
-      <button class="btn-outline" type="button" data-action="limpiar-filtros">Limpiar filtros</button>
+      <div class="historial-filtros__acciones">
+        <button class="btn-primary" type="submit">Buscar</button>
+        <button class="btn-outline" type="button" data-action="limpiar-filtros">Limpiar filtros</button>
+      </div>
     </form>
   `;
 }
@@ -371,7 +378,7 @@ function renderTabla() {
             <button class="historial-tabla__btn-ghost" data-action="ver-detalle" data-id="${c.id}">Ver detalle</button>
             ${puedeOferta
               ? `<button class="btn-outline historial-tabla__btn-oferta" data-action="descargar-oferta" data-id="${c.id}" data-numero="${escapeHtml(c.numero_cotizacion)}">Carta Oferta</button>`
-              : `<button class="btn-outline historial-tabla__btn-oferta historial-oferta-disabled" disabled title="Carta Oferta no disponible para este ramo todavía">Carta Oferta</button>`}
+              : `<button class="btn-outline historial-tabla__btn-oferta historial-oferta-disabled" disabled aria-disabled="true" aria-label="Carta Oferta no disponible para este ramo todavía" title="Carta Oferta no disponible para este ramo todavía">Carta Oferta</button>`}
           </div>
         </td>
       </tr>
@@ -379,30 +386,49 @@ function renderTabla() {
   }).join('');
 
   return `
-    <table class="admin-table">
-      <thead>
-        <tr>
-          <th>Número</th>
-          <th>Cliente</th>
-          <th>Ramo</th>
-          <th>Plan</th>
-          <th>Fecha</th>
-          <th>Estado</th>
-          <th>Prima</th>
-          <th>Acciones</th>
-        </tr>
-      </thead>
-      <tbody>${filas}</tbody>
-    </table>
+    <div class="historial-tabla-scroll" id="historial-tabla-scroll">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Número</th>
+            <th>Cliente</th>
+            <th>Ramo</th>
+            <th>Plan</th>
+            <th>Fecha</th>
+            <th>Estado</th>
+            <th>Prima</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>${filas}</tbody>
+      </table>
+    </div>
   `;
+}
+
+// La tabla puede tener más columnas de las que entran en viewports angostos — antes se
+// recortaba en silencio (overflow oculto sin scrollbar visible). Ahora scrollea horizontal
+// (ver .historial-tabla-scroll) y este listener actualiza el degradé sutil del borde derecho
+// para que desaparezca solo cuando ya no queda contenido oculto a la derecha.
+function actualizarIndicadorScrollTabla() {
+  const el = document.getElementById('historial-tabla-scroll');
+  if (!el) return;
+  const alFinal = el.scrollWidth - el.clientWidth - el.scrollLeft <= 1;
+  el.classList.toggle('historial-tabla-scroll--al-final', alFinal || el.scrollWidth <= el.clientWidth);
 }
 
 function renderPaginacion() {
   const totalPaginas = Math.max(1, Math.ceil(state.count / PAGE_SIZE));
   const paginaActual = Math.floor(state.offset / PAGE_SIZE) + 1;
+  // GET /cotizaciones ya devuelve `count` (total real de filas que matchean el filtro, no solo
+  // las de la página actual — ver cargarCotizaciones()), así que el rango "Mostrando X-Y de Z"
+  // sale del mismo dato que ya se usaba para calcular la cantidad de páginas.
+  const desde = state.count === 0 ? 0 : state.offset + 1;
+  const hasta = Math.min(state.offset + PAGE_SIZE, state.count);
 
   return `
     <div class="historial-paginacion">
+      <span class="historial-paginacion__total">Mostrando ${desde}–${hasta} de ${state.count} resultados</span>
       <button class="btn-outline" data-action="pagina-anterior" ${state.offset === 0 ? 'disabled' : ''}>Anterior</button>
       <span>Página ${paginaActual} de ${totalPaginas}</span>
       <button class="btn-outline" data-action="pagina-siguiente" ${state.offset + PAGE_SIZE >= state.count ? 'disabled' : ''}>Siguiente</button>
@@ -533,9 +559,18 @@ function onKeydown(e) {
   }
 }
 
+// El evento 'scroll' no burbujea, pero un listener en fase de captura sobre un ancestro fijo
+// (#app, que sobrevive a cada renderApp()) sí se dispara igual durante el recorrido top-down
+// del evento — evita tener que reenganchar el listener cada vez que se recrea la tabla.
+function onAppScroll(e) {
+  if (e.target.id === 'historial-tabla-scroll') actualizarIndicadorScrollTabla();
+}
+
 function registrarEventos() {
   app.addEventListener('click', onAppClick);
   app.addEventListener('submit', onAppSubmit);
+  app.addEventListener('scroll', onAppScroll, true);
+  window.addEventListener('resize', actualizarIndicadorScrollTabla);
   document.addEventListener('keydown', onKeydown);
 }
 

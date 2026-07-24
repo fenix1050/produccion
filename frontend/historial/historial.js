@@ -474,8 +474,8 @@ function renderModalDetalle() {
 
   return `
     <div class="admin-modal-backdrop" data-action="cerrar-modal-backdrop">
-      <div class="admin-modal historial-modal-detalle" data-stop-propagation="true">
-        <div class="admin-modal__title">Cotización ${escapeHtml(row?.numero_cotizacion ?? '')}</div>
+      <div class="admin-modal historial-modal-detalle" data-stop-propagation="true" role="dialog" aria-modal="true" aria-labelledby="historial-modal-title">
+        <div class="admin-modal__title" id="historial-modal-title">Cotización ${escapeHtml(row?.numero_cotizacion ?? '')}</div>
         ${cuerpo}
         <div class="admin-modal__actions">
           ${row && puedeEditar(row)
@@ -526,9 +526,17 @@ function onAppSubmit(e) {
   aplicarFiltros();
 }
 
+// Escape cierra el modal de detalle si está abierto.
+function onKeydown(e) {
+  if (e.key === 'Escape' && state.modal) {
+    cerrarModal();
+  }
+}
+
 function registrarEventos() {
   app.addEventListener('click', onAppClick);
   app.addEventListener('submit', onAppSubmit);
+  document.addEventListener('keydown', onKeydown);
 }
 
 function onActionClick(el) {

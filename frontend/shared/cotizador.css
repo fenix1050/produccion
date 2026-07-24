@@ -13,13 +13,25 @@
   --tajy-pink: #fbeaea;
   --tajy-green-fg: #1e8a4c;
   --tajy-green-bg: #e9f7ee;
+  /* Alias único de "verde de éxito" — antes cotizador.css y configuracion.css
+     tenían cada uno su propio verde hardcodeado para el mismo estado visual.
+     Reusar --tajy-green-fg en vez de un tono nuevo. */
+  --tajy-success: var(--tajy-green-fg);
   --tajy-border: #ddd;
   --tajy-border-light: #eee;
   --tajy-text-secondary: #8a8a8a;
-  --tajy-text-muted: #999;
+  /* #999 sobre fondo blanco daba ~2.85:1 (falla WCAG AA 4.5:1 para texto
+     normal). #6e6e6e mantiene el mismo rol "muted" pero cumple ~5.1:1. */
+  --tajy-text-muted: #6e6e6e;
   --tajy-text-body: #444;
   --tajy-text-dark: #333;
   --tajy-font-mono: 'Roboto Mono', ui-monospace, monospace;
+  /* Radios repetidos como valores sueltos en todo el archivo — variablizados
+     para no seguir hardcodeando 8px/9px/10px/14px en cada regla nueva. */
+  --tajy-radius-sm: 8px;
+  --tajy-radius-md: 9px;
+  --tajy-radius-lg: 10px;
+  --tajy-radius-xl: 14px;
 }
 
 * {
@@ -32,7 +44,7 @@
    .nav-item--active) que colisionan con clases propias de este archivo. */
 .admin-banner {
   padding: 12px 14px;
-  border-radius: 9px;
+  border-radius: var(--tajy-radius-md);
   font-size: 13px;
   font-weight: 600;
   margin-bottom: 16px;
@@ -242,7 +254,7 @@ button {
   background: transparent;
   border: none;
   padding: 4px;
-  border-radius: 8px;
+  border-radius: var(--tajy-radius-sm);
   cursor: pointer;
   font: inherit;
   transition: background 0.15s;
@@ -259,7 +271,7 @@ button {
   min-width: 220px;
   background: #fff;
   border: 1px solid var(--tajy-border);
-  border-radius: 10px;
+  border-radius: var(--tajy-radius-lg);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
   padding: 6px;
   z-index: 20;
@@ -294,7 +306,7 @@ button {
 
 .topbar__btn-outline {
   padding: 6px 16px;
-  border-radius: 0.625rem;
+  border-radius: var(--tajy-radius-lg);
   font-size: 14px;
   font-weight: 500;
   border: 1px solid var(--tajy-border);
@@ -311,7 +323,7 @@ button {
 
 .topbar__btn-outline-primary {
   padding: 6px 16px;
-  border-radius: 0.625rem;
+  border-radius: var(--tajy-radius-lg);
   font-size: 14px;
   font-weight: 500;
   border: 1px solid var(--tajy-red);
@@ -361,7 +373,7 @@ button {
 .sidebar__brand img {
   width: 36px;
   height: 36px;
-  border-radius: 8px;
+  border-radius: var(--tajy-radius-sm);
   object-fit: cover;
 }
 
@@ -394,7 +406,7 @@ button {
   align-items: center;
   gap: 12px;
   padding: 10px 12px;
-  border-radius: 10px;
+  border-radius: var(--tajy-radius-lg);
   margin-bottom: 2px;
   background: transparent;
   border: none;
@@ -534,7 +546,7 @@ button {
   align-items: center;
   gap: 12px;
   padding: 10px 12px;
-  border-radius: 10px;
+  border-radius: var(--tajy-radius-lg);
   margin-bottom: 2px;
   font-size: 13px;
   font-weight: 500;
@@ -633,7 +645,7 @@ button {
   background: #fff;
   color: #555;
   padding: 9px 16px;
-  border-radius: 8px;
+  border-radius: var(--tajy-radius-sm);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -653,7 +665,7 @@ button {
   max-width: 560px;
   background: #fff;
   border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 14px;
+  border-radius: var(--tajy-radius-xl);
   padding: 16px 24px;
   display: flex;
   align-items: center;
@@ -819,7 +831,7 @@ button {
   max-width: 560px;
   background: #fff;
   border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 14px;
+  border-radius: var(--tajy-radius-xl);
   overflow: hidden;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
 }
@@ -901,7 +913,7 @@ button {
 
 .field-input {
   padding: 10px 11px;
-  border-radius: 8px;
+  border-radius: var(--tajy-radius-sm);
   border: 1.5px solid var(--tajy-border);
   font-size: 13px;
   background: #fff;
@@ -914,7 +926,7 @@ button {
   color: #fff;
   border: none;
   padding: 12px 24px;
-  border-radius: 9px;
+  border-radius: var(--tajy-radius-md);
   font-weight: 700;
   font-size: 13.5px;
   cursor: pointer;
@@ -931,7 +943,7 @@ button {
 .btn-primary--sm {
   padding: 8px 16px;
   font-size: 12.5px;
-  border-radius: 8px;
+  border-radius: var(--tajy-radius-sm);
 }
 
 .btn-outline {
@@ -939,7 +951,7 @@ button {
   color: var(--tajy-red);
   border: 1.5px solid var(--tajy-red);
   padding: 10px;
-  border-radius: 9px;
+  border-radius: var(--tajy-radius-md);
   font-weight: 700;
   font-size: 12.5px;
   line-height: 1.4;
@@ -962,7 +974,7 @@ button {
   flex-shrink: 0;
   background: #fff;
   border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 14px;
+  border-radius: var(--tajy-radius-xl);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
   margin: 8px 36px 16px 0;
   padding: 16px 24px;
@@ -1004,6 +1016,34 @@ button {
 
 @media (prefers-reduced-motion: reduce) {
   .live-summary__dot {
+    animation: none;
+  }
+}
+
+/* Utilidad compartida de spinner — muchas pantallas mostraban solo texto
+   "Cargando…" sin ningún indicador visual de progreso. Uso:
+   <span class="spinner" role="status" aria-label="Cargando"></span> junto
+   al texto, o envolviendo el texto en un contenedor con display:flex/gap.
+   Pendiente aplicar en los "Cargando…" de admin.js/historial.js — ver
+   resumen de la tarea de accesibilidad para el detalle de qué queda. */
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--tajy-border);
+  border-top-color: var(--tajy-red);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
     animation: none;
   }
 }
@@ -1112,7 +1152,9 @@ button {
 
 .live-summary__hint {
   font-size: 11px;
-  color: #bbb;
+  /* #bbb sobre blanco no llegaba a 3:1 (falla WCAG AA). Reusa el mismo gris
+     "muted" ya corregido en el token de arriba, no un color nuevo. */
+  color: var(--tajy-text-muted);
   margin-top: 18px;
   line-height: 1.5;
 }
@@ -1121,7 +1163,7 @@ button {
   font-size: 12.5px;
   color: #000;
   background: var(--tajy-bg);
-  border-radius: 9px;
+  border-radius: var(--tajy-radius-md);
   padding: 14px;
   line-height: 1.5;
 }
@@ -1130,7 +1172,7 @@ button {
   font-size: 12px;
   color: var(--tajy-red);
   background: var(--tajy-pink);
-  border-radius: 9px;
+  border-radius: var(--tajy-radius-md);
   padding: 12px;
   line-height: 1.5;
   margin-top: 12px;
@@ -1242,7 +1284,7 @@ button {
   max-width: 640px;
   background: #fff;
   border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 14px;
+  border-radius: var(--tajy-radius-xl);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
   padding: 18px 26px;
   display: flex;
@@ -1288,7 +1330,7 @@ button {
 .card {
   background: #fff;
   border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 14px;
+  border-radius: var(--tajy-radius-xl);
   padding: 0;
   overflow: hidden;
 }
@@ -1297,7 +1339,10 @@ button {
   font-family: 'Sora', sans-serif;
   font-weight: 700;
   font-size: 14.5px;
-  background: #F8FAFF;
+  /* Antes #F8FAFF (azul suelto, fuera de la paleta roja/gris de Tajy).
+     El gris cálido de fondo de la app (--tajy-bg) tiene la misma función
+     visual de "encabezado de card" sin introducir un matiz nuevo. */
+  background: var(--tajy-bg);
   border-bottom: 1px solid rgba(0, 0, 0, 0.08);
   padding: 16px 26px;
   margin-bottom: 0;
@@ -1338,7 +1383,7 @@ button {
   max-width: 640px;
   background: #fff;
   border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 14px;
+  border-radius: var(--tajy-radius-xl);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
   overflow: hidden;
 }
@@ -1382,7 +1427,7 @@ button {
   grid-row: 1 / 4;
   width: 38px;
   height: 38px;
-  border-radius: 9px;
+  border-radius: var(--tajy-radius-md);
   background: var(--tajy-pink);
   color: var(--tajy-red);
   display: flex;
@@ -1507,7 +1552,7 @@ button {
   font-weight: 600;
   color: var(--tajy-text-dark);
   border: 1.5px solid var(--tajy-border);
-  border-radius: 8px;
+  border-radius: var(--tajy-radius-sm);
   padding: 9px 12px;
   background: #fff;
   cursor: pointer;
@@ -1524,7 +1569,7 @@ button {
 .resumen-sistema {
   background: #fff;
   border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 14px;
+  border-radius: var(--tajy-radius-xl);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
   overflow: hidden;
   display: flex;
@@ -1664,7 +1709,7 @@ button {
   color: #fff;
   border: none;
   padding: 11px;
-  border-radius: 9px;
+  border-radius: var(--tajy-radius-md);
   font-weight: 700;
   font-size: 13px;
   cursor: pointer;

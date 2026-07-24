@@ -1548,13 +1548,13 @@ function renderModalCobertura() {
 
   return `
     <div class="admin-modal-backdrop" data-action="cerrar-modal-cobertura-backdrop">
-      <div class="admin-modal" data-stop-propagation="true">
-        <div class="admin-modal__title">Agregar cobertura al plan</div>
+      <div class="admin-modal" data-stop-propagation="true" role="dialog" aria-modal="true" aria-labelledby="admin-modal-cobertura-title">
+        <div class="admin-modal__title" id="admin-modal-cobertura-title">Agregar cobertura al plan</div>
         ${m.error ? `<div class="admin-modal__error">${escapeHtml(m.error)}</div>` : ''}
         <form id="admin-modal-cobertura-form">
           <div class="admin-modal__field">
-            <label>Cobertura</label>
-            <select class="field-input" name="cobertura_id">
+            <label for="admin-modal-cobertura-select">Cobertura</label>
+            <select class="field-input" id="admin-modal-cobertura-select" name="cobertura_id">
               <option value="">Elegí una cobertura…</option>
               ${opcionesCobertura}
             </select>
@@ -1566,12 +1566,12 @@ function renderModalCobertura() {
             </label>
           </div>
           <div class="admin-modal__field">
-            <label>Monto (opcional)</label>
-            <input class="field-input" type="number" step="0.01" name="monto" value="${escapeHtml(m.monto)}" />
+            <label for="admin-modal-cobertura-monto">Monto (opcional)</label>
+            <input class="field-input" id="admin-modal-cobertura-monto" type="number" step="0.01" name="monto" value="${escapeHtml(m.monto)}" />
           </div>
           <div class="admin-modal__field">
-            <label>Franquicia (opcional)</label>
-            <input class="field-input" type="number" step="0.01" name="franquicia" value="${escapeHtml(m.franquicia)}" />
+            <label for="admin-modal-cobertura-franquicia">Franquicia (opcional)</label>
+            <input class="field-input" id="admin-modal-cobertura-franquicia" type="number" step="0.01" name="franquicia" value="${escapeHtml(m.franquicia)}" />
           </div>
           <div class="admin-modal__actions">
             <button type="button" class="btn-outline" data-action="cerrar-modal-cobertura">Cancelar</button>
@@ -1592,38 +1592,38 @@ function renderModal() {
     titulo = 'Nuevo usuario';
     cuerpo = `
       <div class="admin-modal__field">
-        <label>Nombre</label>
-        <input class="field-input" type="text" name="nombre" value="${escapeHtml(m.nombre)}" />
+        <label for="admin-modal-nombre">Nombre</label>
+        <input class="field-input" id="admin-modal-nombre" type="text" name="nombre" value="${escapeHtml(m.nombre)}" />
       </div>
       <div class="admin-modal__field">
-        <label>Email</label>
-        <input class="field-input" type="email" name="email" value="${escapeHtml(m.email)}" />
+        <label for="admin-modal-email">Email</label>
+        <input class="field-input" id="admin-modal-email" type="email" name="email" value="${escapeHtml(m.email)}" />
       </div>
       <div class="admin-modal__field">
-        <label>Rol</label>
-        <select class="field-input" name="rol_id">
+        <label for="admin-modal-rol">Rol</label>
+        <select class="field-input" id="admin-modal-rol" name="rol_id">
           ${renderOpcionesRoles(m.rol_id)}
         </select>
       </div>
       <div class="admin-modal__field">
-        <label>Contraseña (mín. 8 caracteres)</label>
-        <input class="field-input" type="password" name="password" autocomplete="new-password" />
+        <label for="admin-modal-password">Contraseña (mín. 8 caracteres)</label>
+        <input class="field-input" id="admin-modal-password" type="password" name="password" autocomplete="new-password" />
       </div>
     `;
   } else if (m.tipo === 'editar') {
     titulo = `Editar ${escapeHtml(m.usuario.nombre)}`;
     cuerpo = `
       <div class="admin-modal__field">
-        <label>Nombre</label>
-        <input class="field-input" type="text" name="nombre" value="${escapeHtml(m.nombre)}" />
+        <label for="admin-modal-nombre">Nombre</label>
+        <input class="field-input" id="admin-modal-nombre" type="text" name="nombre" value="${escapeHtml(m.nombre)}" />
       </div>
       <div class="admin-modal__field">
-        <label>Email</label>
-        <input class="field-input" type="email" name="email" value="${escapeHtml(m.email)}" />
+        <label for="admin-modal-email">Email</label>
+        <input class="field-input" id="admin-modal-email" type="email" name="email" value="${escapeHtml(m.email)}" />
       </div>
       <div class="admin-modal__field">
-        <label>Rol</label>
-        <select class="field-input" name="rol_id">
+        <label for="admin-modal-rol">Rol</label>
+        <select class="field-input" id="admin-modal-rol" name="rol_id">
           ${renderOpcionesRoles(m.rol_id)}
         </select>
       </div>
@@ -1634,28 +1634,28 @@ function renderModal() {
         </label>
       </div>
       <div class="admin-modal__field">
-        <label>Descuento máx. propio (%) — vacío = usa el tope del plan</label>
-        <input class="field-input" type="number" step="0.01" min="0" max="100" name="descuento_maximo_pct" value="${m.descuento_maximo_pct ?? ''}" />
+        <label for="admin-modal-descuento">Descuento máx. propio (%) — vacío = usa el tope del plan</label>
+        <input class="field-input" id="admin-modal-descuento" type="number" step="0.01" min="0" max="100" name="descuento_maximo_pct" value="${m.descuento_maximo_pct ?? ''}" />
       </div>
       <div class="admin-modal__field">
-        <label>Recargo máx. propio (%) — vacío = usa el tope del plan</label>
-        <input class="field-input" type="number" step="0.01" min="0" max="100" name="recargo_maximo_pct" value="${m.recargo_maximo_pct ?? ''}" />
+        <label for="admin-modal-recargo">Recargo máx. propio (%) — vacío = usa el tope del plan</label>
+        <input class="field-input" id="admin-modal-recargo" type="number" step="0.01" min="0" max="100" name="recargo_maximo_pct" value="${m.recargo_maximo_pct ?? ''}" />
       </div>
     `;
   } else if (m.tipo === 'password') {
     titulo = `Resetear contraseña de ${escapeHtml(m.usuario.nombre)}`;
     cuerpo = `
       <div class="admin-modal__field">
-        <label>Nueva contraseña (mín. 8 caracteres)</label>
-        <input class="field-input" type="password" name="password" autocomplete="new-password" />
+        <label for="admin-modal-password">Nueva contraseña (mín. 8 caracteres)</label>
+        <input class="field-input" id="admin-modal-password" type="password" name="password" autocomplete="new-password" />
       </div>
     `;
   }
 
   return `
     <div class="admin-modal-backdrop" data-action="cerrar-modal-backdrop">
-      <div class="admin-modal" data-stop-propagation="true">
-        <div class="admin-modal__title">${titulo}</div>
+      <div class="admin-modal" data-stop-propagation="true" role="dialog" aria-modal="true" aria-labelledby="admin-modal-title">
+        <div class="admin-modal__title" id="admin-modal-title">${titulo}</div>
         ${m.error ? `<div class="admin-modal__error">${escapeHtml(m.error)}</div>` : ''}
         <form id="admin-modal-form">
           ${cuerpo}
@@ -1681,13 +1681,13 @@ function renderModalRol() {
 
   return `
     <div class="admin-modal-backdrop" data-action="cerrar-modal-rol-backdrop">
-      <div class="admin-modal" data-stop-propagation="true">
-        <div class="admin-modal__title">${titulo}</div>
+      <div class="admin-modal" data-stop-propagation="true" role="dialog" aria-modal="true" aria-labelledby="admin-modal-rol-title">
+        <div class="admin-modal__title" id="admin-modal-rol-title">${titulo}</div>
         ${m.error ? `<div class="admin-modal__error">${escapeHtml(m.error)}</div>` : ''}
         <form id="admin-modal-rol-form">
           <div class="admin-modal__field">
-            <label>Nombre del rol</label>
-            <input class="field-input" type="text" name="nombre" maxlength="30" value="${escapeHtml(m.nombre)}" />
+            <label for="admin-modal-rol-nombre">Nombre del rol</label>
+            <input class="field-input" id="admin-modal-rol-nombre" type="text" name="nombre" maxlength="30" value="${escapeHtml(m.nombre)}" />
           </div>
           <div class="admin-modal__field">
             <label class="admin-modal__checkbox">
@@ -1732,31 +1732,31 @@ function renderModalTasa() {
 
   return `
     <div class="admin-modal-backdrop" data-action="cerrar-modal-tasa-backdrop">
-      <div class="admin-modal" data-stop-propagation="true">
-        <div class="admin-modal__title">Nueva versión de tasa</div>
+      <div class="admin-modal" data-stop-propagation="true" role="dialog" aria-modal="true" aria-labelledby="admin-modal-tasa-title">
+        <div class="admin-modal__title" id="admin-modal-tasa-title">Nueva versión de tasa</div>
         ${m.error ? `<div class="admin-modal__error">${escapeHtml(m.error)}</div>` : ''}
         <form id="admin-modal-tasa-form">
           <div class="admin-modal__field">
-            <label>Cobertura</label>
-            <select class="field-input" name="cobertura_id">
+            <label for="admin-modal-tasa-cobertura">Cobertura</label>
+            <select class="field-input" id="admin-modal-tasa-cobertura" name="cobertura_id">
               <option value="">Elegí una cobertura…</option>
               ${opcionesCobertura}
             </select>
           </div>
           <div class="admin-modal__field">
-            <label>Valor de la tasa</label>
-            <input class="field-input" type="number" step="0.001" name="tasa_valor" value="${escapeHtml(m.tasa_valor)}" />
+            <label for="admin-modal-tasa-valor">Valor de la tasa</label>
+            <input class="field-input" id="admin-modal-tasa-valor" type="number" step="0.001" name="tasa_valor" value="${escapeHtml(m.tasa_valor)}" />
           </div>
           <div class="admin-modal__field">
-            <label>Unidad</label>
-            <select class="field-input" name="unidad">
+            <label for="admin-modal-tasa-unidad">Unidad</label>
+            <select class="field-input" id="admin-modal-tasa-unidad" name="unidad">
               <option value="permil" ${m.unidad === 'permil' ? 'selected' : ''}>‰ (por mil)</option>
               <option value="porcentaje" ${m.unidad === 'porcentaje' ? 'selected' : ''}>% (porcentaje)</option>
             </select>
           </div>
           <div class="admin-modal__field">
-            <label>Vigente desde</label>
-            <input class="field-input" type="date" name="vigente_desde" value="${escapeHtml(m.vigente_desde)}" />
+            <label for="admin-modal-tasa-vigente">Vigente desde</label>
+            <input class="field-input" id="admin-modal-tasa-vigente" type="date" name="vigente_desde" value="${escapeHtml(m.vigente_desde)}" />
           </div>
           <div class="admin-modal__actions">
             <button type="button" class="btn-outline" data-action="cerrar-modal-tasa">Cancelar</button>
@@ -1834,10 +1834,26 @@ function onAppSubmit(e) {
   }
 }
 
+// Escape cierra el modal que esté abierto (uno solo a la vez, en el orden en
+// que se abrieron los 4 posibles: usuario/rol/tasa/cobertura).
+function onKeydown(e) {
+  if (e.key !== 'Escape') return;
+  if (state.modal) {
+    cerrarModal();
+  } else if (state.modalRol) {
+    cerrarModalRol();
+  } else if (state.modalTasa) {
+    cerrarModalTasa();
+  } else if (state.modalCobertura) {
+    cerrarModalCobertura();
+  }
+}
+
 function registrarEventos() {
   app.addEventListener('click', onAppClick);
   app.addEventListener('change', onAppChange);
   app.addEventListener('submit', onAppSubmit);
+  document.addEventListener('keydown', onKeydown);
 }
 
 function onActionClick(el) {

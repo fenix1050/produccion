@@ -1,11 +1,12 @@
-import * as ramosRepository from '../repositories/ramos.repository.js'
-import * as cotizacionesRepository from '../repositories/cotizaciones.repository.js'
-import * as coberturasRepository from '../repositories/coberturas.repository.js'
 import { getCalculador } from '../calculators/index.js'
+import * as coberturasRepository from '../repositories/coberturas.repository.js'
+import * as cotizacionesRepository from '../repositories/cotizaciones.repository.js'
+import * as ramosRepository from '../repositories/ramos.repository.js'
 import { getSchemaCotizar } from '../schemas/index.js'
-import { renderOfertaPdf } from './pdf.service.js'
 import { httpError } from '../utils/http-error.js'
+
 import { withCache } from './cache.js'
+import { renderOfertaPdf } from './pdf.service.js'
 
 /**
  * Calcula una cotización SIN guardarla — usado para el preview en vivo del frontend.

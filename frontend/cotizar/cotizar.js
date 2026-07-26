@@ -1604,7 +1604,7 @@ function renderResultadoView(ramo) {
             </div>
           </div>
           <div class="resultado-layout__aside">
-            ${renderResumenCotizacion(plan, fp)}
+            ${renderResumenCotizacion(plan)}
           </div>
         </div>
       </div>
@@ -1639,7 +1639,7 @@ function renderFranquiciaSelect(cobertura) {
 // antes (resumen Contado/Financiado + Ajustes) por un único "Resumen de la cotización" con
 // secciones separadas por líneas finas, terminando en el botón de "Emitir carta oferta" (antes
 // vivía en una barra fija al pie de la pantalla — ver decisión de rediseño, 2026-07-22).
-function renderResumenCotizacion(plan, fp) {
+function renderResumenCotizacion(plan) {
   const variante = state.preview?.variantes?.[0]
   const contado = variante?.formasPago.find((f) => f.codigo === 'contado')
   const financiado = variante?.formasPago.find((f) => f.codigo === 'cobrador')

@@ -1,8 +1,9 @@
-import { cotizarAutoSchema } from './auto.schema.js'
-import { cotizarMrcSchema } from './mrc.schema.js'
-import { cotizarIncendioSchema } from './incendio.schema.js'
-import { cotizarVidaApSchema } from './vida-ap.schema.js'
 import { httpError } from '../utils/http-error.js'
+
+import { cotizarAutoSchema } from './auto.schema.js'
+import { cotizarIncendioSchema } from './incendio.schema.js'
+import { cotizarMrcSchema } from './mrc.schema.js'
+import { cotizarVidaApSchema } from './vida-ap.schema.js'
 export { filaTasaCapitalSchema } from './tasas.schema.js'
 
 // La clave coincide con la columna `ramos.calculador`. Se completa a medida que

@@ -1,5 +1,5 @@
-import * as ramosRepository from '../repositories/ramos.repository.js'
 import * as coberturasRepository from '../repositories/coberturas.repository.js'
+import * as ramosRepository from '../repositories/ramos.repository.js'
 
 export async function listarRamosActivos() {
   return ramosRepository.findRamosActivos()

@@ -1,4 +1,5 @@
 import { z } from 'zod'
+
 import { ajusteSchema } from './shared/ajuste.schema.js'
 
 // Datos específicos del riesgo para Vida y Accidentes Personales — ver vida-ap.calculator.js.

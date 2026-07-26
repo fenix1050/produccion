@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs'
-import * as usuariosRepository from '../../repositories/usuarios.repository.js'
+
 import * as rolesRepository from '../../repositories/roles.repository.js'
+import * as usuariosRepository from '../../repositories/usuarios.repository.js'
 import { httpError } from '../../utils/http-error.js'
 import { BCRYPT_ROUNDS } from '../../utils/security.js'
 import { logSeguridad } from '../../utils/seguridad-logger.js'

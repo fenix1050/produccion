@@ -1,5 +1,6 @@
-import { test, describe } from 'node:test'
 import assert from 'node:assert/strict'
+import { test, describe } from 'node:test'
+
 import { calcularPrima, calcularPlanPago } from './mrc.calculator.js'
 
 // Verifica valores reales calculados por el motor de MRC (Multirriesgo Comercio) contra las

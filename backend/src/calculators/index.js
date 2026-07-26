@@ -1,12 +1,14 @@
-import * as auto from './auto.calculator.js'
-import * as autoFlota from './auto-flota.calculator.js'
-import * as incendio from './incendio.calculator.js'
-import * as hogar from './hogar.calculator.js'
-import * as mrc from './mrc.calculator.js'
-import * as tro from './tro.calculator.js'
-import * as transporte from './transporte.calculator.js'
-import * as vidaAp from './vida-ap.calculator.js'
 import { httpError } from '../utils/http-error.js'
+
+import * as autoFlota from './auto-flota.calculator.js'
+import * as auto from './auto.calculator.js'
+import * as hogar from './hogar.calculator.js'
+import * as incendio from './incendio.calculator.js'
+import * as mrc from './mrc.calculator.js'
+import * as transporte from './transporte.calculator.js'
+import * as tro from './tro.calculator.js'
+import * as vidaAp from './vida-ap.calculator.js'
+
 
 // La clave coincide con la columna `ramos.calculador` en la base de datos.
 export const REGISTRO = {

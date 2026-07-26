@@ -1,4 +1,5 @@
 import { Router } from 'express'
+
 import * as cotizacionesController from '../controllers/cotizaciones.controller.js'
 
 export const router = Router()

@@ -1,20 +1,20 @@
-import { supabase } from '../config/supabase.js';
-import { httpError } from '../utils/http-error.js';
+import { supabase } from '../config/supabase.js'
+import { httpError } from '../utils/http-error.js'
 
 export async function nextNumeroCorrelativo(ramoId) {
   // Incrementa y devuelve el próximo número correlativo del ramo vía RPC
   // (función `siguiente_correlativo`, migración 009) para que el incremento
   // sea atómico bajo concurrencia — el UPDATE ... RETURNING toma el lock de
   // fila dentro de la misma transacción, sin el hueco select→update en dos pasos.
-  const { data, error } = await supabase.rpc('siguiente_correlativo', { p_ramo_id: ramoId });
-  if (error) throw error;
-  return data;
+  const { data, error } = await supabase.rpc('siguiente_correlativo', { p_ramo_id: ramoId })
+  if (error) throw error
+  return data
 }
 
 export async function insertCotizacion(cotizacion) {
-  const { data, error } = await supabase.from('cotizaciones').insert(cotizacion).select().single();
-  if (error) throw error;
-  return data;
+  const { data, error } = await supabase.from('cotizaciones').insert(cotizacion).select().single()
+  if (error) throw error
+  return data
 }
 
 export async function insertVariante(variante) {
@@ -22,21 +22,21 @@ export async function insertVariante(variante) {
     .from('cotizacion_variantes')
     .insert(variante)
     .select()
-    .single();
-  if (error) throw error;
-  return data;
+    .single()
+  if (error) throw error
+  return data
 }
 
 export async function insertPlanesPago(planesPago) {
-  const { data, error } = await supabase.from('cotizacion_plan_pago').insert(planesPago).select();
-  if (error) throw error;
-  return data;
+  const { data, error } = await supabase.from('cotizacion_plan_pago').insert(planesPago).select()
+  if (error) throw error
+  return data
 }
 
 export async function insertCoberturas(coberturas) {
-  const { data, error } = await supabase.from('cotizacion_coberturas').insert(coberturas).select();
-  if (error) throw error;
-  return data;
+  const { data, error } = await supabase.from('cotizacion_coberturas').insert(coberturas).select()
+  if (error) throw error
+  return data
 }
 
 // Descuento/recargo manual del agente (state.data.descuentoValor/recargoValor en cotizar.js) —
@@ -44,10 +44,10 @@ export async function insertCoberturas(coberturas) {
 // persiste el total YA topado por el calculador (sumarAjustes), no el ajuste crudo que mandó el
 // frontend, para que la Carta Oferta muestre exactamente lo que se cobró.
 export async function insertAjustes(ajustes) {
-  if (!ajustes.length) return [];
-  const { data, error } = await supabase.from('cotizacion_ajustes').insert(ajustes).select();
-  if (error) throw error;
-  return data;
+  if (!ajustes.length) return []
+  const { data, error } = await supabase.from('cotizacion_ajustes').insert(ajustes).select()
+  if (error) throw error
+  return data
 }
 
 // Borran filas por ID explícito (no un DELETE ciego por cotizacion_id) — actualizarCotizacion en
@@ -55,15 +55,15 @@ export async function insertAjustes(ajustes) {
 // mismo cotizacion_id, así que un DELETE por cotizacion_id se llevaría puestas también las recién
 // insertadas.
 export async function deleteVariantesByIds(ids) {
-  if (!ids.length) return;
-  const { error } = await supabase.from('cotizacion_variantes').delete().in('id', ids);
-  if (error) throw error;
+  if (!ids.length) return
+  const { error } = await supabase.from('cotizacion_variantes').delete().in('id', ids)
+  if (error) throw error
 }
 
 export async function deleteCoberturasByIds(ids) {
-  if (!ids.length) return;
-  const { error } = await supabase.from('cotizacion_coberturas').delete().in('id', ids);
-  if (error) throw error;
+  if (!ids.length) return
+  const { error } = await supabase.from('cotizacion_coberturas').delete().in('id', ids)
+  if (error) throw error
 }
 
 export async function updateCotizacion(id, fields) {
@@ -72,9 +72,9 @@ export async function updateCotizacion(id, fields) {
     .update(fields)
     .eq('id', id)
     .select()
-    .single();
-  if (error) throw error;
-  return data;
+    .single()
+  if (error) throw error
+  return data
 }
 
 export async function findCotizacionById(id) {
@@ -84,7 +84,7 @@ export async function findCotizacionById(id) {
       '*, usuarios(nombre, email), cotizacion_variantes(*, cotizacion_plan_pago(*, formas_pago(*)), cotizacion_ajustes(*)), cotizacion_coberturas(*, coberturas_catalogo(codigo, incluye_en_suma_asegurada_total))'
     )
     .eq('id', id)
-    .single();
+    .single()
   if (error) {
     // PGRST116 = PostgREST no encontró (o encontró más de una) fila para `.single()` — es el
     // caso "no existe", no una falla real de la base. Se marca acá, en la única función que lee
@@ -92,11 +92,11 @@ export async function findCotizacionById(id) {
     // sin que cada caller tenga que repetir el chequeo (antes solo `actualizarCotizacion` lo hacía
     // con un try/catch que además tapaba errores reales de conexión — detectado en review-reliability).
     if (error.code === 'PGRST116') {
-      throw httpError(404, 'Cotización no encontrada', 'Cotización no encontrada');
+      throw httpError(404, 'Cotización no encontrada', 'Cotización no encontrada')
     }
-    throw error;
+    throw error
   }
-  return data;
+  return data
 }
 
 // El listado de Historial (frontend/historial) necesita nombre de ramo/plan y una prima
@@ -130,16 +130,16 @@ export async function findCotizaciones({
       { count: 'exact' }
     )
     .order('created_at', { ascending: false })
-    .range(offset, offset + limit - 1);
+    .range(offset, offset + limit - 1)
 
-  if (ramoId) query = query.eq('ramo_id', ramoId);
-  if (estado) query = query.eq('estado', estado);
-  if (cliente) query = query.ilike('cliente_nombre', `%${cliente}%`);
-  if (fechaDesde) query = query.gte('created_at', fechaDesde);
-  if (fechaHasta) query = query.lte('created_at', `${fechaHasta}T23:59:59`);
-  if (agenteId) query = query.eq('agente_id', agenteId);
+  if (ramoId) query = query.eq('ramo_id', ramoId)
+  if (estado) query = query.eq('estado', estado)
+  if (cliente) query = query.ilike('cliente_nombre', `%${cliente}%`)
+  if (fechaDesde) query = query.gte('created_at', fechaDesde)
+  if (fechaHasta) query = query.lte('created_at', `${fechaHasta}T23:59:59`)
+  if (agenteId) query = query.eq('agente_id', agenteId)
 
-  const { data, error, count } = await query;
-  if (error) throw error;
-  return { data, count };
+  const { data, error, count } = await query
+  if (error) throw error
+  return { data, count }
 }

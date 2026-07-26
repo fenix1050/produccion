@@ -1,5 +1,5 @@
-export { calcularPlanPago } from './utils/plan-pago.js';
-import { httpError } from '../utils/http-error.js';
+export { calcularPlanPago } from './utils/plan-pago.js'
+import { httpError } from '../utils/http-error.js'
 
 // Planes con tasa `permil_mensual` (Protección de Préstamos) o base "saldo declarado" (Aportes
 // y Ahorros) — ninguna fuente desglosa Prima/RPF/IVA para un producto de saldo mensual, y forzar
@@ -11,12 +11,12 @@ const PLANES_NO_IMPLEMENTADOS = new Set([
   'PROTECCION DE PRESTAMOS - COOPERATIVAS',
   'PROTECCION DE PRESTAMOS - MERCADO GENERAL',
   'APORTES Y AHORROS',
-]);
+])
 
-const NOMBRE_PROTECCION_FAMILIAR = 'PROTECCION FAMILIAR';
-const NOMBRE_AP_COOPERATIVO = 'ACCIDENTES PERSONALES - SECTOR COOPERATIVO';
-const NOMBRE_AP_PRIVADO = 'ACCIDENTES PERSONALES - SECTOR PRIVADO';
-const NOMBRE_VIDA_DIRECTIVOS = 'VIDA DIRECTIVOS Y EMPLEADOS';
+const NOMBRE_PROTECCION_FAMILIAR = 'PROTECCION FAMILIAR'
+const NOMBRE_AP_COOPERATIVO = 'ACCIDENTES PERSONALES - SECTOR COOPERATIVO'
+const NOMBRE_AP_PRIVADO = 'ACCIDENTES PERSONALES - SECTOR PRIVADO'
+const NOMBRE_VIDA_DIRECTIVOS = 'VIDA DIRECTIVOS Y EMPLEADOS'
 
 /**
  * Calculador de Vida y Accidentes Personales — a diferencia de MRC/Incendio, la tarifa no vive
@@ -51,29 +51,29 @@ export async function calcularPrima({ plan, riesgoDatos, tarifas, catalogoRamo }
       422,
       `El plan "${plan.nombre}" tarifica por saldo mensual — no se puede cotizar todavía sin desglose Prima/RPF/IVA confirmado.`,
       'Este plan está pendiente de confirmación de fórmula de cálculo.'
-    );
+    )
   }
 
-  const catalogoPorCodigo = new Map(catalogoRamo.map((c) => [c.codigo, c]));
+  const catalogoPorCodigo = new Map(catalogoRamo.map((c) => [c.codigo, c]))
 
-  let resultado;
+  let resultado
   switch (plan.nombre) {
     case NOMBRE_PROTECCION_FAMILIAR:
-      resultado = calcularProteccionFamiliar({ riesgoDatos, tarifas, catalogoPorCodigo });
-      break;
+      resultado = calcularProteccionFamiliar({ riesgoDatos, tarifas, catalogoPorCodigo })
+      break
     case NOMBRE_AP_COOPERATIVO:
     case NOMBRE_AP_PRIVADO:
-      resultado = calcularAccidentesPersonales({ plan, riesgoDatos, tarifas, catalogoPorCodigo });
-      break;
+      resultado = calcularAccidentesPersonales({ plan, riesgoDatos, tarifas, catalogoPorCodigo })
+      break
     case NOMBRE_VIDA_DIRECTIVOS:
-      resultado = calcularVidaDirectivos({ riesgoDatos, tarifas, catalogoPorCodigo });
-      break;
+      resultado = calcularVidaDirectivos({ riesgoDatos, tarifas, catalogoPorCodigo })
+      break
     default: {
       throw httpError(
         422,
         `Plan "${plan.nombre}" de Vida/AP sin lógica de cálculo implementada.`,
         'Este plan está pendiente de confirmación de fórmula de cálculo.'
-      );
+      )
     }
   }
 
@@ -81,25 +81,27 @@ export async function calcularPrima({ plan, riesgoDatos, tarifas, catalogoRamo }
     prima: resultado.prima,
     detalle: resultado.detalle,
     coberturas: resultado.coberturas,
-  };
+  }
 }
 
 function calcularProteccionFamiliar({ riesgoDatos, tarifas, catalogoPorCodigo }) {
-  const capitalAsegurado = riesgoDatos.capital_asegurado ?? 0;
+  const capitalAsegurado = riesgoDatos.capital_asegurado ?? 0
 
-  const tarifaFallecimiento = tarifas.find((v) => v.cobertura_codigo === 'fallecimiento_cualquier_causa');
+  const tarifaFallecimiento = tarifas.find(
+    (v) => v.cobertura_codigo === 'fallecimiento_cualquier_causa'
+  )
   if (!tarifaFallecimiento?.tasa) {
     throw httpError(
       422,
       'Falta la tasa de "fallecimiento_cualquier_causa" para Protección Familiar.',
       'Este plan todavía no tiene tasa confirmada.'
-    );
+    )
   }
 
-  const prima = capitalAsegurado * (tarifaFallecimiento.tasa / 1000);
+  const prima = capitalAsegurado * (tarifaFallecimiento.tasa / 1000)
 
-  const catalogoFallecimiento = catalogoPorCodigo.get('fallecimiento_cualquier_causa');
-  const catalogoReembolso = catalogoPorCodigo.get('reembolso_gastos_funerarios');
+  const catalogoFallecimiento = catalogoPorCodigo.get('fallecimiento_cualquier_causa')
+  const catalogoReembolso = catalogoPorCodigo.get('reembolso_gastos_funerarios')
 
   return {
     prima,
@@ -124,19 +126,19 @@ function calcularProteccionFamiliar({ riesgoDatos, tarifas, catalogoPorCodigo })
         incluye_en_suma_asegurada_total: false,
       },
     ],
-  };
+  }
 }
 
 function calcularAccidentesPersonales({ plan, riesgoDatos, tarifas, catalogoPorCodigo }) {
-  const capitalAsegurado = riesgoDatos.capital_asegurado ?? 0;
-  const edad = riesgoDatos.edad;
+  const capitalAsegurado = riesgoDatos.capital_asegurado ?? 0
+  const edad = riesgoDatos.edad
 
   if (edad != null && edad >= 70 && edad <= 80) {
     throw httpError(
       422,
       `El plan "${plan.nombre}" tiene un recargo para edad 70-80 años que el manual no especifica con claridad (puntos porcentuales vs. % por año) — no se puede cotizar sin esa confirmación.`,
       'La edad declarada requiere un recargo todavía sin confirmar — consultar con el área técnica.'
-    );
+    )
   }
 
   if (riesgoDatos.capital_gastos_sepelio != null) {
@@ -144,24 +146,24 @@ function calcularAccidentesPersonales({ plan, riesgoDatos, tarifas, catalogoPorC
       422,
       '"Gastos de Sepelio" no tiene tasa confirmada para Accidentes Personales.',
       'La cobertura de Gastos de Sepelio todavía no tiene tasa confirmada.'
-    );
+    )
   }
 
-  const tarifaBase = tarifas.find((v) => v.cobertura_codigo === 'muerte_accidente_ap');
+  const tarifaBase = tarifas.find((v) => v.cobertura_codigo === 'muerte_accidente_ap')
   if (!tarifaBase?.tasa) {
     throw httpError(
       422,
       `Falta la tasa de "muerte_accidente_ap" para "${plan.nombre}".`,
       'Este plan todavía no tiene tasa confirmada.'
-    );
+    )
   }
 
-  const primaBase = capitalAsegurado * (tarifaBase.tasa / 1000);
+  const primaBase = capitalAsegurado * (tarifaBase.tasa / 1000)
 
-  const catalogoMuerte = catalogoPorCodigo.get('muerte_accidente_ap');
-  const catalogoInvalidez = catalogoPorCodigo.get('invalidez_accidente_ap');
-  const catalogoGastosMedicos = catalogoPorCodigo.get('gastos_medicos_accidente');
-  const catalogoRentaDiaria = catalogoPorCodigo.get('renta_diaria_accidente');
+  const catalogoMuerte = catalogoPorCodigo.get('muerte_accidente_ap')
+  const catalogoInvalidez = catalogoPorCodigo.get('invalidez_accidente_ap')
+  const catalogoGastosMedicos = catalogoPorCodigo.get('gastos_medicos_accidente')
+  const catalogoRentaDiaria = catalogoPorCodigo.get('renta_diaria_accidente')
 
   const coberturas = [
     {
@@ -173,7 +175,8 @@ function calcularAccidentesPersonales({ plan, riesgoDatos, tarifas, catalogoPorC
     },
     {
       codigo: 'invalidez_accidente_ap',
-      nombre: catalogoInvalidez?.nombre ?? 'Incapacidad Total y Permanente a Consecuencia de Accidente',
+      nombre:
+        catalogoInvalidez?.nombre ?? 'Incapacidad Total y Permanente a Consecuencia de Accidente',
       monto: capitalAsegurado,
       tipo_aplicacion: 'cobertura',
       incluye_en_suma_asegurada_total: false,
@@ -185,30 +188,30 @@ function calcularAccidentesPersonales({ plan, riesgoDatos, tarifas, catalogoPorC
       tipo_aplicacion: 'cobertura',
       incluye_en_suma_asegurada_total: false,
     },
-  ];
+  ]
 
-  let costoRentaDiaria = 0;
+  let costoRentaDiaria = 0
   if (riesgoDatos.incluye_renta_diaria) {
-    const tarifaRentaDiaria = tarifas.find((v) => v.cobertura_codigo === 'renta_diaria_accidente');
+    const tarifaRentaDiaria = tarifas.find((v) => v.cobertura_codigo === 'renta_diaria_accidente')
     if (!tarifaRentaDiaria?.recargo_pct) {
       throw httpError(
         422,
         `Falta el recargo de "renta_diaria_accidente" para "${plan.nombre}".`,
         'La Renta Diaria todavía no tiene recargo confirmado.'
-      );
+      )
     }
 
-    const sumaRentaDiaria = riesgoDatos.suma_renta_diaria ?? 0;
-    const topeRentaDiaria = capitalAsegurado * 0.001; // 1‰ del capital de muerte, confirmado manual Anexo 2
+    const sumaRentaDiaria = riesgoDatos.suma_renta_diaria ?? 0
+    const topeRentaDiaria = capitalAsegurado * 0.001 // 1‰ del capital de muerte, confirmado manual Anexo 2
     if (sumaRentaDiaria > topeRentaDiaria) {
       throw httpError(
         422,
         `La Renta Diaria (${sumaRentaDiaria}) supera el 1‰ del capital de Muerte (${topeRentaDiaria}) permitido por el manual.`,
         'La Renta Diaria declarada supera el máximo permitido (1‰ del capital de Muerte).'
-      );
+      )
     }
 
-    costoRentaDiaria = primaBase * (tarifaRentaDiaria.recargo_pct / 100);
+    costoRentaDiaria = primaBase * (tarifaRentaDiaria.recargo_pct / 100)
 
     coberturas.push({
       codigo: 'renta_diaria_accidente',
@@ -216,10 +219,10 @@ function calcularAccidentesPersonales({ plan, riesgoDatos, tarifas, catalogoPorC
       monto: sumaRentaDiaria,
       tipo_aplicacion: 'cobertura',
       incluye_en_suma_asegurada_total: false,
-    });
+    })
   }
 
-  const prima = primaBase + costoRentaDiaria;
+  const prima = primaBase + costoRentaDiaria
 
   return {
     prima,
@@ -230,19 +233,19 @@ function calcularAccidentesPersonales({ plan, riesgoDatos, tarifas, catalogoPorC
       costo_renta_diaria: costoRentaDiaria,
     },
     coberturas,
-  };
+  }
 }
 
 function calcularVidaDirectivos({ riesgoDatos, tarifas, catalogoPorCodigo }) {
-  const capitalAsegurado = riesgoDatos.capital_asegurado ?? 0;
-  const edad = riesgoDatos.edad;
+  const capitalAsegurado = riesgoDatos.capital_asegurado ?? 0
+  const edad = riesgoDatos.edad
 
   if (edad == null || edad < 18 || edad > 69) {
     throw httpError(
       422,
       `Edad ${edad} fuera del rango asegurable (18-69 años) para Vida Directivos y Empleados.`,
       'La edad declarada está fuera del rango asegurable de este plan (18 a 69 años).'
-    );
+    )
   }
 
   const tarifaFranja = tarifas.find(
@@ -251,20 +254,20 @@ function calcularVidaDirectivos({ riesgoDatos, tarifas, catalogoPorCodigo }) {
       v.tasa != null &&
       edad >= v.edad_min &&
       edad <= v.edad_max
-  );
+  )
 
   if (!tarifaFranja) {
     throw httpError(
       422,
       `No se encontró tasa de "fallecimiento_cualquier_causa" para la edad ${edad}.`,
       'No hay tasa confirmada para la edad declarada.'
-    );
+    )
   }
 
-  const prima = capitalAsegurado * (tarifaFranja.tasa / 1000);
+  const prima = capitalAsegurado * (tarifaFranja.tasa / 1000)
 
-  const catalogoFallecimiento = catalogoPorCodigo.get('fallecimiento_cualquier_causa');
-  const catalogoPerdidasOrganicas = catalogoPorCodigo.get('perdidas_organicas');
+  const catalogoFallecimiento = catalogoPorCodigo.get('fallecimiento_cualquier_causa')
+  const catalogoPerdidasOrganicas = catalogoPorCodigo.get('perdidas_organicas')
 
   return {
     prima,
@@ -284,11 +287,12 @@ function calcularVidaDirectivos({ riesgoDatos, tarifas, catalogoPorCodigo }) {
       },
       {
         codigo: 'perdidas_organicas',
-        nombre: catalogoPerdidasOrganicas?.nombre ?? 'Pérdidas Orgánicas / Desmembramiento por Accidente',
+        nombre:
+          catalogoPerdidasOrganicas?.nombre ?? 'Pérdidas Orgánicas / Desmembramiento por Accidente',
         monto: capitalAsegurado,
         tipo_aplicacion: 'cobertura',
         incluye_en_suma_asegurada_total: false,
       },
     ],
-  };
+  }
 }

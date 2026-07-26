@@ -1,5 +1,5 @@
-import { z } from 'zod';
-import { ajusteSchema } from './shared/ajuste.schema.js';
+import { z } from 'zod'
+import { ajusteSchema } from './shared/ajuste.schema.js'
 
 // Datos específicos del riesgo para Vida y Accidentes Personales — ver vida-ap.calculator.js.
 // Solo 3 de 7 planes tienen calculador implementado hoy; los otros 4 cortan con 422 desde el
@@ -11,7 +11,7 @@ export const riesgoVidaApSchema = z.object({
   // Renta Diaria (Accidentes Personales): recargo opcional sobre la tasa básica.
   incluye_renta_diaria: z.boolean().optional(),
   suma_renta_diaria: z.number().nonnegative().optional(),
-});
+})
 
 // Body de POST /api/cotizaciones/calcular y POST /api/cotizaciones para ramo = 'vida-ap'.
 export const cotizarVidaApSchema = z.object({
@@ -23,4 +23,4 @@ export const cotizarVidaApSchema = z.object({
   cliente_nombre: z.string().optional(),
   cliente_contacto: z.string().optional(),
   cuotas: z.number().int().positive().optional(),
-});
+})

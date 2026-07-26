@@ -30,19 +30,19 @@ Cada tema debe tener un único documento responsable.
 
 # Documentación del proyecto
 
-| Documento | Propósito |
-|-----------|-----------|
-| README.md | Presentación general del proyecto |
-| CLAUDE.md | Contexto específico para Claude Code |
-| AGENTS.md | Contexto compartido para cualquier agente IA |
-| docs/ARCHITECTURE.md | Arquitectura técnica |
-| docs/PLAN_DESARROLLO.md | Especificación funcional |
-| docs/ESTADO_PROYECTO.md | Estado actual del desarrollo |
-| docs/AI_WORKFLOW.md | Flujo de trabajo para agentes IA |
-| docs/DECISIONS.md | Decisiones de arquitectura (ADR) |
-| docs/standards/TESTING.md | Estrategia de pruebas |
-| docs/standards/SECURITY.md | Estándares de seguridad |
-| docs/standards/DOCUMENTATION.md | Este documento |
+| Documento                       | Propósito                                    |
+| ------------------------------- | -------------------------------------------- |
+| README.md                       | Presentación general del proyecto            |
+| CLAUDE.md                       | Contexto específico para Claude Code         |
+| AGENTS.md                       | Contexto compartido para cualquier agente IA |
+| docs/ARCHITECTURE.md            | Arquitectura técnica                         |
+| docs/PLAN_DESARROLLO.md         | Especificación funcional                     |
+| docs/ESTADO_PROYECTO.md         | Estado actual del desarrollo                 |
+| docs/AI_WORKFLOW.md             | Flujo de trabajo para agentes IA             |
+| docs/DECISIONS.md               | Decisiones de arquitectura (ADR)             |
+| docs/standards/TESTING.md       | Estrategia de pruebas                        |
+| docs/standards/SECURITY.md      | Estándares de seguridad                      |
+| docs/standards/DOCUMENTATION.md | Este documento                               |
 
 ---
 
@@ -93,7 +93,6 @@ Actualizar:
 
 ---
 
-
 ## Cambios de seguridad
 
 Actualizar:
@@ -109,7 +108,6 @@ Actualizar:
 - TESTING.md
 
 ---
-
 
 # Flujo obligatorio
 

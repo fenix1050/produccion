@@ -1,21 +1,21 @@
-import * as ramosRepository from '../repositories/ramos.repository.js';
-import * as cotizacionesRepository from '../repositories/cotizaciones.repository.js';
-import * as coberturasRepository from '../repositories/coberturas.repository.js';
-import { getCalculador } from '../calculators/index.js';
-import { getSchemaCotizar } from '../schemas/index.js';
-import { renderOfertaPdf } from './pdf.service.js';
-import { httpError } from '../utils/http-error.js';
-import { withCache } from './cache.js';
+import * as ramosRepository from '../repositories/ramos.repository.js'
+import * as cotizacionesRepository from '../repositories/cotizaciones.repository.js'
+import * as coberturasRepository from '../repositories/coberturas.repository.js'
+import { getCalculador } from '../calculators/index.js'
+import { getSchemaCotizar } from '../schemas/index.js'
+import { renderOfertaPdf } from './pdf.service.js'
+import { httpError } from '../utils/http-error.js'
+import { withCache } from './cache.js'
 
 /**
  * Calcula una cotización SIN guardarla — usado para el preview en vivo del frontend.
  * Devuelve todas las variantes (sin/con franquicia si corresponde) con sus 4 formas de pago.
  */
 export async function calcularPreview(body, usuario) {
-  const { plan, ramo, datosValidados } = await validarYResolverContexto(body);
-  const calculador = getCalculador(ramo.calculador);
+  const { plan, ramo, datosValidados } = await validarYResolverContexto(body)
+  const calculador = getCalculador(ramo.calculador)
 
-  return construirVariantes({ calculador, plan, ramo, datosValidados, usuario });
+  return construirVariantes({ calculador, plan, ramo, datosValidados, usuario })
 }
 
 /**
@@ -23,10 +23,16 @@ export async function calcularPreview(body, usuario) {
  * por forma de pago. Asigna número(s) correlativo(s) por variante.
  */
 export async function crearCotizacion(body, usuario) {
-  const { plan, ramo, datosValidados } = await validarYResolverContexto(body);
-  const calculador = getCalculador(ramo.calculador);
+  const { plan, ramo, datosValidados } = await validarYResolverContexto(body)
+  const calculador = getCalculador(ramo.calculador)
 
-  const variantesCalculadas = await construirVariantes({ calculador, plan, ramo, datosValidados, usuario });
+  const variantesCalculadas = await construirVariantes({
+    calculador,
+    plan,
+    ramo,
+    datosValidados,
+    usuario,
+  })
 
   const cotizacion = await cotizacionesRepository.insertCotizacion({
     numero_cotizacion: `${ramo.nombre.toUpperCase()}-${await cotizacionesRepository.nextNumeroCorrelativo(ramo.id)}`,
@@ -38,11 +44,15 @@ export async function crearCotizacion(body, usuario) {
     riesgo_datos: datosValidados.riesgo_datos,
     capital_asegurado: datosValidados.capital_asegurado,
     estado: 'cotizada',
-  });
+  })
 
-  await insertarCoberturasYVariantes({ cotizacionId: cotizacion.id, ramoId: ramo.id, variantesCalculadas });
+  await insertarCoberturasYVariantes({
+    cotizacionId: cotizacion.id,
+    ramoId: ramo.id,
+    variantesCalculadas,
+  })
 
-  return cotizacionesRepository.findCotizacionById(cotizacion.id);
+  return cotizacionesRepository.findCotizacionById(cotizacion.id)
 }
 
 export async function listarCotizaciones(query, usuario) {
@@ -55,31 +65,31 @@ export async function listarCotizaciones(query, usuario) {
     limit: query.limit ? Number(query.limit) : undefined,
     offset: query.offset ? Number(query.offset) : undefined,
     agenteId: usuario.rol === 'admin' ? undefined : usuario.id,
-  });
+  })
 }
 
 export async function obtenerCotizacion(id, usuario) {
-  const cotizacion = await cotizacionesRepository.findCotizacionById(id);
-  verificarPropiedad(cotizacion, usuario);
-  return cotizacion;
+  const cotizacion = await cotizacionesRepository.findCotizacionById(id)
+  verificarPropiedad(cotizacion, usuario)
+  return cotizacion
 }
 
 export async function generarPdfOferta(id, usuario) {
-  const cotizacion = await cotizacionesRepository.findCotizacionById(id);
-  verificarPropiedad(cotizacion, usuario);
-  const plan = await ramosRepository.findPlanById(cotizacion.plan_id);
+  const cotizacion = await cotizacionesRepository.findCotizacionById(id)
+  verificarPropiedad(cotizacion, usuario)
+  const plan = await ramosRepository.findPlanById(cotizacion.plan_id)
   // Sin filtro de `activo`: la cotización ya existe (se creó cuando el ramo estaba activo),
   // así que generar su PDF no debe fallar solo porque el ramo se dio de baja después.
-  const ramo = await ramosRepository.findRamoById(cotizacion.ramo_id);
+  const ramo = await ramosRepository.findRamoById(cotizacion.ramo_id)
   // Catálogo VIGENTE del plan (montos/incluida_por_defecto actuales) — necesario para que los
   // sub-límites fijos de la Carta Oferta (ej. MRC) reflejen cambios del admin, en vez de quedar
   // hardcodeados con el valor de cuando se cargó la migración original.
-  const planCoberturas = await ramosRepository.findCoberturasByPlanId(cotizacion.plan_id);
+  const planCoberturas = await ramosRepository.findCoberturasByPlanId(cotizacion.plan_id)
 
-  return renderOfertaPdf({ cotizacion, plan, ramo, planCoberturas });
+  return renderOfertaPdf({ cotizacion, plan, ramo, planCoberturas })
 }
 
-const VENTANA_EDICION_MS = 30 * 24 * 60 * 60 * 1000;
+const VENTANA_EDICION_MS = 30 * 24 * 60 * 60 * 1000
 
 /**
  * Recalcula y reemplaza una cotización ya guardada, dentro de la ventana de 30 días desde su
@@ -89,15 +99,16 @@ const VENTANA_EDICION_MS = 30 * 24 * 60 * 60 * 1000;
  * números de variante NUEVOS (no se reciclan los correlativos ya emitidos).
  */
 export async function actualizarCotizacion(id, body, usuario) {
-  const existente = await cotizacionesRepository.findCotizacionById(id);
-  verificarPropiedad(existente, usuario, 'No tenés permiso para editar esta cotización');
+  const existente = await cotizacionesRepository.findCotizacionById(id)
+  verificarPropiedad(existente, usuario, 'No tenés permiso para editar esta cotización')
 
   if (Date.now() - new Date(existente.created_at).getTime() > VENTANA_EDICION_MS) {
-    const mensaje = 'Ya pasaron más de 30 días desde que se generó esta cotización — no se puede editar.';
-    throw httpError(422, mensaje, mensaje);
+    const mensaje =
+      'Ya pasaron más de 30 días desde que se generó esta cotización — no se puede editar.'
+    throw httpError(422, mensaje, mensaje)
   }
 
-  const { plan, ramo, datosValidados } = await validarYResolverContexto(body);
+  const { plan, ramo, datosValidados } = await validarYResolverContexto(body)
 
   // No se puede "editar" una cotización cambiándole el ramo: coberturas/schema/tasas son
   // específicos de cada calculador y `ramo_id` nunca se toca en el UPDATE de abajo (es
@@ -106,12 +117,18 @@ export async function actualizarCotizacion(id, body, usuario) {
   // selectRamo) terminaría guardando riesgo_datos/coberturas de un ramo distinto bajo el
   // ramo_id original — detectado en review-risk/readability de esta misma feature.
   if (ramo.id !== existente.ramo_id) {
-    const mensaje = 'No se puede cambiar el ramo de una cotización ya existente.';
-    throw httpError(422, mensaje, mensaje);
+    const mensaje = 'No se puede cambiar el ramo de una cotización ya existente.'
+    throw httpError(422, mensaje, mensaje)
   }
 
-  const calculador = getCalculador(ramo.calculador);
-  const variantesCalculadas = await construirVariantes({ calculador, plan, ramo, datosValidados, usuario });
+  const calculador = getCalculador(ramo.calculador)
+  const variantesCalculadas = await construirVariantes({
+    calculador,
+    plan,
+    ramo,
+    datosValidados,
+    usuario,
+  })
 
   // Orden deliberado: insertar los datos NUEVOS antes de tocar el header o borrar los viejos.
   // Si `insertarCoberturasYVariantes` falla acá (red, RPC del correlativo, etc.), la cotización
@@ -120,10 +137,10 @@ export async function actualizarCotizacion(id, body, usuario) {
   // coberturas (PDF roto, prima en null) — detectado por los 4 lentes de review de esta feature.
   // Se borran los IDs viejos ya capturados (no un DELETE ciego por cotizacion_id) para no
   // arrastrarse las filas recién insertadas, que comparten el mismo cotizacion_id.
-  const idsVariantesViejas = (existente.cotizacion_variantes ?? []).map((v) => v.id);
-  const idsCoberturasViejas = (existente.cotizacion_coberturas ?? []).map((c) => c.id);
+  const idsVariantesViejas = (existente.cotizacion_variantes ?? []).map((v) => v.id)
+  const idsCoberturasViejas = (existente.cotizacion_coberturas ?? []).map((c) => c.id)
 
-  await insertarCoberturasYVariantes({ cotizacionId: id, ramoId: ramo.id, variantesCalculadas });
+  await insertarCoberturasYVariantes({ cotizacionId: id, ramoId: ramo.id, variantesCalculadas })
 
   await cotizacionesRepository.updateCotizacion(id, {
     cliente_nombre: body.cliente_nombre,
@@ -132,21 +149,23 @@ export async function actualizarCotizacion(id, body, usuario) {
     capital_asegurado: datosValidados.capital_asegurado,
     plan_id: plan.id,
     estado: 'cotizada',
-  });
+  })
 
-  if (idsVariantesViejas.length) await cotizacionesRepository.deleteVariantesByIds(idsVariantesViejas);
-  if (idsCoberturasViejas.length) await cotizacionesRepository.deleteCoberturasByIds(idsCoberturasViejas);
+  if (idsVariantesViejas.length)
+    await cotizacionesRepository.deleteVariantesByIds(idsVariantesViejas)
+  if (idsCoberturasViejas.length)
+    await cotizacionesRepository.deleteCoberturasByIds(idsCoberturasViejas)
 
-  return cotizacionesRepository.findCotizacionById(id);
+  return cotizacionesRepository.findCotizacionById(id)
 }
 
 // ---- Fase 4 ----
 export async function aceptarCotizacion(_id, _kyc) {
-  throw new Error('Aceptación de cotización + KYC pendiente — Fase 4');
+  throw new Error('Aceptación de cotización + KYC pendiente — Fase 4')
 }
 
 export async function generarPdfPropuestaFormal(_id) {
-  throw new Error('Generación de Propuesta Formal pendiente — Fase 4');
+  throw new Error('Generación de Propuesta Formal pendiente — Fase 4')
 }
 
 // ---------------------------------------------------------------------------
@@ -156,9 +175,13 @@ export async function generarPdfPropuestaFormal(_id) {
  * seteado a mano) si el usuario no es admin y no es el dueño de la cotización. Compartido entre
  * `obtenerCotizacion`, `generarPdfOferta` y `actualizarCotizacion` para no repetir la condición.
  */
-function verificarPropiedad(cotizacion, usuario, mensaje = 'No tenés permiso para ver esta cotización') {
+function verificarPropiedad(
+  cotizacion,
+  usuario,
+  mensaje = 'No tenés permiso para ver esta cotización'
+) {
   if (usuario.rol !== 'admin' && cotizacion.agente_id !== usuario.id) {
-    throw httpError(403, mensaje, mensaje);
+    throw httpError(403, mensaje, mensaje)
   }
 }
 
@@ -174,12 +197,12 @@ async function insertarCoberturasYVariantes({ cotizacionId, ramoId, variantesCal
   // Snapshot de nombre/texto legal/exclusiones para que quede congelado aunque después
   // cambie el catálogo (mismo criterio que cotizacion_clausulas/cotizacion_servicios).
   if (variantesCalculadas.coberturas?.length) {
-    const catalogoRamo = await coberturasRepository.findCoberturasCatalogoByRamoId(ramoId);
-    const catalogoPorCodigo = new Map(catalogoRamo.map((c) => [c.codigo, c]));
+    const catalogoRamo = await coberturasRepository.findCoberturasCatalogoByRamoId(ramoId)
+    const catalogoPorCodigo = new Map(catalogoRamo.map((c) => [c.codigo, c]))
 
     await cotizacionesRepository.insertCoberturas(
       variantesCalculadas.coberturas.map((cobertura) => {
-        const catalogoRow = catalogoPorCodigo.get(cobertura.codigo);
+        const catalogoRow = catalogoPorCodigo.get(cobertura.codigo)
         return {
           cotizacion_id: cotizacionId,
           cobertura_id: catalogoRow?.id ?? null,
@@ -192,13 +215,13 @@ async function insertarCoberturasYVariantes({ cotizacionId, ramoId, variantesCal
           franquicia: cobertura.franquicia_default ?? null,
           tipo_aplicacion: cobertura.tipo_aplicacion ?? 'cobertura',
           incluida: true,
-        };
+        }
       })
-    );
+    )
   }
 
   for (const variante of variantesCalculadas.variantes) {
-    const numeroVariante = String(await cotizacionesRepository.nextNumeroCorrelativo(ramoId));
+    const numeroVariante = String(await cotizacionesRepository.nextNumeroCorrelativo(ramoId))
 
     const varianteGuardada = await cotizacionesRepository.insertVariante({
       cotizacion_id: cotizacionId,
@@ -206,19 +229,19 @@ async function insertarCoberturasYVariantes({ cotizacionId, ramoId, variantesCal
       tipo_franquicia: variante.tipo_franquicia,
       franquicia_monto: variante.franquicia_monto,
       prima: variante.prima,
-    });
+    })
 
     // Descuento/recargo manual del agente (mrc/incendio hoy — ver sumarAjustes en esos
     // calculadores) — se guarda el total ya topado por plan.descuento_maximo/recargo_maximo,
     // no el body crudo, para que la Carta Oferta muestre lo que efectivamente se aplicó.
-    const ajustesAGuardar = [];
+    const ajustesAGuardar = []
     if (variantesCalculadas.detalle?.total_descuentos > 0) {
       ajustesAGuardar.push({
         variante_id: varianteGuardada.id,
         tipo: 'descuento',
         descripcion: 'Descuento aplicado por el agente',
         monto: variantesCalculadas.detalle.total_descuentos,
-      });
+      })
     }
     if (variantesCalculadas.detalle?.total_recargos > 0) {
       ajustesAGuardar.push({
@@ -226,10 +249,10 @@ async function insertarCoberturasYVariantes({ cotizacionId, ramoId, variantesCal
         tipo: 'recargo',
         descripcion: 'Recargo aplicado por el agente',
         monto: variantesCalculadas.detalle.total_recargos,
-      });
+      })
     }
     if (ajustesAGuardar.length) {
-      await cotizacionesRepository.insertAjustes(ajustesAGuardar);
+      await cotizacionesRepository.insertAjustes(ajustesAGuardar)
     }
 
     await cotizacionesRepository.insertPlanesPago(
@@ -244,20 +267,20 @@ async function insertarCoberturasYVariantes({ cotizacionId, ramoId, variantesCal
         monto_inicial: fp.inicial,
         monto_cuota: fp.cuota,
       }))
-    );
+    )
   }
 }
 
 async function validarYResolverContexto(body) {
-  const plan = await ramosRepository.findPlanById(body.plan_id);
+  const plan = await ramosRepository.findPlanById(body.plan_id)
   // soloActivos: true — no se debe poder cotizar/editar sobre un ramo dado de baja
   // (mismo comportamiento que el `.find()` sobre `findRamosActivos()` que reemplaza).
-  const ramo = await ramosRepository.findRamoById(plan.ramo_id, { soloActivos: true });
+  const ramo = await ramosRepository.findRamoById(plan.ramo_id, { soloActivos: true })
 
-  const schema = getSchemaCotizar(ramo.calculador);
-  const datosValidados = schema.parse(body);
+  const schema = getSchemaCotizar(ramo.calculador)
+  const datosValidados = schema.parse(body)
 
-  return { plan, ramo, datosValidados };
+  return { plan, ramo, datosValidados }
 }
 
 /**
@@ -279,7 +302,7 @@ async function validarYResolverContexto(body) {
 async function resolverContextoRepositorios(ramo, plan, riesgoDatos, capital) {
   switch (ramo.calculador) {
     case 'auto':
-      return { tasaCapital: await ramosRepository.findTasaCapital(plan.id, capital) };
+      return { tasaCapital: await ramosRepository.findTasaCapital(plan.id, capital) }
     case 'mrc':
     case 'incendio': {
       const [rubro, catalogoRamo, tasasRamo] = await Promise.all([
@@ -294,8 +317,8 @@ async function resolverContextoRepositorios(ramo, plan, riesgoDatos, capital) {
         withCache(`tasasRamo:${plan.ramo_id}`, () =>
           coberturasRepository.findTasasCoberturaRamo(plan.ramo_id)
         ),
-      ]);
-      return { rubro, catalogoRamo, tasasRamo };
+      ])
+      return { rubro, catalogoRamo, tasasRamo }
     }
     case 'vida-ap': {
       const [tarifas, catalogoRamo] = await Promise.all([
@@ -303,11 +326,11 @@ async function resolverContextoRepositorios(ramo, plan, riesgoDatos, capital) {
         withCache(`catalogoRamo:${plan.ramo_id}`, () =>
           coberturasRepository.findCoberturasCatalogoByRamoId(plan.ramo_id)
         ),
-      ]);
-      return { tarifas, catalogoRamo };
+      ])
+      return { tarifas, catalogoRamo }
     }
     default:
-      return {};
+      return {}
   }
 }
 
@@ -322,7 +345,7 @@ async function construirVariantes({ calculador, plan, ramo, datosValidados, usua
     plan,
     datosValidados.riesgo_datos,
     datosValidados.capital_asegurado
-  );
+  )
 
   const { prima, detalle, coberturas } = await calculador.calcularPrima({
     planId: plan.id,
@@ -333,12 +356,12 @@ async function construirVariantes({ calculador, plan, ramo, datosValidados, usua
     recargos: datosValidados.recargos,
     usuario,
     ...contexto,
-  });
+  })
 
-  const formasPagoPlan = await ramosRepository.findFormasPagoDelPlan(plan.id);
-  const cuotas = resolverCuotas(plan, datosValidados.cuotas);
+  const formasPagoPlan = await ramosRepository.findFormasPagoDelPlan(plan.id)
+  const cuotas = resolverCuotas(plan, datosValidados.cuotas)
 
-  const tiposFranquicia = resolverTiposFranquicia(plan, datosValidados.riesgo_datos, prima);
+  const tiposFranquicia = resolverTiposFranquicia(plan, datosValidados.riesgo_datos, prima)
 
   const variantes = tiposFranquicia.map(({ tipo, primaAjustada, franquiciaMonto }) => ({
     tipo_franquicia: tipo,
@@ -355,9 +378,9 @@ async function construirVariantes({ calculador, plan, ramo, datosValidados, usua
         cuotas
       ),
     })),
-  }));
+  }))
 
-  return { prima, detalle, coberturas, variantes };
+  return { prima, detalle, coberturas, variantes }
 }
 
 /**
@@ -366,9 +389,9 @@ async function construirVariantes({ calculador, plan, ramo, datosValidados, usua
  * cotizaciones ya guardadas, que no mandaban este campo).
  */
 function resolverCuotas(plan, cuotasElegidas) {
-  if (cuotasElegidas == null) return plan.cuotas_default;
-  if (plan.cuotas_maximo != null) return Math.min(cuotasElegidas, plan.cuotas_maximo);
-  return cuotasElegidas;
+  if (cuotasElegidas == null) return plan.cuotas_default
+  if (plan.cuotas_maximo != null) return Math.min(cuotasElegidas, plan.cuotas_maximo)
+  return cuotasElegidas
 }
 
 /**
@@ -381,18 +404,18 @@ function resolverTiposFranquicia(plan, riesgoDatos, primaBase) {
   if (riesgoDatos.via_importacion === 'IMPORTACION DIRECTA') {
     // Franquicia fija por defecto en toda cotización. El add-on para sacarla
     // (antes Gs. 909.091) está pendiente de recalcular — ver sección 11, punto 9.
-    const FRANQUICIA_BASE = 350000; // TODO: leer de franquicia_auto_importacion_directa
-    return [{ tipo: 'con_franquicia', primaAjustada: primaBase, franquiciaMonto: FRANQUICIA_BASE }];
+    const FRANQUICIA_BASE = 350000 // TODO: leer de franquicia_auto_importacion_directa
+    return [{ tipo: 'con_franquicia', primaAjustada: primaBase, franquiciaMonto: FRANQUICIA_BASE }]
   }
 
   if (plan.cotizacion_combinada) {
-    const primaConDescuento = primaBase * (1 - (plan.descuento_default ?? 0) / 100);
-    const franquiciaMonto = primaConDescuento * ((plan.franquicia_porcentaje ?? 0) / 100);
+    const primaConDescuento = primaBase * (1 - (plan.descuento_default ?? 0) / 100)
+    const franquiciaMonto = primaConDescuento * ((plan.franquicia_porcentaje ?? 0) / 100)
     return [
       { tipo: 'sin_franquicia', primaAjustada: primaBase, franquiciaMonto: 0 },
       { tipo: 'con_franquicia', primaAjustada: primaConDescuento, franquiciaMonto },
-    ];
+    ]
   }
 
-  return [{ tipo: 'sin_franquicia', primaAjustada: primaBase, franquiciaMonto: 0 }];
+  return [{ tipo: 'sin_franquicia', primaAjustada: primaBase, franquiciaMonto: 0 }]
 }

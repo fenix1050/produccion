@@ -15,16 +15,16 @@ correlativo y numeración progresiva por rama.
 
 ## Ramos — estado actual (2026-07-23)
 
-| Rama | Estado | Detalles |
-|---|---|---|
-| **Multirriesgo Comercio** (MRC) | 🟢 **Producción** | Plan Normal cotiza end-to-end con Carta Oferta en PDF. Coberturas adicionales repetibles (incluidos sublímites: murallas, granizo, agua, equipos electrónicos). Carta Oferta ajustada a tamaño Oficio real. `/frontend/cotizar` ya está rediseñado (Diseño 2) con stepper, panel en vivo y vista Detalle del plan reorganizada. RPF confirmado para plan Normal; `COMERCIO PROTECCION TOTAL` sigue desactivado (sin RPF). |
-| **Incendio** | 🟡 **Datos cerrados / calculador pendiente** | Catálogo completo (2 planes, 5 coberturas). RPF confirmado (plano: Contado 0%, Cobrador 1.6%, Boca 1.35%, Tarjeta 1%). Falta calculador `incendio.js` y template de Carta Oferta (pendiente texto oficial). |
-| **Vida y Accidentes Personales** | 🟡 **Datos cerrados / calculador pendiente** | Catálogo completo (7 planes, 11 coberturas, 44 filas de tarifación por edad). RPF confirmado (igual a Incendio). Falta calculador `vida-ap.js` y template de Carta Oferta (pendiente texto oficial). |
-| Auto individual | ⏸ Pausado | Schema y calculador completos (Fase 1). Pausado por prioridad del cliente — se retoma si se pide. |
-| Auto Flota | ⏸ Pausado | Planificado en Fase 2. Depende de retomar Auto individual. |
-| Multirriesgo Hogar | ⚪ Futuro | Planificado. |
-| Todo Riesgo Operativo (TRO) | ⚪ Futuro | Planificado. |
-| Transporte de Mercadería | ⚪ Futuro | Planificado. |
+| Rama                             | Estado                                       | Detalles                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| -------------------------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Multirriesgo Comercio** (MRC)  | 🟢 **Producción**                            | Plan Normal cotiza end-to-end con Carta Oferta en PDF. Coberturas adicionales repetibles (incluidos sublímites: murallas, granizo, agua, equipos electrónicos). Carta Oferta ajustada a tamaño Oficio real. `/frontend/cotizar` ya está rediseñado (Diseño 2) con stepper, panel en vivo y vista Detalle del plan reorganizada. RPF confirmado para plan Normal; `COMERCIO PROTECCION TOTAL` sigue desactivado (sin RPF). |
+| **Incendio**                     | 🟡 **Datos cerrados / calculador pendiente** | Catálogo completo (2 planes, 5 coberturas). RPF confirmado (plano: Contado 0%, Cobrador 1.6%, Boca 1.35%, Tarjeta 1%). Falta calculador `incendio.js` y template de Carta Oferta (pendiente texto oficial).                                                                                                                                                                                                               |
+| **Vida y Accidentes Personales** | 🟡 **Datos cerrados / calculador pendiente** | Catálogo completo (7 planes, 11 coberturas, 44 filas de tarifación por edad). RPF confirmado (igual a Incendio). Falta calculador `vida-ap.js` y template de Carta Oferta (pendiente texto oficial).                                                                                                                                                                                                                      |
+| Auto individual                  | ⏸ Pausado                                    | Schema y calculador completos (Fase 1). Pausado por prioridad del cliente — se retoma si se pide.                                                                                                                                                                                                                                                                                                                         |
+| Auto Flota                       | ⏸ Pausado                                    | Planificado en Fase 2. Depende de retomar Auto individual.                                                                                                                                                                                                                                                                                                                                                                |
+| Multirriesgo Hogar               | ⚪ Futuro                                    | Planificado.                                                                                                                                                                                                                                                                                                                                                                                                              |
+| Todo Riesgo Operativo (TRO)      | ⚪ Futuro                                    | Planificado.                                                                                                                                                                                                                                                                                                                                                                                                              |
+| Transporte de Mercadería         | ⚪ Futuro                                    | Planificado.                                                                                                                                                                                                                                                                                                                                                                                                              |
 
 ## Documentación
 
@@ -39,6 +39,7 @@ Antes de tocar código, leé en este orden:
 ## Características principales
 
 ### Cotizador (`/frontend/cotizar`)
+
 - Pantalla de bienvenida post-login (`/frontend/bienvenida`) para elegir acción y ramo antes de entrar al cotizador.
 - Selección de ramo (MRC/Incendio/Vida-AP funcionales; Auto pausado; Hogar próximamente).
 - Plan y coberturas: coberturas fijas + adicionales repetibles (mismo código, distinta suma asegurada).
@@ -49,6 +50,7 @@ Antes de tocar código, leé en este orden:
 - UI visual ya migrada a **Diseño 2**: app shell nuevo, panel "Cotización en vivo" rediseñado, Detalle del plan en layout de 2 columnas/card fija, exclusiones visibles desde Datos.
 
 ### Panel Admin (`/frontend/admin`)
+
 - **Autenticación JWT** independiente, tokens auto-renovables.
 - **Roles configurables** (`admin` y `agente` del sistema + custom roles):
   - Crear/editar roles con 4 permisos: `puede_gestionar_usuarios`, `puede_editar_coberturas`, `puede_editar_planes`, `puede_editar_tasas`.
@@ -65,6 +67,7 @@ Antes de tocar código, leé en este orden:
 - Acceso al panel movido al menú de perfil/topbar; la card de acceso también aparece en bienvenida solo si el usuario tiene permiso real.
 
 ### Historial y búsqueda (Fase 5 implementada)
+
 - Listado de cotizaciones: Número / Cliente / Ramo / Plan / Fecha / Estado / Prima.
 - Filtros: ramo, cliente, fecha desde/hasta, estado (predefinido/confirmado/rechazado).
 - Paginación automática, listado de 25 cotizaciones por página.
@@ -90,7 +93,7 @@ Antes de tocar código, leé en este orden:
 
 /docs           PLAN_DESARROLLO.md — arquitectura y reglas
                 ESTADO_PROYECTO.md — traspaso de qué está hecho y decisiones
-                
+
 /docs/insumos   Manuales de suscripción, propuestas reales y planillas de tasas
                 (excluido del repo por .gitignore — contiene datos reales de clientes)
 ```
@@ -127,6 +130,7 @@ supabase migration up
 ```
 
 El estado actual está en `docs/ESTADO_PROYECTO.md` sección 4 (tabla de migraciones 001 a 031, con descripción de qué hace cada una). En resumen:
+
 - **001–010:** Schema base (usuarios, ramos, planes, tarifación, cotizaciones, Auto Flota, KYC, funcs SQL, códigos de tasa).
 - **011–016:** Incendio/Vida-AP (coberturas, catálogos, tarifas por edad).
 - **017–027:** MRC (texto legal, responsabilidad máxima, rename de coberturas, Carta Oferta).
@@ -231,7 +235,7 @@ class RamoCalculator {
   calcularPrima(riesgo_datos) {
     // Lógica específica del ramo → { prima, detalle }
   }
-  
+
   calcularPlanPago(prima, formaPago, cuotas) {
     // Común a todos: { rpf, iva, premio, inicial, cuota }
   }
@@ -276,6 +280,7 @@ Usa Puppeteer (Chromium headless) para convertir HTML → PDF. Cada ramo puede t
 **Última actualización:** 2026-07-23 — Fase 6/7 sigue cerrada en datos para MRC/Incendio/Vida-AP, con MRC operativo end-to-end. Además del núcleo funcional, el proyecto ya incorpora migración visual "Diseño 2", pantalla de bienvenida post-login, Carta Oferta MRC en tamaño Oficio real, mejoras visuales de Historial y hardening del panel admin con guard anti-admin.
 
 Ver `docs/ESTADO_PROYECTO.md` para el detalle completo de:
+
 - Qué está implementado sección por sección
 - Decisiones tomadas y por qué
 - Pendientes abiertos y bloqueantes

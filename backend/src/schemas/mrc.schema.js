@@ -1,5 +1,5 @@
-import { z } from 'zod';
-import { ajusteSchema } from './shared/ajuste.schema.js';
+import { z } from 'zod'
+import { ajusteSchema } from './shared/ajuste.schema.js'
 
 // Datos específicos del riesgo para MRC (Multirriesgo Comercio) — van dentro de
 // `cotizaciones.riesgo_datos` (JSONB). Cédula/dirección viven acá porque `cotizaciones`
@@ -25,12 +25,14 @@ export const riesgoMrcSchema = z
     // cotizar.js). Mapa codigo -> monto (null = "sin deducible"). Igual que en el frontend, está
     // indexado por código de cobertura, no por línea — si el agente repite un código con distinta
     // suma asegurada, comparten la misma franquicia elegida.
-    franquicias_por_cobertura: z.record(z.string(), z.number().nonnegative().nullable()).default({}),
+    franquicias_por_cobertura: z
+      .record(z.string(), z.number().nonnegative().nullable())
+      .default({}),
   })
   .refine((d) => d.capital_edificio > 0 || d.capital_contenido > 0, {
     message: 'Debe indicar al menos un capital (edificio o contenido) mayor a cero',
     path: ['capital_edificio'],
-  });
+  })
 
 // Body de POST /api/cotizaciones/calcular y POST /api/cotizaciones para ramo = 'mrc'.
 export const cotizarMrcSchema = z.object({
@@ -43,4 +45,4 @@ export const cotizarMrcSchema = z.object({
   cliente_contacto: z.string().optional(),
   // Cantidad de cuotas elegida por el agente. Si no viene, el service usa plan.cuotas_default.
   cuotas: z.number().int().positive().optional(),
-});
+})

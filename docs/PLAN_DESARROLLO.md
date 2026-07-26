@@ -15,17 +15,17 @@ El diseño parte de la lógica ya usada hoy por Tajy para Auto (tasa por capital
 
 ## 2. Alcance funcional
 
-| Área | Detalle |
-|---|---|
-| Ramos | Auto (individual + flota), Incendio, Multirriesgo Hogar, MRC, TRO, Transporte de Mercadería, Vida y Accidentes Personales. Caución queda fuera (proceso de análisis crediticio, no cotizador) |
-| Planes | Fijos por ramo (ej: Auto → Premium/Superior/Fuerte/Noble + variantes; Hogar → Integral/Ampliada/Premium/Mi Hogar), con coberturas predefinidas |
-| Coberturas | Catálogo reutilizable, cada una con monto, texto descriptivo, exclusiones y franquicia. Incluidas por defecto en el plan o agregables/quitables por cotización |
-| Tarifación | Auto: capital × tasa con piso de prima mínima. Incendio/Hogar/MRC/TRO: tasa ‰ dentro de un rango, editable solo por roles autorizados. Transporte: tasa % por nivel de cobertura. Vida y AP: tasa ‰ por franja etaria |
-| Plan de pago | **Contado** / **Crédito (Cobrador)** / **Boca de Cobranza** / **Tarjeta de Crédito**, con RPF escalonado por cuotas — motor unificado en todos los ramos. Fórmula: Cuota = REDONDEAR.INF(Premio/(cuotas+1), 1000), Inicial = Premio − cuotas×Cuota (absorbe el resto); Contado = Premio completo, sin cuotas |
-| Roles | Agente (cotiza con tasas ya configuradas), Admin/roles autorizados (puede editar tasas dentro del rango permitido) |
-| Salida | Vista web + PDF tipo **carta oferta enriquecida** (coberturas, exclusiones y franquicias incluidas) — no el documento formal de solicitud con KYC/firmas |
-| Persistencia | Historial completo, numeración correlativa, búsqueda por cliente/número/fecha/ramo |
-| Administración | Carga y actualización de tasas vía Excel, gestión de catálogo de coberturas y planes |
+| Área           | Detalle                                                                                                                                                                                                                                                                                                      |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Ramos          | Auto (individual + flota), Incendio, Multirriesgo Hogar, MRC, TRO, Transporte de Mercadería, Vida y Accidentes Personales. Caución queda fuera (proceso de análisis crediticio, no cotizador)                                                                                                                |
+| Planes         | Fijos por ramo (ej: Auto → Premium/Superior/Fuerte/Noble + variantes; Hogar → Integral/Ampliada/Premium/Mi Hogar), con coberturas predefinidas                                                                                                                                                               |
+| Coberturas     | Catálogo reutilizable, cada una con monto, texto descriptivo, exclusiones y franquicia. Incluidas por defecto en el plan o agregables/quitables por cotización                                                                                                                                               |
+| Tarifación     | Auto: capital × tasa con piso de prima mínima. Incendio/Hogar/MRC/TRO: tasa ‰ dentro de un rango, editable solo por roles autorizados. Transporte: tasa % por nivel de cobertura. Vida y AP: tasa ‰ por franja etaria                                                                                        |
+| Plan de pago   | **Contado** / **Crédito (Cobrador)** / **Boca de Cobranza** / **Tarjeta de Crédito**, con RPF escalonado por cuotas — motor unificado en todos los ramos. Fórmula: Cuota = REDONDEAR.INF(Premio/(cuotas+1), 1000), Inicial = Premio − cuotas×Cuota (absorbe el resto); Contado = Premio completo, sin cuotas |
+| Roles          | Agente (cotiza con tasas ya configuradas), Admin/roles autorizados (puede editar tasas dentro del rango permitido)                                                                                                                                                                                           |
+| Salida         | Vista web + PDF tipo **carta oferta enriquecida** (coberturas, exclusiones y franquicias incluidas) — no el documento formal de solicitud con KYC/firmas                                                                                                                                                     |
+| Persistencia   | Historial completo, numeración correlativa, búsqueda por cliente/número/fecha/ramo                                                                                                                                                                                                                           |
+| Administración | Carga y actualización de tasas vía Excel, gestión de catálogo de coberturas y planes                                                                                                                                                                                                                         |
 
 ---
 
@@ -438,24 +438,25 @@ CREATE TABLE cliente_kyc (
 ALTER TABLE cotizaciones ADD COLUMN es_flota BOOLEAN DEFAULT FALSE;
 
 CREATE TABLE cotizacion_flota_vehiculos (
-  id SERIAL PRIMARY KEY,
-  cotizacion_id INT NOT NULL REFERENCES cotizaciones(id) ON DELETE CASCADE,
-  item INT NOT NULL,
-  marca VARCHAR(80),
-  modelo VARCHAR(80),
-  anio INT NOT NULL,
-  matricula VARCHAR(20),
-  capital_asegurado NUMERIC(14,2) NOT NULL,
-  prima_individual NUMERIC(14,2)     -- prima calculada para ese vehículo (tasa + recargo por antigüedad)
+id SERIAL PRIMARY KEY,
+cotizacion_id INT NOT NULL REFERENCES cotizaciones(id) ON DELETE CASCADE,
+item INT NOT NULL,
+marca VARCHAR(80),
+modelo VARCHAR(80),
+anio INT NOT NULL,
+matricula VARCHAR(20),
+capital_asegurado NUMERIC(14,2) NOT NULL,
+prima_individual NUMERIC(14,2) -- prima calculada para ese vehículo (tasa + recargo por antigüedad)
 );
 
 -- Recargo por antigüedad del vehículo (pendiente de que me pases la tabla real de Tajy)
 CREATE TABLE recargo_antiguedad_tabla (
-  id SERIAL PRIMARY KEY,
-  antiguedad_anios_min INT NOT NULL,
-  antiguedad_anios_max INT NOT NULL,
-  porcentaje_recargo NUMERIC(6,3) NOT NULL
+id SERIAL PRIMARY KEY,
+antiguedad_anios_min INT NOT NULL,
+antiguedad_anios_max INT NOT NULL,
+porcentaje_recargo NUMERIC(6,3) NOT NULL
 );
+
 ```
 
 **Flujo de dos documentos:** la cotización nace en `borrador`/`cotizada` con solo los datos del riesgo y el cálculo (esto alcanza para la Carta Oferta). Recién cuando el agente marca la cotización como `aceptada` se solicita completar `cliente_kyc`, y ahí se habilita generar la Propuesta Formal (con declaraciones PLA/FT y firmas). El PDF de Carta Oferta sigue disponible en cualquier momento desde `pdf_carta_oferta_url`.
@@ -472,9 +473,11 @@ CREATE TABLE recargo_antiguedad_tabla (
 
 **Fórmula de cuotas — unificada y confirmada (aplica a TODOS los ramos):**
 ```
+
 Cuota = REDONDEAR.INF(Premio / (cuotas + 1), 1000)
 Inicial = Premio − (cuotas × Cuota)
 Contado = Inicial igual al Premio completo, Cuota = 0
+
 ```
 Esto reemplaza las versiones anteriores que asumían `Inicial = Cuota` o redondeo hacia arriba. La
 versión correcta quedó confirmada contra capturas reales del sistema de escritorio: la Cuota
@@ -486,17 +489,19 @@ redondea hacia ABAJO y el Inicial absorbe el resto para que la suma cierre exact
 
 ### Auto
 ```
+
 Prima_base = MAX(Capital × Tasa(plan, rango capital), Prima_Técnica_Mínima_del_plan)
 Prima = Prima_base − Σ(Descuentos, tope = plan.descuento_maximo) + Σ(Recargos, tope = plan.recargo_maximo)
-        [Recargos posibles: marca (BMW/Mercedes/Land Rover/Porsche, estacional),
-         movilidad híbrida +20%, importación directa +15%, convenio Tendota (pasajeros)]
+[Recargos posibles: marca (BMW/Mercedes/Land Rover/Porsche, estacional),
+movilidad híbrida +20%, importación directa +15%, convenio Tendota (pasajeros)]
 RPF% = plan_formas_pago.tasa_rpf (fija según forma de pago, NO varía por cantidad de cuotas)
 R.P.F. = REDONDEAR.SUP(Prima × RPF% / 100, 1000)
 IVA = (Prima × 10%) + (R.P.F. × 10%)
 Premio = Prima + R.P.F. + IVA
-Cuota = REDONDEAR.INF(Premio / (cuotas + 1), 1000)   [cuotas configurable hasta plan.cuotas_maximo]
-Inicial = Premio − (cuotas × Cuota)   [absorbe el resto — Inicial + cuotas×Cuota da EXACTO el Premio]
+Cuota = REDONDEAR.INF(Premio / (cuotas + 1), 1000) [cuotas configurable hasta plan.cuotas_maximo]
+Inicial = Premio − (cuotas × Cuota) [absorbe el resto — Inicial + cuotas×Cuota da EXACTO el Premio]
 Contado: Inicial = Premio completo, Cuota = 0 (pago único, no financiado)
+
 ```
 **Corrección 2026-07-14** (confirmada contra captura real del sistema de escritorio, cotización Nº 903.662): la Cuota redondea hacia ABAJO, no hacia arriba, y el Inicial NO es igual a la Cuota — absorbe el resto de la división para que la suma dé exacto el Premio. La versión anterior de esta fórmula (`Inicial = Cuota = REDONDEAR.SUP(Premio / 12, 1000)`) nunca se había verificado número por número contra el sistema real y quedó descartada.
 
@@ -504,23 +509,25 @@ Formas de pago: **Contado** (sin RPF), **Crédito/Cobrador**, **Boca de Cobranza
 
 **Franquicia — fórmula confirmada por el manual oficial + pantalla real del cotizador:**
 ```
+
 Vía Importación = 'IMPORTACION DIRECTA':
-  Franquicia = Gs. 350.000 fija (IVA incluido), por defecto en TODA cotización
-  [Actualizado — el manual y la config vieja tenían Gs. 220.000, ya obsoleto.
-   Este monto base puede variar según criterios que todavía no definimos — ver pendiente]
-  Para cobertura SIN franquicia: se suma un monto fijo a la Prima ⚠ pendiente recalcular
-  (el valor de Gs. 909.091 estaba calculado sobre la franquicia vieja de 220.000, ya no aplica)
-  → Solo se genera 1 variante (CON franquicia); la opción sin franquicia es un
-    add-on dentro de esa misma variante, no una segunda variante separada
+Franquicia = Gs. 350.000 fija (IVA incluido), por defecto en TODA cotización
+[Actualizado — el manual y la config vieja tenían Gs. 220.000, ya obsoleto.
+Este monto base puede variar según criterios que todavía no definimos — ver pendiente]
+Para cobertura SIN franquicia: se suma un monto fijo a la Prima ⚠ pendiente recalcular
+(el valor de Gs. 909.091 estaba calculado sobre la franquicia vieja de 220.000, ya no aplica)
+→ Solo se genera 1 variante (CON franquicia); la opción sin franquicia es un
+add-on dentro de esa misma variante, no una segunda variante separada
 
 Vía Importación = 'REPRESENTANTE' Y plan.cotizacion_combinada = true (Premium/Superior/Fuerte):
-  Franquicia es OPCIONAL. Si se elige:
-    Descuento sobre Prima Comercial: plan.descuento_default (20% en Premium/Superior/Fuerte)
-    Franquicia = Prima Comercial × plan.franquicia_porcentaje (12%)
-  → Se generan 2 variantes: SIN franquicia (prima íntegra) y CON franquicia
+Franquicia es OPCIONAL. Si se elige:
+Descuento sobre Prima Comercial: plan.descuento_default (20% en Premium/Superior/Fuerte)
+Franquicia = Prima Comercial × plan.franquicia_porcentaje (12%)
+→ Se generan 2 variantes: SIN franquicia (prima íntegra) y CON franquicia
 
 Vía Importación = 'REPRESENTANTE' Y plan.cotizacion_combinada = false (Noble/Básico):
-  → Solo 1 variante, sin franquicia
+→ Solo 1 variante, sin franquicia
+
 ```
 Esto corrige el diseño anterior de `cotizacion_variantes` — la franquicia dual depende del **plan** (campo `cotizacion_combinada`) además de la vía de importación, no solo de esta última. Para Importación Directa, la "franquicia sí/no" es un toggle dentro de la misma cotización (monto fijo aditivo), no dos variantes separadas.
 
@@ -531,14 +538,16 @@ Esto corrige el diseño anterior de `cotizacion_variantes` — la franquicia dua
 
 ### Auto - Flota
 ```
+
 Por cada vehículo:
-  Prima_individual = MAX(Capital × Tasa(plan, rango capital), Prima_Mínima_del_plan)
-  Prima_individual += Prima_individual × Recargo_Antigüedad(años del vehículo)
+Prima_individual = MAX(Capital × Tasa(plan, rango capital), Prima_Mínima_del_plan)
+Prima_individual += Prima_individual × Recargo_Antigüedad(años del vehículo)
 Prima_flota = Σ Prima_individual − Bonificación_por_cantidad_de_vehículos
-  [Bonificación: 5% (6-10 vehículos), 10% (11-19), 20% (20+)]
+[Bonificación: 5% (6-10 vehículos), 10% (11-19), 20% (20+)]
 Premio Contado = Prima_flota × 1.1 (IVA, sin RPF)
 Cuota = REDONDEAR.INF(Premio / (cuotas + 1), 1000)
-Inicial = Premio − (cuotas × Cuota)   [absorbe el resto]
+Inicial = Premio − (cuotas × Cuota) [absorbe el resto]
+
 ```
 `recargo_antiguedad_tabla` **ya tiene datos reales** del manual: 0 años=0%, 1 a 14 años=11,1% (plano), luego escala: 15 años=18,1% … 25 años=31,1% (la tabla se recalcula cada año calendario, el "año 0" es siempre el año en curso).
 
@@ -546,17 +555,19 @@ La franquicia dual y las 4 formas de pago **no aplican** a Flota — solo Contad
 
 ### Incendio (riesgo simple)
 ```
+
 Categoria = buscar Rubro en rubros_actividad
 Costo Edificio = Suma_Edificio × Tasa_Edificio(rubro) / 1000
 Costo Contenido = Suma_Contenido × Tasa_Contenido(rubro) / 1000
-Prima = MAX(Costo Edificio + Costo Contenido, Prima_Mínima)   [Gs. 409.909]
+Prima = MAX(Costo Edificio + Costo Contenido, Prima_Mínima) [Gs. 409.909]
 RPF% = tasa fija por forma de pago (mismo mecanismo que Auto — valores exactos para este ramo pendientes, ver punto 2 de la sección 11)
 R.P.F. = REDONDEAR.SUP(Prima × RPF% / 100, 1000)
 IVA = (Prima × 10%) + (R.P.F. × 10%)
 Premio = Prima + R.P.F. + IVA
 Cuota = REDONDEAR.INF(Premio / (cuotas + 1), 1000)
-Inicial = Premio − (cuotas × Cuota)   [absorbe el resto]
+Inicial = Premio − (cuotas × Cuota) [absorbe el resto]
 Contado: Inicial = Premio completo, Cuota = 0
+
 ```
 Tasa: rango 0,50‰ a 4‰ (Incendio) — **editable solo por roles autorizados** (admin y roles que se agreguen luego); el agente cotiza siempre con la tasa ya configurada, no la edita.
 
@@ -567,22 +578,26 @@ Mismo esqueleto que Incendio, pero con **4 planes propios** (Protección Integra
 Mismo esqueleto: prima calculada = suma de líneas de cobertura (Incendio edificio/contenido, Robo, Cristales, Valores en tránsito/caja fuerte, Resp. Civil, Equipos Electrónicos, sub-límites de granizo/agua/murallas), cada línea con su propia tasa dentro de un rango (Comercio: 2,5‰-4,5‰; TRO: 3,5‰-6,5‰). La prima final usa piso silencioso de Prima Técnica Mínima cuando aplica:
 
 ```
+
 Prima_lineas = Σ(Suma_Asegurada_Cobertura × Tasa_Cobertura / 1000)
 Prima = MAX(Prima_lineas, plan.prima_tecnica_minima)
+
 ```
 
 No hay error 422 por quedar debajo de la Prima Técnica Mínima. Sí hay validación bloqueante de negocio en MRC: el plan requiere mínimo 3 coberturas cotizadas. Incendio Edificio + Incendio Contenido cuentan siempre como 2 fijas; los sub-límites fijos (agua, equipos electrónicos, granizo) no cuentan para ese mínimo, así que el agente debe agregar al menos una cobertura adicional para continuar. El **rubro de actividad** del cliente determina el ramo: Grupo A "sin proceso" (bazar, farmacia, oficina, boutique...) → MRC; Grupo B "con proceso" (depósito, taller, hotel, imprenta...) → TRO.
 
 ### Transporte de Mercadería
 ```
+
 Prima = MAX(Suma Asegurada × Tasa_nivel_cobertura / 100, Prima_Mínima)
+
 ```
 Nivel de cobertura: Libre Avería Particular (1,2%), Con Avería Particular (2%), Contra Todo Riesgo (4,5%). Mismo motor de RPF/IVA/cuotas que el resto.
 
 ### Vida y Accidentes Personales (antes "AP", ahora completamente definido)
 Familia de productos con su propia lógica de tarificación **por edad de la persona**, no por capital de un bien:
 - **Protección de Préstamos** (cooperativas/mercado general): tasa ‰ mensual por franja etaria (0,35‰ hasta 69 años, escalando hasta 2,12‰ para 76-80 años), aplicada sobre el saldo del préstamo
-- **Protección Familiar**: tasa fija 10‰ 
+- **Protección Familiar**: tasa fija 10‰
 - **Accidentes Personales** (individual/grupal): 5,5‰ (sector cooperativo) / 6,9‰ (sector privado), con recargos por edad avanzada
 - **Vida Directivos y Empleados**: tasa anual‰ por franja etaria (1,1‰ para 18-25 años, hasta 50‰ para 65-69 años)
 - **Aportes y Ahorros**: 0,60‰ mensual sobre saldo declarado
@@ -664,27 +679,29 @@ Réplica del documento Word que compartiste:
 ## 8. Endpoints de la API
 
 ```
-GET  /api/ramos                          Listar ramos activos
-GET  /api/ramos/:id/planes               Planes disponibles de un ramo
-GET  /api/planes/:id/coberturas          Coberturas del plan (incluidas + opcionales disponibles)
-GET  /api/planes/:id/servicios           Servicios del plan (incluidos + opcionales disponibles)
-GET  /api/ramos/:id/descuentos           Catálogo de descuentos del ramo
-GET  /api/ramos/:id/recargos             Catálogo de recargos del ramo
-GET  /api/ramos/:id/clausulas            Catálogo de cláusulas del ramo
 
-POST /api/cotizaciones/calcular          Calcula prima/plan de pago (4 formas de pago) sin guardar (preview en vivo)
-POST /api/cotizaciones                   Crea y guarda la cotización + sus variantes (asigna números correlativos)
-GET  /api/cotizaciones                   Historial (filtros: ramo, cliente, fecha, estado)
-GET  /api/cotizaciones/:id               Detalle de una cotización (variantes + planes de pago)
-GET  /api/cotizaciones/:id/pdf-oferta    Genera/descarga la Carta Oferta
-POST /api/cotizaciones/:id/aceptar       Marca como 'aceptada' + guarda cliente_kyc
-GET  /api/cotizaciones/:id/pdf-propuesta Genera/descarga la Propuesta Formal (requiere estado 'aceptada')
+GET /api/ramos Listar ramos activos
+GET /api/ramos/:id/planes Planes disponibles de un ramo
+GET /api/planes/:id/coberturas Coberturas del plan (incluidas + opcionales disponibles)
+GET /api/planes/:id/servicios Servicios del plan (incluidos + opcionales disponibles)
+GET /api/ramos/:id/descuentos Catálogo de descuentos del ramo
+GET /api/ramos/:id/recargos Catálogo de recargos del ramo
+GET /api/ramos/:id/clausulas Catálogo de cláusulas del ramo
 
-POST /api/admin/tasas/importar           Sube Excel de tasas (Auto)
-POST /api/admin/rpf/importar             Sube Excel de RPF
-GET  /api/admin/coberturas               CRUD del catálogo de coberturas
+POST /api/cotizaciones/calcular Calcula prima/plan de pago (4 formas de pago) sin guardar (preview en vivo)
+POST /api/cotizaciones Crea y guarda la cotización + sus variantes (asigna números correlativos)
+GET /api/cotizaciones Historial (filtros: ramo, cliente, fecha, estado)
+GET /api/cotizaciones/:id Detalle de una cotización (variantes + planes de pago)
+GET /api/cotizaciones/:id/pdf-oferta Genera/descarga la Carta Oferta
+POST /api/cotizaciones/:id/aceptar Marca como 'aceptada' + guarda cliente_kyc
+GET /api/cotizaciones/:id/pdf-propuesta Genera/descarga la Propuesta Formal (requiere estado 'aceptada')
+
+POST /api/admin/tasas/importar Sube Excel de tasas (Auto)
+POST /api/admin/rpf/importar Sube Excel de RPF
+GET /api/admin/coberturas CRUD del catálogo de coberturas
 POST /api/admin/coberturas
-PUT  /api/admin/coberturas/:id
+PUT /api/admin/coberturas/:id
+
 ```
 
 ---
@@ -692,20 +709,23 @@ PUT  /api/admin/coberturas/:id
 ## 9. Estructura del frontend
 
 ```
+
 /cotizar
-  1. Seleccionar Ramo
-  2. Formulario dinámico del riesgo (según ramo) + Capital/Suma asegurada
-  3. Seleccionar Plan → carga coberturas incluidas
-  4. Agregar/quitar coberturas opcionales (checks/toggles)
-  5. Elegir forma de pago y cantidad de cuotas → preview en vivo del cálculo
-  6. Guardar cotización → genera número correlativo
-  7. Ver / descargar PDF
+
+1. Seleccionar Ramo
+2. Formulario dinámico del riesgo (según ramo) + Capital/Suma asegurada
+3. Seleccionar Plan → carga coberturas incluidas
+4. Agregar/quitar coberturas opcionales (checks/toggles)
+5. Elegir forma de pago y cantidad de cuotas → preview en vivo del cálculo
+6. Guardar cotización → genera número correlativo
+7. Ver / descargar PDF
 
 /historial
-  Tabla con filtros (ramo, cliente, fecha, estado), buscar por número
+Tabla con filtros (ramo, cliente, fecha, estado), buscar por número
 
 /admin
-  Gestión de planes, coberturas, importación de tasas
+Gestión de planes, coberturas, importación de tasas
+
 ```
 
 Mismo patrón visual que Siniestros Tajy (sidebar, Vanilla JS, sin framework).
@@ -821,3 +841,4 @@ RPF ya cerrados; falta el calculador y su template.
 | Deploy frontend | Netlify |
 | Deploy backend | Railway o Render (Puppeteer necesita más RAM/CPU que serverless) |
 | Organización | Monorepo GitHub (igual que gestion-tajy) |
+```

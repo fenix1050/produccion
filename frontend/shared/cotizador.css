@@ -425,7 +425,9 @@ button {
   margin-bottom: 2px;
   background: transparent;
   border: none;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .ramo-row:hover {
@@ -569,7 +571,9 @@ button {
   cursor: pointer;
   background: transparent;
   border: none;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
   text-decoration: none;
 }
 
@@ -1050,14 +1054,13 @@ button {
 }
 
 @keyframes pulse {
-
   0%,
   100% {
     opacity: 1;
   }
 
   50% {
-    opacity: .4;
+    opacity: 0.4;
   }
 }
 
@@ -1589,7 +1592,7 @@ button {
   white-space: nowrap;
 }
 
-.coberturas-adicionales>.btn-outline {
+.coberturas-adicionales > .btn-outline {
   align-self: flex-start;
   border-style: dashed;
   padding: 10px 14px;

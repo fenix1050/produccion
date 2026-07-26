@@ -24,7 +24,9 @@
   font-weight: 600;
   line-height: 1.5;
   white-space: nowrap;
-  transition: filter 0.15s ease, transform 0.15s ease;
+  transition:
+    filter 0.15s ease,
+    transform 0.15s ease;
 }
 
 .badge:hover {

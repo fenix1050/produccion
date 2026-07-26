@@ -6,19 +6,26 @@
 // NUNCA se debe loguear un token, un password_hash ni una contraseña en texto plano —
 // `sanitizarDetalle` filtra esos campos aunque vengan en el objeto `detalle`, así una
 // instrumentación apurada no termina filtrando un secreto al log.
-const CAMPOS_SENSIBLES = ['token', 'password', 'password_hash', 'passwordActual', 'passwordNueva', 'passwordHash'];
+const CAMPOS_SENSIBLES = [
+  'token',
+  'password',
+  'password_hash',
+  'passwordActual',
+  'passwordNueva',
+  'passwordHash',
+]
 
 function sanitizarDetalle(detalle) {
-  if (!detalle || typeof detalle !== 'object') return detalle;
-  const limpio = {};
+  if (!detalle || typeof detalle !== 'object') return detalle
+  const limpio = {}
   for (const [clave, valor] of Object.entries(detalle)) {
     if (CAMPOS_SENSIBLES.some((campo) => clave.toLowerCase().includes(campo.toLowerCase()))) {
-      limpio[clave] = '[REDACTED]';
-      continue;
+      limpio[clave] = '[REDACTED]'
+      continue
     }
-    limpio[clave] = valor;
+    limpio[clave] = valor
   }
-  return limpio;
+  return limpio
 }
 
 /**
@@ -31,10 +38,10 @@ export function logSeguridad(evento, detalle = {}, nivel = 'warn') {
     timestamp: new Date().toISOString(),
     evento,
     detalle: sanitizarDetalle(detalle),
-  });
+  })
   if (nivel === 'error') {
-    console.error(`[SEGURIDAD] ${linea}`);
+    console.error(`[SEGURIDAD] ${linea}`)
   } else {
-    console.warn(`[SEGURIDAD] ${linea}`);
+    console.warn(`[SEGURIDAD] ${linea}`)
   }
 }

@@ -1,13 +1,13 @@
-import { escapeHtml, fmtGs, fmtFecha } from './layout.js';
+import { escapeHtml, fmtGs, fmtFecha } from './layout.js'
 
-const ORDEN_FORMAS_PAGO = ['contado', 'cobrador', 'boca_cobranza', 'tarjeta_credito'];
+const ORDEN_FORMAS_PAGO = ['contado', 'cobrador', 'boca_cobranza', 'tarjeta_credito']
 
 // Códigos de catálogo que NUNCA son sub-límites fijos de MRC aunque vinieran marcados
 // `incluida_por_defecto` — Incendio Edificio/Contenido no viven en `plan_coberturas` (se
 // cotizan por Capital Edificio/Contenido, campo propio del formulario), pero se excluyen igual
 // por defensividad ante un dato inesperado. Mismo criterio que `sublimitesFijosMrc()` en
 // frontend/cotizar/cotizar.js.
-const CODIGOS_COBERTURA_EXCLUIDOS_BASE = ['incendio_edificio', 'incendio_contenido'];
+const CODIGOS_COBERTURA_EXCLUIDOS_BASE = ['incendio_edificio', 'incendio_contenido']
 
 // Antes esto era una constante hardcodeada (`SUBLIMITES_FIJOS_MRC`) con 3 códigos "que alguien
 // recordó" al escribirla — se le olvidó `sublimite_murallas_cercos`, así que ese sub-límite
@@ -22,12 +22,12 @@ function sublimitesFijosMrc(planCoberturas) {
         pc.coberturas_catalogo?.codigo &&
         !CODIGOS_COBERTURA_EXCLUIDOS_BASE.includes(pc.coberturas_catalogo.codigo)
     )
-    .map((pc) => ({ codigo: pc.coberturas_catalogo.codigo, monto: Number(pc.monto) || 0 }));
+    .map((pc) => ({ codigo: pc.coberturas_catalogo.codigo, monto: Number(pc.monto) || 0 }))
 }
 
 // `cotizacion_coberturas` no tiene columna `codigo` propia (solo `cobertura_id`) — el código
 // del catálogo viene de la relación `coberturas_catalogo` que trae findCotizacionById.
-const codigoDe = (cobertura) => cobertura.coberturas_catalogo?.codigo;
+const codigoDe = (cobertura) => cobertura.coberturas_catalogo?.codigo
 
 // Arma el texto de "Distribución del capital asegurado" con los montos VIGENTES de
 // `plan_coberturas.monto` (el mismo dato que edita el panel admin), en vez de las 4 cifras
@@ -36,30 +36,33 @@ const codigoDe = (cobertura) => cobertura.coberturas_catalogo?.codigo;
 // redacción exacta que antes. Defensivo: si un código esperado no vino en `planCoberturas`
 // (plan sin ese sub-límite configurado), la línea se omite en vez de romper el render.
 function buildTextoDistribucionCapital(sublimitesFijos) {
-  const montoPorCodigo = new Map(sublimitesFijos.map((s) => [s.codigo, s.monto]));
-  const montoEquipos = montoPorCodigo.get('sublimite_equipos_electronicos');
-  const montoAgua = montoPorCodigo.get('sublimite_danos_agua');
-  const montoMurallas = montoPorCodigo.get('sublimite_murallas_cercos');
-  const montoGranizo = montoPorCodigo.get('sublimite_granizo');
+  const montoPorCodigo = new Map(sublimitesFijos.map((s) => [s.codigo, s.monto]))
+  const montoEquipos = montoPorCodigo.get('sublimite_equipos_electronicos')
+  const montoAgua = montoPorCodigo.get('sublimite_danos_agua')
+  const montoMurallas = montoPorCodigo.get('sublimite_murallas_cercos')
+  const montoGranizo = montoPorCodigo.get('sublimite_granizo')
 
-  const lineas = ['Incendio: Mercaderías 50% / Contenido General 50%', 'Robo: Mercaderías 50% / Contenido General 50%'];
+  const lineas = [
+    'Incendio: Mercaderías 50% / Contenido General 50%',
+    'Robo: Mercaderías 50% / Contenido General 50%',
+  ]
 
-  if (montoEquipos != null) lineas.push(`Equipos Electrónicos: ${fmtGs(montoEquipos)}`);
-  if (montoAgua != null) lineas.push(`Daños por agua: ${fmtGs(montoAgua)}`);
+  if (montoEquipos != null) lineas.push(`Equipos Electrónicos: ${fmtGs(montoEquipos)}`)
+  if (montoAgua != null) lineas.push(`Daños por agua: ${fmtGs(montoAgua)}`)
 
   // El texto original muestra murallas y granizo en el mismo renglón, separados por " | "
   // (formato que se preserva acá) — solo cuando ambos montos están disponibles.
   if (montoMurallas != null && montoGranizo != null) {
     lineas.push(
       `Daños a murallas/cercos/rejas: ${fmtGs(montoMurallas)} por vigencia | Daños por granizo: ${fmtGs(montoGranizo)} por vigencia (edificio)`
-    );
+    )
   } else if (montoMurallas != null) {
-    lineas.push(`Daños a murallas/cercos/rejas: ${fmtGs(montoMurallas)} por vigencia`);
+    lineas.push(`Daños a murallas/cercos/rejas: ${fmtGs(montoMurallas)} por vigencia`)
   } else if (montoGranizo != null) {
-    lineas.push(`Daños por granizo: ${fmtGs(montoGranizo)} por vigencia (edificio)`);
+    lineas.push(`Daños por granizo: ${fmtGs(montoGranizo)} por vigencia (edificio)`)
   }
 
-  return lineas.join('\n');
+  return lineas.join('\n')
 }
 
 const TEXTO_COBERTURAS_PRINCIPALES = [
@@ -75,11 +78,11 @@ const TEXTO_COBERTURAS_PRINCIPALES = [
   'Rotura de Cristales, Vidrios o Espejos',
   'Responsabilidad Civil',
   'Equipos Electrónicos',
-];
+]
 
 const TEXTO_FRANQUICIAS_ESTANDAR = `Itapúa/Alto Paraná: 10% mín. Gs. 500.000 (Caída de Rayo)
 Robo contenido/tránsito/caja fuerte/RC: 10% mín. Gs. 500.000
-Equipos Electrónicos: 10% mín. Gs. 300.000`;
+Equipos Electrónicos: 10% mín. Gs. 300.000`
 
 const TEXTO_EXCLUSIONES = `Modificación de materia prima / material combustible (panaderías, talleres, supermercados, imprentas, carpinterías, mueblerías, gomerías); se excluyen carteles.
 Joyas, metales preciosos, títulos, papeles, obras de arte.
@@ -87,11 +90,11 @@ Variación de Tensión, Arcos Voltaicos.
 Sin 4 costados cerrados: se excluye Huracán/Vendaval/Ciclón/Tornado; sin rejas: se excluye Robo fuera de horario.
 Robo Caja fuerte: solo cubre dinero circulante en horario habitual.
 Demás exclusiones del texto de Póliza en la Web.
-Aviso fehaciente de cambios que agraven el riesgo (Cláusula 10, art. 1580 C.Civil); la propuesta y el informe de inspección forman parte del contrato.`;
+Aviso fehaciente de cambios que agraven el riesgo (Cláusula 10, art. 1580 C.Civil); la propuesta y el informe de inspección forman parte del contrato.`
 
 const TEXTO_CLAUSULAS_CONTRATO = `Cláusula de adecuación al código penal.
 Endoso de garantía (solo pólizas financiadas vía Cooperativas Socias, modalidad Segucoop).
-Cláusula de cobranza (todas las formas de pago excepto Segucoop).`;
+Cláusula de cobranza (todas las formas de pago excepto Segucoop).`
 
 /**
  * Arma el contenido HTML (páginas 1 y 2) de la Carta Oferta de MRC. `cotizacion` viene con
@@ -102,9 +105,9 @@ Cláusula de cobranza (todas las formas de pago excepto Segucoop).`;
  * tenía la migración de carga original.
  */
 export function buildMrcOfertaPages({ cotizacion, plan, ramo, planCoberturas }) {
-  const riesgo = cotizacion.riesgo_datos || {};
-  const sublimitesFijos = sublimitesFijosMrc(planCoberturas);
-  const codigosSublimitesFijos = sublimitesFijos.map((s) => s.codigo);
+  const riesgo = cotizacion.riesgo_datos || {}
+  const sublimitesFijos = sublimitesFijosMrc(planCoberturas)
+  const codigosSublimitesFijos = sublimitesFijos.map((s) => s.codigo)
 
   // Orden fijo (a pedido de Kevin, 2026-07-15): Incendio Edificio y Contenido siempre primero
   // (en ese orden), después el resto de coberturas, y por último los sub-límites. Dentro de los
@@ -112,30 +115,31 @@ export function buildMrcOfertaPages({ cotizacion, plan, ramo, planCoberturas }) 
   // los fijos por defecto (agua/equipos electrónicos/murallas/granizo, que no muestran
   // franquicia — ver codigosSublimitesFijos y textoFranquicia).
   const ordenPrioridad = (codigo) => {
-    if (codigo === 'incendio_edificio') return 0;
-    if (codigo === 'incendio_contenido') return 1;
-    return 2;
-  };
+    if (codigo === 'incendio_edificio') return 0
+    if (codigo === 'incendio_contenido') return 1
+    return 2
+  }
   const coberturasCotizadas = [...(cotizacion.cotizacion_coberturas || [])].sort((a, b) => {
-    const tipoA = a.tipo_aplicacion === 'sublimite' ? 1 : 0;
-    const tipoB = b.tipo_aplicacion === 'sublimite' ? 1 : 0;
-    if (tipoA !== tipoB) return tipoA - tipoB;
+    const tipoA = a.tipo_aplicacion === 'sublimite' ? 1 : 0
+    const tipoB = b.tipo_aplicacion === 'sublimite' ? 1 : 0
+    if (tipoA !== tipoB) return tipoA - tipoB
     if (tipoA === 1) {
-      const conFranquiciaA = a.franquicia != null ? 0 : 1;
-      const conFranquiciaB = b.franquicia != null ? 0 : 1;
-      if (conFranquiciaA !== conFranquiciaB) return conFranquiciaA - conFranquiciaB;
+      const conFranquiciaA = a.franquicia != null ? 0 : 1
+      const conFranquiciaB = b.franquicia != null ? 0 : 1
+      if (conFranquiciaA !== conFranquiciaB) return conFranquiciaA - conFranquiciaB
     }
-    return ordenPrioridad(codigoDe(a)) - ordenPrioridad(codigoDe(b));
-  });
+    return ordenPrioridad(codigoDe(a)) - ordenPrioridad(codigoDe(b))
+  })
 
   // Misma cuenta que "Suma Asegurada total" en el panel del cotizador (cotizar.js): suma solo
   // coberturas (nunca sub-límites, a pedido de Kevin, 2026-07-15), salvo las marcadas
   // incluye_en_suma_asegurada_total = false (hoy "Robo valores ventanilla", que tampoco suma).
   const sumaAseguradaTotal = coberturasCotizadas.reduce((acc, c) => {
-    const esSublimite = c.tipo_aplicacion === 'sublimite';
-    const cuentaParaTotal = !esSublimite && c.coberturas_catalogo?.incluye_en_suma_asegurada_total !== false;
-    return acc + (cuentaParaTotal ? Number(c.monto) || 0 : 0);
-  }, 0);
+    const esSublimite = c.tipo_aplicacion === 'sublimite'
+    const cuentaParaTotal =
+      !esSublimite && c.coberturas_catalogo?.incluye_en_suma_asegurada_total !== false
+    return acc + (cuentaParaTotal ? Number(c.monto) || 0 : 0)
+  }, 0)
 
   const paginaUno = `
     <div class="meta-row">
@@ -188,7 +192,7 @@ de seguridad y adecuaciones que surjan de la misma.
         ${cotizacion.usuarios?.email ? `<span><strong>EMAIL:</strong> ${escapeHtml(cotizacion.usuarios.email)}</span>` : ''}
       </div>
     </div>
-  `;
+  `
 
   // Orden pedido por Kevin (2026-07-15): 1) Coberturas principales incluidas, 2) Coberturas
   // cotizadas, 3) Distribución del capital asegurado, 4) Franquicias, 5) Exclusiones,
@@ -213,8 +217,7 @@ de seguridad y adecuaciones que surjan de la misma.
     },
     {
       titulo: 'Franquicias',
-      contenido: `<div class="legal-block">${TEXTO_FRANQUICIAS_ESTANDAR
-        .split('\n')
+      contenido: `<div class="legal-block">${TEXTO_FRANQUICIAS_ESTANDAR.split('\n')
         .map((linea) => escapeHtml(linea))
         .join('\n')}</div>`,
     },
@@ -226,9 +229,9 @@ de seguridad y adecuaciones que surjan de la misma.
       titulo: 'Forman parte del contrato',
       contenido: `<div class="legal-block">${escapeHtml(TEXTO_CLAUSULAS_CONTRATO)}</div>`,
     },
-  ];
+  ]
 
-  const tituloPaginaDos = '<h2 class="section-title">COBERTURAS <strong>Y CONDICIONES</strong></h2>';
+  const tituloPaginaDos = '<h2 class="section-title">COBERTURAS <strong>Y CONDICIONES</strong></h2>'
 
   // Dos candidatos para la página de "Coberturas y condiciones":
   // - Flex (3 bloques fijos por columna): se ve prolija (orden 1-2-3 izquierda, 4-5-6 derecha)
@@ -245,16 +248,16 @@ de seguridad y adecuaciones que surjan de la misma.
       <div class="col">${bloques.slice(0, 3).map(renderBloque).join('')}</div>
       <div class="col">${bloques.slice(3).map(renderBloque).join('')}</div>
     </div>
-  `;
+  `
 
   const paginaDosBalanceada = `
     ${tituloPaginaDos}
     <div class="cols">
       ${bloques.map(renderBloque).join('')}
     </div>
-  `;
+  `
 
-  return { paginaUno, paginaDosFlex, paginaDosBalanceada };
+  return { paginaUno, paginaDosFlex, paginaDosBalanceada }
 }
 
 function renderBloque(bloque) {
@@ -263,22 +266,25 @@ function renderBloque(bloque) {
       <div class="card-title">${escapeHtml(bloque.titulo)}</div>
       ${bloque.contenido}
     </div>
-  `;
+  `
 }
 
 function renderVariantePlanPago(variante) {
   const planesPago = [...(variante.cotizacion_plan_pago || [])].sort(
-    (a, b) => ORDEN_FORMAS_PAGO.indexOf(a.formas_pago.codigo) - ORDEN_FORMAS_PAGO.indexOf(b.formas_pago.codigo)
-  );
+    (a, b) =>
+      ORDEN_FORMAS_PAGO.indexOf(a.formas_pago.codigo) -
+      ORDEN_FORMAS_PAGO.indexOf(b.formas_pago.codigo)
+  )
 
   // Solo se muestra la etiqueta cuando hay más de una variante para distinguir (MRC hoy
   // siempre cotiza "sin franquicia" — la etiqueta ahí no aporta nada, ver feedback de Kevin).
-  const label = variante.tipo_franquicia === 'con_franquicia'
-    ? `<div class="variante-label">Con franquicia (Gs. ${fmtGs(variante.franquicia_monto)})</div>`
-    : '';
+  const label =
+    variante.tipo_franquicia === 'con_franquicia'
+      ? `<div class="variante-label">Con franquicia (Gs. ${fmtGs(variante.franquicia_monto)})</div>`
+      : ''
 
-  const cuotasFinanciadas = planesPago.find((fp) => fp.monto_cuota > 0)?.cantidad_cuotas;
-  const tituloCuota = cuotasFinanciadas ? `Cuota (${cuotasFinanciadas} cuotas)` : 'Cuota';
+  const cuotasFinanciadas = planesPago.find((fp) => fp.monto_cuota > 0)?.cantidad_cuotas
+  const tituloCuota = cuotasFinanciadas ? `Cuota (${cuotasFinanciadas} cuotas)` : 'Cuota'
 
   return `
     ${label}
@@ -290,8 +296,8 @@ function renderVariantePlanPago(variante) {
         <th>${escapeHtml(tituloCuota)}</th>
       </tr>
       ${planesPago
-      .map(
-        (fp) => `
+        .map(
+          (fp) => `
         <tr>
           <td>${escapeHtml(fp.formas_pago.nombre_display)}</td>
           <td>Gs. ${fmtGs(fp.premio_total)}</td>
@@ -299,19 +305,19 @@ function renderVariantePlanPago(variante) {
           <td>${fp.monto_cuota > 0 ? `Gs. ${fmtGs(fp.monto_cuota)}` : '—'}</td>
         </tr>
       `
-      )
-      .join('')}
+        )
+        .join('')}
     </table>
-  `;
+  `
 }
 
 function renderCoberturaItem(cobertura) {
   const textoLegal = cobertura.texto_legal_snapshot
     ? `<div class="cobertura-item__legal">${escapeHtml(cobertura.texto_legal_snapshot)}</div>`
-    : '';
+    : ''
   const textoExclusiones = cobertura.texto_exclusiones_snapshot
     ? `<div class="cobertura-item__legal cobertura-item__legal--exclusiones">Exclusiones: ${escapeHtml(cobertura.texto_exclusiones_snapshot)}</div>`
-    : '';
+    : ''
 
   return `
     <div class="cobertura-item">
@@ -319,12 +325,13 @@ function renderCoberturaItem(cobertura) {
       ${textoLegal}
       ${textoExclusiones}
     </div>
-  `;
+  `
 }
 
 function renderFilaSumaAsegurada(cobertura) {
-  const badgeClass = cobertura.tipo_aplicacion === 'sublimite' ? 'badge--sublimite' : 'badge--cobertura';
-  const badgeLabel = cobertura.tipo_aplicacion === 'sublimite' ? 'Sublímite' : 'Cobertura';
+  const badgeClass =
+    cobertura.tipo_aplicacion === 'sublimite' ? 'badge--sublimite' : 'badge--cobertura'
+  const badgeLabel = cobertura.tipo_aplicacion === 'sublimite' ? 'Sublímite' : 'Cobertura'
 
   return `
     <tr>
@@ -332,7 +339,7 @@ function renderFilaSumaAsegurada(cobertura) {
       <td>${fmtGs(cobertura.monto)}</td>
       <td>${escapeHtml(textoFranquicia(cobertura.franquicia))}</td>
     </tr>
-  `;
+  `
 }
 
 // El monto de franquicia persistido es siempre el "mínimo Gs." de la opción elegida en el
@@ -341,5 +348,5 @@ function renderFilaSumaAsegurada(cobertura) {
 function textoFranquicia(montoFranquicia) {
   return montoFranquicia != null
     ? `10% en todo y cada siniestro, mínimo Gs. ${fmtGs(montoFranquicia)}`
-    : 'Sin franquicia';
+    : 'Sin franquicia'
 }

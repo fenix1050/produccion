@@ -30,14 +30,14 @@ ahí si querés tener el índice disponible.
 encima de esa base ya se consolidaron cambios reales de UX, navegación y seguridad/admin.
 
 - **Priorización confirmada (2026-07-10):** MRC → Incendio → Vida/AP (Auto pausado).
-- **Catálogos cerrados (2026-07-10/12):** 3 ramos con coberturas, tasas y planes cargados contra 
+- **Catálogos cerrados (2026-07-10/12):** 3 ramos con coberturas, tasas y planes cargados contra
   Supabase (migraciones 012/013/015/016).
-- **MRC end-to-end (2026-07-13):** calculador implementado para plan Normal, Carta Oferta en PDF 
+- **MRC end-to-end (2026-07-13):** calculador implementado para plan Normal, Carta Oferta en PDF
   con layout dinámico (2026-07-15), coberturas adicionales repetibles, calcular en vivo.
-- **Panel admin Fase 5 (2026-07-19):** CRUD de usuarios con roles configurables (migración 031), 
-  permisos granulares por sección (usuarios/coberturas/planes/tasas), editor de tasas por Tipo 
+- **Panel admin Fase 5 (2026-07-19):** CRUD de usuarios con roles configurables (migración 031),
+  permisos granulares por sección (usuarios/coberturas/planes/tasas), editor de tasas por Tipo
   de Riesgo (rubros_actividad), tope de descuento/recargo por usuario.
-- **Historial Fase 5 (2026-07-19):** listado con filtros (ramo/cliente/fecha/estado), paginación, 
+- **Historial Fase 5 (2026-07-19):** listado con filtros (ramo/cliente/fecha/estado), paginación,
   detalle, descarga de PDF (MRC), permisos por dueño (IDOR cerrado), edición con ventana de 30 días.
 - **Migración visual "Diseño 2" cerrada (2026-07-21):** app shell completo migrado al mockup
   aprobado por Kevin (`75791d0`, `2b2e1b7`, `5958c0c`) — topbar, sidebar, cards y vistas de
@@ -59,11 +59,11 @@ encima de esa base ya se consolidaron cambios reales de UX, navegación y seguri
   roles sin uso y guard de seguridad real para proteger al usuario admin (`db8a1d2`). Esto no fue
   cosmético: Kevin detectó un hueco real donde un rol custom con permisos de usuarios podía tocar al
   admin verdadero.
-- **Bugfixes críticos (2026-07-18/19):** Inicial/Cuota corregidos (hacia ABAJO), redondeo RPF/IVA 
+- **Bugfixes críticos (2026-07-18/19):** Inicial/Cuota corregidos (hacia ABAJO), redondeo RPF/IVA
   hacia arriba confirmado, ownership de cotizaciones validado real en 403.
-- **Supabase real conectado:** migraciones 001→031 aplicadas, 14 usuarios/planes configurados, 
+- **Supabase real conectado:** migraciones 001→031 aplicadas, 14 usuarios/planes configurados,
   RLS deshabilitado (no explotable hoy, documentado como deuda técnica).
-- **Datos confirmados vs. pendientes:** RPF de Incendio/Vida-AP ✅, Prima Técnica Mínima ✅, 
+- **Datos confirmados vs. pendientes:** RPF de Incendio/Vida-AP ✅, Prima Técnica Mínima ✅,
   Calculadores pendientes (solo lógica, datos 100% confirmados).
 
 ## 2. Estructura del código
@@ -113,29 +113,29 @@ Plan Básico (tasa única 1,64%) sigue sin implementar — pendiente #4 de la se
 
 ## 4. Schema SQL (`backend/migrations/`)
 
-| # | Contenido |
-|---|---|
-| 001 | Usuarios y permisos |
-| 002 | Ramos, planes, formas de pago, `plan_formas_pago` |
-| 003 | Catálogo de coberturas + FK circular con `planes` (resuelta con ALTER) |
-| 004 | Tarifación: `tasas_capital`, `rubros_actividad`, `tasas_cobertura_ramo` |
-| 005 | Cotizaciones, variantes, plan de pago, `correlativos` |
-| 006 | Auto Flota (vehículos por cotización) |
-| 007 | KYC / PLA-FT |
-| 008 | Seed de los 5 planes de Auto con valores reales confirmados |
-| 009 | Función Postgres `siguiente_correlativo` (incremento atómico) |
-| 010 | Columna `planes.codigo_tasa` + mapeo a los 4 códigos del Excel de tasas |
+| #   | Contenido                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 001 | Usuarios y permisos                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| 002 | Ramos, planes, formas de pago, `plan_formas_pago`                                                                                                                                                                                                                                                                                                                                                                                                             |
+| 003 | Catálogo de coberturas + FK circular con `planes` (resuelta con ALTER)                                                                                                                                                                                                                                                                                                                                                                                        |
+| 004 | Tarifación: `tasas_capital`, `rubros_actividad`, `tasas_cobertura_ramo`                                                                                                                                                                                                                                                                                                                                                                                       |
+| 005 | Cotizaciones, variantes, plan de pago, `correlativos`                                                                                                                                                                                                                                                                                                                                                                                                         |
+| 006 | Auto Flota (vehículos por cotización)                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| 007 | KYC / PLA-FT                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| 008 | Seed de los 5 planes de Auto con valores reales confirmados                                                                                                                                                                                                                                                                                                                                                                                                   |
+| 009 | Función Postgres `siguiente_correlativo` (incremento atómico)                                                                                                                                                                                                                                                                                                                                                                                                 |
+| 010 | Columna `planes.codigo_tasa` + mapeo a los 4 códigos del Excel de tasas                                                                                                                                                                                                                                                                                                                                                                                       |
 | 011 | `cotizacion_coberturas`: agrega `tipo_aplicacion` (`cobertura`/`sublimite`, CHECK constraint), `sublimite_porcentaje`, `sublimite_monto_maximo` — schema para la regla "cobertura vs. sublímite" de MRC/Incendio. **Sin uso hoy**: el diseño que representaba se descartó el 2026-07-13 (ver sección 17 y pendiente #11 de `PLAN_DESARROLLO.md`) y la tabla `cotizacion_coberturas` en sí todavía no se escribe desde ningún lado del backend (ver sección 8) |
-| 012 | Seed de catálogo de coberturas, tasas y planes de MRC — ver sección 9 |
-| 013 | Seed de catálogo de coberturas, tasas y planes de Incendio — ver sección 10 |
-| 014 | Fix de fiabilidad: plan `INCENDIO - EDIFICIO Y CONTENIDO` marcado `activo = FALSE` hasta confirmar su RPF |
-| 015 | Seed de catálogo de coberturas, tasas (`tarifas_generico`, JSONB) y planes de Vida y Accidentes Personales — ver sección 12 |
-| 016 | Fix de fiabilidad sobre la 015: unifica nombres de clave JSONB inconsistentes, completa un `edad_min` faltante, agrega filas de tarifa para 5 coberturas que no tenían ninguna — ver sección 12 |
-| 017 | Agrega `planes.texto_exclusiones_generales` y `planes.texto_sublimites_generales`, cargados para `MULTIRRIESGO COMERCIO - NORMAL` — ver sección 15 |
-| 018 | Agrega `planes.responsabilidad_maxima_cotizable` (tope de suma asegurada cotizable), cargado para `MULTIRRIESGO COMERCIO - NORMAL` (Gs. 7.200.000.000) — ver sección 15 |
-| 019 | Rename de 12 coberturas de MRC a la nomenclatura real del sistema de escritorio, acotado por `ramo_id='mrc'` — ver sección 16 |
-| 020 | Agrega la cobertura `robo_valores_ventanilla` al catálogo de MRC (tasa 10‰) y la columna `coberturas_catalogo.incluye_en_suma_asegurada_total` — ver sección 17 |
-| 021 | Corrige `planes.texto_sublimites_generales` de `MULTIRRIESGO COMERCIO - NORMAL`: agrega 3 sub-límites faltantes y corrige el monto de Daños por Granizo — ver sección 17 |
+| 012 | Seed de catálogo de coberturas, tasas y planes de MRC — ver sección 9                                                                                                                                                                                                                                                                                                                                                                                         |
+| 013 | Seed de catálogo de coberturas, tasas y planes de Incendio — ver sección 10                                                                                                                                                                                                                                                                                                                                                                                   |
+| 014 | Fix de fiabilidad: plan `INCENDIO - EDIFICIO Y CONTENIDO` marcado `activo = FALSE` hasta confirmar su RPF                                                                                                                                                                                                                                                                                                                                                     |
+| 015 | Seed de catálogo de coberturas, tasas (`tarifas_generico`, JSONB) y planes de Vida y Accidentes Personales — ver sección 12                                                                                                                                                                                                                                                                                                                                   |
+| 016 | Fix de fiabilidad sobre la 015: unifica nombres de clave JSONB inconsistentes, completa un `edad_min` faltante, agrega filas de tarifa para 5 coberturas que no tenían ninguna — ver sección 12                                                                                                                                                                                                                                                               |
+| 017 | Agrega `planes.texto_exclusiones_generales` y `planes.texto_sublimites_generales`, cargados para `MULTIRRIESGO COMERCIO - NORMAL` — ver sección 15                                                                                                                                                                                                                                                                                                            |
+| 018 | Agrega `planes.responsabilidad_maxima_cotizable` (tope de suma asegurada cotizable), cargado para `MULTIRRIESGO COMERCIO - NORMAL` (Gs. 7.200.000.000) — ver sección 15                                                                                                                                                                                                                                                                                       |
+| 019 | Rename de 12 coberturas de MRC a la nomenclatura real del sistema de escritorio, acotado por `ramo_id='mrc'` — ver sección 16                                                                                                                                                                                                                                                                                                                                 |
+| 020 | Agrega la cobertura `robo_valores_ventanilla` al catálogo de MRC (tasa 10‰) y la columna `coberturas_catalogo.incluye_en_suma_asegurada_total` — ver sección 17                                                                                                                                                                                                                                                                                               |
+| 021 | Corrige `planes.texto_sublimites_generales` de `MULTIRRIESGO COMERCIO - NORMAL`: agrega 3 sub-límites faltantes y corrige el monto de Daños por Granizo — ver sección 17                                                                                                                                                                                                                                                                                      |
 
 **Estado real contra Supabase (verificado 2026-07-13 vía MCP):** 001→021 corridas y confirmadas.
 `ramos` 8 filas, `planes` 16 (5 Auto + 2 MRC + 2 Incendio + 7 Vida/AP), `coberturas_catalogo` 31
@@ -145,6 +145,7 @@ filas (15 MRC + 5 Incendio + 11 Vida/AP — Auto no usa esta tabla), `tarifas_ge
 ## 5. Endpoints implementados
 
 Conectados punta a punta:
+
 - `GET /api/ramos`
 - `GET /api/ramos/rubros-actividad` (nuevo, 2026-07-13 — lista `rubros_actividad` para el
   formulario de riesgo de MRC/Incendio, filtrable por `?grupo=`)
@@ -158,6 +159,7 @@ Conectados punta a punta:
 - `POST /api/admin/tasas/importar`
 
 Stub / no implementados, cada uno con TODO explícito en el código:
+
 - `GET /api/planes/:id/servicios`
 - `GET /api/ramos/:id/descuentos` `/recargos` `/clausulas`
 - `GET /api/cotizaciones/:id/pdf-oferta` → Fase 2/4
@@ -203,6 +205,7 @@ escribir cualquier fila de cualquier tabla sin restricción.
 **No es explotable hoy:** `CLAUDE.md` establece como regla no negociable que el frontend nunca
 habla directo con Supabase, todo pasa por la API Express. Mientras esa regla se respete, el
 riesgo es teórico. Se señala igual como deuda técnica porque:
+
 - Es fácil de romper sin darse cuenta (alguien agrega un fetch directo a Supabase desde el
   frontend "para ir más rápido").
 - Activar RLS sin políticas bloquea todo el acceso — no se puede aplicar sin diseñar las
@@ -248,8 +251,7 @@ todavía). RLS sigue igual, sin cambios (ver arriba).
 - **RPF de Incendio y Vida/AP — resuelto (2026-07-13, migración 023).** Kevin confirmó contra
   el sistema real: RPF plano Contado 0% / Cobrador 1,6% / Boca de Cobranza 1,35% / Tarjeta 1%,
   igual para TODOS los planes de ambos ramos, fijo (no varía por cantidad de cuotas) — mismo
-  criterio que MRC. El manual de suscripción `M-08OP-GT-01` (Incendio/Hogar/Comercio/TRO, Anexo
-  3) trae una tabla de R.P.F. distinta por cuotas; Kevin confirmó que NO se usa, prevalece el
+  criterio que MRC. El manual de suscripción `M-08OP-GT-01` (Incendio/Hogar/Comercio/TRO, Anexo 3) trae una tabla de R.P.F. distinta por cuotas; Kevin confirmó que NO se usa, prevalece el
   valor plano. Cargado para los 2 planes de Incendio ("Maquinaria Básico" ahora con las 4
   formas de pago habilitadas, antes solo tenía Contado/Cobrador) y los 7 de Vida/AP (ninguno
   tenía `plan_formas_pago` hasta ahora). "INCENDIO - EDIFICIO Y CONTENIDO" se reactivó
@@ -301,6 +303,7 @@ por separado. El catálogo tiene 3 líneas de Incendio (edificio 1‰, contenido
 equipos 0,65‰) porque esas sí tienen tasa y suma asegurada propias.
 
 **Pendiente, no bloqueante:**
+
 - Tasa de `sublimite_cctv` (Circuito Cerrado de TV) — no está en el Excel, catálogo cargado sin
   tasa.
 - Configuración de cotizador (prima técnica mínima, descuento/recargo máximo, RPF) del plan
@@ -320,6 +323,7 @@ El ramo `incendio` ya existía (migración 002) y comparte `coberturas_catalogo`
 cargar `rubros_actividad` (se reutiliza tal cual, ya tiene 49 filas desde la migración 012).
 
 **Fuentes usadas** (orden de confiabilidad):
+
 - 4 cotizaciones reales de Incendio ya emitidas por Tajy (`docs/insumos/`): GT S.A.
   (2026-05-28, Incendio Contenido, Depósito), Distribuidora Múltiples Productos (2026-07-03,
   Edificio y Contenido, producción de quesos), COFUDEP (2026-07-08, Edificio y Contenido +
@@ -339,7 +343,7 @@ cargar `rubros_actividad` (se reutiliza tal cual, ya tiene 49 filas desde la mig
   (mismo criterio ya aplicado a los textos de MRC), pero sin una segunda fuente independiente
   que lo confirme en esta sesión.
 - Manual `M-08OP-GT-01, Manual de Suscripción Incendio, Hogar, Comercio y Todo Riesgo Operativo
-  v.02 301024.pdf`: es un PDF escaneado, sin texto extraíble (confirmado con `pypdf`, 0
+v.02 301024.pdf`: es un PDF escaneado, sin texto extraíble (confirmado con `pypdf`, 0
   caracteres por página). Se intentó el flujo de render a imagen con `pdftoppm` (poppler) para
   leerlo como PNG, pero no se pudo instalar poppler en este entorno (`winget` no está
   disponible en esta sesión de PowerShell). No se pudo usar este manual como fuente.
@@ -360,6 +364,7 @@ Aeronaves, Tumulto/Huelga, "Lock out") son la redacción de qué cubre la cobert
 no son coberturas cobrables por separado.
 
 **Pendiente, no bloqueante:**
+
 - RPF de `INCENDIO - EDIFICIO Y CONTENIDO` (el plan real, no Maquinaria Básico) — ninguna de las
   4 cotizaciones reales desglosa Prima/RPF/IVA por separado, solo Contado y (en 2 casos) un
   total financiado. No se puede derivar sin adivinar. Mismo pendiente ya anotado en la sección 8
@@ -439,6 +444,7 @@ misma cobertura cobra tasas distintas según el plan (algo que no pasaba en MRC/
 una cobertura tenía una sola tasa para todo el ramo).
 
 **Fuentes usadas** (orden de confiabilidad):
+
 - `M-08OP-GT-01, Manual de Suscripción Vida y Accidentes Personales v.02 301024.pdf`: a
   diferencia del manual de Incendio/Hogar/Comercio/TRO, **este sí tiene texto extraíble** (no es
   escaneado). Es la fuente principal — define los 5 sub-productos del ramo (Protección de
@@ -469,6 +475,7 @@ Sector Privado, Vida Directivos y Empleados, Aportes y Ahorros), 44 filas en `ta
 
 **Fix de fiabilidad aplicado (migración 016), detectado en review-reliability antes de cerrar la
 fase:**
+
 - Se unificaron 3 nombres de clave JSONB distintos para el mismo concepto de recargo porcentual
   (`recargo_sobre_tasa_normal_pct` / `recargo_pct` / `recargo`) a un único `recargo_pct`, y 2
   nombres distintos para tope de monto asegurable (`limite_suma_asegurada` / `monto_maximo`) a
@@ -484,6 +491,7 @@ fase:**
   por `cobertura_codigo` habría encontrado cero filas para ellas.
 
 **Pendiente, no bloqueante:**
+
 - **RPF de los 7 planes de Vida/AP**: ninguna fuente (manual, Excels, ni las 2 cotizaciones
   reales) desglosa Prima/RPF/IVA por forma de pago para este ramo. Mismo pendiente ya registrado
   para MRC ("Comercio Protección Total") e Incendio ("Incendio - Edificio y Contenido").
@@ -505,7 +513,7 @@ mockup (sumado en el mismo bloque de commits, luego migrado y eliminado tras la 
 
 - **`mrc.calculator.js`:** cubre solo `MULTIRRIESGO COMERCIO - NORMAL` (único plan con RPF y
   `prima_tecnica_minima` confirmados). Prima = `MAX(Capital_Edificio × Tasa(incendio_edificio) +
-  Capital_Contenido × Tasa(incendio_contenido), prima_tecnica_minima)`, con descuentos/recargos
+Capital_Contenido × Tasa(incendio_contenido), prima_tecnica_minima)`, con descuentos/recargos
   topados igual que Auto, y el mismo motor de RPF/IVA/Premio/Cuota. Las demás coberturas
   obligatorias del ramo (robo, cristales, RC, equipos electrónicos) se muestran informativamente
   en la lista de coberturas pero **no están sumadas a la prima todavía** — no está confirmado
@@ -529,6 +537,7 @@ mockup (sumado en el mismo bloque de commits, luego migrado y eliminado tras la 
   `err.stack`.
 
 **Pendiente, no bloqueante:**
+
 - Reparto del capital entre las coberturas obligatorias no-Incendio de MRC (robo, cristales, RC,
   equipos electrónicos) — sin esto, esas coberturas quedan fuera de la prima calculada.
 - RPF de `COMERCIO PROTECCION TOTAL` — mismo pendiente de la sección 8/9.
@@ -575,7 +584,7 @@ localmente (backend `npm run dev` + frontend servido estático):
   por plan, dato que faltaba modelar — confirmado por Kevin contra la pantalla "Configuración para
   Cotizador" del sistema real (Gs. 7.200.000.000 para `MULTIRRIESGO COMERCIO - NORMAL`).
   `mrc.calculator.js` ahora corta con error 422 explicativo si `Capital Edificio + Capital
-  Contenido` supera ese tope.
+Contenido` supera ese tope.
 - **Verificación cruzada contra el Excel real** (`docs/insumos/Version 01 - Calculo Varios.xlsx`,
   hoja DATOS): las 13 tasas de coberturas de MRC y los 49 `rubros_actividad` cargados en la
   migración 012 coinciden exacto, tasa por tasa, con el Excel — no se encontró ninguna tasa mal
@@ -720,7 +729,7 @@ el más restrictivo** (`MIN`).
   que `sumarAjustes` (ya duplicada 3 veces, en auto/mrc/incendio). `auto.calculator.js` NO se
   tocó (Fase 2 pausada, no usa este ajuste desde el frontend hoy).
 - **`req.usuario` ahora completo en todo el pipeline de cotización**: `POST
-  /api/cotizaciones/calcular` (preview en vivo) no le pasaba `req.usuario` al service — se agregó,
+/api/cotizaciones/calcular` (preview en vivo) no le pasaba `req.usuario` al service — se agregó,
   porque si el preview no aplicara el mismo tope que el guardado final, el agente vería un número
   en pantalla distinto al que realmente se persiste. `middleware/auth.js` ahora incluye
   `descuento_maximo_pct`/`recargo_maximo_pct` en `req.usuario` (se re-lee de la base en cada
@@ -744,6 +753,7 @@ el más restrictivo** (`MIN`).
 
 **Pendientes anotados para afinar más adelante (no bloqueantes, confirmado con Kevin que se
 revisan después):**
+
 - El modal "Nuevo usuario" no tiene estos 2 campos (solo "Editar") — un agente recién creado
   queda sin tope propio (`NULL`, solo el tope del plan) hasta que alguien lo edite a mano.
 - `auto.calculator.js` no tiene `topeEfectivo` — si se retoma Fase 2 y se expone el ajuste manual
@@ -767,6 +777,7 @@ booleanas de hoy pasarían a ser filas de una tabla de permisos por rol el día 
 
 **Plan concreto para la próxima sesión** (ver prompt guardado — pedirle a Kevin o buscar en
 Engram bajo `cotizador-tajy/plan-permisos-admin-por-seccion` si hace falta el texto exacto):
+
 - Migración nueva: `usuarios.puede_gestionar_usuarios`, `puede_editar_coberturas`,
   `puede_editar_planes` (BOOLEAN DEFAULT FALSE) — `puede_editar_tasas` ya existe, no se toca.
 - `middleware/auth.js`: sumar los 3 campos nuevos a `req.usuario` (mismo patrón que
@@ -966,7 +977,7 @@ formulario completo de `/cotizar`, siempre que no hayan pasado más de 30 días 
 
 - **Ownership**: `findCotizaciones`/`listarCotizaciones` ahora aceptan `agenteId` (filtra
   `.eq('agente_id', ...)`); el controller pasa `agenteId: usuario.rol === 'admin' ? undefined :
-  usuario.id`. `obtenerCotizacion`/`generarPdfOferta` ahora reciben `req.usuario` y llaman a
+usuario.id`. `obtenerCotizacion`/`generarPdfOferta` ahora reciben `req.usuario` y llaman a
   `verificarPropiedad()` — 403 si no sos admin ni el dueño. Esto cierra un IDOR real: antes
   `GET /cotizaciones/:id` (y la descarga de PDF) no validaban dueño aunque el listado sí filtrara,
   así que conociendo un id directo se podía ver/descargar la cotización de otro agente.
@@ -1018,6 +1029,7 @@ formulario completo de `/cotizar`, siempre que no hayan pasado más de 30 días 
 Con el catálogo de MRC, Incendio y Vida/AP cargado, el primer calculador (MRC, plan Normal) conectado
 end-to-end, y la Carta Oferta de MRC ya generándose en PDF, lo que sigue es uno de estos, a decidir
 con Kevin:
+
 - Confirmar el texto oficial de Carta Oferta de Incendio y Vida/AP para sumarles su template de PDF.
 - Retomar Fase 2 (Auto end-to-end), si el cliente lo pide.
 - Seguir el frontend de `/cotizar` para Incendio/Vida-AP en cuanto tengan calculador, reutilizando
@@ -1026,6 +1038,7 @@ con Kevin:
 
 **Nota 2026-07-17 — alcance real de WU6 (confirmado leyendo el código, no solo la nota original de PLAN_ADMIN_FASE5.md):**
 Con la sección "Coberturas por plan" del admin ya implementada y funcionando (WU5 cerrado), se verificó qué de lo que ahí se edita realmente impacta el cotizador/PDF de MRC hoy:
+
 - **Sí se refleja ya**: `franquicia_default` de las 2 coberturas fijas de Incendio (Edificio/Contenido) — `mrc.calculator.js` la lee en vivo de `coberturas_catalogo` vía `findCoberturasCatalogoByRamoId`.
 - **No se refleja (WU6 pendiente, alcance más amplio del que decía la nota original)**:
   - `plan_coberturas.incluida_por_defecto` — `mrc.calculator.js` tiene hardcodeados `CODIGO_INCENDIO_EDIFICIO`/`CODIGO_INCENDIO_CONTENIDO` como fijos siempre (decisión 2026-07-13, ver sección 16); `cotizar.js` nunca llama `GET /planes/:id/coberturas` para MRC.
@@ -1041,6 +1054,7 @@ constante `SUBLIMITES_FIJOS_MRC` no tenía cargado: `sublimite_murallas_cercos`,
 **Ninguna fila corresponde a `incendio_edificio`/`incendio_contenido`** — esos 2 códigos no viven en
 `plan_coberturas`, se cotizan por Capital Edificio/Capital Contenido (campo propio del formulario,
 sin correlato en esa tabla). Por lo tanto:
+
 - **`backend/src/calculators/mrc.calculator.js` NO se tocó** — las constantes
   `CODIGO_INCENDIO_EDIFICIO`/`CODIGO_INCENDIO_CONTENIDO` siguen hardcodeadas a propósito: no existe
   ninguna fuente dinámica real de la que leerlas hoy. Si en el futuro se necesita hacerlas
@@ -1059,25 +1073,25 @@ sin correlato en esa tabla). Por lo tanto:
 
 **Fase 6/7 completa y lista para producción en MRC, Incendio y Vida/AP.** Estado por ramo:
 
-**Multirriesgo Comercio (MRC):** 🟢 Operativo. Plan Normal cotiza end-to-end, Carta Oferta genera 
-PDF, panel admin puede editar tasas, coberturas adicionales repetibles, permisos granulares 
-implementados. "Comercio Protección Total" desactivado (sin RPF). 
+**Multirriesgo Comercio (MRC):** 🟢 Operativo. Plan Normal cotiza end-to-end, Carta Oferta genera
+PDF, panel admin puede editar tasas, coberturas adicionales repetibles, permisos granulares
+implementados. "Comercio Protección Total" desactivado (sin RPF).
 
-**Incendio:** 🟡 Listo para calculador. Catálogo completo (2 planes, 5 coberturas, 49 rubros de 
-actividad), RPF confirmado (Contado 0% / Cobrador 1,6% / Boca 1,35% / Tarjeta 1%, fijo para todos 
-los planes). Falta: lógica de cálculo en `incendio.calculator.js` (datos 100% confirmados, no RPF 
+**Incendio:** 🟡 Listo para calculador. Catálogo completo (2 planes, 5 coberturas, 49 rubros de
+actividad), RPF confirmado (Contado 0% / Cobrador 1,6% / Boca 1,35% / Tarjeta 1%, fijo para todos
+los planes). Falta: lógica de cálculo en `incendio.calculator.js` (datos 100% confirmados, no RPF
 ni prima técnica mínima incompleta).
 
-**Vida y Accidentes Personales:** 🟡 Listo para calculador. Catálogo completo (7 planes, 11 
-coberturas, tarifación por edad en 44 filas), RPF confirmado (igual a Incendio, sin prima técnica 
+**Vida y Accidentes Personales:** 🟡 Listo para calculador. Catálogo completo (7 planes, 11
+coberturas, tarifación por edad en 44 filas), RPF confirmado (igual a Incendio, sin prima técnica
 mínima). Falta: lógica de cálculo en `vida-ap.calculator.js`.
 
-**Próximos pasos confirmados con Kevin:** (1) Implementar calculadores de Incendio y Vida/AP, (2) 
-Agregar templates de Carta Oferta para ambos ramos (pendiente texto oficial), (3) Retomar Fase 2 
+**Próximos pasos confirmados con Kevin:** (1) Implementar calculadores de Incendio y Vida/AP, (2)
+Agregar templates de Carta Oferta para ambos ramos (pendiente texto oficial), (3) Retomar Fase 2
 (Auto) si se pide, (4) Hogar/TRO cuando el cliente lo solicite (no incluido aún).
 
-**Migraciones aplicadas:** 001–031 contra Supabase real (28 migraciones de catálogo + motor, 3 de 
-config/permisos). **Código estable:** auto.calculator (Fase 1), mrc.calculator (Fase 6), backend 
+**Migraciones aplicadas:** 001–031 contra Supabase real (28 migraciones de catálogo + motor, 3 de
+config/permisos). **Código estable:** auto.calculator (Fase 1), mrc.calculator (Fase 6), backend
 robusto con error handling explícito y validaciones Zod, frontend Vanilla JS sin dependencies.
 
 ## 22. Migración visual "Diseño 2" + rediseño del cotizador — 2026-07-21/22
@@ -1234,6 +1248,7 @@ No había ningún logging de eventos de seguridad en el proyecto. Se agregó
 loguear — nunca se loguea un token, un `password_hash` ni una contraseña en texto plano.
 
 Instrumentado en:
+
 - `auth.service.js` → `login`: `login_fallido` (email + motivo genérico `credenciales_invalidas` /
   `usuario_inactivo`, nunca la contraseña) y `login_exitoso` (usuarioId + email).
 - `admin/usuarios.service.js`:
@@ -1264,7 +1279,7 @@ contra el permiso REAL del solicitante, no solo el estado actual del objetivo), 
    alta directamente un usuario nuevo con `rol_id` del rol admin. Fix: `crearUsuario` ahora recibe
    `solicitante` (`admin.controller.js` pasa `req.usuario`) y corre `asegurarPuedeAsignarRol` antes
    de crear. Test: `crearUsuario rechaza con 403 si un solicitante no-admin intenta dar de alta un
-   usuario con rol_id del rol admin`.
+usuario con rol_id del rol admin`.
 2. **CRUD de roles custom (gap real, corregido)** — `crearRol`/`editarRol` no validaban los 4
    booleanos de permiso contra el solicitante: cualquier usuario con `puede_gestionar_usuarios`
    (el único gate de ruta para `/admin/roles`) podía crear o editar un rol con los 4 permisos en
@@ -1371,66 +1386,70 @@ ejecutivo (Sprint 1-4). Marcar con `[x]` a medida que se resuelva cada uno — n
 checklist de fases de arriba, este es transversal a fases.
 
 ### Sprint 1 — accesibilidad y feedback del flujo principal
+
 - [ ] Selección de ramo navegable por teclado (`cotizar.js:878`, `bienvenida.js:131`) — hoy solo
-  funciona con mouse, rompe con teclado/lector de pantalla.
+      funciona con mouse, rompe con teclado/lector de pantalla.
 - [ ] Fix de contraste `--tajy-text-secondary` (`cotizador.css:22`, 3.44:1, falla WCAG AA) — mismo
-  fix que ya se aplicó a `--tajy-text-muted`.
+      fix que ya se aplicó a `--tajy-text-muted`.
 - [ ] Banners de error reales en los 8 puntos de carga silenciosa de `cotizar.js` (líneas 229, 277,
-  285, 420, 437, 477, 491) — hoy solo van a `console.error`, el agente ve un formulario vacío sin
-  explicación.
+      285, 420, 437, 477, 491) — hoy solo van a `console.error`, el agente ve un formulario vacío sin
+      explicación.
 - [ ] **Insert de cotización multi-tabla sin rollback ante fallo parcial** (`cotizacion.service.js`
-  líneas 25-46 y 171-249) — si `insertPlanesPago` u otro insert intermedio falla después de que la
-  fila principal y una variante ya se guardaron, queda una cotización huérfana en Historial con
-  numeración correlativa consumida y sin plan de pago. Solución: envolver todo el conjunto en una
-  función Postgres vía `supabase.rpc(...)` (mismo patrón que `siguiente_correlativo`), o agregar
-  limpieza compensatoria en el catch. Hallazgo del QA integral del 2026-07-24 (ver artifact/engram).
+      líneas 25-46 y 171-249) — si `insertPlanesPago` u otro insert intermedio falla después de que la
+      fila principal y una variante ya se guardaron, queda una cotización huérfana en Historial con
+      numeración correlativa consumida y sin plan de pago. Solución: envolver todo el conjunto en una
+      función Postgres vía `supabase.rpc(...)` (mismo patrón que `siguiente_correlativo`), o agregar
+      limpieza compensatoria en el catch. Hallazgo del QA integral del 2026-07-24 (ver artifact/engram).
 - [ ] **"Emitir carta oferta" no valida ramo antes de persistir en Incendio/Vida-AP**
-  (`cotizar.js:721-752`, a diferencia de `historial.js:28-33` que sí tiene el guard) — cada intento
-  fallido hace `POST /cotizaciones` (201, consume correlativo) antes de descubrir con el PDF que el
-  ramo no tiene template (422), dejando cotizaciones huérfanas acumulativas. Solución: exponer
-  `ofertaDisponibleParaRamo` desde `/api/ramos` y usarlo para deshabilitar el botón en `cotizar.js`
-  igual que ya hace Historial. Hallazgo del QA integral del 2026-07-24.
+      (`cotizar.js:721-752`, a diferencia de `historial.js:28-33` que sí tiene el guard) — cada intento
+      fallido hace `POST /cotizaciones` (201, consume correlativo) antes de descubrir con el PDF que el
+      ramo no tiene template (422), dejando cotizaciones huérfanas acumulativas. Solución: exponer
+      `ofertaDisponibleParaRamo` desde `/api/ramos` y usarlo para deshabilitar el botón en `cotizar.js`
+      igual que ya hace Historial. Hallazgo del QA integral del 2026-07-24.
 - [ ] **Race condition en el preview de cálculo en vivo de MRC** (`cotizar.js:526-716`,
-  `scheduleCalculate`/`calcularPreview`) — el debounce protege el timer pero no las peticiones ya en
-  vuelo; con red lenta, una respuesta vieja puede resolver después de una más nueva y pisar
-  `state.preview` con una prima incorrecta para los datos actuales en pantalla. Solución: número de
-  secuencia incremental o `AbortController` para descartar respuestas obsoletas. Hallazgo del QA
-  integral del 2026-07-24.
+      `scheduleCalculate`/`calcularPreview`) — el debounce protege el timer pero no las peticiones ya en
+      vuelo; con red lenta, una respuesta vieja puede resolver después de una más nueva y pisar
+      `state.preview` con una prima incorrecta para los datos actuales en pantalla. Solución: número de
+      secuencia incremental o `AbortController` para descartar respuestas obsoletas. Hallazgo del QA
+      integral del 2026-07-24.
 
 ### Sprint 2 — mantenibilidad puntual
+
 - [ ] Label de rol hardcodeado en sidebar/topbar (`frontend/shared/sidebar.js:52`) — solo contempla
-  `admin`/`agente`, cualquier rol custom (creado desde el panel de Admin) muestra siempre el texto
-  fijo "Analista comercial" en vez de su nombre real. Cosmético, sin impacto de seguridad ni de
-  permisos (los booleanos de permiso sí se leen y aplican bien). Fix: mostrar `usuario.rol`
-  capitalizado cuando no matchea los 2 casos especiales. Hallazgo del QA integral del 2026-07-24
-  (continuación con usuario admin real).
+      `admin`/`agente`, cualquier rol custom (creado desde el panel de Admin) muestra siempre el texto
+      fijo "Analista comercial" en vez de su nombre real. Cosmético, sin impacto de seguridad ni de
+      permisos (los booleanos de permiso sí se leen y aplican bien). Fix: mostrar `usuario.rol`
+      capitalizado cuando no matchea los 2 casos especiales. Hallazgo del QA integral del 2026-07-24
+      (continuación con usuario admin real).
 - [ ] Extraer `mostrarBanner()` (duplicada literal en `cotizar.js:376` y `admin.js:128`) a
-  `frontend/shared/`.
+      `frontend/shared/`.
 - [ ] Helper compartido para el esqueleto repetido de `mrc.calculator.js`/`incendio.calculator.js`
-  (guards de piso técnico, tope, capital×tasa).
+      (guards de piso técnico, tope, capital×tasa).
 - [ ] Unificar cache de catálogos: hoy el mismo dato se cachea cuando lo pide el motor de cálculo
-  pero no cuando lo piden directo `cotizar.js`/`admin.js`.
+      pero no cuando lo piden directo `cotizar.js`/`admin.js`.
 - [ ] Reemplazar `confirm()` nativo por el modal propio en las 5 acciones destructivas de admin
-  (`admin.js:210,224,364,668,860`).
+      (`admin.js:210,224,364,668,860`).
 
 ### Sprint 3 — escalabilidad y hardening restante
+
 - [ ] Punto único de registro de ramo (hoy fragmentado en 4 archivos: `calculators/index.js`,
-  `cotizacion.service.js`, `templates/oferta/index.js`, `cotizar.js`) — condición para sumar
-  Incendio/Vida-AP/Auto sin fricción creciente.
+      `cotizacion.service.js`, `templates/oferta/index.js`, `cotizar.js`) — condición para sumar
+      Incendio/Vida-AP/Auto sin fricción creciente.
 - [ ] Habilitar RLS en las 30 tablas de Supabase (con revisión de policies).
 - [ ] Cola de concurrencia + single-pass render en Puppeteer (`pdf.service.js:20-44`) — hoy N PDFs
-  simultáneos abren N páginas sobre un solo proceso Chromium.
+      simultáneos abren N páginas sobre un solo proceso Chromium.
 - [ ] Validación inline por campo en el formulario de cotizar (hoy solo deshabilita el botón con
-  mensaje genérico).
+      mensaje genérico).
 - [ ] Breakpoint intermedio responsive (900-1200px) en `cotizador.css:1281,1830`.
 
 ### Sprint 4 — cierre de roadmap de seguridad + modularización
+
 - [ ] Migrar sesión JWT a cookie httpOnly + SameSite (decisión de arquitectura, resuelve CORS/CSRF)
-  — ya estaba en el roadmap de seguridad aceptado (sección 27).
+      — ya estaba en el roadmap de seguridad aceptado (sección 27).
 - [ ] Logging de seguridad a sink centralizado (Sentry/Logtail) en vez de `console.warn`/`error`.
 - [ ] Automatizar `npm audit`/Dependabot en CI.
 - [ ] Arrancar modularización de `cotizar.js` (1739 líneas) / `admin.js` (2101 líneas) por
-  responsabilidad (fetch/render/estado) — inversión de mediano plazo, no bloqueante por sí sola.
+      responsabilidad (fetch/render/estado) — inversión de mediano plazo, no bloqueante por sí sola.
 
 ### QA funcional en vivo — continuación con usuario admin real (2026-07-24)
 

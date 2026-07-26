@@ -1,14 +1,14 @@
-export { calcularPlanPago } from './utils/plan-pago.js';
-import { sumarAjustes, topeEfectivo } from './utils/ajustes.js';
-import { httpError } from '../utils/http-error.js';
+export { calcularPlanPago } from './utils/plan-pago.js'
+import { sumarAjustes, topeEfectivo } from './utils/ajustes.js'
+import { httpError } from '../utils/http-error.js'
 
-const NOMBRE_PLAN_MAQUINARIA = 'MAQUINARIA BASICO';
+const NOMBRE_PLAN_MAQUINARIA = 'MAQUINARIA BASICO'
 
-const CODIGO_INCENDIO_EDIFICIO = 'incendio_edificio';
-const CODIGO_INCENDIO_CONTENIDO = 'incendio_contenido';
-const CODIGO_INCENDIO_MAQUINARIA = 'incendio_maquinaria';
-const CODIGO_SUBLIMITE_FENOMENOS_NATURALES = 'sublimite_fenomenos_naturales';
-const CODIGO_SUBLIMITE_VANDALISMO_MAQUINARIA = 'sublimite_vandalismo_maquinaria';
+const CODIGO_INCENDIO_EDIFICIO = 'incendio_edificio'
+const CODIGO_INCENDIO_CONTENIDO = 'incendio_contenido'
+const CODIGO_INCENDIO_MAQUINARIA = 'incendio_maquinaria'
+const CODIGO_SUBLIMITE_FENOMENOS_NATURALES = 'sublimite_fenomenos_naturales'
+const CODIGO_SUBLIMITE_VANDALISMO_MAQUINARIA = 'sublimite_vandalismo_maquinaria'
 
 /**
  * Calculador de Incendio — dos planes con mecánica distinta (migración 013):
@@ -61,26 +61,38 @@ export async function calcularPrima({
       422,
       `El plan "${plan.nombre}" todavía no tiene RPF/prima técnica mínima confirmados — no se puede cotizar.`,
       'Este plan está pendiente de confirmación de tasas.'
-    );
+    )
   }
 
-  const catalogoPorCodigo = new Map(catalogoRamo.map((c) => [c.codigo, c]));
+  const catalogoPorCodigo = new Map(catalogoRamo.map((c) => [c.codigo, c]))
 
-  const esMaquinariaBasico = plan.nombre === NOMBRE_PLAN_MAQUINARIA;
+  const esMaquinariaBasico = plan.nombre === NOMBRE_PLAN_MAQUINARIA
 
-  const { primaBase: primaCalculada, detalle, coberturas } = esMaquinariaBasico
+  const {
+    primaBase: primaCalculada,
+    detalle,
+    coberturas,
+  } = esMaquinariaBasico
     ? await calcularMaquinariaBasico({ plan, riesgoDatos, catalogoPorCodigo, tasasRamo })
-    : await calcularEdificioYContenido({ plan, riesgoDatos, catalogoPorCodigo, rubro });
+    : await calcularEdificioYContenido({ plan, riesgoDatos, catalogoPorCodigo, rubro })
 
   // A pedido de Kevin (2026-07-15): sí se pueden cotizar capitales que generen una prima menor
   // a la Prima Técnica Mínima del plan — no se bloquea con alerta. En ese caso se aplica el
   // piso en silencio: la Prima Técnica Mínima pasa a ser la prima base de la cotización.
-  const primaBase = Math.max(primaCalculada, plan.prima_tecnica_minima);
+  const primaBase = Math.max(primaCalculada, plan.prima_tecnica_minima)
 
-  const totalDescuentos = sumarAjustes(descuentos, primaBase, topeEfectivo(plan.descuento_maximo, usuario?.descuento_maximo_pct));
-  const totalRecargos = sumarAjustes(recargos, primaBase, topeEfectivo(plan.recargo_maximo, usuario?.recargo_maximo_pct));
+  const totalDescuentos = sumarAjustes(
+    descuentos,
+    primaBase,
+    topeEfectivo(plan.descuento_maximo, usuario?.descuento_maximo_pct)
+  )
+  const totalRecargos = sumarAjustes(
+    recargos,
+    primaBase,
+    topeEfectivo(plan.recargo_maximo, usuario?.recargo_maximo_pct)
+  )
 
-  const prima = primaBase - totalDescuentos + totalRecargos;
+  const prima = primaBase - totalDescuentos + totalRecargos
 
   return {
     prima,
@@ -92,12 +104,12 @@ export async function calcularPrima({
       total_recargos: totalRecargos,
     },
     coberturas,
-  };
+  }
 }
 
 async function calcularEdificioYContenido({ plan, riesgoDatos, catalogoPorCodigo, rubro }) {
-  const capitalEdificio = riesgoDatos.capital_edificio ?? 0;
-  const capitalContenido = riesgoDatos.capital_contenido ?? 0;
+  const capitalEdificio = riesgoDatos.capital_edificio ?? 0
+  const capitalContenido = riesgoDatos.capital_contenido ?? 0
 
   if (
     plan.responsabilidad_maxima_cotizable != null &&
@@ -107,7 +119,7 @@ async function calcularEdificioYContenido({ plan, riesgoDatos, catalogoPorCodigo
       422,
       `La suma de Capital Edificio + Capital Contenido supera la Responsabilidad Máx. Cotizable del plan "${plan.nombre}" (Gs. ${plan.responsabilidad_maxima_cotizable}).`,
       `El capital declarado supera el máximo cotizable para este plan (Gs. ${plan.responsabilidad_maxima_cotizable.toLocaleString('es-PY')}).`
-    );
+    )
   }
 
   if (!rubro) {
@@ -115,26 +127,26 @@ async function calcularEdificioYContenido({ plan, riesgoDatos, catalogoPorCodigo
       422,
       `Tipo de Riesgo "${riesgoDatos.rubro_actividad}" no encontrado en rubros_actividad.`,
       `El Tipo de Riesgo seleccionado no es válido.`
-    );
+    )
   }
 
-  const tasaEdificio = rubro.tasa_edificio;
-  const tasaContenido = rubro.tasa_contenido;
+  const tasaEdificio = rubro.tasa_edificio
+  const tasaContenido = rubro.tasa_contenido
 
   if (tasaEdificio == null || tasaContenido == null) {
     throw httpError(
       422,
       `Faltan tasa_edificio/tasa_contenido para el Tipo de Riesgo "${rubro.nombre}".`,
       `El Tipo de Riesgo "${rubro.nombre}" todavía no tiene tasas confirmadas.`
-    );
+    )
   }
 
-  const costoEdificio = capitalEdificio * (tasaEdificio / 1000);
-  const costoContenido = capitalContenido * (tasaContenido / 1000);
+  const costoEdificio = capitalEdificio * (tasaEdificio / 1000)
+  const costoContenido = capitalContenido * (tasaContenido / 1000)
 
-  const catalogoEdificio = catalogoPorCodigo.get(CODIGO_INCENDIO_EDIFICIO);
-  const catalogoContenido = catalogoPorCodigo.get(CODIGO_INCENDIO_CONTENIDO);
-  const catalogoSublimiteFenomenos = catalogoPorCodigo.get(CODIGO_SUBLIMITE_FENOMENOS_NATURALES);
+  const catalogoEdificio = catalogoPorCodigo.get(CODIGO_INCENDIO_EDIFICIO)
+  const catalogoContenido = catalogoPorCodigo.get(CODIGO_INCENDIO_CONTENIDO)
+  const catalogoSublimiteFenomenos = catalogoPorCodigo.get(CODIGO_SUBLIMITE_FENOMENOS_NATURALES)
 
   const coberturas = [
     {
@@ -153,7 +165,7 @@ async function calcularEdificioYContenido({ plan, riesgoDatos, catalogoPorCodigo
       tipo_aplicacion: 'cobertura',
       incluye_en_suma_asegurada_total: true,
     },
-  ];
+  ]
 
   if (riesgoDatos.sublimite_fenomenos_naturales_porcentaje != null) {
     coberturas.push({
@@ -162,7 +174,7 @@ async function calcularEdificioYContenido({ plan, riesgoDatos, catalogoPorCodigo
       sublimite_porcentaje: riesgoDatos.sublimite_fenomenos_naturales_porcentaje,
       tipo_aplicacion: 'sublimite',
       incluye_en_suma_asegurada_total: false,
-    });
+    })
   }
 
   return {
@@ -177,11 +189,11 @@ async function calcularEdificioYContenido({ plan, riesgoDatos, catalogoPorCodigo
       costo_contenido: costoContenido,
     },
     coberturas,
-  };
+  }
 }
 
 async function calcularMaquinariaBasico({ plan, riesgoDatos, catalogoPorCodigo, tasasRamo }) {
-  const capitalMaquinaria = riesgoDatos.capital_maquinaria ?? 0;
+  const capitalMaquinaria = riesgoDatos.capital_maquinaria ?? 0
 
   if (
     plan.responsabilidad_maxima_cotizable != null &&
@@ -191,25 +203,25 @@ async function calcularMaquinariaBasico({ plan, riesgoDatos, catalogoPorCodigo, 
       422,
       `El Capital Maquinaria supera la Responsabilidad Máx. Cotizable del plan "${plan.nombre}" (${plan.responsabilidad_maxima_cotizable}).`,
       `El capital declarado supera el máximo cotizable para este plan.`
-    );
+    )
   }
 
-  const catalogoMaquinaria = catalogoPorCodigo.get(CODIGO_INCENDIO_MAQUINARIA);
-  const catalogoSublimiteVandalismo = catalogoPorCodigo.get(CODIGO_SUBLIMITE_VANDALISMO_MAQUINARIA);
+  const catalogoMaquinaria = catalogoPorCodigo.get(CODIGO_INCENDIO_MAQUINARIA)
+  const catalogoSublimiteVandalismo = catalogoPorCodigo.get(CODIGO_SUBLIMITE_VANDALISMO_MAQUINARIA)
 
   const tasaMaquinaria = tasasRamo.find(
     (t) => t.coberturas_catalogo?.codigo === CODIGO_INCENDIO_MAQUINARIA
-  );
+  )
 
   if (!tasaMaquinaria || tasaMaquinaria.tasa_valor == null) {
     throw httpError(
       422,
       `Falta la tasa de "${CODIGO_INCENDIO_MAQUINARIA}" en tasas_cobertura_ramo.`,
       'Este plan todavía no tiene tasa confirmada.'
-    );
+    )
   }
 
-  const costoMaquinaria = capitalMaquinaria * (tasaMaquinaria.tasa_valor / 1000);
+  const costoMaquinaria = capitalMaquinaria * (tasaMaquinaria.tasa_valor / 1000)
 
   const coberturas = [
     {
@@ -220,7 +232,7 @@ async function calcularMaquinariaBasico({ plan, riesgoDatos, catalogoPorCodigo, 
       tipo_aplicacion: 'cobertura',
       incluye_en_suma_asegurada_total: true,
     },
-  ];
+  ]
 
   if (riesgoDatos.sublimite_vandalismo_porcentaje != null) {
     coberturas.push({
@@ -229,7 +241,7 @@ async function calcularMaquinariaBasico({ plan, riesgoDatos, catalogoPorCodigo, 
       sublimite_porcentaje: riesgoDatos.sublimite_vandalismo_porcentaje,
       tipo_aplicacion: 'sublimite',
       incluye_en_suma_asegurada_total: false,
-    });
+    })
   }
 
   return {
@@ -240,6 +252,5 @@ async function calcularMaquinariaBasico({ plan, riesgoDatos, catalogoPorCodigo, 
       costo_maquinaria: costoMaquinaria,
     },
     coberturas,
-  };
+  }
 }
-

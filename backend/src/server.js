@@ -1,8 +1,8 @@
-import { createApp } from './app.js';
+import { createApp } from './app.js'
 
-const app = createApp();
-const port = process.env.PORT || 3000;
+const app = createApp()
+const port = process.env.PORT || 3000
 
 app.listen(port, () => {
-  console.log(`Cotizador Tajy API escuchando en http://localhost:${port}`);
-});
+  console.log(`Cotizador Tajy API escuchando en http://localhost:${port}`)
+})

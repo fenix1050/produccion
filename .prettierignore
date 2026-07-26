@@ -1,0 +1,12 @@
+node_modules
+dist
+coverage
+
+.codegraph
+.engram
+
+package-lock.json
+
+*.min.js
+
+backend/uploads

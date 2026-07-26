@@ -12,9 +12,42 @@ updates:
     open-pull-requests-limit: 5
 
     groups:
+      lint-tooling:
+        patterns:
+          - 'eslint*'
+          - '@eslint/*'
+          - 'globals'
+          - 'prettier'
+        update-types:
+          - 'minor'
+          - 'patch'
       npm-dependencies:
         patterns:
           - '*'
+        exclude-patterns:
+          - 'eslint*'
+          - '@eslint/*'
+          - 'globals'
+          - 'prettier'
+        update-types:
+          - 'minor'
+          - 'patch'
+
+    ignore:
+      # Majors con breaking changes conocidos: requieren migración manual revisada,
+      # no un bump automático agrupado con el resto.
+      - dependency-name: 'eslint*'
+        update-types: ['version-update:semver-major']
+      - dependency-name: '@eslint/*'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'express'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'zod'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'multer'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'puppeteer'
+        update-types: ['version-update:semver-major']
 
   - package-ecosystem: 'github-actions'
     directory: '/'

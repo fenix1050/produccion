@@ -145,3 +145,40 @@ Lista corta de lo que un cambio de código puede pisar sin querer. El detalle co
 3. Revisar la sección 11 de `docs/PLAN_DESARROLLO.md` (pendientes) por si hay novedades.
 4. Confirmar en qué fase estamos antes de avanzar a la siguiente.
 5. Para levantar y probar la app localmente, usar el skill `/run-cotizador`.
+
+## Herramientas disponibles
+
+Este repositorio dispone de herramientas de apoyo que deben usarse antes de hacer búsquedas manuales.
+
+### CodeGraph
+
+Utilizar CodeGraph para:
+
+- localizar funciones
+- encontrar referencias
+- analizar dependencias
+- entender el flujo del código
+
+Preferir CodeGraph antes que recorrer archivos manualmente.
+
+### Engram
+
+Utilizar Engram para:
+
+- recuperar decisiones anteriores
+- consultar contexto del proyecto
+- registrar decisiones importantes de arquitectura
+- mantener memoria persistente entre sesiones
+
+### Supabase MCP
+
+Existe un MCP conectado al proyecto de Supabase.
+
+Utilizarlo para:
+
+- inspeccionar tablas
+- consultar esquema
+- revisar migraciones
+- validar cambios antes de modificar SQL
+
+Evitar recorrer el proyecto manualmente cuando estas herramientas proporcionen la información necesaria.

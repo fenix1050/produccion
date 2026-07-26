@@ -10,16 +10,16 @@ Es un proyecto **independiente**, separado de otros sistemas de Tajy (Siniestros
 
 ## Stack
 
-| Capa | Herramienta |
-|---|---|
-| Backend | Node.js + Express |
-| Base de datos | Supabase (PostgreSQL) |
-| Validación | Zod (un schema por ramo para los datos de riesgo) |
-| Frontend | Vanilla JS (sin framework), Netlify |
-| Importación de Excel | SheetJS |
-| Generación de PDF | Puppeteer (HTML/CSS → PDF) |
-| Deploy backend | Railway o Render (Puppeteer necesita más RAM/CPU que serverless) |
-| Organización | Monorepo GitHub |
+| Capa                 | Herramienta                                                      |
+| -------------------- | ---------------------------------------------------------------- |
+| Backend              | Node.js + Express                                                |
+| Base de datos        | Supabase (PostgreSQL)                                            |
+| Validación           | Zod (un schema por ramo para los datos de riesgo)                |
+| Frontend             | Vanilla JS (sin framework), Netlify                              |
+| Importación de Excel | SheetJS                                                          |
+| Generación de PDF    | Puppeteer (HTML/CSS → PDF)                                       |
+| Deploy backend       | Railway o Render (Puppeteer necesita más RAM/CPU que serverless) |
+| Organización         | Monorepo GitHub                                                  |
 
 ## Estructura del monorepo
 
@@ -64,6 +64,7 @@ Este proyecto se construye **fase por fase**, en este orden fijo (detalle comple
 8. Deploy
 
 **Reglas para Codex:**
+
 - No adelantar trabajo de una fase futura aunque parezca rápido de hacer — cada fase se cierra completa antes de pasar a la siguiente, salvo que Kevin pida explícitamente saltar.
 - Al empezar una sesión, decir en qué fase se está y qué falta de esa fase antes de escribir código.
 - Al terminar una tarea de la fase actual, marcarla como hecha (editar el checklist de este archivo) y decir qué queda pendiente de la fase.
@@ -148,3 +149,15 @@ Contado: Inicial = Premio completo, Cuota = 0
 2. Leer `docs/ESTADO_PROYECTO.md` para saber qué está hecho y qué decisiones ya se tomaron.
 3. Revisar la sección 11 de `docs/PLAN_DESARROLLO.md` (pendientes) por si hay novedades.
 4. Confirmar en qué fase estamos antes de avanzar a la siguiente.
+
+# Flujo recomendado
+
+Todo agente debe:
+
+- comprender la arquitectura antes de modificar código
+- evitar duplicación
+- preferir reutilización
+- documentar cambios relevantes
+- mantener consistencia entre frontend y backend
+- consultar CodeGraph antes de navegar archivos manualmente
+- consultar Engram para recuperar decisiones previas

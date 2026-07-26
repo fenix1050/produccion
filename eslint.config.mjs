@@ -12,8 +12,8 @@ export default [
       '**/.codegraph/**',
       '**/.engram/**',
       '**/.git/**',
-      '**/*.min.js'
-    ]
+      '**/*.min.js',
+    ],
   },
 
   js.configs.recommended,
@@ -25,12 +25,12 @@ export default [
       ecmaVersion: 'latest',
       sourceType: 'module',
       globals: {
-        ...globals.node
-      }
+        ...globals.node,
+      },
     },
 
     plugins: {
-      import: importPlugin
+      import: importPlugin,
     },
 
     rules: {
@@ -43,12 +43,12 @@ export default [
         'warn',
         {
           alphabetize: {
-            order: 'asc'
+            order: 'asc',
           },
-          'newlines-between': 'always'
-        }
-      ]
-    }
+          'newlines-between': 'always',
+        },
+      ],
+    },
   },
 
   {
@@ -58,9 +58,9 @@ export default [
 
     languageOptions: {
       globals: {
-        ...globals.browser
-      }
-    }
+        ...globals.browser,
+      },
+    },
   },
 
   {
@@ -70,20 +70,20 @@ export default [
       ecmaVersion: 'latest',
       sourceType: 'module',
       globals: {
-        ...globals.browser
-      }
+        ...globals.browser,
+      },
     },
 
     plugins: {
-      import: importPlugin
+      import: importPlugin,
     },
 
     rules: {
       'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
       'no-console': 'off',
-      'no-undef': 'error'
-    }
+      'no-undef': 'error',
+    },
   },
 
-  eslintConfigPrettier
+  eslintConfigPrettier,
 ]

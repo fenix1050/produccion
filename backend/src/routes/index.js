@@ -9,7 +9,6 @@ import { router as cotizacionesRouter } from './cotizaciones.routes.js'
 import { router as planesRouter } from './planes.routes.js'
 import { router as ramosRouter } from './ramos.routes.js'
 
-
 export const router = Router()
 
 // Público: login (y GET /me, protegido internamente por el propio router de auth).

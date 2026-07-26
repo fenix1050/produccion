@@ -27,7 +27,7 @@ export function createApp() {
   // Manejador de errores centralizado — todo controller que haga next(err) cae acá.
   // Loguear err.stack (no el objeto err crudo): errores de Zod hacen que
   // console.error(err) explote dentro de util.inspect y tumba el proceso entero.
-   
+
   app.use((err, _req, res, _next) => {
     console.error(err.stack || err.message || err)
     const status = err.status || 500

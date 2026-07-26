@@ -1,8 +1,22 @@
-import { api, auth } from '../shared/api.js';
-import { ICON_RAMO_AUTO, ICON_RAMO_MRC, ICON_RAMO_INCENDIO, ICON_RAMO_VIDA_AP, ICON_RAMO_HOGAR, ICON_INFO, ICON_SUBLIMITE_AGUA, ICON_SUBLIMITE_ELECTRICOS, ICON_SUBLIMITE_GRANIZO, ICON_SUBLIMITE_MURALLAS, ICON_SUBLIMITE_GENERICO, ICON_ARROW_LEFT as ICON_ARROW_LEFT_ROUND, ICON_X_CIRCLE } from '../shared/nav-icons.js';
-import { escapeHtml } from '../shared/dom.js';
-import { renderSidebarFooter, renderTopbarUser } from '../shared/sidebar.js';
-import { fmtGs, fmtGsInput } from '../shared/format.js';
+import { api, auth } from '../shared/api.js'
+import {
+  ICON_RAMO_AUTO,
+  ICON_RAMO_MRC,
+  ICON_RAMO_INCENDIO,
+  ICON_RAMO_VIDA_AP,
+  ICON_RAMO_HOGAR,
+  ICON_INFO,
+  ICON_SUBLIMITE_AGUA,
+  ICON_SUBLIMITE_ELECTRICOS,
+  ICON_SUBLIMITE_GRANIZO,
+  ICON_SUBLIMITE_MURALLAS,
+  ICON_SUBLIMITE_GENERICO,
+  ICON_ARROW_LEFT as ICON_ARROW_LEFT_ROUND,
+  ICON_X_CIRCLE,
+} from '../shared/nav-icons.js'
+import { escapeHtml } from '../shared/dom.js'
+import { renderSidebarFooter, renderTopbarUser } from '../shared/sidebar.js'
+import { fmtGs, fmtGsInput } from '../shared/format.js'
 
 // Cotizador Tajy — App Shell + Datos + Resultado (Fase 6, alcance MRC plan Normal).
 // Recreación en Vanilla JS del handoff de diseño original (mockup ya migrado y eliminado
@@ -12,7 +26,7 @@ import { fmtGs, fmtGsInput } from '../shared/format.js';
 // "Detalle del plan" (capital insuficiente, prima por debajo de la mínima, cálculo aún pendiente).
 // Referenciado por aria-describedby desde el botón/tab deshabilitados para que el motivo sea
 // accesible por lector de pantalla, no solo por el tooltip `title` (ver syncAvanceButtons()).
-const MOTIVO_BLOQUEO_ID = 'motivo-bloqueo-avance';
+const MOTIVO_BLOQUEO_ID = 'motivo-bloqueo-avance'
 
 // ---- Metadata de ramos mostrados en el sidebar (5 ramos reales del sistema) ----
 // El código de 2 letras y el estado (disponible/pausa/próximamente) son decisión de UI —
@@ -24,7 +38,7 @@ const RAMOS_UI = [
   { nombre: 'incendio', code: 'IN', label: 'Incendio', estado: 'disponible' },
   { nombre: 'vida-ap', code: 'VA', label: 'Vida y Accidentes Personales', estado: 'disponible' },
   { nombre: 'hogar', code: 'MH', label: 'Multirriesgo Hogar', estado: 'proximamente' },
-];
+]
 
 // Íconos por ramo — se usan tanto en el badge de la vista Datos (form-heading__badge)
 // como en el nav del sidebar (.ramo-row__icon), Diseño 2 (docs/mockups/diseno-2-app-shell.html).
@@ -34,11 +48,11 @@ const RAMO_ICONOS = {
   incendio: ICON_RAMO_INCENDIO,
   'vida-ap': ICON_RAMO_VIDA_AP,
   hogar: ICON_RAMO_HOGAR,
-};
+}
 
 // Ramos con calculador real conectado en esta pasada (ver CLAUDE.md — MRC primero, luego
 // Incendio, luego Vida-AP).
-const RAMOS_CON_CALCULO = ['mrc', 'incendio', 'vida-ap'];
+const RAMOS_CON_CALCULO = ['mrc', 'incendio', 'vida-ap']
 
 // Nombres de plan cuyo criterio de "calculable" no es prima_tecnica_minima (MRC/Incendio),
 // sino directamente esta lista fija — ver vida-ap.calculator.js (PLANES_NO_IMPLEMENTADOS).
@@ -47,24 +61,35 @@ const PLANES_VIDA_AP_CALCULABLES = [
   'ACCIDENTES PERSONALES - SECTOR COOPERATIVO',
   'ACCIDENTES PERSONALES - SECTOR PRIVADO',
   'VIDA DIRECTIVOS Y EMPLEADOS',
-];
+]
 
 // Criterio de "plan calculable" (RPF/tasas confirmados) según el ramo — MRC e Incendio usan
 // prima_tecnica_minima; Vida-AP no maneja ese piso (decisión de Kevin) y usa la lista fija de
 // planes con calculador implementado.
 function planEsCalculable(ramoNombre, plan) {
-  if (!plan) return false;
-  if (ramoNombre === 'vida-ap') return PLANES_VIDA_AP_CALCULABLES.includes(plan.nombre);
-  return plan.prima_tecnica_minima != null;
+  if (!plan) return false
+  if (ramoNombre === 'vida-ap') return PLANES_VIDA_AP_CALCULABLES.includes(plan.nombre)
+  return plan.prima_tecnica_minima != null
 }
 
 const CLIENT_FIELDS = [
   { key: 'clienteNombre', label: 'Nombre del asegurado', placeholder: 'Juan Pérez', span: 2 },
-  { key: 'cedula', label: 'RUC / Cédula de identidad', placeholder: '4.123.456', span: 1, money: true },
-  { key: 'direccion', label: 'Ubicación del Riesgo', placeholder: 'Av. España 1234, Asunción', span: 1 },
-];
+  {
+    key: 'cedula',
+    label: 'RUC / Cédula de identidad',
+    placeholder: '4.123.456',
+    span: 1,
+    money: true,
+  },
+  {
+    key: 'direccion',
+    label: 'Ubicación del Riesgo',
+    placeholder: 'Av. España 1234, Asunción',
+    span: 1,
+  },
+]
 
-const CIUDADES = ['Asunción', 'Ciudad del Este', 'Encarnación', 'Otra'];
+const CIUDADES = ['Asunción', 'Ciudad del Este', 'Encarnación', 'Otra']
 
 // Opciones de franquicia/deducible que el agente puede elegir por cobertura, según lo que le
 // interese al asegurado — misma lista para cualquier cobertura de MRC (confirmado por Kevin,
@@ -74,33 +99,45 @@ const FRANQUICIA_OPCIONES = [
   { valor: 'sin_deducible', label: 'Sin deducible', monto: null },
   { valor: '10_500000', label: '10% en todo y cada siniestro, mínimo Gs. 500.000', monto: 500000 },
   { valor: '10_800000', label: '10% en todo y cada siniestro, mínimo Gs. 800.000', monto: 800000 },
-  { valor: '10_1000000', label: '10% en todo y cada siniestro, mínimo Gs. 1.000.000', monto: 1000000 },
-  { valor: '10_1200000', label: '10% en todo y cada siniestro, mínimo Gs. 1.200.000', monto: 1200000 },
-  { valor: '10_1500000', label: '10% en todo y cada siniestro, mínimo Gs. 1.500.000', monto: 1500000 },
-];
+  {
+    valor: '10_1000000',
+    label: '10% en todo y cada siniestro, mínimo Gs. 1.000.000',
+    monto: 1000000,
+  },
+  {
+    valor: '10_1200000',
+    label: '10% en todo y cada siniestro, mínimo Gs. 1.200.000',
+    monto: 1200000,
+  },
+  {
+    valor: '10_1500000',
+    label: '10% en todo y cada siniestro, mínimo Gs. 1.500.000',
+    monto: 1500000,
+  },
+]
 
 function franquiciaValorPorDefecto(franquiciaDefaultMonto) {
-  if (!franquiciaDefaultMonto) return 'sin_deducible';
-  const match = FRANQUICIA_OPCIONES.find((o) => o.monto === franquiciaDefaultMonto);
-  return match ? match.valor : 'sin_deducible';
+  if (!franquiciaDefaultMonto) return 'sin_deducible'
+  const match = FRANQUICIA_OPCIONES.find((o) => o.monto === franquiciaDefaultMonto)
+  return match ? match.valor : 'sin_deducible'
 }
 
 // Traduce el mapa de selección en UI (codigo -> valor de FRANQUICIA_OPCIONES) al mapa
 // codigo -> monto que espera el backend (riesgo_datos.franquicias_por_cobertura).
 function franquiciasPorCoberturaParaBody() {
-  const resultado = {};
+  const resultado = {}
   for (const [codigo, valor] of Object.entries(state.franquiciasPorCobertura)) {
-    const opcion = FRANQUICIA_OPCIONES.find((o) => o.valor === valor);
-    resultado[codigo] = opcion ? opcion.monto : null;
+    const opcion = FRANQUICIA_OPCIONES.find((o) => o.valor === valor)
+    resultado[codigo] = opcion ? opcion.monto : null
   }
-  return resultado;
+  return resultado
 }
 
 // Ramos que hoy soportan descuento/recargo manual del agente en "Detalle del plan" — los
 // calculadores de mrc/incendio ya implementan sumarAjustes con tope plan.descuento_maximo /
 // plan.recargo_maximo (ver mrc.calculator.js / incendio.calculator.js). Vida/AP no tiene ese
 // patrón todavía, no se ofrece ahí.
-const RAMOS_CON_AJUSTES = ['mrc', 'incendio'];
+const RAMOS_CON_AJUSTES = ['mrc', 'incendio']
 
 // Traduce el descuento/recargo cargado en "Detalle del plan" (state.data.descuentoMonto /
 // state.data.descuentoPorcentaje — dos campos fijos, uno en Gs. y otro en %, en vez de un input
@@ -110,23 +147,23 @@ const RAMOS_CON_AJUSTES = ['mrc', 'incendio'];
 // (sumarAjustes) — acá solo se arma el ajuste crudo, sin clampear. Si el agente cargó los dos
 // campos a la vez, se prioriza el monto en Gs. (caso borde, no bloqueamos con validación extra).
 function ajustesParaBody(prefijo, descripcion) {
-  if (!RAMOS_CON_AJUSTES.includes(state.ramoId)) return [];
-  const monto = Number(state.data[`${prefijo}Monto`]) || 0;
-  if (monto > 0) return [{ descripcion, monto }];
-  const porcentaje = Number(state.data[`${prefijo}Porcentaje`]) || 0;
-  if (porcentaje > 0) return [{ descripcion, porcentaje }];
-  return [];
+  if (!RAMOS_CON_AJUSTES.includes(state.ramoId)) return []
+  const monto = Number(state.data[`${prefijo}Monto`]) || 0
+  if (monto > 0) return [{ descripcion, monto }]
+  const porcentaje = Number(state.data[`${prefijo}Porcentaje`]) || 0
+  if (porcentaje > 0) return [{ descripcion, porcentaje }]
+  return []
 }
 
 function descuentosParaBody() {
-  return ajustesParaBody('descuento', 'Descuento aplicado por el agente');
+  return ajustesParaBody('descuento', 'Descuento aplicado por el agente')
 }
 
 function recargosParaBody() {
-  return ajustesParaBody('recargo', 'Recargo aplicado por el agente');
+  return ajustesParaBody('recargo', 'Recargo aplicado por el agente')
 }
 
-const DEBOUNCE_MS = 450;
+const DEBOUNCE_MS = 450
 
 const state = {
   ramosActivos: [],
@@ -166,7 +203,7 @@ const state = {
   // emitirCartaOferta() hace PUT /cotizaciones/:id en vez de POST /cotizaciones.
   editandoId: null,
   banner: null, // { tipo: 'error'|'success', texto }
-};
+}
 
 // Códigos que no deben ofrecerse en "Coberturas adicionales": las 2 fijas ya tienen su propio
 // campo en el formulario, sublimite_cctv todavía no tiene tasa cargada (no cotizable), y
@@ -179,7 +216,7 @@ const CODIGOS_COBERTURA_EXCLUIDOS_BASE = [
   'incendio_contenido',
   'sublimite_cctv',
   'equipos_electronicos',
-];
+]
 
 // Ícono por código de sublímite en el panel "Cotización en vivo" — códigos reales de MRC
 // (migración 012/019), fallback genérico para cualquier código sin ícono propio definido.
@@ -190,12 +227,12 @@ const SUBLIMITE_ICONOS = {
   sublimite_murallas_cercos: ICON_SUBLIMITE_MURALLAS,
   incendio_edificio: ICON_RAMO_HOGAR,
   incendio_contenido: ICON_RAMO_INCENDIO,
-};
+}
 
 // Ícono de precio para el footnote de "Detalle del plan" — no vive en nav-icons.js porque
 // es específico de esta franja de resumen, no de la navegación.
-const ICON_TAG = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M11.5 3.5H5a1.5 1.5 0 0 0-1.5 1.5v6.5a1.5 1.5 0 0 0 .44 1.06l8 8a1.5 1.5 0 0 0 2.12 0l6.5-6.5a1.5 1.5 0 0 0 0-2.12l-8-8A1.5 1.5 0 0 0 11.5 3.5z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"></path><circle cx="8.2" cy="8.2" r="1.4" fill="currentColor"></circle></svg>`;
-const ICON_PLUS = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path></svg>`;
+const ICON_TAG = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M11.5 3.5H5a1.5 1.5 0 0 0-1.5 1.5v6.5a1.5 1.5 0 0 0 .44 1.06l8 8a1.5 1.5 0 0 0 2.12 0l6.5-6.5a1.5 1.5 0 0 0 0-2.12l-8-8A1.5 1.5 0 0 0 11.5 3.5z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"></path><circle cx="8.2" cy="8.2" r="1.4" fill="currentColor"></circle></svg>`
+const ICON_PLUS = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path></svg>`
 
 // Sublímites de MRC fijos por defecto — leídos de `plan_coberturas.incluida_por_defecto` del
 // plan elegido (WU6, 2026-07-17), en vez de la vieja constante hardcodeada SUBLIMITES_FIJOS_MRC.
@@ -206,42 +243,46 @@ const ICON_PLUS = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><
 // pero se filtran igual por defensividad ante un dato inesperado.
 function sublimitesFijosMrc() {
   return state.planCoberturas
-    .filter((pc) => pc.incluida_por_defecto && !CODIGOS_COBERTURA_EXCLUIDOS_BASE.includes(pc.coberturas_catalogo?.codigo))
+    .filter(
+      (pc) =>
+        pc.incluida_por_defecto &&
+        !CODIGOS_COBERTURA_EXCLUIDOS_BASE.includes(pc.coberturas_catalogo?.codigo)
+    )
     .map((pc) => ({
       codigo: pc.coberturas_catalogo?.codigo,
       nombre: pc.coberturas_catalogo?.nombre ?? pc.coberturas_catalogo?.codigo,
       monto: pc.monto,
     }))
-    .filter((s) => s.codigo);
+    .filter((s) => s.codigo)
 }
 
-let debounceTimer = null;
-const app = document.getElementById('app');
+let debounceTimer = null
+const app = document.getElementById('app')
 
 async function init() {
   if (!auth.isLoggedIn()) {
-    window.location.href = '../login/';
-    return;
+    window.location.href = '../login/'
+    return
   }
   try {
-    state.ramosActivos = await api.get('/ramos');
+    state.ramosActivos = await api.get('/ramos')
   } catch (err) {
-    console.error('No se pudo cargar la lista de ramos', err);
-    state.ramosActivos = [];
+    console.error('No se pudo cargar la lista de ramos', err)
+    state.ramosActivos = []
   }
 
-  const params = new URLSearchParams(location.search);
-  const editarId = params.get('editar');
+  const params = new URLSearchParams(location.search)
+  const editarId = params.get('editar')
   if (editarId) {
-    await cargarParaEditar(Number(editarId));
+    await cargarParaEditar(Number(editarId))
   } else {
-    const ramoParam = params.get('ramo');
+    const ramoParam = params.get('ramo')
     if (ramoParam) {
-      await selectRamo(ramoParam);
+      await selectRamo(ramoParam)
     }
   }
 
-  renderApp();
+  renderApp()
 }
 
 // ---------------------------------------------------------------------------
@@ -253,98 +294,99 @@ async function init() {
 // ---------------------------------------------------------------------------
 
 async function cargarParaEditar(id) {
-  let cotizacion;
+  let cotizacion
   try {
-    cotizacion = await api.get(`/cotizaciones/${id}`);
+    cotizacion = await api.get(`/cotizaciones/${id}`)
   } catch (err) {
-    mostrarBanner('error', err.message || 'No se pudo cargar la cotización para editar.');
-    return;
+    mostrarBanner('error', err.message || 'No se pudo cargar la cotización para editar.')
+    return
   }
 
-  const ramo = state.ramosActivos.find((r) => r.id === cotizacion.ramo_id);
+  const ramo = state.ramosActivos.find((r) => r.id === cotizacion.ramo_id)
   if (!ramo) {
-    mostrarBanner('error', 'No se encontró el ramo de esta cotización.');
-    return;
+    mostrarBanner('error', 'No se encontró el ramo de esta cotización.')
+    return
   }
 
-  state.editandoId = id;
-  state.ramoId = ramo.nombre;
-  state.view = 'form';
+  state.editandoId = id
+  state.ramoId = ramo.nombre
+  state.view = 'form'
 
   try {
-    state.planes = await api.get(`/ramos/${ramo.id}/planes`);
+    state.planes = await api.get(`/ramos/${ramo.id}/planes`)
   } catch (err) {
-    console.error('No se pudieron cargar los planes del ramo', err);
-    state.planes = [];
+    console.error('No se pudieron cargar los planes del ramo', err)
+    state.planes = []
   }
-  state.planId = cotizacion.plan_id;
+  state.planId = cotizacion.plan_id
 
   if (ramo.nombre === 'mrc' || ramo.nombre === 'incendio') {
     try {
-      state.rubros = await api.get('/ramos/rubros-actividad');
+      state.rubros = await api.get('/ramos/rubros-actividad')
     } catch (err) {
-      console.error('No se pudieron cargar los tipos de riesgo', err);
-      state.rubros = [];
+      console.error('No se pudieron cargar los tipos de riesgo', err)
+      state.rubros = []
     }
   }
 
   if (ramo.nombre === 'mrc') {
-    await cargarCoberturasCatalogo(ramo.id);
-    await cargarPlanCoberturas(state.planId);
+    await cargarCoberturasCatalogo(ramo.id)
+    await cargarPlanCoberturas(state.planId)
   }
 
-  const plan = state.planes.find((p) => p.id === state.planId);
-  prefillDatosDesdeCotizacion(ramo.nombre, plan, cotizacion);
+  const plan = state.planes.find((p) => p.id === state.planId)
+  prefillDatosDesdeCotizacion(ramo.nombre, plan, cotizacion)
 
   if (RAMOS_CON_CALCULO.includes(ramo.nombre)) {
-    await calcularPreview();
+    await calcularPreview()
   }
 }
 
 // Traduce `cotizacion.riesgo_datos` (shape guardado por cada calculador — ver
 // armarRiesgoDatos()) de vuelta a los campos de state.data que usa el formulario.
 function prefillDatosDesdeCotizacion(ramoNombre, plan, cotizacion) {
-  const rd = cotizacion.riesgo_datos || {};
-  state.data.clienteNombre = cotizacion.cliente_nombre || '';
+  const rd = cotizacion.riesgo_datos || {}
+  state.data.clienteNombre = cotizacion.cliente_nombre || ''
 
   if (ramoNombre === 'mrc') {
-    state.data.cedula = rd.cedula || '';
-    state.data.direccion = rd.direccion || '';
-    state.data.rubroActividad = rd.rubro_actividad || '';
-    state.data.ciudad = rd.ciudad || '';
-    state.data.capitalEdificio = rd.capital_edificio || '';
-    state.data.capitalContenido = rd.capital_contenido || '';
+    state.data.cedula = rd.cedula || ''
+    state.data.direccion = rd.direccion || ''
+    state.data.rubroActividad = rd.rubro_actividad || ''
+    state.data.ciudad = rd.ciudad || ''
+    state.data.capitalEdificio = rd.capital_edificio || ''
+    state.data.capitalContenido = rd.capital_contenido || ''
 
     // Los sublímites fijos del plan (ver sublimitesFijosMrc()) ya se re-agregan solos en
     // armarRiesgoDatos() — no deben duplicarse acá como línea editable de "Coberturas adicionales".
-    const codigosFijos = new Set(sublimitesFijosMrc().map((s) => s.codigo));
+    const codigosFijos = new Set(sublimitesFijosMrc().map((s) => s.codigo))
     state.coberturasAdicionales = (rd.coberturas_adicionales || [])
       .filter((c) => c.codigo && !codigosFijos.has(c.codigo))
-      .map((c) => ({ id: crypto.randomUUID(), codigo: c.codigo, sumaAsegurada: c.suma_asegurada }));
+      .map((c) => ({ id: crypto.randomUUID(), codigo: c.codigo, sumaAsegurada: c.suma_asegurada }))
 
     for (const [codigo, monto] of Object.entries(rd.franquicias_por_cobertura || {})) {
-      state.franquiciasPorCobertura[codigo] = franquiciaValorPorDefecto(monto);
+      state.franquiciasPorCobertura[codigo] = franquiciaValorPorDefecto(monto)
     }
   } else if (ramoNombre === 'incendio') {
     if (plan?.nombre === 'MAQUINARIA BASICO') {
-      state.data.capitalMaquinaria = rd.capital_maquinaria || '';
+      state.data.capitalMaquinaria = rd.capital_maquinaria || ''
       if (rd.sublimite_vandalismo_porcentaje != null) {
-        state.data.sublimiteVandalismoPorcentaje = rd.sublimite_vandalismo_porcentaje;
+        state.data.sublimiteVandalismoPorcentaje = rd.sublimite_vandalismo_porcentaje
       }
     } else {
-      state.data.rubroActividad = rd.rubro_actividad || '';
-      state.data.capitalEdificio = rd.capital_edificio || '';
-      state.data.capitalContenido = rd.capital_contenido || '';
+      state.data.rubroActividad = rd.rubro_actividad || ''
+      state.data.capitalEdificio = rd.capital_edificio || ''
+      state.data.capitalContenido = rd.capital_contenido || ''
       if (rd.sublimite_fenomenos_naturales_porcentaje != null) {
-        state.data.sublimiteFenomenosNaturalesPorcentaje = rd.sublimite_fenomenos_naturales_porcentaje;
+        state.data.sublimiteFenomenosNaturalesPorcentaje =
+          rd.sublimite_fenomenos_naturales_porcentaje
       }
     }
   } else if (ramoNombre === 'vida-ap') {
-    state.data.capitalAsegurado = rd.capital_asegurado || '';
-    if (rd.edad != null) state.data.edad = rd.edad;
+    state.data.capitalAsegurado = rd.capital_asegurado || ''
+    if (rd.edad != null) state.data.edad = rd.edad
     if (rd.incluye_renta_diaria) {
-      state.data.incluyeRentaDiaria = true;
-      state.data.sumaRentaDiaria = rd.suma_renta_diaria || '';
+      state.data.incluyeRentaDiaria = true
+      state.data.sumaRentaDiaria = rd.suma_renta_diaria || ''
     }
   }
 
@@ -352,21 +394,21 @@ function prefillDatosDesdeCotizacion(ramoNombre, plan, cotizacion) {
   // (cotizacion_ajustes), no con el % crudo que haya tipeado el agente en su momento (ese dato
   // no se persiste por separado, ver comentario de insertAjustes en cotizaciones.repository.js).
   if (RAMOS_CON_AJUSTES.includes(ramoNombre)) {
-    const variante = cotizacion.cotizacion_variantes?.[0];
-    const ajustes = variante?.cotizacion_ajustes || [];
-    const descuento = ajustes.find((a) => a.tipo === 'descuento');
-    const recargo = ajustes.find((a) => a.tipo === 'recargo');
-    if (descuento) state.data.descuentoMonto = descuento.monto;
-    if (recargo) state.data.recargoMonto = recargo.monto;
+    const variante = cotizacion.cotizacion_variantes?.[0]
+    const ajustes = variante?.cotizacion_ajustes || []
+    const descuento = ajustes.find((a) => a.tipo === 'descuento')
+    const recargo = ajustes.find((a) => a.tipo === 'recargo')
+    if (descuento) state.data.descuentoMonto = descuento.monto
+    if (recargo) state.data.recargoMonto = recargo.monto
   }
 
-  const cuotas = cotizacion.cotizacion_variantes?.[0]?.cotizacion_plan_pago?.[0]?.cantidad_cuotas;
-  if (cuotas != null) state.data.cuotas = cuotas;
+  const cuotas = cotizacion.cotizacion_variantes?.[0]?.cotizacion_plan_pago?.[0]?.cantidad_cuotas
+  if (cuotas != null) state.data.cuotas = cuotas
 }
 
 async function cerrarSesion() {
-  await auth.logout();
-  window.location.href = '../login/';
+  await auth.logout()
+  window.location.href = '../login/'
 }
 
 // ---------------------------------------------------------------------------
@@ -374,16 +416,16 @@ async function cerrarSesion() {
 // ---------------------------------------------------------------------------
 
 function mostrarBanner(tipo, texto) {
-  state.banner = { tipo, texto };
-  renderApp();
+  state.banner = { tipo, texto }
+  renderApp()
 }
 
 function ramoInfo(nombre) {
-  return RAMOS_UI.find((r) => r.nombre === nombre) || null;
+  return RAMOS_UI.find((r) => r.nombre === nombre) || null
 }
 
 function ramoActivo(nombre) {
-  return state.ramosActivos.find((r) => r.nombre === nombre) || null;
+  return state.ramosActivos.find((r) => r.nombre === nombre) || null
 }
 
 // ---------------------------------------------------------------------------
@@ -395,47 +437,47 @@ async function selectRamo(nombre) {
   // el ramo de una cotización existente (actualizarCotizacion, cotizacion.service.js), así que
   // sin este reset el agente llenaría todo el formulario de otro ramo para recién enterarse del
   // 422 al guardar — detectado en review-readability/risk de la feature de edición.
-  state.editandoId = null;
-  state.ramoId = nombre;
-  state.view = 'form';
-  state.data = {};
-  state.planId = null;
-  state.planes = [];
-  state.franquiciasPorCobertura = {};
-  state.rubros = [];
-  state.coberturasCatalogo = [];
-  state.planCoberturas = [];
-  state.coberturasAdicionales = [];
-  state.preview = null;
-  state.previewError = null;
-  state.formaPagoCodigo = null;
-  renderApp();
+  state.editandoId = null
+  state.ramoId = nombre
+  state.view = 'form'
+  state.data = {}
+  state.planId = null
+  state.planes = []
+  state.franquiciasPorCobertura = {}
+  state.rubros = []
+  state.coberturasCatalogo = []
+  state.planCoberturas = []
+  state.coberturasAdicionales = []
+  state.preview = null
+  state.previewError = null
+  state.formaPagoCodigo = null
+  renderApp()
 
-  const ramo = ramoActivo(nombre);
-  if (!ramo) return;
+  const ramo = ramoActivo(nombre)
+  if (!ramo) return
 
   try {
-    state.planes = await api.get(`/ramos/${ramo.id}/planes`);
+    state.planes = await api.get(`/ramos/${ramo.id}/planes`)
   } catch (err) {
-    console.error('No se pudieron cargar los planes del ramo', err);
-    state.planes = [];
+    console.error('No se pudieron cargar los planes del ramo', err)
+    state.planes = []
   }
 
   if (RAMOS_CON_CALCULO.includes(nombre)) {
     // Preselecciona el primer plan calculable hoy (RPF/tasas confirmados).
-    const planCalculable = state.planes.find((p) => planEsCalculable(nombre, p));
-    state.planId = planCalculable ? planCalculable.id : state.planes[0]?.id ?? null;
-    state.data.cuotas = planCalculable?.cuotas_default ?? null;
+    const planCalculable = state.planes.find((p) => planEsCalculable(nombre, p))
+    state.planId = planCalculable ? planCalculable.id : (state.planes[0]?.id ?? null)
+    state.data.cuotas = planCalculable?.cuotas_default ?? null
 
     if (nombre === 'mrc' || nombre === 'incendio') {
       try {
         // Sin filtro de grupo: la pantalla "Tipo de Riesgo" del sistema de escritorio
         // muestra los 49 rubros juntos (MRC y TRO comparten la misma lista visual). Incendio
         // solo usa esta lista para el plan "Edificio y Contenido" (Maquinaria Básico no).
-        state.rubros = await api.get('/ramos/rubros-actividad');
+        state.rubros = await api.get('/ramos/rubros-actividad')
       } catch (err) {
-        console.error('No se pudieron cargar los tipos de riesgo', err);
-        state.rubros = [];
+        console.error('No se pudieron cargar los tipos de riesgo', err)
+        state.rubros = []
       }
     }
 
@@ -443,26 +485,26 @@ async function selectRamo(nombre) {
       // El catálogo de coberturas es por RAMO, no por plan (mismas coberturas disponibles
       // para "Normal" y "Protección Total") — se carga una sola vez acá. Solo MRC usa
       // "Coberturas adicionales" en esta pasada.
-      await cargarCoberturasCatalogo(ramo.id);
-      if (state.planId) await cargarPlanCoberturas(state.planId);
+      await cargarCoberturasCatalogo(ramo.id)
+      if (state.planId) await cargarPlanCoberturas(state.planId)
     }
   } else {
-    state.planId = state.planes[0]?.id ?? null;
+    state.planId = state.planes[0]?.id ?? null
   }
 
-  renderApp();
+  renderApp()
 }
 
 function selectPlan(planId) {
-  const plan = state.planes.find((p) => p.id === planId);
-  if (!plan || !planEsCalculable(state.ramoId, plan)) return; // plan sin RPF/tasas confirmadas: bloqueado
-  state.planId = planId;
-  state.data.cuotas = plan.cuotas_default ?? null;
-  state.coberturasAdicionales = [];
-  renderApp();
-  scheduleCalculate();
+  const plan = state.planes.find((p) => p.id === planId)
+  if (!plan || !planEsCalculable(state.ramoId, plan)) return // plan sin RPF/tasas confirmadas: bloqueado
+  state.planId = planId
+  state.data.cuotas = plan.cuotas_default ?? null
+  state.coberturasAdicionales = []
+  renderApp()
+  scheduleCalculate()
   if (state.ramoId === 'mrc') {
-    cargarPlanCoberturas(planId).then(renderApp);
+    cargarPlanCoberturas(planId).then(renderApp)
   }
 }
 
@@ -472,10 +514,10 @@ function selectPlan(planId) {
 // Se usa para poblar el selector de "Coberturas adicionales" con nombre + categoría.
 async function cargarCoberturasCatalogo(ramoId) {
   try {
-    state.coberturasCatalogo = await api.get(`/ramos/${ramoId}/coberturas-catalogo`);
+    state.coberturasCatalogo = await api.get(`/ramos/${ramoId}/coberturas-catalogo`)
   } catch (err) {
-    console.error('No se pudo cargar el catálogo de coberturas del ramo', err);
-    state.coberturasCatalogo = [];
+    console.error('No se pudo cargar el catálogo de coberturas del ramo', err)
+    state.coberturasCatalogo = []
   }
 }
 
@@ -486,10 +528,10 @@ async function cargarCoberturasCatalogo(ramoId) {
 // el flujo — sublimitesFijosMrc() simplemente no devuelve filas.
 async function cargarPlanCoberturas(planId) {
   try {
-    state.planCoberturas = await api.get(`/planes/${planId}/coberturas`);
+    state.planCoberturas = await api.get(`/planes/${planId}/coberturas`)
   } catch (err) {
-    console.error('No se pudo cargar las coberturas fijas del plan', err);
-    state.planCoberturas = [];
+    console.error('No se pudo cargar las coberturas fijas del plan', err)
+    state.planCoberturas = []
   }
 }
 
@@ -497,35 +539,38 @@ async function cargarPlanCoberturas(planId) {
 // (tienen su propio campo), sin sublimite_cctv (sin tasa cargada todavía — no cotizable), y sin
 // los sublímites fijos por defecto del plan actual (ver sublimitesFijosMrc()).
 function coberturasDisponibles() {
-  const excluidos = [...CODIGOS_COBERTURA_EXCLUIDOS_BASE, ...sublimitesFijosMrc().map((s) => s.codigo)];
-  return state.coberturasCatalogo.filter((c) => !excluidos.includes(c.codigo));
+  const excluidos = [
+    ...CODIGOS_COBERTURA_EXCLUIDOS_BASE,
+    ...sublimitesFijosMrc().map((s) => s.codigo),
+  ]
+  return state.coberturasCatalogo.filter((c) => !excluidos.includes(c.codigo))
 }
 
 function selectFormaPago(codigo) {
-  state.formaPagoCodigo = codigo;
-  renderLivePanel();
-  if (state.view === 'result') renderApp();
+  state.formaPagoCodigo = codigo
+  renderLivePanel()
+  if (state.view === 'result') renderApp()
 }
 
 function selectFranquicia(codigoCobertura, valor) {
-  state.franquiciasPorCobertura[codigoCobertura] = valor;
+  state.franquiciasPorCobertura[codigoCobertura] = valor
 }
 
 function setView(view) {
-  state.view = view;
-  renderApp();
+  state.view = view
+  renderApp()
 }
 
 function updateField(key, value) {
-  state.data[key] = value;
+  state.data[key] = value
   if (RAMOS_CON_CALCULO.includes(state.ramoId)) {
-    scheduleCalculate();
+    scheduleCalculate()
   }
 }
 
 function scheduleCalculate() {
-  clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(calcularPreview, DEBOUNCE_MS);
+  clearTimeout(debounceTimer)
+  debounceTimer = setTimeout(calcularPreview, DEBOUNCE_MS)
 }
 
 // ---------------------------------------------------------------------------
@@ -533,79 +578,87 @@ function scheduleCalculate() {
 // ---------------------------------------------------------------------------
 
 function addCoberturaLinea() {
-  state.coberturasAdicionales.push({ id: crypto.randomUUID(), codigo: '', sumaAsegurada: '' });
-  renderApp(); // fila nueva: hace falta re-render completo
+  state.coberturasAdicionales.push({ id: crypto.randomUUID(), codigo: '', sumaAsegurada: '' })
+  renderApp() // fila nueva: hace falta re-render completo
 }
 
 function removeCoberturaLinea(id) {
-  state.coberturasAdicionales = state.coberturasAdicionales.filter((l) => l.id !== id);
-  renderApp();
-  scheduleCalculate();
+  state.coberturasAdicionales = state.coberturasAdicionales.filter((l) => l.id !== id)
+  renderApp()
+  scheduleCalculate()
 }
 
 function updateCoberturaLinea(id, field, value) {
-  const linea = state.coberturasAdicionales.find((l) => l.id === id);
-  if (!linea) return;
-  linea[field] = value;
-  scheduleCalculate();
+  const linea = state.coberturasAdicionales.find((l) => l.id === id)
+  if (!linea) return
+  linea[field] = value
+  scheduleCalculate()
 }
 
 function datosMinimosCompletos() {
-  if (!RAMOS_CON_CALCULO.includes(state.ramoId) || !state.planId) return false;
-  const plan = state.planes.find((p) => p.id === state.planId);
-  if (!planEsCalculable(state.ramoId, plan)) return false;
-  const d = state.data;
+  if (!RAMOS_CON_CALCULO.includes(state.ramoId) || !state.planId) return false
+  const plan = state.planes.find((p) => p.id === state.planId)
+  if (!planEsCalculable(state.ramoId, plan)) return false
+  const d = state.data
 
   if (state.ramoId === 'mrc') {
-    const capitalEdificio = Number(d.capitalEdificio) || 0;
-    const capitalContenido = Number(d.capitalContenido) || 0;
-    return Boolean(d.rubroActividad) && Boolean(d.ciudad) && (capitalEdificio > 0 || capitalContenido > 0);
+    const capitalEdificio = Number(d.capitalEdificio) || 0
+    const capitalContenido = Number(d.capitalContenido) || 0
+    return (
+      Boolean(d.rubroActividad) &&
+      Boolean(d.ciudad) &&
+      (capitalEdificio > 0 || capitalContenido > 0)
+    )
   }
 
   if (state.ramoId === 'incendio') {
     if (plan.nombre === 'MAQUINARIA BASICO') {
-      return (Number(d.capitalMaquinaria) || 0) > 0;
+      return (Number(d.capitalMaquinaria) || 0) > 0
     }
-    const capitalEdificio = Number(d.capitalEdificio) || 0;
-    const capitalContenido = Number(d.capitalContenido) || 0;
-    return Boolean(d.rubroActividad) && Boolean(d.ciudad) && (capitalEdificio > 0 || capitalContenido > 0);
+    const capitalEdificio = Number(d.capitalEdificio) || 0
+    const capitalContenido = Number(d.capitalContenido) || 0
+    return (
+      Boolean(d.rubroActividad) &&
+      Boolean(d.ciudad) &&
+      (capitalEdificio > 0 || capitalContenido > 0)
+    )
   }
 
   if (state.ramoId === 'vida-ap') {
-    const capitalAsegurado = Number(d.capitalAsegurado) || 0;
-    if (plan.nombre === 'PROTECCION FAMILIAR') return capitalAsegurado > 0;
-    return capitalAsegurado > 0 && Boolean(d.edad);
+    const capitalAsegurado = Number(d.capitalAsegurado) || 0
+    if (plan.nombre === 'PROTECCION FAMILIAR') return capitalAsegurado > 0
+    return capitalAsegurado > 0 && Boolean(d.edad)
   }
 
-  return false;
+  return false
 }
 
 // `capital_asegurado` es una columna propia de `cotizaciones` (no del cálculo de prima en sí,
 // cada calculador usa sus propios campos de riesgo_datos) — se manda siempre en el body porque
 // el schema de validación de cada ramo lo exige (ver schemas/mrc|incendio|vida-ap.schema.js).
 function capitalAseguradoParaBody(plan) {
-  const d = state.data;
+  const d = state.data
 
   if (state.ramoId === 'mrc') {
-    return (Number(d.capitalEdificio) || 0) + (Number(d.capitalContenido) || 0);
+    return (Number(d.capitalEdificio) || 0) + (Number(d.capitalContenido) || 0)
   }
 
   if (state.ramoId === 'incendio') {
-    if (plan?.nombre === 'MAQUINARIA BASICO') return Number(d.capitalMaquinaria) || 0;
-    return (Number(d.capitalEdificio) || 0) + (Number(d.capitalContenido) || 0);
+    if (plan?.nombre === 'MAQUINARIA BASICO') return Number(d.capitalMaquinaria) || 0
+    return (Number(d.capitalEdificio) || 0) + (Number(d.capitalContenido) || 0)
   }
 
   if (state.ramoId === 'vida-ap') {
-    return Number(d.capitalAsegurado) || 0;
+    return Number(d.capitalAsegurado) || 0
   }
 
-  return 0;
+  return 0
 }
 
 // Arma el `riesgo_datos` esperado por el calculador del ramo/plan actual (ver
 // incendio.calculator.js / vida-ap.calculator.js para el shape exacto).
 function armarRiesgoDatos(plan) {
-  const d = state.data;
+  const d = state.data
 
   if (state.ramoId === 'mrc') {
     return {
@@ -622,7 +675,7 @@ function armarRiesgoDatos(plan) {
           .map((l) => ({ codigo: l.codigo, suma_asegurada: Number(l.sumaAsegurada) })),
       ],
       franquicias_por_cobertura: franquiciasPorCoberturaParaBody(),
-    };
+    }
   }
 
   if (state.ramoId === 'incendio') {
@@ -632,47 +685,55 @@ function armarRiesgoDatos(plan) {
         ...(d.sublimiteVandalismoPorcentaje !== undefined && d.sublimiteVandalismoPorcentaje !== ''
           ? { sublimite_vandalismo_porcentaje: Number(d.sublimiteVandalismoPorcentaje) }
           : {}),
-      };
+      }
     }
     return {
       rubro_actividad: d.rubroActividad || '',
       capital_edificio: Number(d.capitalEdificio) || 0,
       capital_contenido: Number(d.capitalContenido) || 0,
-      ...(d.sublimiteFenomenosNaturalesPorcentaje !== undefined && d.sublimiteFenomenosNaturalesPorcentaje !== ''
-        ? { sublimite_fenomenos_naturales_porcentaje: Number(d.sublimiteFenomenosNaturalesPorcentaje) }
+      ...(d.sublimiteFenomenosNaturalesPorcentaje !== undefined &&
+      d.sublimiteFenomenosNaturalesPorcentaje !== ''
+        ? {
+            sublimite_fenomenos_naturales_porcentaje: Number(
+              d.sublimiteFenomenosNaturalesPorcentaje
+            ),
+          }
         : {}),
-    };
+    }
   }
 
   if (state.ramoId === 'vida-ap') {
-    const base = { capital_asegurado: Number(d.capitalAsegurado) || 0 };
-    if (plan.nombre === 'PROTECCION FAMILIAR') return base;
+    const base = { capital_asegurado: Number(d.capitalAsegurado) || 0 }
+    if (plan.nombre === 'PROTECCION FAMILIAR') return base
 
-    base.edad = Number(d.edad) || null;
-    if (plan.nombre === 'ACCIDENTES PERSONALES - SECTOR COOPERATIVO' || plan.nombre === 'ACCIDENTES PERSONALES - SECTOR PRIVADO') {
+    base.edad = Number(d.edad) || null
+    if (
+      plan.nombre === 'ACCIDENTES PERSONALES - SECTOR COOPERATIVO' ||
+      plan.nombre === 'ACCIDENTES PERSONALES - SECTOR PRIVADO'
+    ) {
       if (d.incluyeRentaDiaria) {
-        base.incluye_renta_diaria = true;
-        base.suma_renta_diaria = Number(d.sumaRentaDiaria) || 0;
+        base.incluye_renta_diaria = true
+        base.suma_renta_diaria = Number(d.sumaRentaDiaria) || 0
       }
     }
-    return base;
+    return base
   }
 
-  return {};
+  return {}
 }
 
 async function calcularPreview() {
   if (!datosMinimosCompletos()) {
-    state.preview = null;
-    state.previewError = null;
-    renderLivePanel();
-    if (state.view === 'result') renderApp();
-    syncAvanceButtons();
-    return;
+    state.preview = null
+    state.previewError = null
+    renderLivePanel()
+    if (state.view === 'result') renderApp()
+    syncAvanceButtons()
+    return
   }
 
-  const d = state.data;
-  const plan = state.planes.find((p) => p.id === state.planId);
+  const d = state.data
+  const plan = state.planes.find((p) => p.id === state.planId)
   const body = {
     plan_id: state.planId,
     capital_asegurado: capitalAseguradoParaBody(plan),
@@ -681,37 +742,38 @@ async function calcularPreview() {
     recargos: recargosParaBody(),
     cliente_nombre: d.clienteNombre || '',
     ...(d.cuotas ? { cuotas: Number(d.cuotas) } : {}),
-  };
+  }
 
-  state.loadingPreview = true;
-  renderLivePanel();
+  state.loadingPreview = true
+  renderLivePanel()
 
   try {
-    const resultado = await api.post('/cotizaciones/calcular', body);
-    state.preview = resultado;
-    state.previewError = null;
+    const resultado = await api.post('/cotizaciones/calcular', body)
+    state.preview = resultado
+    state.previewError = null
     // Primera vez que llega un cálculo: default a "Contado" (sin RPF) si el agente
     // todavía no eligió forma de pago. Si ya había una elegida, se respeta.
     if (!state.formaPagoCodigo) {
-      state.formaPagoCodigo = resultado.variantes?.[0]?.formasPago?.find((fp) => fp.codigo === 'contado')?.codigo
-        ?? resultado.variantes?.[0]?.formasPago?.[0]?.codigo
-        ?? null;
+      state.formaPagoCodigo =
+        resultado.variantes?.[0]?.formasPago?.find((fp) => fp.codigo === 'contado')?.codigo ??
+        resultado.variantes?.[0]?.formasPago?.[0]?.codigo ??
+        null
     }
     // Defaultea la franquicia de cada cobertura nueva a la de catálogo — sin pisar una que
     // el agente ya haya elegido a mano en esta misma cotización.
     for (const c of resultado.coberturas || []) {
       if (!(c.codigo in state.franquiciasPorCobertura)) {
-        state.franquiciasPorCobertura[c.codigo] = franquiciaValorPorDefecto(c.franquicia_default);
+        state.franquiciasPorCobertura[c.codigo] = franquiciaValorPorDefecto(c.franquicia_default)
       }
     }
   } catch (err) {
-    state.preview = null;
-    state.previewError = err.message || 'No se pudo calcular la cotización.';
+    state.preview = null
+    state.previewError = err.message || 'No se pudo calcular la cotización.'
   } finally {
-    state.loadingPreview = false;
-    renderLivePanel();
-    if (state.view === 'result') renderApp();
-    syncAvanceButtons();
+    state.loadingPreview = false
+    renderLivePanel()
+    if (state.view === 'result') renderApp()
+    syncAvanceButtons()
   }
 }
 
@@ -719,10 +781,10 @@ async function calcularPreview() {
 // pasada por el formulario) y descarga el PDF de la Carta Oferta. Reutiliza exactamente el mismo
 // body que calcularPreview — el backend valida y calcula de nuevo antes de persistir.
 async function emitirCartaOferta() {
-  if (state.emitiendoCarta || !state.preview) return;
+  if (state.emitiendoCarta || !state.preview) return
 
-  const d = state.data;
-  const plan = state.planes.find((p) => p.id === state.planId);
+  const d = state.data
+  const plan = state.planes.find((p) => p.id === state.planId)
   const body = {
     plan_id: state.planId,
     capital_asegurado: capitalAseguradoParaBody(plan),
@@ -731,23 +793,23 @@ async function emitirCartaOferta() {
     recargos: recargosParaBody(),
     cliente_nombre: d.clienteNombre || '',
     ...(d.cuotas ? { cuotas: Number(d.cuotas) } : {}),
-  };
+  }
 
-  state.emitiendoCarta = true;
-  renderApp();
+  state.emitiendoCarta = true
+  renderApp()
 
   try {
     const cotizacion = state.editandoId
       ? await api.put(`/cotizaciones/${state.editandoId}`, body)
-      : await api.post('/cotizaciones', body);
-    const blob = await api.getBlob(`/cotizaciones/${cotizacion.id}/pdf-oferta`);
-    const url = URL.createObjectURL(blob);
-    window.open(url, '_blank');
+      : await api.post('/cotizaciones', body)
+    const blob = await api.getBlob(`/cotizaciones/${cotizacion.id}/pdf-oferta`)
+    const url = URL.createObjectURL(blob)
+    window.open(url, '_blank')
   } catch (err) {
-    mostrarBanner('error', err.message || 'No se pudo generar la Carta Oferta.');
+    mostrarBanner('error', err.message || 'No se pudo generar la Carta Oferta.')
   } finally {
-    state.emitiendoCarta = false;
-    renderApp();
+    state.emitiendoCarta = false
+    renderApp()
   }
 }
 
@@ -757,21 +819,23 @@ async function emitirCartaOferta() {
 // a un cálculo válido. Se actualizan acá directo sobre el DOM en vez de un renderApp() completo,
 // para no perder el foco/cursor de los inputs mientras el agente sigue tipeando.
 function syncAvanceButtons() {
-  const habilitado = puedeAvanzarADetalle();
-  const title = habilitado ? '' : 'Corregí el capital declarado antes de avanzar — ver el mensaje de alerta';
+  const habilitado = puedeAvanzarADetalle()
+  const title = habilitado
+    ? ''
+    : 'Corregí el capital declarado antes de avanzar — ver el mensaje de alerta'
 
-  const boton = document.getElementById('btn-ver-detalle');
+  const boton = document.getElementById('btn-ver-detalle')
   if (boton) {
-    boton.disabled = !habilitado;
-    boton.title = title;
-    aplicarAriaBloqueo(boton, habilitado);
+    boton.disabled = !habilitado
+    boton.title = title
+    aplicarAriaBloqueo(boton, habilitado)
   }
 
-  const tab = document.getElementById('tab-detalle-plan');
+  const tab = document.getElementById('tab-detalle-plan')
   if (tab) {
-    tab.disabled = !habilitado;
-    tab.title = title;
-    aplicarAriaBloqueo(tab, habilitado);
+    tab.disabled = !habilitado
+    tab.title = title
+    aplicarAriaBloqueo(tab, habilitado)
   }
 }
 
@@ -780,11 +844,11 @@ function syncAvanceButtons() {
 // del motivo, ya visible en el panel "Cotización en vivo" (ver MOTIVO_BLOQUEO_ID).
 function aplicarAriaBloqueo(el, habilitado) {
   if (habilitado) {
-    el.removeAttribute('aria-disabled');
-    el.removeAttribute('aria-describedby');
+    el.removeAttribute('aria-disabled')
+    el.removeAttribute('aria-describedby')
   } else {
-    el.setAttribute('aria-disabled', 'true');
-    el.setAttribute('aria-describedby', MOTIVO_BLOQUEO_ID);
+    el.setAttribute('aria-disabled', 'true')
+    el.setAttribute('aria-describedby', MOTIVO_BLOQUEO_ID)
   }
 }
 
@@ -797,13 +861,13 @@ function aplicarAriaBloqueo(el, habilitado) {
 // ---------------------------------------------------------------------------
 
 function formasPagoDisponibles() {
-  return state.preview?.variantes?.[0]?.formasPago ?? [];
+  return state.preview?.variantes?.[0]?.formasPago ?? []
 }
 
 function formaPagoSeleccionada() {
-  const formas = formasPagoDisponibles();
-  if (!formas.length) return null;
-  return formas.find((fp) => fp.codigo === state.formaPagoCodigo) || formas[0];
+  const formas = formasPagoDisponibles()
+  if (!formas.length) return null
+  return formas.find((fp) => fp.codigo === state.formaPagoCodigo) || formas[0]
 }
 
 // ---------------------------------------------------------------------------
@@ -811,17 +875,17 @@ function formaPagoSeleccionada() {
 // ---------------------------------------------------------------------------
 
 function renderApp() {
-  const ramo = state.ramoId ? ramoInfo(state.ramoId) : null;
+  const ramo = state.ramoId ? ramoInfo(state.ramoId) : null
 
-  let contenido;
+  let contenido
   if (!ramo) {
-    contenido = renderEmptyState();
+    contenido = renderEmptyState()
   } else if (ramo.estado === 'pausa' || ramo.estado === 'proximamente') {
-    contenido = renderRamoNoDisponible(ramo);
+    contenido = renderRamoNoDisponible(ramo)
   } else if (state.view === 'form') {
-    contenido = renderDatosView(ramo);
+    contenido = renderDatosView(ramo)
   } else {
-    contenido = renderResultadoView(ramo);
+    contenido = renderResultadoView(ramo)
   }
 
   app.innerHTML = `
@@ -834,18 +898,18 @@ function renderApp() {
         ${contenido}
       </div>
     </div>
-  `;
+  `
 }
 
 function renderBanner() {
-  if (!state.banner) return '';
-  return `<div class="admin-banner admin-banner--${state.banner.tipo}">${escapeHtml(state.banner.texto)}</div>`;
+  if (!state.banner) return ''
+  return `<div class="admin-banner admin-banner--${state.banner.tipo}">${escapeHtml(state.banner.texto)}</div>`
 }
 
 // Versión del cotizador mostrada en el topbar y en el pie de página del sidebar (chrome de
 // UI, no viene de la base) — única fuente de verdad para que ambas queden siempre de la mano.
 // Se incrementa a mano cuando haya un cambio visible que valga la pena versionar.
-const COTIZADOR_VERSION = '1.0.1';
+const COTIZADOR_VERSION = '1.0.1'
 
 function renderTopbar(ramo) {
   return `
@@ -857,31 +921,36 @@ function renderTopbar(ramo) {
         </div>
       </div>
       <div class="topbar__crumb-area">
-        ${ramo ? `
+        ${
+          ramo
+            ? `
           <div class="topbar__breadcrumb">
             <span class="topbar__crumb-item">Cotizaciones</span>
             <span class="topbar__crumb-sep">›</span>
             <span class="topbar__crumb-item topbar__crumb-item--current">Nueva cotización</span>
           </div>
-        ` : '<div></div>'}
+        `
+            : '<div></div>'
+        }
         ${renderTopbarUser()}
       </div>
     </div>
-  `;
+  `
 }
 
 function renderSidebar() {
   const rows = RAMOS_UI.map((r) => {
-    const activa = r.nombre === state.ramoId;
-    const estadoTexto = r.estado === 'pausa' ? 'En pausa' : r.estado === 'proximamente' ? 'Próximamente' : '';
+    const activa = r.nombre === state.ramoId
+    const estadoTexto =
+      r.estado === 'pausa' ? 'En pausa' : r.estado === 'proximamente' ? 'Próximamente' : ''
     return `
       <div class="ramo-row ${activa ? 'ramo-row--activa' : ''} ${r.estado !== 'disponible' ? `ramo-row--${r.estado}` : ''}" data-action="select-ramo" data-ramo="${r.nombre}">
         <div class="ramo-row__icon">${RAMO_ICONOS[r.nombre] || ''}</div>
         <div class="ramo-row__label">${r.label}</div>
         ${estadoTexto ? `<div class="ramo-row__estado">${estadoTexto}</div>` : ''}
       </div>
-    `;
-  }).join('');
+    `
+  }).join('')
 
   return `
     <div class="sidebar">
@@ -893,13 +962,15 @@ function renderSidebar() {
         <div class="sidebar__credit">Powered by <strong>Kevin Ruiz Diaz</strong> v${COTIZADOR_VERSION}</div>
       </div>
     </div>
-  `;
+  `
 }
 
 function renderHeader(ramo) {
-  const subtitle = ramo ? `Cotizando ${ramo.label} para el cliente` : 'Elegí una sección para comenzar';
-  const showTabs = Boolean(ramo) && ramo.estado !== 'pausa' && ramo.estado !== 'proximamente';
-  const bloqueado = !puedeAvanzarADetalle();
+  const subtitle = ramo
+    ? `Cotizando ${ramo.label} para el cliente`
+    : 'Elegí una sección para comenzar'
+  const showTabs = Boolean(ramo) && ramo.estado !== 'pausa' && ramo.estado !== 'proximamente'
+  const bloqueado = !puedeAvanzarADetalle()
 
   return `
     <div class="main-header">
@@ -907,7 +978,9 @@ function renderHeader(ramo) {
         ${ramo ? '' : '<div class="main-header__title">Nueva cotización</div>'}
         <div class="main-header__subtitle">${escapeHtml(subtitle)}</div>
       </div>
-      ${showTabs ? `
+      ${
+        showTabs
+          ? `
         <div class="tabs">
           <button class="tab-btn ${state.view === 'form' ? 'tab-btn--active' : ''}" data-action="show-tab" data-view="form">Datos</button>
           <button
@@ -918,9 +991,11 @@ function renderHeader(ramo) {
             ${bloqueado ? `disabled title="Corregí el capital declarado antes de avanzar — ver el mensaje de alerta" aria-disabled="true" aria-describedby="${MOTIVO_BLOQUEO_ID}"` : ''}
           >Detalle del plan</button>
         </div>
-      ` : ''}
+      `
+          : ''
+      }
     </div>
-  `;
+  `
 }
 
 // El agente no puede pasar a "Detalle del plan" mientras haya una alerta bloqueante
@@ -928,20 +1003,22 @@ function renderHeader(ramo) {
 // Máxima Cotizable) — ver mrc.calculator.js. Otros ramos (sin calculador conectado todavía)
 // no tienen esta restricción.
 function puedeAvanzarADetalle() {
-  if (!RAMOS_CON_CALCULO.includes(state.ramoId)) return true;
-  return Boolean(state.preview) && !state.previewError;
+  if (!RAMOS_CON_CALCULO.includes(state.ramoId)) return true
+  return Boolean(state.preview) && !state.previewError
 }
 
 function renderPlanRow() {
-  const options = state.planes.map((p) => {
-    const calculable = planEsCalculable(state.ramoId, p);
-    const sufijo = calculable ? '' : ' (pendiente de confirmación)';
-    return `
+  const options = state.planes
+    .map((p) => {
+      const calculable = planEsCalculable(state.ramoId, p)
+      const sufijo = calculable ? '' : ' (pendiente de confirmación)'
+      return `
       <option value="${p.id}" ${p.id === state.planId ? 'selected' : ''} ${!calculable ? 'disabled' : ''}>
         ${escapeHtml(p.nombre)}${sufijo}
       </option>
-    `;
-  }).join('');
+    `
+    })
+    .join('')
 
   return `
     <div class="plan-row">
@@ -950,7 +1027,7 @@ function renderPlanRow() {
         <select class="field-input plan-row__select" data-action-select="select-plan">${options}</select>
       </div>
     </div>
-  `;
+  `
 }
 
 // Referencia visual de avance (1. Datos del plan → 2. Detalle del plan → 3. Carta oferta).
@@ -962,21 +1039,25 @@ function renderStepper() {
     { n: 1, label: 'Datos del plan', activo: state.view === 'form' },
     { n: 2, label: 'Detalle del plan', activo: state.view === 'result' },
     { n: 3, label: 'Carta oferta', activo: false },
-  ];
+  ]
 
   return `
     <div class="stepper-row">
       <div class="stepper">
-        ${pasos.map((p, i) => `
+        ${pasos
+          .map(
+            (p, i) => `
           <div class="stepper__step">
             <div class="stepper__circle ${p.activo ? 'stepper__circle--active' : ''}">${p.n}</div>
             <div class="stepper__label ${p.activo ? 'stepper__label--active' : ''}">${escapeHtml(p.label)}</div>
           </div>
           ${i < pasos.length - 1 ? '<div class="stepper__connector"></div>' : ''}
-        `).join('')}
+        `
+          )
+          .join('')}
       </div>
     </div>
-  `;
+  `
 }
 
 function renderEmptyState() {
@@ -992,25 +1073,26 @@ function renderEmptyState() {
       <div class="empty-state__title">Seleccioná un ramo en el panel izquierdo</div>
       <div class="empty-state__subtitle">El formulario y la cotización aparecerán acá.</div>
     </div>
-  `;
+  `
 }
 
 function renderRamoNoDisponible(ramo) {
-  const mensaje = ramo.nombre === 'auto'
-    ? 'Auto todavía no está disponible (Fase 2 pausada por prioridad de Kevin) — no se puede cotizar desde acá por ahora.'
-    : 'Multirriesgo Hogar todavía no fue solicitado por el cliente — próximamente.';
+  const mensaje =
+    ramo.nombre === 'auto'
+      ? 'Auto todavía no está disponible (Fase 2 pausada por prioridad de Kevin) — no se puede cotizar desde acá por ahora.'
+      : 'Multirriesgo Hogar todavía no fue solicitado por el cliente — próximamente.'
   return `
     <div class="empty-state">
       <div class="empty-state__title">${escapeHtml(ramo.label)}</div>
       <div class="empty-state__subtitle">${escapeHtml(mensaje)}</div>
     </div>
-  `;
+  `
 }
 
 // id="campo-..." derivado del data-field (camelCase -> kebab-case) para asociar cada
 // <label for="..."> con su input/select sin tener que hardcodear un id por campo.
 function idParaCampo(fieldKey) {
-  return `campo-${fieldKey.replace(/([A-Z])/g, '-$1').toLowerCase()}`;
+  return `campo-${fieldKey.replace(/([A-Z])/g, '-$1').toLowerCase()}`
 }
 
 // Campos "Tipo de Riesgo"/"Ciudad"/capitales del esqueleto MRC — reusado por MRC e Incendio
@@ -1040,7 +1122,7 @@ function camposEdificioContenido(sublimiteField) {
       <input class="field-input" id="${idParaCampo('capitalContenido')}" type="text" inputmode="numeric" data-field="capitalContenido" data-money="true" placeholder="120.000.000" value="${fmtGsInput(state.data.capitalContenido)}" />
     </div>
     ${sublimiteField || ''}
-  `;
+  `
 }
 
 function campoSublimitePorcentaje(field, label) {
@@ -1049,7 +1131,7 @@ function campoSublimitePorcentaje(field, label) {
       <label for="${idParaCampo(field)}">${label}</label>
       <input class="field-input" id="${idParaCampo(field)}" type="number" min="0" max="50" data-field="${field}" placeholder="0-50" value="${escapeHtml(state.data[field] ?? '')}" />
     </div>
-  `;
+  `
 }
 
 function camposEspecificosParaRamo(ramo, plan) {
@@ -1059,12 +1141,12 @@ function camposEspecificosParaRamo(ramo, plan) {
       <div class="field field--span2">
         ${renderCoberturasAdicionales(coberturasDisponibles())}
       </div>
-    `;
+    `
   }
 
   if (ramo.nombre === 'incendio') {
     if (!plan) {
-      return `<div class="field field--span2"><div class="live-summary__pending">Seleccioná un plan para ver el formulario.</div></div>`;
+      return `<div class="field field--span2"><div class="live-summary__pending">Seleccioná un plan para ver el formulario.</div></div>`
     }
     if (plan.nombre === 'MAQUINARIA BASICO') {
       return `
@@ -1073,24 +1155,29 @@ function camposEspecificosParaRamo(ramo, plan) {
           <input class="field-input" id="${idParaCampo('capitalMaquinaria')}" type="text" inputmode="numeric" data-field="capitalMaquinaria" data-money="true" placeholder="50.000" value="${fmtGsInput(state.data.capitalMaquinaria)}" />
         </div>
         ${campoSublimitePorcentaje('sublimiteVandalismoPorcentaje', 'Sublímite Vandalismo (%)')}
-      `;
+      `
     }
-    return camposEdificioContenido(campoSublimitePorcentaje('sublimiteFenomenosNaturalesPorcentaje', 'Sublímite Fenómenos Naturales (%)'));
+    return camposEdificioContenido(
+      campoSublimitePorcentaje(
+        'sublimiteFenomenosNaturalesPorcentaje',
+        'Sublímite Fenómenos Naturales (%)'
+      )
+    )
   }
 
   if (ramo.nombre === 'vida-ap') {
     if (!plan) {
-      return `<div class="field field--span2"><div class="live-summary__pending">Seleccioná un plan para ver el formulario.</div></div>`;
+      return `<div class="field field--span2"><div class="live-summary__pending">Seleccioná un plan para ver el formulario.</div></div>`
     }
     const campoCapital = `
       <div class="field">
         <label for="${idParaCampo('capitalAsegurado')}">Capital Asegurado (Gs.)</label>
         <input class="field-input" id="${idParaCampo('capitalAsegurado')}" type="text" inputmode="numeric" data-field="capitalAsegurado" data-money="true" placeholder="100.000.000" value="${fmtGsInput(state.data.capitalAsegurado)}" />
       </div>
-    `;
+    `
 
     if (plan.nombre === 'PROTECCION FAMILIAR') {
-      return campoCapital;
+      return campoCapital
     }
 
     const campoEdad = `
@@ -1098,10 +1185,13 @@ function camposEspecificosParaRamo(ramo, plan) {
         <label for="${idParaCampo('edad')}">Edad</label>
         <input class="field-input" id="${idParaCampo('edad')}" type="number" min="0" max="99" data-field="edad" placeholder="35" value="${escapeHtml(state.data.edad ?? '')}" />
       </div>
-    `;
+    `
 
-    if (plan.nombre === 'ACCIDENTES PERSONALES - SECTOR COOPERATIVO' || plan.nombre === 'ACCIDENTES PERSONALES - SECTOR PRIVADO') {
-      const incluyeRenta = Boolean(state.data.incluyeRentaDiaria);
+    if (
+      plan.nombre === 'ACCIDENTES PERSONALES - SECTOR COOPERATIVO' ||
+      plan.nombre === 'ACCIDENTES PERSONALES - SECTOR PRIVADO'
+    ) {
+      const incluyeRenta = Boolean(state.data.incluyeRentaDiaria)
       return `
         ${campoCapital}
         ${campoEdad}
@@ -1111,17 +1201,21 @@ function camposEspecificosParaRamo(ramo, plan) {
             Incluir Renta Diaria
           </label>
         </div>
-        ${incluyeRenta ? `
+        ${
+          incluyeRenta
+            ? `
           <div class="field">
             <label for="${idParaCampo('sumaRentaDiaria')}">Suma Renta Diaria (Gs.)</label>
             <input class="field-input" id="${idParaCampo('sumaRentaDiaria')}" type="text" inputmode="numeric" data-field="sumaRentaDiaria" data-money="true" placeholder="50.000" value="${fmtGsInput(state.data.sumaRentaDiaria)}" />
           </div>
-        ` : ''}
-      `;
+        `
+            : ''
+        }
+      `
     }
 
     // VIDA DIRECTIVOS Y EMPLEADOS
-    return `${campoCapital}${campoEdad}`;
+    return `${campoCapital}${campoEdad}`
   }
 
   return `
@@ -1131,16 +1225,16 @@ function camposEspecificosParaRamo(ramo, plan) {
         específicos se agrega en otra tarea. Podés cargar los datos del cliente mientras tanto.
       </div>
     </div>
-  `;
+  `
 }
 
 function renderDatosView(ramo) {
-  const esCalculable = RAMOS_CON_CALCULO.includes(state.ramoId);
-  const plan = state.planes.find((p) => p.id === state.planId);
+  const esCalculable = RAMOS_CON_CALCULO.includes(state.ramoId)
+  const plan = state.planes.find((p) => p.id === state.planId)
 
   const camposEspecificos = esCalculable
     ? camposEspecificosParaRamo(ramo, plan)
-    : camposEspecificosParaRamo({ nombre: null }, null);
+    : camposEspecificosParaRamo({ nombre: null }, null)
 
   return `
     <div class="datos-view panel">
@@ -1152,12 +1246,14 @@ function renderDatosView(ramo) {
           </div>
           <div class="datos-view__form-body">
             <div class="field-grid">
-              ${CLIENT_FIELDS.map((f) => `
+              ${CLIENT_FIELDS.map(
+                (f) => `
                 <div class="field ${f.span === 2 ? 'field--span2' : ''}">
                   <label for="${idParaCampo(f.key)}">${f.label}</label>
                   <input class="field-input" id="${idParaCampo(f.key)}" type="text" inputmode="${f.money ? 'numeric' : 'text'}" data-field="${f.key}" ${f.money ? 'data-money="true"' : ''} placeholder="${f.placeholder}" value="${escapeHtml(f.money ? fmtGsInput(state.data[f.key]) : (state.data[f.key] ?? ''))}" />
                 </div>
-              `).join('')}
+              `
+              ).join('')}
               ${camposEspecificos}
             </div>
             <button
@@ -1173,7 +1269,7 @@ function renderDatosView(ramo) {
       ${renderExclusionesCard(plan)}
       <div class="live-summary" id="live-summary">${renderLivePanelContent()}</div>
     </div>
-  `;
+  `
 }
 
 // Card de exclusiones del plan, visible ya en "Datos del plan" (antes solo aparecía en
@@ -1181,42 +1277,53 @@ function renderDatosView(ramo) {
 // junto al formulario de datos del asegurado. Vacío si el plan no tiene texto cargado
 // (texto_exclusiones_generales), como Incendio/Vida-AP mientras no tengan template propio.
 function renderExclusionesCard(plan) {
-  if (!plan?.texto_exclusiones_generales) return '';
+  if (!plan?.texto_exclusiones_generales) return ''
 
-  const items = plan.texto_exclusiones_generales.split('\n').filter(Boolean);
+  const items = plan.texto_exclusiones_generales.split('\n').filter(Boolean)
 
   return `
     <div class="card exclusiones-card">
       <div class="card__title">Exclusiones</div>
       <div class="card__body">
         <ul class="texto-legal-list">
-          ${items.map((linea) => `
+          ${items
+            .map(
+              (linea) => `
             <li>
               <span class="texto-legal-list__icon texto-legal-list__icon--danger">${ICON_X_CIRCLE}</span>
               <span>${escapeHtml(linea)}</span>
             </li>
-          `).join('')}
+          `
+            )
+            .join('')}
         </ul>
       </div>
     </div>
-  `;
+  `
 }
 
 // Sección "Coberturas adicionales": líneas cobertura/sublímite más allá de Incendio Edificio/
 // Contenido. `catalogoDisponible` ya viene sin las 2 fijas y sin sublimite_cctv (ver
 // coberturasDisponibles()).
 function renderCoberturasAdicionales(catalogoDisponible) {
-  const opciones = (codigoActual) => catalogoDisponible.map((c) => `
+  const opciones = (codigoActual) =>
+    catalogoDisponible
+      .map(
+        (c) => `
     <option value="${escapeHtml(c.codigo)}" ${c.codigo === codigoActual ? 'selected' : ''}>
       ${escapeHtml(c.nombre)}${c.categoria === 'Sublímites' ? ' · Sublímite' : ''}
     </option>
-  `).join('');
+  `
+      )
+      .join('')
 
   // Cada fila es repetible (el agente puede agregar varias líneas de cobertura), así que
   // el id de cada campo usa l.id (clave estable de la fila, ver agregarCoberturaLinea) para
   // no duplicar ids en el DOM. Los <label> son visualmente ocultos (.sr-only): el layout ya
   // usa el placeholder como pista visual y agregar 2 labels visibles por fila no entra.
-  const filas = state.coberturasAdicionales.map((l) => `
+  const filas = state.coberturasAdicionales
+    .map(
+      (l) => `
     <div class="cobertura-adicional-row" data-linea-id="${l.id}">
       <label class="sr-only" for="cobertura-linea-${l.id}-codigo">Cobertura de la línea</label>
       <select class="field-input" id="cobertura-linea-${l.id}-codigo" data-linea-id="${l.id}" data-linea-field="codigo">
@@ -1237,7 +1344,9 @@ function renderCoberturasAdicionales(catalogoDisponible) {
       />
       <button type="button" class="btn-outline cobertura-adicional-row__quitar" data-action="remove-cobertura-linea" data-linea-id="${l.id}">Quitar</button>
     </div>
-  `).join('');
+  `
+    )
+    .join('')
 
   return `
     <div class="coberturas-adicionales" role="group" aria-labelledby="coberturas-adicionales-label">
@@ -1245,7 +1354,7 @@ function renderCoberturasAdicionales(catalogoDisponible) {
       ${filas}
       <button type="button" class="btn-outline" data-action="add-cobertura-linea">+ Agregar cobertura</button>
     </div>
-  `;
+  `
 }
 
 // El panel "Cotización en vivo" (columna derecha) suele quedar con espacio libre debajo de su
@@ -1253,11 +1362,11 @@ function renderCoberturasAdicionales(catalogoDisponible) {
 // MRC se agrega ahí abajo para aprovecharlo, en vez de competir por lugar en el formulario de
 // la izquierda (ver sublimitesFijosMrc(), decisión de Kevin 2026-07-15).
 function renderLivePanelContent() {
-  return `${renderLivePanelBody()}${state.ramoId === 'mrc' ? renderSublimitesFijosMrc() : ''}`;
+  return `${renderLivePanelBody()}${state.ramoId === 'mrc' ? renderSublimitesFijosMrc() : ''}`
 }
 
 function renderLiveLabel() {
-  return `<div class="live-summary__label"><span class="live-summary__dot"></span>Cotización en vivo</div>`;
+  return `<div class="live-summary__label"><span class="live-summary__dot"></span>Cotización en vivo</div>`
 }
 
 function renderLivePanelBody() {
@@ -1265,25 +1374,25 @@ function renderLivePanelBody() {
     return `
       ${renderLiveLabel()}
       <div class="live-summary__pending">Cálculo pendiente de confirmación de tasas para este ramo.</div>
-    `;
+    `
   }
 
   if (state.previewError) {
     return `
       ${renderLiveLabel()}
       <div class="live-summary__error" id="${MOTIVO_BLOQUEO_ID}">${escapeHtml(state.previewError)}</div>
-    `;
+    `
   }
 
   if (!state.preview) {
     return `
       ${renderLiveLabel()}
       <div class="live-summary__pending" id="${MOTIVO_BLOQUEO_ID}">${state.loadingPreview ? 'Calculando…' : 'Completá los datos del riesgo para ver la prima.'}</div>
-    `;
+    `
   }
 
-  const fp = formaPagoSeleccionada();
-  const coberturasCount = state.preview.coberturas?.length ?? 0;
+  const fp = formaPagoSeleccionada()
+  const coberturasCount = state.preview.coberturas?.length ?? 0
 
   return `
     ${renderLiveLabel()}
@@ -1299,14 +1408,16 @@ function renderLivePanelBody() {
       <div class="live-summary__row"><span>Coberturas</span><span>${coberturasCount} incluidas</span></div>
     </div>
     <div class="live-summary__hint">El monto se recalcula automáticamente a medida que completás los datos.</div>
-  `;
+  `
 }
 
 // Sublímites fijos del plan MRC actual — van siempre incluidos con monto fijo, no son
 // "coberturas" que el agente elija (ver sublimitesFijosMrc()), así que se muestran acá con su
 // propio título en vez de mezclarse bajo "Coberturas adicionales".
 function renderSublimitesFijosMrc() {
-  const filas = sublimitesFijosMrc().map((s) => `
+  const filas = sublimitesFijosMrc()
+    .map(
+      (s) => `
       <div class="live-summary__row live-summary__row--icon">
         <span class="live-summary__row-name">
           <span class="live-summary__row-icon">${SUBLIMITE_ICONOS[s.codigo] || ICON_SUBLIMITE_GENERICO}</span>
@@ -1314,13 +1425,15 @@ function renderSublimitesFijosMrc() {
         </span>
         <span>${fmtGs(s.monto)} Gs.</span>
       </div>
-    `).join('');
+    `
+    )
+    .join('')
 
   return `
     <div class="live-summary__divider"></div>
     <div class="live-summary__label">Sublímites incluidos</div>
     <div class="live-summary__rows live-summary__rows--dashed">${filas}</div>
-  `;
+  `
 }
 
 // Cantidad de cuotas: el monto de cada cuota es siempre REDONDEAR.SUP(Premio/12, 1000)
@@ -1328,46 +1441,48 @@ function renderSublimitesFijosMrc() {
 // cuántas cuotas paga el cliente en total (tope: plan.cuotas_maximo), dato que se guarda en
 // `cotizacion_planes_pago.cantidad_cuotas` para la Carta Oferta.
 function renderCuotasSelect() {
-  const plan = state.planes.find((p) => p.id === state.planId);
-  if (!plan?.cuotas_maximo || plan.cuotas_maximo <= 1) return '';
+  const plan = state.planes.find((p) => p.id === state.planId)
+  if (!plan?.cuotas_maximo || plan.cuotas_maximo <= 1) return ''
 
-  const actual = Number(state.data.cuotas) || plan.cuotas_default || plan.cuotas_maximo;
+  const actual = Number(state.data.cuotas) || plan.cuotas_default || plan.cuotas_maximo
   const opciones = Array.from({ length: plan.cuotas_maximo }, (_, i) => i + 1)
     .map((n) => `<option value="${n}" ${n === actual ? 'selected' : ''}>${n} cuotas</option>`)
-    .join('');
+    .join('')
 
   return `
     <div class="field field--gap-bottom">
       <label for="${idParaCampo('cuotas')}">Cantidad de cuotas</label>
       <select class="field-input" id="${idParaCampo('cuotas')}" data-field="cuotas">${opciones}</select>
     </div>
-  `;
+  `
 }
 
 // Selector de forma de pago — mismo look de pill que el selector de plan. Vive en el
 // panel de cotización en vivo (donde el agente arma la cotización); "Detalle del plan"
 // solo muestra la elegida, de solo lectura (ver renderResultadoView).
 function renderFormaPagoPills() {
-  const formas = formasPagoDisponibles();
-  if (!formas.length) return '';
+  const formas = formasPagoDisponibles()
+  if (!formas.length) return ''
 
-  const pills = formas.map((fp) => {
-    const activo = fp.codigo === state.formaPagoCodigo;
-    return `
+  const pills = formas
+    .map((fp) => {
+      const activo = fp.codigo === state.formaPagoCodigo
+      return `
       <button
         class="plan-pill ${activo ? 'plan-pill--active' : ''}"
         data-action="select-forma-pago"
         data-forma="${fp.codigo}"
       >${escapeHtml(fp.nombre_display)}</button>
-    `;
-  }).join('');
+    `
+    })
+    .join('')
 
   return `
     <div class="forma-pago-row">
       <div class="forma-pago-row__label">Forma de pago:</div>
       <div class="forma-pago-row__pills">${pills}</div>
     </div>
-  `;
+  `
 }
 
 // Reemplaza el innerHTML completo del panel "Cotización en vivo" en cada recálculo (ver
@@ -1377,33 +1492,41 @@ function renderFormaPagoPills() {
 // render, que también sirve para otros campos vivos dentro de este panel (ej. selects de forma
 // de pago) por el mismo motivo.
 function renderLivePanel() {
-  const el = document.getElementById('live-summary');
-  if (!el) return;
+  const el = document.getElementById('live-summary')
+  if (!el) return
 
-  const activo = document.activeElement;
-  const enElPanel = Boolean(activo && el.contains(activo));
-  const campoField = enElPanel ? activo.dataset?.field : null;
-  const campoId = enElPanel && !campoField ? activo.id : null;
-  const selectionStart = enElPanel && typeof activo.selectionStart === 'number' ? activo.selectionStart : null;
-  const selectionEnd = enElPanel && typeof activo.selectionEnd === 'number' ? activo.selectionEnd : null;
+  const activo = document.activeElement
+  const enElPanel = Boolean(activo && el.contains(activo))
+  const campoField = enElPanel ? activo.dataset?.field : null
+  const campoId = enElPanel && !campoField ? activo.id : null
+  const selectionStart =
+    enElPanel && typeof activo.selectionStart === 'number' ? activo.selectionStart : null
+  const selectionEnd =
+    enElPanel && typeof activo.selectionEnd === 'number' ? activo.selectionEnd : null
 
-  el.innerHTML = renderLivePanelContent();
+  el.innerHTML = renderLivePanelContent()
 
-  if (!campoField && !campoId) return;
+  if (!campoField && !campoId) return
   const restaurado = campoField
     ? el.querySelector(`[data-field="${campoField}"]`)
-    : (campoId ? document.getElementById(campoId) : null);
-  if (!restaurado) return;
-  restaurado.focus({ preventScroll: true });
-  if (selectionStart != null && selectionEnd != null && typeof restaurado.setSelectionRange === 'function') {
-    restaurado.setSelectionRange(selectionStart, selectionEnd);
+    : campoId
+      ? document.getElementById(campoId)
+      : null
+  if (!restaurado) return
+  restaurado.focus({ preventScroll: true })
+  if (
+    selectionStart != null &&
+    selectionEnd != null &&
+    typeof restaurado.setSelectionRange === 'function'
+  ) {
+    restaurado.setSelectionRange(selectionStart, selectionEnd)
   }
 }
 
 function renderResultadoView(ramo) {
-  const esCalculable = RAMOS_CON_CALCULO.includes(state.ramoId);
-  const plan = state.planes.find((p) => p.id === state.planId);
-  const planLabel = plan ? plan.nombre : '—';
+  const esCalculable = RAMOS_CON_CALCULO.includes(state.ramoId)
+  const plan = state.planes.find((p) => p.id === state.planId)
+  const planLabel = plan ? plan.nombre : '—'
 
   if (!esCalculable || !state.preview) {
     return `
@@ -1424,11 +1547,11 @@ function renderResultadoView(ramo) {
           </div>
         </div>
       </div>
-    `;
+    `
   }
 
-  const fp = formaPagoSeleccionada();
-  const coberturas = state.preview.coberturas || [];
+  const fp = formaPagoSeleccionada()
+  const coberturas = state.preview.coberturas || []
 
   return `
     <div class="resultado-view panel">
@@ -1453,9 +1576,13 @@ function renderResultadoView(ramo) {
                   // Los sub-límites fijos del plan no van en este listado de "Coberturas incluidas"
                   // (a pedido de Kevin, 2026-07-15) — se muestran aparte en renderSublimitesFijosMrc.
                   .filter((c) => !sublimitesFijosMrc().some((s) => s.codigo === c.codigo))
-                  .sort((a, b) => (a.tipo_aplicacion === 'sublimite' ? 1 : 0) - (b.tipo_aplicacion === 'sublimite' ? 1 : 0))
+                  .sort(
+                    (a, b) =>
+                      (a.tipo_aplicacion === 'sublimite' ? 1 : 0) -
+                      (b.tipo_aplicacion === 'sublimite' ? 1 : 0)
+                  )
                   .map((c) => {
-                    const esSublimite = c.tipo_aplicacion === 'sublimite';
+                    const esSublimite = c.tipo_aplicacion === 'sublimite'
                     return `
                     <div class="cobertura-card">
                       <div class="cobertura-card__status ${esSublimite ? 'cobertura-card__status--warning' : ''}">${esSublimite ? '!' : '✓'}</div>
@@ -1469,8 +1596,9 @@ function renderResultadoView(ramo) {
                         <div>${typeof c.monto === 'number' ? `${fmtGs(c.monto)} <em>Gs.</em>` : escapeHtml(c.monto ?? '—')}</div>
                       </div>
                     </div>
-                  `;
-                  }).join('')}
+                  `
+                  })
+                  .join('')}
               </div>
               <button class="cobertura-card__agregar" data-action="show-tab" data-view="form">${ICON_PLUS} Agregar cobertura adicional</button>
             </div>
@@ -1481,7 +1609,7 @@ function renderResultadoView(ramo) {
         </div>
       </div>
     </div>
-  `;
+  `
 }
 
 // Bloque "Suma Asegurada / Costo Contado / Costo Financiado" — mismo formato que la pantalla
@@ -1492,17 +1620,19 @@ function renderResultadoView(ramo) {
 // interesa y el agente la elige acá para que figure en la propuesta. No afecta la prima ya
 // calculada (confirmado por Kevin, 2026-07-13): es solo el texto que se va a mostrar.
 function renderFranquiciaSelect(cobertura) {
-  const seleccionado = state.franquiciasPorCobertura[cobertura.codigo]
-    ?? franquiciaValorPorDefecto(cobertura.franquicia_default);
+  const seleccionado =
+    state.franquiciasPorCobertura[cobertura.codigo] ??
+    franquiciaValorPorDefecto(cobertura.franquicia_default)
 
-  const opciones = FRANQUICIA_OPCIONES.map((o) =>
-    `<option value="${o.valor}" ${o.valor === seleccionado ? 'selected' : ''}>${escapeHtml(o.label)}</option>`
-  ).join('');
+  const opciones = FRANQUICIA_OPCIONES.map(
+    (o) =>
+      `<option value="${o.valor}" ${o.valor === seleccionado ? 'selected' : ''}>${escapeHtml(o.label)}</option>`
+  ).join('')
 
   return `
     <div class="cobertura-row__franquicia-label">Franquicia</div>
     <select class="cobertura-row__franquicia" data-franquicia-cobertura="${cobertura.codigo}">${opciones}</select>
-  `;
+  `
 }
 
 // Card único del sidebar de "Detalle del plan" — reemplaza los 2 cards separados que había
@@ -1510,9 +1640,9 @@ function renderFranquiciaSelect(cobertura) {
 // secciones separadas por líneas finas, terminando en el botón de "Emitir carta oferta" (antes
 // vivía en una barra fija al pie de la pantalla — ver decisión de rediseño, 2026-07-22).
 function renderResumenCotizacion(plan, fp) {
-  const variante = state.preview?.variantes?.[0];
-  const contado = variante?.formasPago.find((f) => f.codigo === 'contado');
-  const financiado = variante?.formasPago.find((f) => f.codigo === 'cobrador');
+  const variante = state.preview?.variantes?.[0]
+  const contado = variante?.formasPago.find((f) => f.codigo === 'contado')
+  const financiado = variante?.formasPago.find((f) => f.codigo === 'cobrador')
   // Suma de las líneas de "Coberturas incluidas" que cuentan como suma asegurada propia
   // (Incendio Edificio/Contenido + coberturas adicionales que agregó el agente) — igual que
   // "Suma total Gs." en el Excel del cliente (Version 01 - Calculo Varios.xlsx). Los
@@ -1520,10 +1650,10 @@ function renderResumenCotizacion(plan, fp) {
   // ventanilla" (sub-límite de "Valores en caja fuerte", marcado con
   // incluye_en_suma_asegurada_total = false en la migración 020).
   const sumaAsegurada = (state.preview.coberturas || []).reduce((acc, c) => {
-    const esSublimite = c.tipo_aplicacion === 'sublimite';
-    const cuentaParaTotal = !esSublimite && c.incluye_en_suma_asegurada_total !== false;
-    return acc + (cuentaParaTotal ? Number(c.monto) || 0 : 0);
-  }, 0);
+    const esSublimite = c.tipo_aplicacion === 'sublimite'
+    const cuentaParaTotal = !esSublimite && c.incluye_en_suma_asegurada_total !== false
+    return acc + (cuentaParaTotal ? Number(c.monto) || 0 : 0)
+  }, 0)
 
   return `
     <div class="resumen-sistema">
@@ -1532,7 +1662,9 @@ function renderResumenCotizacion(plan, fp) {
         <div class="resumen-sistema__total-label">Suma asegurada total</div>
         <div class="resumen-sistema__total-value">${fmtGs(sumaAsegurada)} <em>Gs.</em></div>
       </div>
-      ${contado ? `
+      ${
+        contado
+          ? `
         <div class="resumen-sistema__divider"></div>
         <div class="resumen-sistema__block">
           <div class="resumen-sistema__block-title">Pago contado</div>
@@ -1541,8 +1673,12 @@ function renderResumenCotizacion(plan, fp) {
             <span>${fmtGs(contado.premio)} <em>Gs.</em></span>
           </div>
         </div>
-      ` : ''}
-      ${financiado ? `
+      `
+          : ''
+      }
+      ${
+        financiado
+          ? `
         <div class="resumen-sistema__divider"></div>
         <div class="resumen-sistema__block">
           <div class="resumen-sistema__block-title">Financiado</div>
@@ -1563,17 +1699,19 @@ function renderResumenCotizacion(plan, fp) {
             </div>
           </div>
         </div>
-      ` : ''}
+      `
+          : ''
+      }
       ${renderAjustesDescuentoRecargo(plan)}
       <div class="resumen-sistema__spacer"></div>
       <div class="resumen-sistema__cta-wrap">
         <button class="resumen-sistema__cta" data-action="emitir-carta" ${state.emitiendoCarta ? 'disabled' : ''}>
-          ${ICON_TAG} ${state.emitiendoCarta ? 'Generando…' : (state.editandoId ? 'Guardar cambios' : 'Emitir carta oferta')}
+          ${ICON_TAG} ${state.emitiendoCarta ? 'Generando…' : state.editandoId ? 'Guardar cambios' : 'Emitir carta oferta'}
         </button>
         <div class="resumen-sistema__hint--center">Se generará la carta oferta con el detalle del plan seleccionado.</div>
       </div>
     </div>
-  `;
+  `
 }
 
 // Descuento/recargo manual del agente — solo mrc/incendio (ver RAMOS_CON_AJUSTES). El tope real
@@ -1583,22 +1721,29 @@ function renderResumenCotizacion(plan, fp) {
 // Apenas tipea en uno, el otro se deshabilita (y se limpia) para evitar que queden los dos
 // cargados a la vez y ajustesParaBody tenga que desambiguar en silencio cuál usar.
 function renderAjusteField(prefijo, label, plan) {
-  const topePlan = prefijo === 'descuento' ? plan?.descuento_maximo : plan?.recargo_maximo;
-  const usuario = auth.getUsuario();
+  const topePlan = prefijo === 'descuento' ? plan?.descuento_maximo : plan?.recargo_maximo
+  const usuario = auth.getUsuario()
   // Tope propio del usuario (Fase 5, ver Editar usuario en admin) — el backend siempre aplica
   // el más restrictivo de los dos; acá solo se refleja para que el agente no cargue de más
   // y lo vea clampeado sin explicación. Nota: es el valor cacheado al loguearse, si un admin
   // edita el tope del usuario en la misma sesión, este texto queda desactualizado hasta el
   // próximo login — el backend igual aplica el valor real y fresco en cada cotización.
-  const topeUsuario = prefijo === 'descuento' ? usuario?.descuento_maximo_pct : usuario?.recargo_maximo_pct;
-  const tope = topePlan == null ? topeUsuario ?? null : topeUsuario == null ? topePlan : Math.min(topePlan, topeUsuario);
-  const montoCargado = state.data[`${prefijo}Monto`] != null && state.data[`${prefijo}Monto`] !== '';
-  const porcentajeCargado = state.data[`${prefijo}Porcentaje`] != null && state.data[`${prefijo}Porcentaje`] !== '';
+  const topeUsuario =
+    prefijo === 'descuento' ? usuario?.descuento_maximo_pct : usuario?.recargo_maximo_pct
+  const tope =
+    topePlan == null
+      ? (topeUsuario ?? null)
+      : topeUsuario == null
+        ? topePlan
+        : Math.min(topePlan, topeUsuario)
+  const montoCargado = state.data[`${prefijo}Monto`] != null && state.data[`${prefijo}Monto`] !== ''
+  const porcentajeCargado =
+    state.data[`${prefijo}Porcentaje`] != null && state.data[`${prefijo}Porcentaje`] !== ''
 
   // Un solo <label> visual describe 2 inputs (monto/porcentaje, mutuamente excluyentes) —
   // for/id de a uno solo no alcanza acá, así que se asocian los dos con aria-labelledby
   // sobre el mismo id de label (técnica WCAG válida para "un label, varios controles").
-  const labelId = `${idParaCampo(prefijo)}-label`;
+  const labelId = `${idParaCampo(prefijo)}-label`
   return `
     <div class="field">
       <label id="${labelId}">${label}</label>
@@ -1629,11 +1774,11 @@ function renderAjusteField(prefijo, label, plan) {
       </div>
       <small class="field-row-hint">${tope != null ? `Tope aplicable: ${tope}% de la prima` : 'Sin tope confirmado para este plan'}</small>
     </div>
-  `;
+  `
 }
 
 function renderAjustesDescuentoRecargo(plan) {
-  if (!RAMOS_CON_AJUSTES.includes(state.ramoId)) return '';
+  if (!RAMOS_CON_AJUSTES.includes(state.ramoId)) return ''
   return `
     <div class="resumen-sistema__divider"></div>
     <div class="resumen-sistema__block">
@@ -1643,7 +1788,7 @@ function renderAjustesDescuentoRecargo(plan) {
         ${renderAjusteField('recargo', 'Recargo', plan)}
       </div>
     </div>
-  `;
+  `
 }
 
 // ---------------------------------------------------------------------------
@@ -1653,87 +1798,94 @@ function renderAjustesDescuentoRecargo(plan) {
 // ---------------------------------------------------------------------------
 
 app.addEventListener('click', (e) => {
-  const target = e.target.closest('[data-action]');
-  if (!target || target.disabled) return;
+  const target = e.target.closest('[data-action]')
+  if (!target || target.disabled) return
 
-  const action = target.dataset.action;
-  if (action === 'logout') cerrarSesion();
-  else if (action === 'select-ramo') selectRamo(target.dataset.ramo);
-  else if (action === 'select-forma-pago') selectFormaPago(target.dataset.forma);
-  else if (action === 'show-tab') setView(target.dataset.view);
-  else if (action === 'add-cobertura-linea') addCoberturaLinea();
-  else if (action === 'remove-cobertura-linea') removeCoberturaLinea(target.dataset.lineaId);
-  else if (action === 'emitir-carta') emitirCartaOferta();
-});
+  const action = target.dataset.action
+  if (action === 'logout') cerrarSesion()
+  else if (action === 'select-ramo') selectRamo(target.dataset.ramo)
+  else if (action === 'select-forma-pago') selectFormaPago(target.dataset.forma)
+  else if (action === 'show-tab') setView(target.dataset.view)
+  else if (action === 'add-cobertura-linea') addCoberturaLinea()
+  else if (action === 'remove-cobertura-linea') removeCoberturaLinea(target.dataset.lineaId)
+  else if (action === 'emitir-carta') emitirCartaOferta()
+})
 
 // Formatea un input de dinero in-place (misma lógica para el campo money de una línea de
 // cobertura adicional que para capitalEdificio/capitalContenido) y devuelve los dígitos crudos.
 function formatMoneyInputInPlace(target) {
-  const digitsBeforeCursor = target.value.slice(0, target.selectionStart).replace(/\D/g, '').length;
-  const digits = target.value.replace(/\D/g, '');
-  const formatted = fmtGsInput(digits);
-  target.value = formatted;
+  const digitsBeforeCursor = target.value.slice(0, target.selectionStart).replace(/\D/g, '').length
+  const digits = target.value.replace(/\D/g, '')
+  const formatted = fmtGsInput(digits)
+  target.value = formatted
 
-  let seen = 0;
-  let newCursor = formatted.length;
+  let seen = 0
+  let newCursor = formatted.length
   for (let i = 0; i < formatted.length; i += 1) {
-    if (/\d/.test(formatted[i])) seen += 1;
+    if (/\d/.test(formatted[i])) seen += 1
     if (seen === digitsBeforeCursor) {
-      newCursor = i + 1;
-      break;
+      newCursor = i + 1
+      break
     }
   }
-  target.setSelectionRange(newCursor, newCursor);
-  return digits;
+  target.setSelectionRange(newCursor, newCursor)
+  return digits
 }
 
 app.addEventListener('input', (e) => {
-  const lineaTarget = e.target.closest('[data-linea-id][data-linea-field]');
+  const lineaTarget = e.target.closest('[data-linea-id][data-linea-field]')
   if (lineaTarget) {
-    const value = lineaTarget.dataset.money === 'true' ? formatMoneyInputInPlace(lineaTarget) : lineaTarget.value;
-    updateCoberturaLinea(lineaTarget.dataset.lineaId, lineaTarget.dataset.lineaField, value);
-    return;
+    const value =
+      lineaTarget.dataset.money === 'true'
+        ? formatMoneyInputInPlace(lineaTarget)
+        : lineaTarget.value
+    updateCoberturaLinea(lineaTarget.dataset.lineaId, lineaTarget.dataset.lineaField, value)
+    return
   }
 
-  const target = e.target.closest('[data-field]');
-  if (!target) return;
+  const target = e.target.closest('[data-field]')
+  if (!target) return
 
   if (target.type === 'checkbox') {
-    updateField(target.dataset.field, target.checked);
-    renderApp(); // muestra/oculta campos condicionales (ej. Suma Renta Diaria)
-    return;
+    updateField(target.dataset.field, target.checked)
+    renderApp() // muestra/oculta campos condicionales (ej. Suma Renta Diaria)
+    return
   }
 
   if (target.dataset.money === 'true') {
-    updateField(target.dataset.field, formatMoneyInputInPlace(target));
-    return;
+    updateField(target.dataset.field, formatMoneyInputInPlace(target))
+    return
   }
 
-  updateField(target.dataset.field, target.value);
-});
+  updateField(target.dataset.field, target.value)
+})
 
 app.addEventListener('change', (e) => {
-  const planSelect = e.target.closest('[data-action-select="select-plan"]');
+  const planSelect = e.target.closest('[data-action-select="select-plan"]')
   if (planSelect) {
-    selectPlan(Number(planSelect.value));
-    return;
+    selectPlan(Number(planSelect.value))
+    return
   }
 
-  const franquiciaTarget = e.target.closest('[data-franquicia-cobertura]');
+  const franquiciaTarget = e.target.closest('[data-franquicia-cobertura]')
   if (franquiciaTarget) {
-    selectFranquicia(franquiciaTarget.dataset.franquiciaCobertura, franquiciaTarget.value);
-    return;
+    selectFranquicia(franquiciaTarget.dataset.franquiciaCobertura, franquiciaTarget.value)
+    return
   }
 
-  const lineaTarget = e.target.closest('[data-linea-id][data-linea-field]');
+  const lineaTarget = e.target.closest('[data-linea-id][data-linea-field]')
   if (lineaTarget && lineaTarget.tagName === 'SELECT') {
-    updateCoberturaLinea(lineaTarget.dataset.lineaId, lineaTarget.dataset.lineaField, lineaTarget.value);
-    return;
+    updateCoberturaLinea(
+      lineaTarget.dataset.lineaId,
+      lineaTarget.dataset.lineaField,
+      lineaTarget.value
+    )
+    return
   }
 
-  const target = e.target.closest('[data-field]');
-  if (!target || target.tagName !== 'SELECT') return;
-  updateField(target.dataset.field, target.value);
-});
+  const target = e.target.closest('[data-field]')
+  if (!target || target.tagName !== 'SELECT') return
+  updateField(target.dataset.field, target.value)
+})
 
-init();
+init()

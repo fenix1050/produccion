@@ -1,9 +1,9 @@
-import { cotizarAutoSchema } from './auto.schema.js';
-import { cotizarMrcSchema } from './mrc.schema.js';
-import { cotizarIncendioSchema } from './incendio.schema.js';
-import { cotizarVidaApSchema } from './vida-ap.schema.js';
-import { httpError } from '../utils/http-error.js';
-export { filaTasaCapitalSchema } from './tasas.schema.js';
+import { cotizarAutoSchema } from './auto.schema.js'
+import { cotizarMrcSchema } from './mrc.schema.js'
+import { cotizarIncendioSchema } from './incendio.schema.js'
+import { cotizarVidaApSchema } from './vida-ap.schema.js'
+import { httpError } from '../utils/http-error.js'
+export { filaTasaCapitalSchema } from './tasas.schema.js'
 
 // La clave coincide con la columna `ramos.calculador`. Se completa a medida que
 // se implementan los demás ramos (Fase 6 y 7).
@@ -12,12 +12,12 @@ const REGISTRO = {
   mrc: cotizarMrcSchema,
   incendio: cotizarIncendioSchema,
   'vida-ap': cotizarVidaApSchema,
-};
+}
 
 export function getSchemaCotizar(codigoRamo) {
-  const schema = REGISTRO[codigoRamo];
+  const schema = REGISTRO[codigoRamo]
   if (!schema) {
-    throw httpError(400, `No hay schema de validación para el ramo "${codigoRamo}"`);
+    throw httpError(400, `No hay schema de validación para el ramo "${codigoRamo}"`)
   }
-  return schema;
+  return schema
 }

@@ -1,22 +1,22 @@
-import * as ramosRepository from '../repositories/ramos.repository.js';
-import * as coberturasRepository from '../repositories/coberturas.repository.js';
+import * as ramosRepository from '../repositories/ramos.repository.js'
+import * as coberturasRepository from '../repositories/coberturas.repository.js'
 
 export async function listarRamosActivos() {
-  return ramosRepository.findRamosActivos();
+  return ramosRepository.findRamosActivos()
 }
 
 export async function listarPlanesDeRamo(ramoId) {
-  return ramosRepository.findPlanesByRamoId(ramoId);
+  return ramosRepository.findPlanesByRamoId(ramoId)
 }
 
 export async function listarCoberturasDePlan(planId) {
-  return ramosRepository.findCoberturasByPlanId(planId);
+  return ramosRepository.findCoberturasByPlanId(planId)
 }
 
 export async function listarRubrosActividad(grupo) {
-  return coberturasRepository.findRubrosActividad(grupo);
+  return coberturasRepository.findRubrosActividad(grupo)
 }
 
 export async function listarCoberturasCatalogoDeRamo(ramoId) {
-  return coberturasRepository.findCoberturasCatalogoByRamoId(ramoId);
+  return coberturasRepository.findCoberturasCatalogoByRamoId(ramoId)
 }

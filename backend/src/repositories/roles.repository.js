@@ -1,24 +1,18 @@
-import { supabase } from '../config/supabase.js';
+import { supabase } from '../config/supabase.js'
 
-const CAMPOS = 'id, nombre, puede_editar_tasas, puede_gestionar_usuarios, puede_editar_coberturas, puede_editar_planes, es_sistema, activo, created_at, updated_at';
+const CAMPOS =
+  'id, nombre, puede_editar_tasas, puede_gestionar_usuarios, puede_editar_coberturas, puede_editar_planes, es_sistema, activo, created_at, updated_at'
 
 export async function findAll() {
-  const { data, error } = await supabase
-    .from('roles')
-    .select(CAMPOS)
-    .order('id');
-  if (error) throw error;
-  return data;
+  const { data, error } = await supabase.from('roles').select(CAMPOS).order('id')
+  if (error) throw error
+  return data
 }
 
 export async function findById(id) {
-  const { data, error } = await supabase
-    .from('roles')
-    .select(CAMPOS)
-    .eq('id', id)
-    .maybeSingle();
-  if (error) throw error;
-  return data;
+  const { data, error } = await supabase.from('roles').select(CAMPOS).eq('id', id).maybeSingle()
+  if (error) throw error
+  return data
 }
 
 export async function crear({
@@ -39,9 +33,9 @@ export async function crear({
       es_sistema: false,
     })
     .select(CAMPOS)
-    .single();
-  if (error) throw error;
-  return data;
+    .single()
+  if (error) throw error
+  return data
 }
 
 export async function actualizar(id, cambios) {
@@ -50,12 +44,12 @@ export async function actualizar(id, cambios) {
     .update({ ...cambios, updated_at: new Date().toISOString() })
     .eq('id', id)
     .select(CAMPOS)
-    .maybeSingle();
-  if (error) throw error;
-  return data;
+    .maybeSingle()
+  if (error) throw error
+  return data
 }
 
 export async function eliminar(id) {
-  const { error } = await supabase.from('roles').delete().eq('id', id);
-  if (error) throw error;
+  const { error } = await supabase.from('roles').delete().eq('id', id)
+  if (error) throw error
 }

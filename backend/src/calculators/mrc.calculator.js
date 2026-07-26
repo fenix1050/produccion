@@ -1,17 +1,17 @@
-export { calcularPlanPago } from './utils/plan-pago.js';
-import { sumarAjustes, topeEfectivo } from './utils/ajustes.js';
-import { httpError } from '../utils/http-error.js';
+export { calcularPlanPago } from './utils/plan-pago.js'
+import { sumarAjustes, topeEfectivo } from './utils/ajustes.js'
+import { httpError } from '../utils/http-error.js'
 
 // Códigos del catálogo (migración 012_seed_mrc.sql) cuya suma asegurada viene directo
 // del formulario (Capital Edificio / Capital Contenido).
-const CODIGO_INCENDIO_EDIFICIO = 'incendio_edificio';
-const CODIGO_INCENDIO_CONTENIDO = 'incendio_contenido';
+const CODIGO_INCENDIO_EDIFICIO = 'incendio_edificio'
+const CODIGO_INCENDIO_CONTENIDO = 'incendio_contenido'
 
 // A pedido de Kevin (2026-07-15): la cotización de MRC necesita al menos 3 coberturas de tipo
 // "Cobertura" (Incendio Edificio/Contenido cuentan siempre, más lo que agregue el agente como
 // cobertura adicional) — los sub-límites fijos (agua/equipos electrónicos/granizo) NO cuentan
 // para este mínimo, van aparte siempre incluidos.
-const MINIMO_COBERTURAS_MRC = 3;
+const MINIMO_COBERTURAS_MRC = 3
 
 /**
  * Calculador de MRC (Multirriesgo Comercio) — solo el plan "MULTIRRIESGO COMERCIO - NORMAL"
@@ -75,11 +75,11 @@ export async function calcularPrima({
       422,
       `El plan "${plan.nombre}" todavía no tiene RPF/prima técnica mínima confirmados — no se puede cotizar.`,
       'Este plan está pendiente de confirmación de tasas.'
-    );
+    )
   }
 
-  const capitalEdificio = riesgoDatos.capital_edificio ?? 0;
-  const capitalContenido = riesgoDatos.capital_contenido ?? 0;
+  const capitalEdificio = riesgoDatos.capital_edificio ?? 0
+  const capitalContenido = riesgoDatos.capital_contenido ?? 0
 
   if (
     plan.responsabilidad_maxima_cotizable != null &&
@@ -89,7 +89,7 @@ export async function calcularPrima({
       422,
       `La suma de Capital Edificio + Capital Contenido supera la Responsabilidad Máx. Cotizable del plan "${plan.nombre}" (Gs. ${plan.responsabilidad_maxima_cotizable}).`,
       `El capital declarado supera el máximo cotizable para este plan (Gs. ${plan.responsabilidad_maxima_cotizable.toLocaleString('es-PY')}).`
-    );
+    )
   }
 
   if (!rubro) {
@@ -97,22 +97,22 @@ export async function calcularPrima({
       422,
       `Tipo de Riesgo "${riesgoDatos.rubro_actividad}" no encontrado en rubros_actividad.`,
       `El Tipo de Riesgo seleccionado no es válido.`
-    );
+    )
   }
 
-  const tasaEdificio = rubro.tasa_edificio;
-  const tasaContenido = rubro.tasa_contenido;
+  const tasaEdificio = rubro.tasa_edificio
+  const tasaContenido = rubro.tasa_contenido
 
   if (tasaEdificio == null || tasaContenido == null) {
     throw httpError(
       422,
       `Faltan tasa_edificio/tasa_contenido para el Tipo de Riesgo "${rubro.nombre}".`,
       `El Tipo de Riesgo "${rubro.nombre}" todavía no tiene tasas confirmadas.`
-    );
+    )
   }
 
-  const costoEdificio = capitalEdificio * (tasaEdificio / 1000);
-  const costoContenido = capitalContenido * (tasaContenido / 1000);
+  const costoEdificio = capitalEdificio * (tasaEdificio / 1000)
+  const costoContenido = capitalContenido * (tasaContenido / 1000)
 
   // Coberturas adicionales: a partir de 2026-07-13, ninguna cobertura fuera de Incendio
   // Edificio/Contenido se incluye por defecto — el agente las agrega explícitamente como
@@ -120,23 +120,26 @@ export async function calcularPrima({
   // contra "Version 01 - Calculo Varios.xlsx", hoja MRC/DATOS: "Robo contenido" aparece dos
   // veces en una cotización real, Gs. 50.000.000 y Gs. 10.000.000, cada una con su propio
   // costo calculado por tasa).
-  const catalogoPorCodigo = new Map(catalogoRamo.map((c) => [c.codigo, c]));
+  const catalogoPorCodigo = new Map(catalogoRamo.map((c) => [c.codigo, c]))
 
   const tasaPorCodigo = new Map(
-    tasasRamo.map((t) => [t.coberturas_catalogo?.codigo, { tasa_valor: t.tasa_valor, unidad: t.unidad }])
-  );
+    tasasRamo.map((t) => [
+      t.coberturas_catalogo?.codigo,
+      { tasa_valor: t.tasa_valor, unidad: t.unidad },
+    ])
+  )
 
-  const coberturasAdicionalesValidadas = [];
-  let totalCoberturasAdicionales = 0;
+  const coberturasAdicionalesValidadas = []
+  let totalCoberturasAdicionales = 0
 
   for (const linea of riesgoDatos.coberturas_adicionales ?? []) {
-    const catalogoRow = catalogoPorCodigo.get(linea.codigo);
+    const catalogoRow = catalogoPorCodigo.get(linea.codigo)
     if (!catalogoRow) {
       throw httpError(
         422,
         `La cobertura "${linea.codigo}" no existe o no está activa en el catálogo del ramo MRC.`,
         `La cobertura seleccionada no es válida.`
-      );
+      )
     }
 
     if (linea.codigo === CODIGO_INCENDIO_EDIFICIO || linea.codigo === CODIGO_INCENDIO_CONTENIDO) {
@@ -144,16 +147,16 @@ export async function calcularPrima({
         422,
         `"${catalogoRow.nombre}" ya se cotiza mediante Capital Edificio/Contenido — no se puede agregar como cobertura adicional.`,
         `"${catalogoRow.nombre}" ya está incluida a través del capital declarado.`
-      );
+      )
     }
 
-    const tasaInfo = tasaPorCodigo.get(linea.codigo);
+    const tasaInfo = tasaPorCodigo.get(linea.codigo)
     if (!tasaInfo || tasaInfo.tasa_valor == null) {
       throw httpError(
         422,
         `La cobertura "${catalogoRow.nombre}" todavía no tiene tasa confirmada.`,
         `La cobertura "${catalogoRow.nombre}" todavía no tiene tasa confirmada.`
-      );
+      )
     }
 
     // NOTA: unidad hoy siempre es 'permil' en MRC — si en el futuro aparece otra unidad
@@ -163,11 +166,11 @@ export async function calcularPrima({
         422,
         `Unidad de tasa "${tasaInfo.unidad}" no soportada todavía para "${catalogoRow.nombre}".`,
         `La cobertura "${catalogoRow.nombre}" tiene una unidad de tasa no soportada.`
-      );
+      )
     }
 
-    const costoLinea = linea.suma_asegurada * (tasaInfo.tasa_valor / 1000);
-    totalCoberturasAdicionales += costoLinea;
+    const costoLinea = linea.suma_asegurada * (tasaInfo.tasa_valor / 1000)
+    totalCoberturasAdicionales += costoLinea
 
     coberturasAdicionalesValidadas.push({
       codigo: linea.codigo,
@@ -180,33 +183,41 @@ export async function calcularPrima({
       // asegurada independiente en el resumen "Suma Asegurada total".
       incluye_en_suma_asegurada_total: catalogoRow.incluye_en_suma_asegurada_total ?? true,
       costo: costoLinea,
-    });
+    })
   }
 
   // Incendio Edificio + Incendio Contenido cuentan siempre como 2 coberturas fijas — se suma
   // lo que el agente agregó como cobertura adicional (sin contar sub-límites) para el mínimo.
   const cantidadCoberturas =
-    2 + coberturasAdicionalesValidadas.filter((c) => c.tipo_aplicacion === 'cobertura').length;
+    2 + coberturasAdicionalesValidadas.filter((c) => c.tipo_aplicacion === 'cobertura').length
 
   if (cantidadCoberturas < MINIMO_COBERTURAS_MRC) {
     throw httpError(
       422,
       `El plan "${plan.nombre}" requiere al menos ${MINIMO_COBERTURAS_MRC} coberturas — hay ${cantidadCoberturas} cargadas.`,
       `Este plan requiere un mínimo de ${MINIMO_COBERTURAS_MRC} coberturas — agregá al menos una cobertura adicional para continuar.`
-    );
+    )
   }
 
-  const primaCalculada = costoEdificio + costoContenido + totalCoberturasAdicionales;
+  const primaCalculada = costoEdificio + costoContenido + totalCoberturasAdicionales
 
   // A pedido de Kevin (2026-07-15): sí se pueden cotizar capitales que generen una prima menor
   // a la Prima Técnica Mínima del plan — no se bloquea con alerta. En ese caso se aplica el
   // piso en silencio: la Prima Técnica Mínima pasa a ser la prima base de la cotización.
-  const primaBase = Math.max(primaCalculada, plan.prima_tecnica_minima);
+  const primaBase = Math.max(primaCalculada, plan.prima_tecnica_minima)
 
-  const totalDescuentos = sumarAjustes(descuentos, primaBase, topeEfectivo(plan.descuento_maximo, usuario?.descuento_maximo_pct));
-  const totalRecargos = sumarAjustes(recargos, primaBase, topeEfectivo(plan.recargo_maximo, usuario?.recargo_maximo_pct));
+  const totalDescuentos = sumarAjustes(
+    descuentos,
+    primaBase,
+    topeEfectivo(plan.descuento_maximo, usuario?.descuento_maximo_pct)
+  )
+  const totalRecargos = sumarAjustes(
+    recargos,
+    primaBase,
+    topeEfectivo(plan.recargo_maximo, usuario?.recargo_maximo_pct)
+  )
 
-  const prima = primaBase - totalDescuentos + totalRecargos;
+  const prima = primaBase - totalDescuentos + totalRecargos
 
   const coberturas = construirListaCoberturas({
     capitalEdificio,
@@ -214,7 +225,7 @@ export async function calcularPrima({
     catalogoPorCodigo,
     coberturasAdicionalesValidadas,
     franquiciasPorCobertura: riesgoDatos.franquicias_por_cobertura ?? {},
-  });
+  })
 
   return {
     prima,
@@ -233,7 +244,7 @@ export async function calcularPrima({
       total_recargos: totalRecargos,
     },
     coberturas,
-  };
+  }
 }
 
 /**
@@ -263,17 +274,20 @@ function construirListaCoberturas({
   // (selector "Franquicia" en Detalle del plan) — si eligió una, esa es la que se persiste;
   // si no, se cae a la default del catálogo (mismo comportamiento que antes de esta elección).
   const franquiciaEfectiva = (codigo, porDefecto) =>
-    codigo in franquiciasPorCobertura ? franquiciasPorCobertura[codigo] : porDefecto;
+    codigo in franquiciasPorCobertura ? franquiciasPorCobertura[codigo] : porDefecto
 
-  const catalogoEdificio = catalogoPorCodigo.get(CODIGO_INCENDIO_EDIFICIO);
-  const catalogoContenido = catalogoPorCodigo.get(CODIGO_INCENDIO_CONTENIDO);
+  const catalogoEdificio = catalogoPorCodigo.get(CODIGO_INCENDIO_EDIFICIO)
+  const catalogoContenido = catalogoPorCodigo.get(CODIGO_INCENDIO_CONTENIDO)
 
   const fijas = [
     {
       codigo: CODIGO_INCENDIO_EDIFICIO,
       nombre: catalogoEdificio?.nombre ?? 'Incendio Edificio',
       monto: capitalEdificio,
-      franquicia_default: franquiciaEfectiva(CODIGO_INCENDIO_EDIFICIO, catalogoEdificio?.franquicia_default ?? null),
+      franquicia_default: franquiciaEfectiva(
+        CODIGO_INCENDIO_EDIFICIO,
+        catalogoEdificio?.franquicia_default ?? null
+      ),
       tipo_aplicacion: 'cobertura',
       incluye_en_suma_asegurada_total: true,
     },
@@ -281,14 +295,24 @@ function construirListaCoberturas({
       codigo: CODIGO_INCENDIO_CONTENIDO,
       nombre: catalogoContenido?.nombre ?? 'Incendio Contenido',
       monto: capitalContenido,
-      franquicia_default: franquiciaEfectiva(CODIGO_INCENDIO_CONTENIDO, catalogoContenido?.franquicia_default ?? null),
+      franquicia_default: franquiciaEfectiva(
+        CODIGO_INCENDIO_CONTENIDO,
+        catalogoContenido?.franquicia_default ?? null
+      ),
       tipo_aplicacion: 'cobertura',
       incluye_en_suma_asegurada_total: true,
     },
-  ];
+  ]
 
   const adicionales = coberturasAdicionalesValidadas.map(
-    ({ codigo, nombre, monto, franquicia_default, tipo_aplicacion, incluye_en_suma_asegurada_total }) => ({
+    ({
+      codigo,
+      nombre,
+      monto,
+      franquicia_default,
+      tipo_aplicacion,
+      incluye_en_suma_asegurada_total,
+    }) => ({
       codigo,
       nombre,
       monto,
@@ -296,7 +320,7 @@ function construirListaCoberturas({
       tipo_aplicacion,
       incluye_en_suma_asegurada_total,
     })
-  );
+  )
 
-  return [...fijas, ...adicionales];
+  return [...fijas, ...adicionales]
 }

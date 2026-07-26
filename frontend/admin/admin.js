@@ -1,9 +1,15 @@
-import { api, auth } from '../shared/api.js';
-import { crearBadge } from '../shared/badge.js';
-import { escapeHtml, enfocarPrimerElemento, atraparFoco } from '../shared/dom.js';
-import { renderSidebarFooter, renderTopbarUser } from '../shared/sidebar.js';
-import { ICON_ADMIN_USUARIOS, ICON_ADMIN_COBERTURAS, ICON_ADMIN_TASAS, ICON_ADMIN_PLANES, ICON_WRENCH } from '../shared/nav-icons.js';
-import { fmtGsConPrefijo as fmtGs, capitalizar } from '../shared/format.js';
+import { api, auth } from '../shared/api.js'
+import { crearBadge } from '../shared/badge.js'
+import { escapeHtml, enfocarPrimerElemento, atraparFoco } from '../shared/dom.js'
+import { renderSidebarFooter, renderTopbarUser } from '../shared/sidebar.js'
+import {
+  ICON_ADMIN_USUARIOS,
+  ICON_ADMIN_COBERTURAS,
+  ICON_ADMIN_TASAS,
+  ICON_ADMIN_PLANES,
+  ICON_WRENCH,
+} from '../shared/nav-icons.js'
+import { fmtGsConPrefijo as fmtGs, capitalizar } from '../shared/format.js'
 
 // Panel de Administración del Cotizador Tajy — WU5, primera porción (Usuarios).
 // Mismo patrón Vanilla JS que cotizar.js: state + render + delegación de eventos por
@@ -12,10 +18,15 @@ import { fmtGsConPrefijo as fmtGs, capitalizar } from '../shared/format.js';
 
 const SECCIONES = [
   { id: 'usuarios', label: 'Usuarios', disponible: true, permiso: 'puede_gestionar_usuarios' },
-  { id: 'coberturas', label: 'Coberturas por plan', disponible: true, permiso: 'puede_editar_coberturas' },
+  {
+    id: 'coberturas',
+    label: 'Coberturas por plan',
+    disponible: true,
+    permiso: 'puede_editar_coberturas',
+  },
   { id: 'tasas', label: 'Tasas', disponible: true, permiso: 'puede_editar_tasas' },
   { id: 'planes', label: 'Planes', disponible: true, permiso: 'puede_editar_planes' },
-];
+]
 
 // Íconos SVG por sección — mismo estilo de línea (18x18) que el resto de la nav del
 // sidebar (ramos en cotizar.js, links de shared/sidebar.js), separado del array de
@@ -25,13 +36,13 @@ const SECCION_ICONOS = {
   coberturas: ICON_ADMIN_COBERTURAS,
   tasas: ICON_ADMIN_TASAS,
   planes: ICON_ADMIN_PLANES,
-};
+}
 
 // Secciones visibles para el usuario logueado según sus permisos parciales
 // (mismo patrón que puede_editar_tasas, ver docs/ESTADO_PROYECTO.md sección 20a2).
 function seccionesVisibles() {
-  const usuario = auth.getUsuario();
-  return SECCIONES.filter((s) => Boolean(usuario?.[s.permiso]));
+  const usuario = auth.getUsuario()
+  return SECCIONES.filter((s) => Boolean(usuario?.[s.permiso]))
 }
 
 const state = {
@@ -74,18 +85,18 @@ const state = {
   coberturasDelPlan: {}, // planId -> { loading, error, datos: [] }
   coberturaEnEdicion: new Set(), // ids de plan_coberturas con monto/franquicia habilitados para editar
   modalCobertura: null, // { error, guardando, cobertura_id, incluida_por_defecto }
-};
+}
 
-const app = document.getElementById('app');
+const app = document.getElementById('app')
 
 // Elemento que disparó la apertura del modal actualmente abierto (botón "Editar",
 // "Nuevo usuario", etc.) — se restaura el foco ahí al cerrar (focus trap, WU accesibilidad).
-let elementoDisparadorModal = null;
+let elementoDisparadorModal = null
 
 async function init() {
   if (!auth.isLoggedIn()) {
-    window.location.href = '../login/';
-    return;
+    window.location.href = '../login/'
+    return
   }
   if (!auth.tieneAccesoAdmin()) {
     // El panel admin es para rol 'admin' O cualquier rol custom con al menos un permiso
@@ -94,40 +105,40 @@ async function init() {
     // A quien no tiene ningún permiso se lo redirige directo al cotizador (mismo patrón
     // que la sesión expirada en shared/api.js, que también resuelve con un redirect en
     // vez de una pantalla propia).
-    window.location.href = '../cotizar/';
-    return;
+    window.location.href = '../cotizar/'
+    return
   }
 
   // Permisos parciales por sección (ver docs/ESTADO_PROYECTO.md sección 20a2): un admin
   // puede no tener acceso a todas las secciones. Se arranca en la primera visible.
-  const visibles = seccionesVisibles();
+  const visibles = seccionesVisibles()
   if (!visibles.length) {
-    state.seccion = null;
-    renderApp();
-    return;
+    state.seccion = null
+    renderApp()
+    return
   }
-  state.seccion = visibles[0].id;
-  renderApp();
+  state.seccion = visibles[0].id
+  renderApp()
 
   if (state.seccion === 'usuarios') {
-    await Promise.all([cargarUsuarios(), cargarRoles()]);
+    await Promise.all([cargarUsuarios(), cargarRoles()])
   } else if (state.seccion === 'planes') {
-    await cargarPlanes();
+    await cargarPlanes()
   } else if (state.seccion === 'tasas' || state.seccion === 'coberturas') {
-    const ramos = await api.get('/ramos');
-    state.ramos = ramos;
-    renderApp();
+    const ramos = await api.get('/ramos')
+    state.ramos = ramos
+    renderApp()
   }
 }
 
 async function cerrarSesion() {
-  await auth.logout();
-  window.location.href = '../login/';
+  await auth.logout()
+  window.location.href = '../login/'
 }
 
 function mostrarBanner(tipo, texto) {
-  state.banner = { tipo, texto };
-  renderApp();
+  state.banner = { tipo, texto }
+  renderApp()
 }
 
 // ---------------------------------------------------------------------------
@@ -135,23 +146,23 @@ function mostrarBanner(tipo, texto) {
 // ---------------------------------------------------------------------------
 
 async function cargarUsuarios() {
-  state.loadingUsuarios = true;
-  state.usuariosError = '';
-  renderApp();
+  state.loadingUsuarios = true
+  state.usuariosError = ''
+  renderApp()
   try {
-    state.usuarios = await api.get('/admin/usuarios');
+    state.usuarios = await api.get('/admin/usuarios')
   } catch (err) {
-    state.usuarios = [];
-    state.usuariosError = err.message || 'No se pudo cargar la lista de usuarios.';
+    state.usuarios = []
+    state.usuariosError = err.message || 'No se pudo cargar la lista de usuarios.'
   } finally {
-    state.loadingUsuarios = false;
-    renderApp();
+    state.loadingUsuarios = false
+    renderApp()
   }
 }
 
 function abrirModalCrear() {
-  elementoDisparadorModal = document.activeElement;
-  const rolDefault = state.roles.find((r) => r.nombre === 'agente') ?? state.roles[0];
+  elementoDisparadorModal = document.activeElement
+  const rolDefault = state.roles.find((r) => r.nombre === 'agente') ?? state.roles[0]
   state.modal = {
     tipo: 'crear',
     error: '',
@@ -160,16 +171,16 @@ function abrirModalCrear() {
     email: '',
     rol_id: rolDefault?.id ?? '',
     password: '',
-  };
-  renderApp();
-  enfocarPrimerElemento(app.querySelector('.admin-modal'));
+  }
+  renderApp()
+  enfocarPrimerElemento(app.querySelector('.admin-modal'))
 }
 
 function abrirModalEditar(usuarioId) {
-  const usuario = state.usuarios.find((u) => u.id === usuarioId);
-  if (!usuario) return;
-  elementoDisparadorModal = document.activeElement;
-  const rolActual = state.roles.find((r) => r.nombre === usuario.rol);
+  const usuario = state.usuarios.find((u) => u.id === usuarioId)
+  if (!usuario) return
+  elementoDisparadorModal = document.activeElement
+  const rolActual = state.roles.find((r) => r.nombre === usuario.rol)
   state.modal = {
     tipo: 'editar',
     usuario,
@@ -181,119 +192,122 @@ function abrirModalEditar(usuarioId) {
     activo: Boolean(usuario.activo),
     descuento_maximo_pct: usuario.descuento_maximo_pct,
     recargo_maximo_pct: usuario.recargo_maximo_pct,
-  };
-  renderApp();
-  enfocarPrimerElemento(app.querySelector('.admin-modal'));
+  }
+  renderApp()
+  enfocarPrimerElemento(app.querySelector('.admin-modal'))
 }
 
 function abrirModalPassword(usuarioId) {
-  const usuario = state.usuarios.find((u) => u.id === usuarioId);
-  if (!usuario) return;
-  elementoDisparadorModal = document.activeElement;
-  state.modal = { tipo: 'password', usuario, error: '', guardando: false, password: '' };
-  renderApp();
-  enfocarPrimerElemento(app.querySelector('.admin-modal'));
+  const usuario = state.usuarios.find((u) => u.id === usuarioId)
+  if (!usuario) return
+  elementoDisparadorModal = document.activeElement
+  state.modal = { tipo: 'password', usuario, error: '', guardando: false, password: '' }
+  renderApp()
+  enfocarPrimerElemento(app.querySelector('.admin-modal'))
 }
 
 function cerrarModal() {
-  state.modal = null;
-  renderApp();
+  state.modal = null
+  renderApp()
   if (elementoDisparadorModal) {
-    elementoDisparadorModal.focus();
-    elementoDisparadorModal = null;
+    elementoDisparadorModal.focus()
+    elementoDisparadorModal = null
   }
 }
 
 async function desactivarUsuario(usuarioId) {
-  const usuario = state.usuarios.find((u) => u.id === usuarioId);
-  if (!usuario) return;
-  if (!confirm(`¿Desactivar a ${usuario.nombre}? No va a poder iniciar sesión.`)) return;
+  const usuario = state.usuarios.find((u) => u.id === usuarioId)
+  if (!usuario) return
+  if (!confirm(`¿Desactivar a ${usuario.nombre}? No va a poder iniciar sesión.`)) return
 
   try {
-    await api.put(`/admin/usuarios/${usuarioId}`, { activo: false });
-    mostrarBanner('success', `${usuario.nombre} fue desactivado.`);
-    await cargarUsuarios();
+    await api.put(`/admin/usuarios/${usuarioId}`, { activo: false })
+    mostrarBanner('success', `${usuario.nombre} fue desactivado.`)
+    await cargarUsuarios()
   } catch (err) {
-    mostrarBanner('error', err.message || 'No se pudo desactivar el usuario.');
+    mostrarBanner('error', err.message || 'No se pudo desactivar el usuario.')
   }
 }
 
 async function eliminarUsuario(usuarioId) {
-  const usuario = state.usuarios.find((u) => u.id === usuarioId);
-  if (!usuario) return;
-  if (!confirm(`¿Eliminar a ${usuario.nombre} definitivamente? Esta acción no se puede deshacer.`)) return;
+  const usuario = state.usuarios.find((u) => u.id === usuarioId)
+  if (!usuario) return
+  if (!confirm(`¿Eliminar a ${usuario.nombre} definitivamente? Esta acción no se puede deshacer.`))
+    return
 
   try {
-    await api.delete(`/admin/usuarios/${usuarioId}`);
-    mostrarBanner('success', `${usuario.nombre} fue eliminado.`);
-    await cargarUsuarios();
+    await api.delete(`/admin/usuarios/${usuarioId}`)
+    mostrarBanner('success', `${usuario.nombre} fue eliminado.`)
+    await cargarUsuarios()
   } catch (err) {
-    mostrarBanner('error', err.message || 'No se pudo eliminar el usuario.');
+    mostrarBanner('error', err.message || 'No se pudo eliminar el usuario.')
   }
 }
 
 async function guardarModalCrear(form) {
-  const nombre = form.nombre.value.trim();
-  const email = form.email.value.trim();
-  const rol_id = Number(form.rol_id.value);
-  const password = form.password.value;
+  const nombre = form.nombre.value.trim()
+  const email = form.email.value.trim()
+  const rol_id = Number(form.rol_id.value)
+  const password = form.password.value
 
   if (!nombre || !email) {
-    state.modal.error = 'Completá nombre y email.';
-    renderApp();
-    return;
+    state.modal.error = 'Completá nombre y email.'
+    renderApp()
+    return
   }
   if (!rol_id) {
-    state.modal.error = 'Elegí un rol.';
-    renderApp();
-    return;
+    state.modal.error = 'Elegí un rol.'
+    renderApp()
+    return
   }
   if (password.length < 8) {
-    state.modal.error = 'La contraseña debe tener al menos 8 caracteres.';
-    renderApp();
-    return;
+    state.modal.error = 'La contraseña debe tener al menos 8 caracteres.'
+    renderApp()
+    return
   }
 
-  state.modal.error = '';
-  state.modal.guardando = true;
-  renderApp();
+  state.modal.error = ''
+  state.modal.guardando = true
+  renderApp()
 
   try {
-    await api.post('/admin/usuarios', { nombre, email, rol_id, password });
-    cerrarModal();
-    mostrarBanner('success', `Usuario ${nombre} creado.`);
-    await cargarUsuarios();
+    await api.post('/admin/usuarios', { nombre, email, rol_id, password })
+    cerrarModal()
+    mostrarBanner('success', `Usuario ${nombre} creado.`)
+    await cargarUsuarios()
   } catch (err) {
-    state.modal.guardando = false;
-    state.modal.error = err.message || 'No se pudo crear el usuario.';
-    renderApp();
+    state.modal.guardando = false
+    state.modal.error = err.message || 'No se pudo crear el usuario.'
+    renderApp()
   }
 }
 
 async function guardarModalEditar(form) {
-  const usuario = state.modal.usuario;
-  const nombre = form.nombre.value.trim();
-  const email = form.email.value.trim();
-  const rol_id = Number(form.rol_id.value);
-  const activo = form.activo.checked;
+  const usuario = state.modal.usuario
+  const nombre = form.nombre.value.trim()
+  const email = form.email.value.trim()
+  const rol_id = Number(form.rol_id.value)
+  const activo = form.activo.checked
   // Campo vacío = sin tope propio (usa el tope del plan tal cual) -> se manda null.
-  const descuentoMaximoPct = form.descuento_maximo_pct.value === '' ? null : Number(form.descuento_maximo_pct.value);
-  const recargoMaximoPct = form.recargo_maximo_pct.value === '' ? null : Number(form.recargo_maximo_pct.value);
+  const descuentoMaximoPct =
+    form.descuento_maximo_pct.value === '' ? null : Number(form.descuento_maximo_pct.value)
+  const recargoMaximoPct =
+    form.recargo_maximo_pct.value === '' ? null : Number(form.recargo_maximo_pct.value)
 
   if (!nombre || !email) {
-    state.modal.error = 'Completá nombre y email.';
-    renderApp();
-    return;
+    state.modal.error = 'Completá nombre y email.'
+    renderApp()
+    return
   }
   if (!rol_id) {
-    state.modal.error = 'Elegí un rol.';
-    renderApp();
-    return;
+    state.modal.error = 'Elegí un rol.'
+    renderApp()
+    return
   }
 
-  state.modal.error = '';
-  state.modal.guardando = true;
-  renderApp();
+  state.modal.error = ''
+  state.modal.guardando = true
+  renderApp()
 
   try {
     await api.put(`/admin/usuarios/${usuario.id}`, {
@@ -303,39 +317,39 @@ async function guardarModalEditar(form) {
       activo,
       descuento_maximo_pct: descuentoMaximoPct,
       recargo_maximo_pct: recargoMaximoPct,
-    });
-    cerrarModal();
-    mostrarBanner('success', `Usuario ${usuario.nombre} actualizado.`);
-    await cargarUsuarios();
+    })
+    cerrarModal()
+    mostrarBanner('success', `Usuario ${usuario.nombre} actualizado.`)
+    await cargarUsuarios()
   } catch (err) {
-    state.modal.guardando = false;
-    state.modal.error = err.message || 'No se pudo actualizar el usuario.';
-    renderApp();
+    state.modal.guardando = false
+    state.modal.error = err.message || 'No se pudo actualizar el usuario.'
+    renderApp()
   }
 }
 
 async function guardarModalPassword(form) {
-  const usuario = state.modal.usuario;
-  const password = form.password.value;
+  const usuario = state.modal.usuario
+  const password = form.password.value
 
   if (password.length < 8) {
-    state.modal.error = 'La contraseña debe tener al menos 8 caracteres.';
-    renderApp();
-    return;
+    state.modal.error = 'La contraseña debe tener al menos 8 caracteres.'
+    renderApp()
+    return
   }
 
-  state.modal.error = '';
-  state.modal.guardando = true;
-  renderApp();
+  state.modal.error = ''
+  state.modal.guardando = true
+  renderApp()
 
   try {
-    await api.put(`/admin/usuarios/${usuario.id}/password`, { password });
-    cerrarModal();
-    mostrarBanner('success', `Contraseña de ${usuario.nombre} actualizada.`);
+    await api.put(`/admin/usuarios/${usuario.id}/password`, { password })
+    cerrarModal()
+    mostrarBanner('success', `Contraseña de ${usuario.nombre} actualizada.`)
   } catch (err) {
-    state.modal.guardando = false;
-    state.modal.error = err.message || 'No se pudo actualizar la contraseña.';
-    renderApp();
+    state.modal.guardando = false
+    state.modal.error = err.message || 'No se pudo actualizar la contraseña.'
+    renderApp()
   }
 }
 
@@ -344,36 +358,41 @@ async function guardarModalPassword(form) {
 // ---------------------------------------------------------------------------
 
 async function cargarRoles() {
-  state.loadingRoles = true;
-  state.rolesError = '';
-  renderApp();
+  state.loadingRoles = true
+  state.rolesError = ''
+  renderApp()
   try {
-    state.roles = await api.get('/admin/roles');
+    state.roles = await api.get('/admin/roles')
   } catch (err) {
-    state.roles = [];
-    state.rolesError = err.message || 'No se pudo cargar la lista de roles.';
+    state.roles = []
+    state.rolesError = err.message || 'No se pudo cargar la lista de roles.'
   } finally {
-    state.loadingRoles = false;
-    renderApp();
+    state.loadingRoles = false
+    renderApp()
   }
 }
 
 async function eliminarRol(rolId) {
-  const rol = state.roles.find((r) => r.id === rolId);
-  if (!rol) return;
-  if (!confirm(`¿Eliminar el rol "${capitalizar(rol.nombre)}" definitivamente? Esta acción no se puede deshacer.`)) return;
+  const rol = state.roles.find((r) => r.id === rolId)
+  if (!rol) return
+  if (
+    !confirm(
+      `¿Eliminar el rol "${capitalizar(rol.nombre)}" definitivamente? Esta acción no se puede deshacer.`
+    )
+  )
+    return
 
   try {
-    await api.delete(`/admin/roles/${rolId}`);
-    mostrarBanner('success', `Rol "${capitalizar(rol.nombre)}" eliminado.`);
-    await cargarRoles();
+    await api.delete(`/admin/roles/${rolId}`)
+    mostrarBanner('success', `Rol "${capitalizar(rol.nombre)}" eliminado.`)
+    await cargarRoles()
   } catch (err) {
-    mostrarBanner('error', err.message || 'No se pudo eliminar el rol.');
+    mostrarBanner('error', err.message || 'No se pudo eliminar el rol.')
   }
 }
 
 function abrirModalRolCrear() {
-  elementoDisparadorModal = document.activeElement;
+  elementoDisparadorModal = document.activeElement
   state.modalRol = {
     tipo: 'crear',
     error: '',
@@ -383,15 +402,15 @@ function abrirModalRolCrear() {
     puede_gestionar_usuarios: false,
     puede_editar_coberturas: false,
     puede_editar_planes: false,
-  };
-  renderApp();
-  enfocarPrimerElemento(app.querySelector('.admin-modal'));
+  }
+  renderApp()
+  enfocarPrimerElemento(app.querySelector('.admin-modal'))
 }
 
 function abrirModalRolEditar(rolId) {
-  const rol = state.roles.find((r) => r.id === rolId);
-  if (!rol || rol.es_sistema) return; // roles del sistema no son editables desde el panel
-  elementoDisparadorModal = document.activeElement;
+  const rol = state.roles.find((r) => r.id === rolId)
+  if (!rol || rol.es_sistema) return // roles del sistema no son editables desde el panel
+  elementoDisparadorModal = document.activeElement
   state.modalRol = {
     tipo: 'editar',
     rolId: rol.id,
@@ -402,57 +421,57 @@ function abrirModalRolEditar(rolId) {
     puede_gestionar_usuarios: Boolean(rol.puede_gestionar_usuarios),
     puede_editar_coberturas: Boolean(rol.puede_editar_coberturas),
     puede_editar_planes: Boolean(rol.puede_editar_planes),
-  };
-  renderApp();
-  enfocarPrimerElemento(app.querySelector('.admin-modal'));
+  }
+  renderApp()
+  enfocarPrimerElemento(app.querySelector('.admin-modal'))
 }
 
 function cerrarModalRol() {
-  state.modalRol = null;
-  renderApp();
+  state.modalRol = null
+  renderApp()
   if (elementoDisparadorModal) {
-    elementoDisparadorModal.focus();
-    elementoDisparadorModal = null;
+    elementoDisparadorModal.focus()
+    elementoDisparadorModal = null
   }
 }
 
 async function guardarModalRol(form) {
-  const nombre = form.nombre.value.trim();
+  const nombre = form.nombre.value.trim()
   const datos = {
     nombre,
     puede_editar_tasas: form.puede_editar_tasas.checked,
     puede_gestionar_usuarios: form.puede_gestionar_usuarios.checked,
     puede_editar_coberturas: form.puede_editar_coberturas.checked,
     puede_editar_planes: form.puede_editar_planes.checked,
-  };
-
-  if (!nombre) {
-    state.modalRol.error = 'Completá el nombre del rol.';
-    renderApp();
-    return;
   }
 
-  state.modalRol.error = '';
-  state.modalRol.guardando = true;
-  renderApp();
+  if (!nombre) {
+    state.modalRol.error = 'Completá el nombre del rol.'
+    renderApp()
+    return
+  }
+
+  state.modalRol.error = ''
+  state.modalRol.guardando = true
+  renderApp()
 
   try {
     if (state.modalRol.tipo === 'crear') {
-      await api.post('/admin/roles', datos);
-      mostrarBanner('success', `Rol ${nombre} creado.`);
+      await api.post('/admin/roles', datos)
+      mostrarBanner('success', `Rol ${nombre} creado.`)
     } else {
-      await api.put(`/admin/roles/${state.modalRol.rolId}`, datos);
-      mostrarBanner('success', `Rol ${nombre} actualizado.`);
+      await api.put(`/admin/roles/${state.modalRol.rolId}`, datos)
+      mostrarBanner('success', `Rol ${nombre} actualizado.`)
     }
-    cerrarModalRol();
-    await cargarRoles();
+    cerrarModalRol()
+    await cargarRoles()
     // Repuebla el select de rol de un modal de usuario abierto, si lo hay, para que
     // el rol recién creado/editado aparezca sin tener que cerrar y reabrir el modal.
-    renderApp();
+    renderApp()
   } catch (err) {
-    state.modalRol.guardando = false;
-    state.modalRol.error = err.message || 'No se pudo guardar el rol.';
-    renderApp();
+    state.modalRol.guardando = false
+    state.modalRol.error = err.message || 'No se pudo guardar el rol.'
+    renderApp()
   }
 }
 
@@ -461,125 +480,125 @@ async function guardarModalRol(form) {
 // ---------------------------------------------------------------------------
 
 async function cargarPlanes() {
-  state.loadingPlanes = true;
-  state.planesError = '';
-  renderApp();
+  state.loadingPlanes = true
+  state.planesError = ''
+  renderApp()
   try {
     const [ramos, planes] = await Promise.all([
       state.ramos.length ? Promise.resolve(state.ramos) : api.get('/ramos'),
       api.get('/admin/planes'),
-    ]);
-    state.ramos = ramos;
-    state.planes = planes;
+    ])
+    state.ramos = ramos
+    state.planes = planes
   } catch (err) {
-    state.planes = [];
-    state.planesError = err.message || 'No se pudo cargar la lista de planes.';
+    state.planes = []
+    state.planesError = err.message || 'No se pudo cargar la lista de planes.'
   } finally {
-    state.loadingPlanes = false;
-    renderApp();
+    state.loadingPlanes = false
+    renderApp()
   }
 }
 
 async function togglePlanActivo(planId, activo) {
   try {
-    await api.put(`/admin/planes/${planId}`, { activo });
-    const plan = state.planes.find((p) => p.id === Number(planId));
-    if (plan) plan.activo = activo;
-    mostrarBanner('success', `Plan ${activo ? 'activado' : 'desactivado'}.`);
-    renderApp();
+    await api.put(`/admin/planes/${planId}`, { activo })
+    const plan = state.planes.find((p) => p.id === Number(planId))
+    if (plan) plan.activo = activo
+    mostrarBanner('success', `Plan ${activo ? 'activado' : 'desactivado'}.`)
+    renderApp()
   } catch (err) {
-    mostrarBanner('error', err.message || 'No se pudo actualizar el plan.');
+    mostrarBanner('error', err.message || 'No se pudo actualizar el plan.')
   }
 }
 
 function habilitarEdicionPrima(planId) {
-  state.primaEnEdicion.add(planId);
-  renderApp();
+  state.primaEnEdicion.add(planId)
+  renderApp()
 }
 
 function cancelarEdicionPrima(planId) {
-  state.primaEnEdicion.delete(planId);
-  renderApp();
+  state.primaEnEdicion.delete(planId)
+  renderApp()
 }
 
 async function guardarPrimaTecnicaMinima(planId, form) {
-  const valor = form.prima_tecnica_minima.value;
-  const prima_tecnica_minima = valor === '' ? null : Number(valor);
+  const valor = form.prima_tecnica_minima.value
+  const prima_tecnica_minima = valor === '' ? null : Number(valor)
 
   try {
-    const plan = await api.put(`/admin/planes/${planId}`, { prima_tecnica_minima });
-    const idx = state.planes.findIndex((p) => p.id === Number(planId));
-    if (idx !== -1) state.planes[idx] = { ...state.planes[idx], ...plan };
-    state.primaEnEdicion.delete(Number(planId));
-    mostrarBanner('success', 'Prima técnica mínima actualizada.');
-    renderApp();
+    const plan = await api.put(`/admin/planes/${planId}`, { prima_tecnica_minima })
+    const idx = state.planes.findIndex((p) => p.id === Number(planId))
+    if (idx !== -1) state.planes[idx] = { ...state.planes[idx], ...plan }
+    state.primaEnEdicion.delete(Number(planId))
+    mostrarBanner('success', 'Prima técnica mínima actualizada.')
+    renderApp()
   } catch (err) {
-    mostrarBanner('error', err.message || 'No se pudo actualizar la prima técnica mínima.');
+    mostrarBanner('error', err.message || 'No se pudo actualizar la prima técnica mínima.')
   }
 }
 
 async function toggleFormasPago(planId) {
   if (state.planExpandido === planId) {
-    state.planExpandido = null;
-    renderApp();
-    return;
+    state.planExpandido = null
+    renderApp()
+    return
   }
-  state.planExpandido = planId;
-  renderApp();
+  state.planExpandido = planId
+  renderApp()
 
-  if (state.formasPagoPorPlan[planId]?.datos) return; // ya cargadas
+  if (state.formasPagoPorPlan[planId]?.datos) return // ya cargadas
 
-  state.formasPagoPorPlan[planId] = { loading: true, error: '', datos: [] };
-  renderApp();
+  state.formasPagoPorPlan[planId] = { loading: true, error: '', datos: [] }
+  renderApp()
   try {
-    const datos = await api.get(`/admin/planes/${planId}/formas-pago`);
-    state.formasPagoPorPlan[planId] = { loading: false, error: '', datos };
+    const datos = await api.get(`/admin/planes/${planId}/formas-pago`)
+    state.formasPagoPorPlan[planId] = { loading: false, error: '', datos }
   } catch (err) {
     state.formasPagoPorPlan[planId] = {
       loading: false,
       error: err.message || 'No se pudieron cargar las formas de pago.',
       datos: [],
-    };
+    }
   }
-  renderApp();
+  renderApp()
 }
 
 async function toggleFormaPagoHabilitada(planFormaPagoId, planId, habilitada) {
   try {
-    await api.put(`/admin/plan-formas-pago/${planFormaPagoId}`, { habilitada });
-    const entry = state.formasPagoPorPlan[planId];
-    const fila = entry?.datos.find((f) => f.id === Number(planFormaPagoId));
-    if (fila) fila.habilitada = habilitada;
-    mostrarBanner('success', `Forma de pago ${habilitada ? 'habilitada' : 'deshabilitada'}.`);
-    renderApp();
+    await api.put(`/admin/plan-formas-pago/${planFormaPagoId}`, { habilitada })
+    const entry = state.formasPagoPorPlan[planId]
+    const fila = entry?.datos.find((f) => f.id === Number(planFormaPagoId))
+    if (fila) fila.habilitada = habilitada
+    mostrarBanner('success', `Forma de pago ${habilitada ? 'habilitada' : 'deshabilitada'}.`)
+    renderApp()
   } catch (err) {
-    mostrarBanner('error', err.message || 'No se pudo actualizar la forma de pago.');
+    mostrarBanner('error', err.message || 'No se pudo actualizar la forma de pago.')
   }
 }
 
 function habilitarEdicionTasaRpf(planFormaPagoId) {
-  state.tasaRpfEnEdicion.add(planFormaPagoId);
-  renderApp();
+  state.tasaRpfEnEdicion.add(planFormaPagoId)
+  renderApp()
 }
 
 function cancelarEdicionTasaRpf(planFormaPagoId) {
-  state.tasaRpfEnEdicion.delete(planFormaPagoId);
-  renderApp();
+  state.tasaRpfEnEdicion.delete(planFormaPagoId)
+  renderApp()
 }
 
 async function guardarTasaRpf(planFormaPagoId, planId, form) {
-  const tasa_rpf = Number(form.tasa_rpf.value);
+  const tasa_rpf = Number(form.tasa_rpf.value)
 
   try {
-    const fila = await api.put(`/admin/plan-formas-pago/${planFormaPagoId}`, { tasa_rpf });
-    const entry = state.formasPagoPorPlan[planId];
-    const idx = entry?.datos.findIndex((f) => f.id === Number(planFormaPagoId));
-    if (entry && idx !== -1) entry.datos[idx] = { ...entry.datos[idx], ...fila };
-    state.tasaRpfEnEdicion.delete(Number(planFormaPagoId));
-    mostrarBanner('success', 'Tasa RPF actualizada.');
-    renderApp();
+    const fila = await api.put(`/admin/plan-formas-pago/${planFormaPagoId}`, { tasa_rpf })
+    const entry = state.formasPagoPorPlan[planId]
+    const idx = entry?.datos.findIndex((f) => f.id === Number(planFormaPagoId))
+    if (entry && idx !== -1) entry.datos[idx] = { ...entry.datos[idx], ...fila }
+    state.tasaRpfEnEdicion.delete(Number(planFormaPagoId))
+    mostrarBanner('success', 'Tasa RPF actualizada.')
+    renderApp()
   } catch (err) {
-    mostrarBanner('error', err.message || 'No se pudo actualizar la tasa RPF.');
+    mostrarBanner('error', err.message || 'No se pudo actualizar la tasa RPF.')
   }
 }
 
@@ -591,119 +610,135 @@ async function seleccionarRamoTasas(ramoId) {
   // ramos.id es un código de texto ('mrc', 'incendio', ...), no numérico — a diferencia
   // de plan_id/cobertura_id. Nunca castear con Number acá (ver renderPlanes, que ya trata
   // ramo_id como string).
-  state.ramoTasasSeleccionado = ramoId || null;
-  renderApp();
-  if (!state.ramoTasasSeleccionado) return;
-  const tareas = [cargarTasasDeRamo(state.ramoTasasSeleccionado), cargarCatalogoDeRamo(state.ramoTasasSeleccionado)];
+  state.ramoTasasSeleccionado = ramoId || null
+  renderApp()
+  if (!state.ramoTasasSeleccionado) return
+  const tareas = [
+    cargarTasasDeRamo(state.ramoTasasSeleccionado),
+    cargarCatalogoDeRamo(state.ramoTasasSeleccionado),
+  ]
   if (ramoUsaRubrosActividad(state.ramoTasasSeleccionado) && state.rubrosActividad.datos == null) {
-    tareas.push(cargarRubrosActividad());
+    tareas.push(cargarRubrosActividad())
   }
-  await Promise.all(tareas);
+  await Promise.all(tareas)
 }
 
 // rubros_actividad es compartida entre MRC e Incendio (no tiene ramo_id propio) —
 // se muestra solo cuando el ramo seleccionado es uno de esos dos (nombre = slug, no
 // nombre_display), evita mostrarla para Vida/AP u otros ramos que no la usan.
 function ramoUsaRubrosActividad(ramoId) {
-  const ramo = state.ramos.find((r) => String(r.id) === String(ramoId));
-  return ramo?.nombre === 'mrc' || ramo?.nombre === 'incendio';
+  const ramo = state.ramos.find((r) => String(r.id) === String(ramoId))
+  return ramo?.nombre === 'mrc' || ramo?.nombre === 'incendio'
 }
 
 async function cargarRubrosActividad() {
-  state.rubrosActividad = { loading: true, error: '', datos: state.rubrosActividad.datos ?? [] };
-  renderApp();
+  state.rubrosActividad = { loading: true, error: '', datos: state.rubrosActividad.datos ?? [] }
+  renderApp()
   try {
-    const datos = await api.get('/admin/rubros-actividad');
-    state.rubrosActividad = { loading: false, error: '', datos };
+    const datos = await api.get('/admin/rubros-actividad')
+    state.rubrosActividad = { loading: false, error: '', datos }
   } catch (err) {
     state.rubrosActividad = {
       loading: false,
       error: err.message || 'No se pudieron cargar los tipos de riesgo.',
       datos: [],
-    };
+    }
   }
-  renderApp();
+  renderApp()
 }
 
 function habilitarEdicionRubroActividad(id) {
-  state.rubroActividadEnEdicion.add(id);
-  renderApp();
+  state.rubroActividadEnEdicion.add(id)
+  renderApp()
 }
 
 function cancelarEdicionRubroActividad(id) {
-  state.rubroActividadEnEdicion.delete(id);
-  renderApp();
+  state.rubroActividadEnEdicion.delete(id)
+  renderApp()
 }
 
 async function guardarRubroActividadTasas(id, form) {
   // A diferencia de prima_tecnica_minima/monto/franquicia, el schema de este endpoint
   // (editarRubroActividadSchema) NO acepta null — tasa_edificio/tasa_contenido son
   // z.number().nonnegative().optional(), así que acá siempre se manda un número.
-  const tasa_edificio = Number(form.tasa_edificio.value);
-  const tasa_contenido = Number(form.tasa_contenido.value);
-  const categoria = form.categoria.value;
+  const tasa_edificio = Number(form.tasa_edificio.value)
+  const tasa_contenido = Number(form.tasa_contenido.value)
+  const categoria = form.categoria.value
 
   if (Number.isNaN(tasa_edificio) || Number.isNaN(tasa_contenido)) {
-    mostrarBanner('error', 'Ingresá valores numéricos válidos para ambas tasas.');
-    return;
+    mostrarBanner('error', 'Ingresá valores numéricos válidos para ambas tasas.')
+    return
   }
 
   try {
-    const fila = await api.put(`/admin/rubros-actividad/${id}`, { tasa_edificio, tasa_contenido, categoria });
-    const datos = state.rubrosActividad.datos ?? [];
-    const idx = datos.findIndex((r) => r.id === Number(id));
-    if (idx !== -1) datos[idx] = { ...datos[idx], ...fila };
-    state.rubroActividadEnEdicion.delete(Number(id));
-    mostrarBanner('success', 'Tipo de riesgo actualizado.');
-    renderApp();
+    const fila = await api.put(`/admin/rubros-actividad/${id}`, {
+      tasa_edificio,
+      tasa_contenido,
+      categoria,
+    })
+    const datos = state.rubrosActividad.datos ?? []
+    const idx = datos.findIndex((r) => r.id === Number(id))
+    if (idx !== -1) datos[idx] = { ...datos[idx], ...fila }
+    state.rubroActividadEnEdicion.delete(Number(id))
+    mostrarBanner('success', 'Tipo de riesgo actualizado.')
+    renderApp()
   } catch (err) {
-    mostrarBanner('error', err.message || 'No se pudo actualizar el tipo de riesgo.');
+    mostrarBanner('error', err.message || 'No se pudo actualizar el tipo de riesgo.')
   }
 }
 
 async function eliminarTasa(id) {
-  const ramoId = state.ramoTasasSeleccionado;
-  const entry = state.tasasPorRamo[ramoId];
-  const tasa = entry?.historial.find((t) => t.id === id);
-  const nombreCobertura = tasa?.coberturas_catalogo?.nombre ?? 'esta tasa';
-  if (!confirm(`¿Eliminar la versión de "${nombreCobertura}" cargada el ${tasa?.vigente_desde ?? ''}? Si era la vigente, vuelve a regir la versión anterior.`)) return;
+  const ramoId = state.ramoTasasSeleccionado
+  const entry = state.tasasPorRamo[ramoId]
+  const tasa = entry?.historial.find((t) => t.id === id)
+  const nombreCobertura = tasa?.coberturas_catalogo?.nombre ?? 'esta tasa'
+  if (
+    !confirm(
+      `¿Eliminar la versión de "${nombreCobertura}" cargada el ${tasa?.vigente_desde ?? ''}? Si era la vigente, vuelve a regir la versión anterior.`
+    )
+  )
+    return
 
   try {
-    await api.delete(`/admin/tasas/${id}`);
-    mostrarBanner('success', 'Tasa eliminada.');
-    await cargarTasasDeRamo(ramoId);
+    await api.delete(`/admin/tasas/${id}`)
+    mostrarBanner('success', 'Tasa eliminada.')
+    await cargarTasasDeRamo(ramoId)
   } catch (err) {
-    mostrarBanner('error', err.message || 'No se pudo eliminar la tasa.');
+    mostrarBanner('error', err.message || 'No se pudo eliminar la tasa.')
   }
 }
 
 async function cargarTasasDeRamo(ramoId) {
-  state.tasasPorRamo[ramoId] = { loading: true, error: '', historial: state.tasasPorRamo[ramoId]?.historial ?? [] };
-  renderApp();
+  state.tasasPorRamo[ramoId] = {
+    loading: true,
+    error: '',
+    historial: state.tasasPorRamo[ramoId]?.historial ?? [],
+  }
+  renderApp()
   try {
-    const historial = await api.get(`/admin/ramos/${ramoId}/tasas`);
-    state.tasasPorRamo[ramoId] = { loading: false, error: '', historial };
+    const historial = await api.get(`/admin/ramos/${ramoId}/tasas`)
+    state.tasasPorRamo[ramoId] = { loading: false, error: '', historial }
   } catch (err) {
     state.tasasPorRamo[ramoId] = {
       loading: false,
       error: err.message || 'No se pudo cargar el historial de tasas.',
       historial: [],
-    };
+    }
   }
-  renderApp();
+  renderApp()
 }
 
 async function cargarCatalogoDeRamo(ramoId) {
-  if (state.catalogoPorRamo[ramoId]) return; // catálogo de coberturas no cambia en la sesión
+  if (state.catalogoPorRamo[ramoId]) return // catálogo de coberturas no cambia en la sesión
   try {
-    state.catalogoPorRamo[ramoId] = await api.get(`/ramos/${ramoId}/coberturas-catalogo`);
+    state.catalogoPorRamo[ramoId] = await api.get(`/ramos/${ramoId}/coberturas-catalogo`)
   } catch {
-    state.catalogoPorRamo[ramoId] = [];
+    state.catalogoPorRamo[ramoId] = []
   }
 }
 
 function abrirModalTasa() {
-  elementoDisparadorModal = document.activeElement;
+  elementoDisparadorModal = document.activeElement
   state.modalTasa = {
     error: '',
     guardando: false,
@@ -711,51 +746,57 @@ function abrirModalTasa() {
     tasa_valor: '',
     unidad: 'permil',
     vigente_desde: new Date().toISOString().slice(0, 10),
-  };
-  renderApp();
-  enfocarPrimerElemento(app.querySelector('.admin-modal'));
+  }
+  renderApp()
+  enfocarPrimerElemento(app.querySelector('.admin-modal'))
 }
 
 function cerrarModalTasa() {
-  state.modalTasa = null;
-  renderApp();
+  state.modalTasa = null
+  renderApp()
   if (elementoDisparadorModal) {
-    elementoDisparadorModal.focus();
-    elementoDisparadorModal = null;
+    elementoDisparadorModal.focus()
+    elementoDisparadorModal = null
   }
 }
 
 async function guardarModalTasa(form) {
-  const ramoId = state.ramoTasasSeleccionado;
-  const cobertura_id = Number(form.cobertura_id.value);
-  const tasa_valor = Number(form.tasa_valor.value);
-  const unidad = form.unidad.value;
-  const vigente_desde = form.vigente_desde.value;
+  const ramoId = state.ramoTasasSeleccionado
+  const cobertura_id = Number(form.cobertura_id.value)
+  const tasa_valor = Number(form.tasa_valor.value)
+  const unidad = form.unidad.value
+  const vigente_desde = form.vigente_desde.value
 
   if (!cobertura_id) {
-    state.modalTasa.error = 'Elegí una cobertura.';
-    renderApp();
-    return;
+    state.modalTasa.error = 'Elegí una cobertura.'
+    renderApp()
+    return
   }
   if (Number.isNaN(tasa_valor)) {
-    state.modalTasa.error = 'Ingresá un valor de tasa válido.';
-    renderApp();
-    return;
+    state.modalTasa.error = 'Ingresá un valor de tasa válido.'
+    renderApp()
+    return
   }
 
-  state.modalTasa.error = '';
-  state.modalTasa.guardando = true;
-  renderApp();
+  state.modalTasa.error = ''
+  state.modalTasa.guardando = true
+  renderApp()
 
   try {
-    await api.post('/admin/tasas', { ramo_id: Number(ramoId), cobertura_id, tasa_valor, unidad, vigente_desde });
-    cerrarModalTasa();
-    mostrarBanner('success', 'Nueva versión de tasa creada.');
-    await cargarTasasDeRamo(ramoId);
+    await api.post('/admin/tasas', {
+      ramo_id: Number(ramoId),
+      cobertura_id,
+      tasa_valor,
+      unidad,
+      vigente_desde,
+    })
+    cerrarModalTasa()
+    mostrarBanner('success', 'Nueva versión de tasa creada.')
+    await cargarTasasDeRamo(ramoId)
   } catch (err) {
-    state.modalTasa.guardando = false;
-    state.modalTasa.error = err.message || 'No se pudo crear la tasa.';
-    renderApp();
+    state.modalTasa.guardando = false
+    state.modalTasa.error = err.message || 'No se pudo crear la tasa.'
+    renderApp()
   }
 }
 
@@ -766,110 +807,115 @@ async function guardarModalTasa(form) {
 async function seleccionarRamoCoberturas(ramoId) {
   // Mismo criterio que ramoTasasSeleccionado: guardar el string crudo del <select>,
   // castear con Number() recién al armar el payload que va al backend.
-  state.ramoCoberturasSeleccionado = ramoId || null;
-  state.planCoberturasSeleccionado = null;
-  renderApp();
-  if (!state.ramoCoberturasSeleccionado) return;
+  state.ramoCoberturasSeleccionado = ramoId || null
+  state.planCoberturasSeleccionado = null
+  renderApp()
+  if (!state.ramoCoberturasSeleccionado) return
   await Promise.all([
     cargarPlanesDeRamoCob(state.ramoCoberturasSeleccionado),
     cargarCatalogoDeRamo(state.ramoCoberturasSeleccionado),
-  ]);
+  ])
 }
 
 async function cargarPlanesDeRamoCob(ramoId) {
-  state.planesPorRamoCob[ramoId] = { loading: true, error: '', datos: [] };
-  renderApp();
+  state.planesPorRamoCob[ramoId] = { loading: true, error: '', datos: [] }
+  renderApp()
   try {
-    const datos = await api.get(`/admin/planes?ramoId=${encodeURIComponent(ramoId)}`);
-    state.planesPorRamoCob[ramoId] = { loading: false, error: '', datos };
+    const datos = await api.get(`/admin/planes?ramoId=${encodeURIComponent(ramoId)}`)
+    state.planesPorRamoCob[ramoId] = { loading: false, error: '', datos }
   } catch (err) {
     state.planesPorRamoCob[ramoId] = {
       loading: false,
       error: err.message || 'No se pudieron cargar los planes del ramo.',
       datos: [],
-    };
+    }
   }
-  renderApp();
+  renderApp()
 }
 
 async function seleccionarPlanCoberturas(planId) {
-  state.planCoberturasSeleccionado = planId || null;
-  renderApp();
-  if (!state.planCoberturasSeleccionado) return;
-  await cargarCoberturasDelPlan(state.planCoberturasSeleccionado);
+  state.planCoberturasSeleccionado = planId || null
+  renderApp()
+  if (!state.planCoberturasSeleccionado) return
+  await cargarCoberturasDelPlan(state.planCoberturasSeleccionado)
 }
 
 async function cargarCoberturasDelPlan(planId) {
-  state.coberturasDelPlan[planId] = { loading: true, error: '', datos: [] };
-  renderApp();
+  state.coberturasDelPlan[planId] = { loading: true, error: '', datos: [] }
+  renderApp()
   try {
-    const datos = await api.get(`/admin/planes/${planId}/coberturas`);
-    state.coberturasDelPlan[planId] = { loading: false, error: '', datos };
+    const datos = await api.get(`/admin/planes/${planId}/coberturas`)
+    state.coberturasDelPlan[planId] = { loading: false, error: '', datos }
   } catch (err) {
     state.coberturasDelPlan[planId] = {
       loading: false,
       error: err.message || 'No se pudieron cargar las coberturas del plan.',
       datos: [],
-    };
+    }
   }
-  renderApp();
+  renderApp()
 }
 
 async function toggleCoberturaDefecto(planCoberturaId, planId, incluidaPorDefecto) {
   try {
-    const fila = await api.put(`/admin/plan-coberturas/${planCoberturaId}`, { incluida_por_defecto: incluidaPorDefecto });
-    const entry = state.coberturasDelPlan[planId];
-    const idx = entry?.datos.findIndex((c) => c.id === Number(planCoberturaId));
-    if (entry && idx !== -1) entry.datos[idx] = { ...entry.datos[idx], ...fila };
-    mostrarBanner('success', `Cobertura ${incluidaPorDefecto ? 'marcada' : 'desmarcada'} por defecto.`);
-    renderApp();
+    const fila = await api.put(`/admin/plan-coberturas/${planCoberturaId}`, {
+      incluida_por_defecto: incluidaPorDefecto,
+    })
+    const entry = state.coberturasDelPlan[planId]
+    const idx = entry?.datos.findIndex((c) => c.id === Number(planCoberturaId))
+    if (entry && idx !== -1) entry.datos[idx] = { ...entry.datos[idx], ...fila }
+    mostrarBanner(
+      'success',
+      `Cobertura ${incluidaPorDefecto ? 'marcada' : 'desmarcada'} por defecto.`
+    )
+    renderApp()
   } catch (err) {
-    mostrarBanner('error', err.message || 'No se pudo actualizar la cobertura.');
+    mostrarBanner('error', err.message || 'No se pudo actualizar la cobertura.')
   }
 }
 
 function habilitarEdicionCobertura(planCoberturaId) {
-  state.coberturaEnEdicion.add(planCoberturaId);
-  renderApp();
+  state.coberturaEnEdicion.add(planCoberturaId)
+  renderApp()
 }
 
 function cancelarEdicionCobertura(planCoberturaId) {
-  state.coberturaEnEdicion.delete(planCoberturaId);
-  renderApp();
+  state.coberturaEnEdicion.delete(planCoberturaId)
+  renderApp()
 }
 
 async function guardarMontoFranquicia(planCoberturaId, planId, form) {
-  const montoValor = form.monto.value;
-  const franquiciaValor = form.franquicia.value;
-  const monto = montoValor === '' ? null : Number(montoValor);
-  const franquicia = franquiciaValor === '' ? null : Number(franquiciaValor);
+  const montoValor = form.monto.value
+  const franquiciaValor = form.franquicia.value
+  const monto = montoValor === '' ? null : Number(montoValor)
+  const franquicia = franquiciaValor === '' ? null : Number(franquiciaValor)
 
   try {
-    const fila = await api.put(`/admin/plan-coberturas/${planCoberturaId}`, { monto, franquicia });
-    const entry = state.coberturasDelPlan[planId];
-    const idx = entry?.datos.findIndex((c) => c.id === Number(planCoberturaId));
-    if (entry && idx !== -1) entry.datos[idx] = { ...entry.datos[idx], ...fila };
-    state.coberturaEnEdicion.delete(Number(planCoberturaId));
-    mostrarBanner('success', 'Cobertura actualizada.');
-    renderApp();
+    const fila = await api.put(`/admin/plan-coberturas/${planCoberturaId}`, { monto, franquicia })
+    const entry = state.coberturasDelPlan[planId]
+    const idx = entry?.datos.findIndex((c) => c.id === Number(planCoberturaId))
+    if (entry && idx !== -1) entry.datos[idx] = { ...entry.datos[idx], ...fila }
+    state.coberturaEnEdicion.delete(Number(planCoberturaId))
+    mostrarBanner('success', 'Cobertura actualizada.')
+    renderApp()
   } catch (err) {
-    mostrarBanner('error', err.message || 'No se pudo actualizar la cobertura.');
+    mostrarBanner('error', err.message || 'No se pudo actualizar la cobertura.')
   }
 }
 
 async function eliminarCoberturaDelPlan(planCoberturaId, planId) {
-  if (!confirm('¿Quitar esta cobertura del plan?')) return;
+  if (!confirm('¿Quitar esta cobertura del plan?')) return
   try {
-    await api.delete(`/admin/plan-coberturas/${planCoberturaId}`);
-    mostrarBanner('success', 'Cobertura quitada del plan.');
-    await cargarCoberturasDelPlan(planId);
+    await api.delete(`/admin/plan-coberturas/${planCoberturaId}`)
+    mostrarBanner('success', 'Cobertura quitada del plan.')
+    await cargarCoberturasDelPlan(planId)
   } catch (err) {
-    mostrarBanner('error', err.message || 'No se pudo quitar la cobertura.');
+    mostrarBanner('error', err.message || 'No se pudo quitar la cobertura.')
   }
 }
 
 function abrirModalCobertura() {
-  elementoDisparadorModal = document.activeElement;
+  elementoDisparadorModal = document.activeElement
   state.modalCobertura = {
     error: '',
     guardando: false,
@@ -877,36 +923,36 @@ function abrirModalCobertura() {
     incluida_por_defecto: true,
     monto: '',
     franquicia: '',
-  };
-  renderApp();
-  enfocarPrimerElemento(app.querySelector('.admin-modal'));
+  }
+  renderApp()
+  enfocarPrimerElemento(app.querySelector('.admin-modal'))
 }
 
 function cerrarModalCobertura() {
-  state.modalCobertura = null;
-  renderApp();
+  state.modalCobertura = null
+  renderApp()
   if (elementoDisparadorModal) {
-    elementoDisparadorModal.focus();
-    elementoDisparadorModal = null;
+    elementoDisparadorModal.focus()
+    elementoDisparadorModal = null
   }
 }
 
 async function guardarModalCobertura(form) {
-  const planId = state.planCoberturasSeleccionado;
-  const cobertura_id = Number(form.cobertura_id.value);
-  const incluida_por_defecto = form.incluida_por_defecto.checked;
-  const montoValor = form.monto.value;
-  const franquiciaValor = form.franquicia.value;
+  const planId = state.planCoberturasSeleccionado
+  const cobertura_id = Number(form.cobertura_id.value)
+  const incluida_por_defecto = form.incluida_por_defecto.checked
+  const montoValor = form.monto.value
+  const franquiciaValor = form.franquicia.value
 
   if (!cobertura_id) {
-    state.modalCobertura.error = 'Elegí una cobertura.';
-    renderApp();
-    return;
+    state.modalCobertura.error = 'Elegí una cobertura.'
+    renderApp()
+    return
   }
 
-  state.modalCobertura.error = '';
-  state.modalCobertura.guardando = true;
-  renderApp();
+  state.modalCobertura.error = ''
+  state.modalCobertura.guardando = true
+  renderApp()
 
   try {
     await api.post(`/admin/planes/${planId}/coberturas`, {
@@ -914,14 +960,14 @@ async function guardarModalCobertura(form) {
       incluida_por_defecto,
       monto: montoValor === '' ? null : Number(montoValor),
       franquicia: franquiciaValor === '' ? null : Number(franquiciaValor),
-    });
-    cerrarModalCobertura();
-    mostrarBanner('success', 'Cobertura agregada al plan.');
-    await cargarCoberturasDelPlan(planId);
+    })
+    cerrarModalCobertura()
+    mostrarBanner('success', 'Cobertura agregada al plan.')
+    await cargarCoberturasDelPlan(planId)
   } catch (err) {
-    state.modalCobertura.guardando = false;
-    state.modalCobertura.error = err.message || 'No se pudo agregar la cobertura.';
-    renderApp();
+    state.modalCobertura.guardando = false
+    state.modalCobertura.error = err.message || 'No se pudo agregar la cobertura.'
+    renderApp()
   }
 }
 
@@ -933,7 +979,7 @@ function renderApp() {
   // app.innerHTML se reemplaza entero en cada render, así que .admin-content es un nodo
   // nuevo con scrollTop = 0 — sin esto, cualquier acción (ej. "Editar" en una tasa) tira
   // al usuario arriba de todo aunque estaba scrolleado abajo.
-  const scrollAnterior = app.querySelector('.admin-content')?.scrollTop ?? 0;
+  const scrollAnterior = app.querySelector('.admin-content')?.scrollTop ?? 0
 
   app.innerHTML = `
     ${renderTopbar()}
@@ -956,10 +1002,10 @@ function renderApp() {
     ${state.modalRol ? renderModalRol() : ''}
     ${state.modalTasa ? renderModalTasa() : ''}
     ${state.modalCobertura ? renderModalCobertura() : ''}
-  `;
+  `
 
-  const contenido = app.querySelector('.admin-content');
-  if (contenido) contenido.scrollTop = scrollAnterior;
+  const contenido = app.querySelector('.admin-content')
+  if (contenido) contenido.scrollTop = scrollAnterior
 }
 
 function renderTopbar() {
@@ -978,11 +1024,13 @@ function renderTopbar() {
         ${renderTopbarUser('admin')}
       </div>
     </div>
-  `;
+  `
 }
 
 function renderSidebar() {
-  const items = seccionesVisibles().map((s) => `
+  const items = seccionesVisibles()
+    .map(
+      (s) => `
     <div
       class="nav-item nav-item--icon ${s.id === state.seccion ? 'nav-item--active' : ''}"
       data-action="select-seccion"
@@ -992,7 +1040,9 @@ function renderSidebar() {
       <span>${s.label}</span>
       ${!s.disponible ? '<span class="nav-item__badge-pill">Pronto</span>' : ''}
     </div>
-  `).join('');
+  `
+    )
+    .join('')
 
   return `
     <div class="sidebar">
@@ -1005,12 +1055,12 @@ function renderSidebar() {
         ${renderSidebarFooter('admin')}
       </div>
     </div>
-  `;
+  `
 }
 
 function renderBanner() {
-  if (!state.banner) return '';
-  return `<div class="admin-banner admin-banner--${state.banner.tipo}">${escapeHtml(state.banner.texto)}</div>`;
+  if (!state.banner) return ''
+  return `<div class="admin-banner admin-banner--${state.banner.tipo}">${escapeHtml(state.banner.texto)}</div>`
 }
 
 function renderSeccion() {
@@ -1020,15 +1070,15 @@ function renderSeccion() {
         <div class="empty-state__title">Sin secciones habilitadas</div>
         <div class="empty-state__subtitle">Tu usuario no tiene permiso para ninguna sección del panel admin. Pedile a un administrador que te habilite acceso.</div>
       </div>
-    `;
+    `
   }
-  const seccion = seccionesVisibles().find((s) => s.id === state.seccion);
-  if (!seccion?.disponible) return renderProximamente(seccion);
-  if (state.seccion === 'usuarios') return renderUsuarios();
-  if (state.seccion === 'coberturas') return renderCoberturas();
-  if (state.seccion === 'planes') return renderPlanes();
-  if (state.seccion === 'tasas') return renderTasas();
-  return renderProximamente(seccion);
+  const seccion = seccionesVisibles().find((s) => s.id === state.seccion)
+  if (!seccion?.disponible) return renderProximamente(seccion)
+  if (state.seccion === 'usuarios') return renderUsuarios()
+  if (state.seccion === 'coberturas') return renderCoberturas()
+  if (state.seccion === 'planes') return renderPlanes()
+  if (state.seccion === 'tasas') return renderTasas()
+  return renderProximamente(seccion)
 }
 
 // Distinto del resto de los "empty-state__subtitle" sueltos que se usan en las tablas
@@ -1046,7 +1096,7 @@ function renderProximamente(seccion) {
       </div>
       <div class="empty-state__subtitle">Esta funcionalidad todavía no está disponible en el panel — no es un problema de datos ni de conexión, es una sección en desarrollo.</div>
     </div>
-  `;
+  `
 }
 
 function renderUsuarios() {
@@ -1069,21 +1119,23 @@ function renderUsuarios() {
         ${renderTablaRoles()}
       </div>
     </div>
-  `;
+  `
 }
 
 function renderTablaRoles() {
   if (state.loadingRoles) {
-    return '<div class="empty-state__subtitle"><span class="spinner" aria-hidden="true"></span> Cargando roles…</div>';
+    return '<div class="empty-state__subtitle"><span class="spinner" aria-hidden="true"></span> Cargando roles…</div>'
   }
   if (state.rolesError) {
-    return `<div class="admin-banner admin-banner--error">${escapeHtml(state.rolesError)}</div>`;
+    return `<div class="admin-banner admin-banner--error">${escapeHtml(state.rolesError)}</div>`
   }
   if (!state.roles.length) {
-    return '<div class="empty-state__subtitle">Todavía no hay roles cargados.</div>';
+    return '<div class="empty-state__subtitle">Todavía no hay roles cargados.</div>'
   }
 
-  const filas = state.roles.map((r) => `
+  const filas = state.roles
+    .map(
+      (r) => `
     <tr>
       <td>${capitalizar(escapeHtml(r.nombre))}</td>
       <td>${crearBadge(r.puede_gestionar_usuarios ? 'Sí' : 'No', r.puede_gestionar_usuarios ? 'success' : 'neutral')}</td>
@@ -1092,16 +1144,22 @@ function renderTablaRoles() {
       <td>${crearBadge(r.puede_editar_planes ? 'Sí' : 'No', r.puede_editar_planes ? 'success' : 'neutral')}</td>
       <td>
         <div class="admin-table__actions">
-          ${r.es_sistema
-            ? '<button class="btn-outline" disabled title="Rol del sistema — no se puede editar">Editar</button>'
-            : `<button class="btn-outline" data-action="editar-rol" data-id="${r.id}">Editar</button>`}
-          ${r.es_sistema
-            ? '<button class="btn-outline" disabled title="Rol del sistema — no se puede eliminar">Eliminar</button>'
-            : `<button class="btn-outline" data-action="eliminar-rol" data-id="${r.id}">Eliminar</button>`}
+          ${
+            r.es_sistema
+              ? '<button class="btn-outline" disabled title="Rol del sistema — no se puede editar">Editar</button>'
+              : `<button class="btn-outline" data-action="editar-rol" data-id="${r.id}">Editar</button>`
+          }
+          ${
+            r.es_sistema
+              ? '<button class="btn-outline" disabled title="Rol del sistema — no se puede eliminar">Eliminar</button>'
+              : `<button class="btn-outline" data-action="eliminar-rol" data-id="${r.id}">Eliminar</button>`
+          }
         </div>
       </td>
     </tr>
-  `).join('');
+  `
+    )
+    .join('')
 
   return `
     <div class="admin-table-scroll">
@@ -1119,32 +1177,33 @@ function renderTablaRoles() {
         <tbody>${filas}</tbody>
       </table>
     </div>
-  `;
+  `
 }
 
 function renderTablaUsuarios() {
   if (state.loadingUsuarios) {
-    return '<div class="empty-state__subtitle"><span class="spinner" aria-hidden="true"></span> Cargando usuarios…</div>';
+    return '<div class="empty-state__subtitle"><span class="spinner" aria-hidden="true"></span> Cargando usuarios…</div>'
   }
   if (state.usuariosError) {
-    return `<div class="admin-banner admin-banner--error">${escapeHtml(state.usuariosError)}</div>`;
+    return `<div class="admin-banner admin-banner--error">${escapeHtml(state.usuariosError)}</div>`
   }
   if (!state.usuarios.length) {
-    return '<div class="empty-state__subtitle">Todavía no hay usuarios cargados.</div>';
+    return '<div class="empty-state__subtitle">Todavía no hay usuarios cargados.</div>'
   }
 
-  const usuarioActual = auth.getUsuario();
-  const usuarioActualId = usuarioActual?.id;
-  const solicitanteEsAdmin = usuarioActual?.rol === 'admin';
+  const usuarioActual = auth.getUsuario()
+  const usuarioActualId = usuarioActual?.id
+  const solicitanteEsAdmin = usuarioActual?.rol === 'admin'
 
-  const filas = state.usuarios.map((u) => {
-    // Mismo criterio que el service (admin.service.js#asegurarPuedeModificarAdmin /
-    // #eliminarUsuario): un usuario admin solo puede ser tocado (editado, desactivado,
-    // password reseteado, eliminado) por otro admin, sin importar qué permisos booleanos
-    // tenga el rol custom de quien está mirando el panel.
-    const puedeModificar = u.rol !== 'admin' || solicitanteEsAdmin;
-    const puedeEliminar = u.id !== usuarioActualId && puedeModificar;
-    return `
+  const filas = state.usuarios
+    .map((u) => {
+      // Mismo criterio que el service (admin.service.js#asegurarPuedeModificarAdmin /
+      // #eliminarUsuario): un usuario admin solo puede ser tocado (editado, desactivado,
+      // password reseteado, eliminado) por otro admin, sin importar qué permisos booleanos
+      // tenga el rol custom de quien está mirando el panel.
+      const puedeModificar = u.rol !== 'admin' || solicitanteEsAdmin
+      const puedeEliminar = u.id !== usuarioActualId && puedeModificar
+      return `
     <tr>
       <td>${escapeHtml(u.nombre)}</td>
       <td>${escapeHtml(u.email)}</td>
@@ -1159,8 +1218,9 @@ function renderTablaUsuarios() {
         </div>
       </td>
     </tr>
-  `;
-  }).join('');
+  `
+    })
+    .join('')
 
   return `
     <div class="admin-table-scroll">
@@ -1177,13 +1237,17 @@ function renderTablaUsuarios() {
         <tbody>${filas}</tbody>
       </table>
     </div>
-  `;
+  `
 }
 
 function renderPlanes() {
-  const opcionesRamo = state.ramos.map((r) => `
+  const opcionesRamo = state.ramos
+    .map(
+      (r) => `
     <option value="${r.id}" ${state.ramoFiltro === String(r.id) ? 'selected' : ''}>${escapeHtml(r.nombre_display)}</option>
-  `).join('');
+  `
+    )
+    .join('')
 
   return `
     <div class="panel card">
@@ -1198,26 +1262,29 @@ function renderPlanes() {
         ${renderTablaPlanes()}
       </div>
     </div>
-  `;
+  `
 }
 
 function renderTablaPlanes() {
   if (state.loadingPlanes) {
-    return '<div class="empty-state__subtitle"><span class="spinner" aria-hidden="true"></span> Cargando planes…</div>';
+    return '<div class="empty-state__subtitle"><span class="spinner" aria-hidden="true"></span> Cargando planes…</div>'
   }
   if (state.planesError) {
-    return `<div class="admin-banner admin-banner--error">${escapeHtml(state.planesError)}</div>`;
+    return `<div class="admin-banner admin-banner--error">${escapeHtml(state.planesError)}</div>`
   }
 
-  const planesFiltrados = state.ramoFiltro === 'todos'
-    ? state.planes
-    : state.planes.filter((p) => String(p.ramo_id) === state.ramoFiltro);
+  const planesFiltrados =
+    state.ramoFiltro === 'todos'
+      ? state.planes
+      : state.planes.filter((p) => String(p.ramo_id) === state.ramoFiltro)
 
   if (!planesFiltrados.length) {
-    return '<div class="empty-state__subtitle">No hay planes para mostrar.</div>';
+    return '<div class="empty-state__subtitle">No hay planes para mostrar.</div>'
   }
 
-  const filas = planesFiltrados.map((p) => `
+  const filas = planesFiltrados
+    .map(
+      (p) => `
     <tr>
       <td>${escapeHtml(p.nombre)}</td>
       <td>${escapeHtml(p.ramos?.nombre_display ?? '')}</td>
@@ -1235,7 +1302,9 @@ function renderTablaPlanes() {
       </td>
     </tr>
     ${state.planExpandido === p.id ? `<tr class="admin-subrow"><td colspan="5">${renderFormasPagoDelPlan(p.id)}</td></tr>` : ''}
-  `).join('');
+  `
+    )
+    .join('')
 
   return `
     <div class="admin-table-scroll">
@@ -1252,22 +1321,24 @@ function renderTablaPlanes() {
         <tbody>${filas}</tbody>
       </table>
     </div>
-  `;
+  `
 }
 
 function renderFormasPagoDelPlan(planId) {
-  const entry = state.formasPagoPorPlan[planId];
+  const entry = state.formasPagoPorPlan[planId]
   if (!entry || entry.loading) {
-    return '<div class="empty-state__subtitle"><span class="spinner" aria-hidden="true"></span> Cargando formas de pago…</div>';
+    return '<div class="empty-state__subtitle"><span class="spinner" aria-hidden="true"></span> Cargando formas de pago…</div>'
   }
   if (entry.error) {
-    return `<div class="admin-banner admin-banner--error">${escapeHtml(entry.error)}</div>`;
+    return `<div class="admin-banner admin-banner--error">${escapeHtml(entry.error)}</div>`
   }
   if (!entry.datos.length) {
-    return '<div class="empty-state__subtitle">Este plan no tiene formas de pago configuradas.</div>';
+    return '<div class="empty-state__subtitle">Este plan no tiene formas de pago configuradas.</div>'
   }
 
-  const filas = entry.datos.map((f) => `
+  const filas = entry.datos
+    .map(
+      (f) => `
     <tr>
       <td>${escapeHtml(f.formas_pago?.nombre_display ?? '')}</td>
       <td>${renderCampoTasaRpf(f, planId)}</td>
@@ -1278,7 +1349,9 @@ function renderFormasPagoDelPlan(planId) {
         </label>
       </td>
     </tr>
-  `).join('');
+  `
+    )
+    .join('')
 
   return `
     <div class="admin-table-scroll">
@@ -1293,7 +1366,7 @@ function renderFormasPagoDelPlan(planId) {
         <tbody>${filas}</tbody>
       </table>
     </div>
-  `;
+  `
 }
 
 function renderCampoPrimaTecnicaMinima(plan) {
@@ -1303,7 +1376,7 @@ function renderCampoPrimaTecnicaMinima(plan) {
         <span>${plan.prima_tecnica_minima != null ? escapeHtml(fmtGs(plan.prima_tecnica_minima)) : '—'}</span>
         <button class="btn-outline" data-action="editar-prima-tecnica-minima" data-id="${plan.id}">Editar</button>
       </div>
-    `;
+    `
   }
   return `
     <form class="admin-inline-form" data-form-action="prima-tecnica-minima" data-id="${plan.id}">
@@ -1311,7 +1384,7 @@ function renderCampoPrimaTecnicaMinima(plan) {
       <button class="btn-outline" type="submit">Guardar</button>
       <button class="btn-outline" type="button" data-action="cancelar-prima-tecnica-minima" data-id="${plan.id}">Cancelar</button>
     </form>
-  `;
+  `
 }
 
 function renderCampoTasaRpf(formaPagoPlan, planId) {
@@ -1321,7 +1394,7 @@ function renderCampoTasaRpf(formaPagoPlan, planId) {
         <span>${escapeHtml(String(formaPagoPlan.tasa_rpf))}</span>
         <button class="btn-outline" data-action="editar-tasa-rpf" data-id="${formaPagoPlan.id}" data-plan-id="${planId}">Editar</button>
       </div>
-    `;
+    `
   }
   return `
     <form class="admin-inline-form" data-form-action="tasa-rpf" data-id="${formaPagoPlan.id}" data-plan-id="${planId}">
@@ -1329,14 +1402,18 @@ function renderCampoTasaRpf(formaPagoPlan, planId) {
       <button class="btn-outline" type="submit">Guardar</button>
       <button class="btn-outline" type="button" data-action="cancelar-tasa-rpf" data-id="${formaPagoPlan.id}">Cancelar</button>
     </form>
-  `;
+  `
 }
 
 function renderTasas() {
-  const puedeEditar = Boolean(auth.getUsuario()?.puede_editar_tasas);
-  const opcionesRamo = state.ramos.map((r) => `
+  const puedeEditar = Boolean(auth.getUsuario()?.puede_editar_tasas)
+  const opcionesRamo = state.ramos
+    .map(
+      (r) => `
     <option value="${r.id}" ${String(state.ramoTasasSeleccionado) === String(r.id) ? 'selected' : ''}>${escapeHtml(r.nombre_display)}</option>
-  `).join('');
+  `
+    )
+    .join('')
 
   return `
     ${!puedeEditar ? '<div class="admin-banner admin-banner--error">Tu usuario no tiene permiso para editar tasas — podés ver el historial, pero no cargar versiones nuevas.</div>' : ''}
@@ -1355,35 +1432,43 @@ function renderTasas() {
         ${renderTablaTasas()}
       </div>
     </div>
-    ${ramoUsaRubrosActividad(state.ramoTasasSeleccionado) ? `
+    ${
+      ramoUsaRubrosActividad(state.ramoTasasSeleccionado)
+        ? `
       <div class="panel card">
         <div class="card__title">Tasas por Tipo de Riesgo</div>
         <div class="card__body">
           ${renderTablaRubrosActividad()}
         </div>
       </div>
-    ` : ''}
-  `;
+    `
+        : ''
+    }
+  `
 }
 
 function renderTablaRubrosActividad() {
-  const entry = state.rubrosActividad;
+  const entry = state.rubrosActividad
   if (entry.loading) {
-    return '<div class="empty-state__subtitle"><span class="spinner" aria-hidden="true"></span> Cargando tipos de riesgo…</div>';
+    return '<div class="empty-state__subtitle"><span class="spinner" aria-hidden="true"></span> Cargando tipos de riesgo…</div>'
   }
   if (entry.error) {
-    return `<div class="admin-banner admin-banner--error">${escapeHtml(entry.error)}</div>`;
+    return `<div class="admin-banner admin-banner--error">${escapeHtml(entry.error)}</div>`
   }
   if (!entry.datos?.length) {
-    return '<div class="empty-state__subtitle">Todavía no hay tipos de riesgo cargados.</div>';
+    return '<div class="empty-state__subtitle">Todavía no hay tipos de riesgo cargados.</div>'
   }
 
-  const filas = entry.datos.map((r) => `
+  const filas = entry.datos
+    .map(
+      (r) => `
     <tr>
       <td>${escapeHtml(r.nombre)}</td>
       <td colspan="3">${renderCamposTasaEdificioContenido(r)}</td>
     </tr>
-  `).join('');
+  `
+    )
+    .join('')
 
   return `
     <div class="admin-table-scroll">
@@ -1398,13 +1483,15 @@ function renderTablaRubrosActividad() {
         <tbody>${filas}</tbody>
       </table>
     </div>
-  `;
+  `
 }
 
-const CATEGORIAS_RUBRO_ACTIVIDAD = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'].map((letra) => `CATEGORIA ${letra}`);
+const CATEGORIAS_RUBRO_ACTIVIDAD = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'].map(
+  (letra) => `CATEGORIA ${letra}`
+)
 
 function renderCamposTasaEdificioContenido(rubro) {
-  const puedeEditar = Boolean(auth.getUsuario()?.puede_editar_tasas);
+  const puedeEditar = Boolean(auth.getUsuario()?.puede_editar_tasas)
   if (!state.rubroActividadEnEdicion.has(rubro.id)) {
     return `
       <div class="admin-valor-fijo">
@@ -1412,11 +1499,13 @@ function renderCamposTasaEdificioContenido(rubro) {
         <span>${rubro.tasa_edificio != null ? escapeHtml(String(rubro.tasa_edificio)) : '—'} / ${rubro.tasa_contenido != null ? escapeHtml(String(rubro.tasa_contenido)) : '—'}</span>
         ${puedeEditar ? `<button class="btn-outline" data-action="editar-tasa-edificio-contenido" data-id="${rubro.id}">Editar</button>` : ''}
       </div>
-    `;
+    `
   }
-  const opcionesCategoria = CATEGORIAS_RUBRO_ACTIVIDAD.map((cat) => `
+  const opcionesCategoria = CATEGORIAS_RUBRO_ACTIVIDAD.map(
+    (cat) => `
     <option value="${cat}" ${rubro.categoria === cat ? 'selected' : ''}>${cat}</option>
-  `).join('');
+  `
+  ).join('')
   return `
     <form class="admin-inline-form" data-form-action="rubro-actividad-tasas" data-id="${rubro.id}">
       <select class="field-input field-input--sm" name="categoria" autofocus>${opcionesCategoria}</select>
@@ -1425,35 +1514,36 @@ function renderCamposTasaEdificioContenido(rubro) {
       <button class="btn-outline" type="submit">Guardar</button>
       <button class="btn-outline" type="button" data-action="cancelar-tasa-edificio-contenido" data-id="${rubro.id}">Cancelar</button>
     </form>
-  `;
+  `
 }
 
 function renderTablaTasas() {
   if (!state.ramoTasasSeleccionado) {
-    return '<div class="empty-state__subtitle">Elegí un ramo para ver su historial de tasas.</div>';
+    return '<div class="empty-state__subtitle">Elegí un ramo para ver su historial de tasas.</div>'
   }
 
-  const entry = state.tasasPorRamo[state.ramoTasasSeleccionado];
+  const entry = state.tasasPorRamo[state.ramoTasasSeleccionado]
   if (!entry || entry.loading) {
-    return '<div class="empty-state__subtitle"><span class="spinner" aria-hidden="true"></span> Cargando tasas…</div>';
+    return '<div class="empty-state__subtitle"><span class="spinner" aria-hidden="true"></span> Cargando tasas…</div>'
   }
   if (entry.error) {
-    return `<div class="admin-banner admin-banner--error">${escapeHtml(entry.error)}</div>`;
+    return `<div class="admin-banner admin-banner--error">${escapeHtml(entry.error)}</div>`
   }
   if (!entry.historial.length) {
-    return '<div class="empty-state__subtitle">Este ramo todavía no tiene tasas cargadas.</div>';
+    return '<div class="empty-state__subtitle">Este ramo todavía no tiene tasas cargadas.</div>'
   }
 
-  const puedeEditar = Boolean(auth.getUsuario()?.puede_editar_tasas);
+  const puedeEditar = Boolean(auth.getUsuario()?.puede_editar_tasas)
 
   // El historial ya viene ordenado por vigente_desde descendente — la primera fila de
   // cada cobertura es la vigente, el resto queda como versión anterior.
-  const vistaPorCobertura = new Set();
-  const filas = entry.historial.map((t) => {
-    const codigo = t.coberturas_catalogo?.codigo ?? String(t.cobertura_id);
-    const esVigente = !vistaPorCobertura.has(codigo);
-    vistaPorCobertura.add(codigo);
-    return `
+  const vistaPorCobertura = new Set()
+  const filas = entry.historial
+    .map((t) => {
+      const codigo = t.coberturas_catalogo?.codigo ?? String(t.cobertura_id)
+      const esVigente = !vistaPorCobertura.has(codigo)
+      vistaPorCobertura.add(codigo)
+      return `
       <tr>
         <td>${escapeHtml(t.coberturas_catalogo?.nombre ?? '—')}</td>
         <td>${escapeHtml(String(t.tasa_valor))}</td>
@@ -1462,8 +1552,9 @@ function renderTablaTasas() {
         <td>${crearBadge(esVigente ? 'Vigente' : 'Histórica', esVigente ? 'success' : 'neutral')}</td>
         <td>${puedeEditar ? `<button class="btn-outline" data-action="eliminar-tasa" data-id="${t.id}">Eliminar</button>` : ''}</td>
       </tr>
-    `;
-  }).join('');
+    `
+    })
+    .join('')
 
   return `
     <div class="admin-table-scroll">
@@ -1481,18 +1572,28 @@ function renderTablaTasas() {
         <tbody>${filas}</tbody>
       </table>
     </div>
-  `;
+  `
 }
 
 function renderCoberturas() {
-  const opcionesRamo = state.ramos.map((r) => `
+  const opcionesRamo = state.ramos
+    .map(
+      (r) => `
     <option value="${r.id}" ${String(state.ramoCoberturasSeleccionado) === String(r.id) ? 'selected' : ''}>${escapeHtml(r.nombre_display)}</option>
-  `).join('');
+  `
+    )
+    .join('')
 
-  const planesEntry = state.ramoCoberturasSeleccionado ? state.planesPorRamoCob[state.ramoCoberturasSeleccionado] : null;
-  const opcionesPlan = (planesEntry?.datos ?? []).map((p) => `
+  const planesEntry = state.ramoCoberturasSeleccionado
+    ? state.planesPorRamoCob[state.ramoCoberturasSeleccionado]
+    : null
+  const opcionesPlan = (planesEntry?.datos ?? [])
+    .map(
+      (p) => `
     <option value="${p.id}" ${String(state.planCoberturasSeleccionado) === String(p.id) ? 'selected' : ''}>${escapeHtml(p.nombre)}</option>
-  `).join('');
+  `
+    )
+    .join('')
 
   return `
     <div class="panel card">
@@ -1503,12 +1604,16 @@ function renderCoberturas() {
             <option value="">Elegí un ramo…</option>
             ${opcionesRamo}
           </select>
-          ${state.ramoCoberturasSeleccionado ? `
+          ${
+            state.ramoCoberturasSeleccionado
+              ? `
             <select class="field-input" style="width: auto;" data-action="seleccionar-plan-coberturas">
               <option value="">Elegí un plan…</option>
               ${opcionesPlan}
             </select>
-          ` : ''}
+          `
+              : ''
+          }
           ${state.planCoberturasSeleccionado ? '<button class="btn-primary btn-primary--sm" data-action="agregar-cobertura">+ Agregar cobertura</button>' : ''}
         </div>
       </div>
@@ -1516,37 +1621,39 @@ function renderCoberturas() {
         ${renderTablaCoberturasPlan()}
       </div>
     </div>
-  `;
+  `
 }
 
 function renderTablaCoberturasPlan() {
   if (!state.ramoCoberturasSeleccionado) {
-    return '<div class="empty-state__subtitle">Elegí un ramo para ver sus planes.</div>';
+    return '<div class="empty-state__subtitle">Elegí un ramo para ver sus planes.</div>'
   }
-  const planesEntry = state.planesPorRamoCob[state.ramoCoberturasSeleccionado];
+  const planesEntry = state.planesPorRamoCob[state.ramoCoberturasSeleccionado]
   if (!planesEntry || planesEntry.loading) {
-    return '<div class="empty-state__subtitle"><span class="spinner" aria-hidden="true"></span> Cargando planes…</div>';
+    return '<div class="empty-state__subtitle"><span class="spinner" aria-hidden="true"></span> Cargando planes…</div>'
   }
   if (planesEntry.error) {
-    return `<div class="admin-banner admin-banner--error">${escapeHtml(planesEntry.error)}</div>`;
+    return `<div class="admin-banner admin-banner--error">${escapeHtml(planesEntry.error)}</div>`
   }
   if (!state.planCoberturasSeleccionado) {
-    return '<div class="empty-state__subtitle">Elegí un plan para ver sus coberturas.</div>';
+    return '<div class="empty-state__subtitle">Elegí un plan para ver sus coberturas.</div>'
   }
 
-  const entry = state.coberturasDelPlan[state.planCoberturasSeleccionado];
+  const entry = state.coberturasDelPlan[state.planCoberturasSeleccionado]
   if (!entry || entry.loading) {
-    return '<div class="empty-state__subtitle"><span class="spinner" aria-hidden="true"></span> Cargando coberturas…</div>';
+    return '<div class="empty-state__subtitle"><span class="spinner" aria-hidden="true"></span> Cargando coberturas…</div>'
   }
   if (entry.error) {
-    return `<div class="admin-banner admin-banner--error">${escapeHtml(entry.error)}</div>`;
+    return `<div class="admin-banner admin-banner--error">${escapeHtml(entry.error)}</div>`
   }
   if (!entry.datos.length) {
-    return '<div class="empty-state__subtitle">Este plan todavía no tiene coberturas cargadas.</div>';
+    return '<div class="empty-state__subtitle">Este plan todavía no tiene coberturas cargadas.</div>'
   }
 
-  const planId = state.planCoberturasSeleccionado;
-  const filas = entry.datos.map((c) => `
+  const planId = state.planCoberturasSeleccionado
+  const filas = entry.datos
+    .map(
+      (c) => `
     <tr>
       <td>${escapeHtml(c.coberturas_catalogo?.nombre ?? '—')}</td>
       <td>${escapeHtml(c.coberturas_catalogo?.categoria ?? '—')}</td>
@@ -1561,7 +1668,9 @@ function renderTablaCoberturasPlan() {
         <button class="btn-outline" data-action="eliminar-cobertura-plan" data-id="${c.id}" data-plan-id="${planId}">Quitar</button>
       </td>
     </tr>
-  `).join('');
+  `
+    )
+    .join('')
 
   return `
     <div class="admin-table-scroll">
@@ -1578,7 +1687,7 @@ function renderTablaCoberturasPlan() {
         <tbody>${filas}</tbody>
       </table>
     </div>
-  `;
+  `
 }
 
 function renderCamposMontoFranquicia(planCobertura, planId) {
@@ -1588,7 +1697,7 @@ function renderCamposMontoFranquicia(planCobertura, planId) {
         <span>${planCobertura.monto != null ? escapeHtml(fmtGs(planCobertura.monto)) : '—'} / ${planCobertura.franquicia != null ? escapeHtml(fmtGs(planCobertura.franquicia)) : '—'}</span>
         <button class="btn-outline" data-action="editar-cobertura-plan" data-id="${planCobertura.id}" data-plan-id="${planId}">Editar</button>
       </div>
-    `;
+    `
   }
   return `
     <form class="admin-inline-form" data-form-action="monto-franquicia" data-id="${planCobertura.id}" data-plan-id="${planId}">
@@ -1597,18 +1706,25 @@ function renderCamposMontoFranquicia(planCobertura, planId) {
       <button class="btn-outline" type="submit">Guardar</button>
       <button class="btn-outline" type="button" data-action="cancelar-cobertura-plan" data-id="${planCobertura.id}">Cancelar</button>
     </form>
-  `;
+  `
 }
 
 function renderModalCobertura() {
-  const m = state.modalCobertura;
-  const catalogo = state.catalogoPorRamo[state.ramoCoberturasSeleccionado] ?? [];
-  const yaAgregadas = new Set((state.coberturasDelPlan[state.planCoberturasSeleccionado]?.datos ?? []).map((c) => c.cobertura_id));
+  const m = state.modalCobertura
+  const catalogo = state.catalogoPorRamo[state.ramoCoberturasSeleccionado] ?? []
+  const yaAgregadas = new Set(
+    (state.coberturasDelPlan[state.planCoberturasSeleccionado]?.datos ?? []).map(
+      (c) => c.cobertura_id
+    )
+  )
   const opcionesCobertura = catalogo
     .filter((c) => !yaAgregadas.has(c.id))
-    .map((c) => `
+    .map(
+      (c) => `
       <option value="${c.id}" ${String(m.cobertura_id) === String(c.id) ? 'selected' : ''}>${escapeHtml(c.nombre)}</option>
-    `).join('');
+    `
+    )
+    .join('')
 
   return `
     <div class="admin-modal-backdrop" data-action="cerrar-modal-cobertura-backdrop">
@@ -1644,16 +1760,16 @@ function renderModalCobertura() {
         </form>
       </div>
     </div>
-  `;
+  `
 }
 
 function renderModal() {
-  const m = state.modal;
-  let titulo = '';
-  let cuerpo = '';
+  const m = state.modal
+  let titulo = ''
+  let cuerpo = ''
 
   if (m.tipo === 'crear') {
-    titulo = 'Nuevo usuario';
+    titulo = 'Nuevo usuario'
     cuerpo = `
       <div class="admin-modal__field">
         <label for="admin-modal-nombre">Nombre</label>
@@ -1673,9 +1789,9 @@ function renderModal() {
         <label for="admin-modal-password">Contraseña (mín. 8 caracteres)</label>
         <input class="field-input" id="admin-modal-password" type="password" name="password" autocomplete="new-password" />
       </div>
-    `;
+    `
   } else if (m.tipo === 'editar') {
-    titulo = `Editar ${escapeHtml(m.usuario.nombre)}`;
+    titulo = `Editar ${escapeHtml(m.usuario.nombre)}`
     cuerpo = `
       <div class="admin-modal__field">
         <label for="admin-modal-nombre">Nombre</label>
@@ -1705,15 +1821,15 @@ function renderModal() {
         <label for="admin-modal-recargo">Recargo máx. propio (%) — vacío = usa el tope del plan</label>
         <input class="field-input" id="admin-modal-recargo" type="number" step="0.01" min="0" max="100" name="recargo_maximo_pct" value="${m.recargo_maximo_pct ?? ''}" />
       </div>
-    `;
+    `
   } else if (m.tipo === 'password') {
-    titulo = `Resetear contraseña de ${escapeHtml(m.usuario.nombre)}`;
+    titulo = `Resetear contraseña de ${escapeHtml(m.usuario.nombre)}`
     cuerpo = `
       <div class="admin-modal__field">
         <label for="admin-modal-password">Nueva contraseña (mín. 8 caracteres)</label>
         <input class="field-input" id="admin-modal-password" type="password" name="password" autocomplete="new-password" />
       </div>
-    `;
+    `
   }
 
   return `
@@ -1730,18 +1846,22 @@ function renderModal() {
         </form>
       </div>
     </div>
-  `;
+  `
 }
 
 function renderOpcionesRoles(rolIdSeleccionado) {
-  return state.roles.map((r) => `
+  return state.roles
+    .map(
+      (r) => `
     <option value="${r.id}" ${String(rolIdSeleccionado) === String(r.id) ? 'selected' : ''}>${capitalizar(escapeHtml(r.nombre))}</option>
-  `).join('');
+  `
+    )
+    .join('')
 }
 
 function renderModalRol() {
-  const m = state.modalRol;
-  const titulo = m.tipo === 'crear' ? 'Crear rol' : `Editar rol: ${escapeHtml(m.nombre)}`;
+  const m = state.modalRol
+  const titulo = m.tipo === 'crear' ? 'Crear rol' : `Editar rol: ${escapeHtml(m.nombre)}`
 
   return `
     <div class="admin-modal-backdrop" data-action="cerrar-modal-rol-backdrop">
@@ -1784,15 +1904,19 @@ function renderModalRol() {
         </form>
       </div>
     </div>
-  `;
+  `
 }
 
 function renderModalTasa() {
-  const m = state.modalTasa;
-  const catalogo = state.catalogoPorRamo[state.ramoTasasSeleccionado] ?? [];
-  const opcionesCobertura = catalogo.map((c) => `
+  const m = state.modalTasa
+  const catalogo = state.catalogoPorRamo[state.ramoTasasSeleccionado] ?? []
+  const opcionesCobertura = catalogo
+    .map(
+      (c) => `
     <option value="${c.id}" ${String(m.cobertura_id) === String(c.id) ? 'selected' : ''}>${escapeHtml(c.nombre)}</option>
-  `).join('');
+  `
+    )
+    .join('')
 
   return `
     <div class="admin-modal-backdrop" data-action="cerrar-modal-tasa-backdrop">
@@ -1829,7 +1953,7 @@ function renderModalTasa() {
         </form>
       </div>
     </div>
-  `;
+  `
 }
 
 // ---------------------------------------------------------------------------
@@ -1846,55 +1970,55 @@ function renderModalTasa() {
 // data-action, no debe "escapar" hacia el data-action del backdrop que lo
 // contiene (antes evitado con e.stopPropagation() en el modal en cada bind).
 function resolveActionTarget(e) {
-  const target = e.target.closest('[data-action]');
-  if (!target || target.disabled) return null;
-  const stopEl = e.target.closest('[data-stop-propagation]');
-  if (stopEl && !stopEl.contains(target)) return null;
-  return target;
+  const target = e.target.closest('[data-action]')
+  if (!target || target.disabled) return null
+  const stopEl = e.target.closest('[data-stop-propagation]')
+  if (stopEl && !stopEl.contains(target)) return null
+  return target
 }
 
 function onAppClick(e) {
-  const target = resolveActionTarget(e);
-  if (!target) return;
+  const target = resolveActionTarget(e)
+  if (!target) return
   // SELECT/INPUT con data-action se despachan por 'change' (ver onAppChange),
   // no acá, para no disparar la acción dos veces (mismo criterio que el
   // bindEvents() original: evento = SELECT/INPUT ? 'change' : 'click').
-  if (target.tagName === 'SELECT' || target.tagName === 'INPUT') return;
-  onActionClick(target);
+  if (target.tagName === 'SELECT' || target.tagName === 'INPUT') return
+  onActionClick(target)
 }
 
 function onAppChange(e) {
-  const target = resolveActionTarget(e);
-  if (!target) return;
-  if (target.tagName !== 'SELECT' && target.tagName !== 'INPUT') return;
-  onActionClick(target);
+  const target = resolveActionTarget(e)
+  if (!target) return
+  if (target.tagName !== 'SELECT' && target.tagName !== 'INPUT') return
+  onActionClick(target)
 }
 
 function onAppSubmit(e) {
-  const inlineForm = e.target.closest('[data-form-action]');
+  const inlineForm = e.target.closest('[data-form-action]')
   if (inlineForm) {
-    e.preventDefault();
-    onInlineFormSubmit(inlineForm);
-    return;
+    e.preventDefault()
+    onInlineFormSubmit(inlineForm)
+    return
   }
   if (e.target.id === 'admin-modal-form') {
-    e.preventDefault();
-    onModalSubmit(e.target);
-    return;
+    e.preventDefault()
+    onModalSubmit(e.target)
+    return
   }
   if (e.target.id === 'admin-modal-tasa-form') {
-    e.preventDefault();
-    guardarModalTasa(e.target);
-    return;
+    e.preventDefault()
+    guardarModalTasa(e.target)
+    return
   }
   if (e.target.id === 'admin-modal-cobertura-form') {
-    e.preventDefault();
-    guardarModalCobertura(e.target);
-    return;
+    e.preventDefault()
+    guardarModalCobertura(e.target)
+    return
   }
   if (e.target.id === 'admin-modal-rol-form') {
-    e.preventDefault();
-    guardarModalRol(e.target);
+    e.preventDefault()
+    guardarModalRol(e.target)
   }
 }
 
@@ -1905,204 +2029,204 @@ function onAppSubmit(e) {
 function onKeydown(e) {
   if (e.key === 'Escape') {
     if (state.modal) {
-      cerrarModal();
+      cerrarModal()
     } else if (state.modalRol) {
-      cerrarModalRol();
+      cerrarModalRol()
     } else if (state.modalTasa) {
-      cerrarModalTasa();
+      cerrarModalTasa()
     } else if (state.modalCobertura) {
-      cerrarModalCobertura();
+      cerrarModalCobertura()
     }
-    return;
+    return
   }
   if (e.key === 'Tab') {
-    const modalAbierto = app.querySelector('.admin-modal');
-    if (modalAbierto) atraparFoco(e, modalAbierto);
+    const modalAbierto = app.querySelector('.admin-modal')
+    if (modalAbierto) atraparFoco(e, modalAbierto)
   }
 }
 
 function registrarEventos() {
-  app.addEventListener('click', onAppClick);
-  app.addEventListener('change', onAppChange);
-  app.addEventListener('submit', onAppSubmit);
-  document.addEventListener('keydown', onKeydown);
+  app.addEventListener('click', onAppClick)
+  app.addEventListener('change', onAppChange)
+  app.addEventListener('submit', onAppSubmit)
+  document.addEventListener('keydown', onKeydown)
 }
 
 function onActionClick(el) {
-  const action = el.dataset.action;
+  const action = el.dataset.action
 
   if (action === 'select-seccion') {
-    state.seccion = el.dataset.seccion;
-    state.banner = null;
-    renderApp();
+    state.seccion = el.dataset.seccion
+    state.banner = null
+    renderApp()
     if (state.seccion === 'usuarios') {
-      if (!state.usuarios.length && !state.loadingUsuarios) cargarUsuarios();
-      if (!state.roles.length && !state.loadingRoles) cargarRoles();
+      if (!state.usuarios.length && !state.loadingUsuarios) cargarUsuarios()
+      if (!state.roles.length && !state.loadingRoles) cargarRoles()
     }
     if (state.seccion === 'planes' && !state.planes.length && !state.loadingPlanes) {
-      cargarPlanes();
+      cargarPlanes()
     }
     if ((state.seccion === 'tasas' || state.seccion === 'coberturas') && !state.ramos.length) {
       api.get('/ramos').then((ramos) => {
-        state.ramos = ramos;
-        renderApp();
-      });
+        state.ramos = ramos
+        renderApp()
+      })
     }
-    return;
+    return
   }
   if (action === 'logout') {
-    cerrarSesion();
-    return;
+    cerrarSesion()
+    return
   }
   if (action === 'crear-usuario') {
-    abrirModalCrear();
-    return;
+    abrirModalCrear()
+    return
   }
   if (action === 'editar-usuario') {
-    abrirModalEditar(Number(el.dataset.id));
-    return;
+    abrirModalEditar(Number(el.dataset.id))
+    return
   }
   if (action === 'password-usuario') {
-    abrirModalPassword(Number(el.dataset.id));
-    return;
+    abrirModalPassword(Number(el.dataset.id))
+    return
   }
   if (action === 'desactivar-usuario') {
-    desactivarUsuario(Number(el.dataset.id));
-    return;
+    desactivarUsuario(Number(el.dataset.id))
+    return
   }
   if (action === 'eliminar-usuario') {
-    eliminarUsuario(Number(el.dataset.id));
-    return;
+    eliminarUsuario(Number(el.dataset.id))
+    return
   }
   if (action === 'cerrar-modal' || action === 'cerrar-modal-backdrop') {
-    cerrarModal();
-    return;
+    cerrarModal()
+    return
   }
   if (action === 'crear-rol') {
-    abrirModalRolCrear();
-    return;
+    abrirModalRolCrear()
+    return
   }
   if (action === 'editar-rol') {
-    abrirModalRolEditar(Number(el.dataset.id));
-    return;
+    abrirModalRolEditar(Number(el.dataset.id))
+    return
   }
   if (action === 'eliminar-rol') {
-    eliminarRol(Number(el.dataset.id));
-    return;
+    eliminarRol(Number(el.dataset.id))
+    return
   }
   if (action === 'cerrar-modal-rol' || action === 'cerrar-modal-rol-backdrop') {
-    cerrarModalRol();
-    return;
+    cerrarModalRol()
+    return
   }
   if (action === 'filtrar-ramo') {
-    state.ramoFiltro = el.value;
-    renderApp();
-    return;
+    state.ramoFiltro = el.value
+    renderApp()
+    return
   }
   if (action === 'toggle-plan-activo') {
-    togglePlanActivo(el.dataset.id, el.checked);
-    return;
+    togglePlanActivo(el.dataset.id, el.checked)
+    return
   }
   if (action === 'toggle-formas-pago') {
-    toggleFormasPago(Number(el.dataset.id));
-    return;
+    toggleFormasPago(Number(el.dataset.id))
+    return
   }
   if (action === 'toggle-forma-pago-habilitada') {
-    toggleFormaPagoHabilitada(el.dataset.id, Number(el.dataset.planId), el.checked);
-    return;
+    toggleFormaPagoHabilitada(el.dataset.id, Number(el.dataset.planId), el.checked)
+    return
   }
   if (action === 'editar-prima-tecnica-minima') {
-    habilitarEdicionPrima(Number(el.dataset.id));
-    return;
+    habilitarEdicionPrima(Number(el.dataset.id))
+    return
   }
   if (action === 'cancelar-prima-tecnica-minima') {
-    cancelarEdicionPrima(Number(el.dataset.id));
-    return;
+    cancelarEdicionPrima(Number(el.dataset.id))
+    return
   }
   if (action === 'editar-tasa-rpf') {
-    habilitarEdicionTasaRpf(Number(el.dataset.id));
-    return;
+    habilitarEdicionTasaRpf(Number(el.dataset.id))
+    return
   }
   if (action === 'cancelar-tasa-rpf') {
-    cancelarEdicionTasaRpf(Number(el.dataset.id));
-    return;
+    cancelarEdicionTasaRpf(Number(el.dataset.id))
+    return
   }
   if (action === 'seleccionar-ramo-tasas') {
-    seleccionarRamoTasas(el.value);
-    return;
+    seleccionarRamoTasas(el.value)
+    return
   }
   if (action === 'crear-tasa') {
-    abrirModalTasa();
-    return;
+    abrirModalTasa()
+    return
   }
   if (action === 'eliminar-tasa') {
-    eliminarTasa(Number(el.dataset.id));
-    return;
+    eliminarTasa(Number(el.dataset.id))
+    return
   }
   if (action === 'cerrar-modal-tasa' || action === 'cerrar-modal-tasa-backdrop') {
-    cerrarModalTasa();
-    return;
+    cerrarModalTasa()
+    return
   }
   if (action === 'editar-tasa-edificio-contenido') {
-    habilitarEdicionRubroActividad(Number(el.dataset.id));
-    return;
+    habilitarEdicionRubroActividad(Number(el.dataset.id))
+    return
   }
   if (action === 'cancelar-tasa-edificio-contenido') {
-    cancelarEdicionRubroActividad(Number(el.dataset.id));
-    return;
+    cancelarEdicionRubroActividad(Number(el.dataset.id))
+    return
   }
   if (action === 'seleccionar-ramo-coberturas') {
-    seleccionarRamoCoberturas(el.value);
-    return;
+    seleccionarRamoCoberturas(el.value)
+    return
   }
   if (action === 'seleccionar-plan-coberturas') {
-    seleccionarPlanCoberturas(el.value);
-    return;
+    seleccionarPlanCoberturas(el.value)
+    return
   }
   if (action === 'toggle-cobertura-defecto') {
-    toggleCoberturaDefecto(el.dataset.id, Number(el.dataset.planId), el.checked);
-    return;
+    toggleCoberturaDefecto(el.dataset.id, Number(el.dataset.planId), el.checked)
+    return
   }
   if (action === 'editar-cobertura-plan') {
-    habilitarEdicionCobertura(Number(el.dataset.id));
-    return;
+    habilitarEdicionCobertura(Number(el.dataset.id))
+    return
   }
   if (action === 'cancelar-cobertura-plan') {
-    cancelarEdicionCobertura(Number(el.dataset.id));
-    return;
+    cancelarEdicionCobertura(Number(el.dataset.id))
+    return
   }
   if (action === 'eliminar-cobertura-plan') {
-    eliminarCoberturaDelPlan(el.dataset.id, Number(el.dataset.planId));
-    return;
+    eliminarCoberturaDelPlan(el.dataset.id, Number(el.dataset.planId))
+    return
   }
   if (action === 'agregar-cobertura') {
-    abrirModalCobertura();
-    return;
+    abrirModalCobertura()
+    return
   }
   if (action === 'cerrar-modal-cobertura' || action === 'cerrar-modal-cobertura-backdrop') {
-    cerrarModalCobertura();
+    cerrarModalCobertura()
   }
 }
 
 function onInlineFormSubmit(form) {
-  const accion = form.dataset.formAction;
+  const accion = form.dataset.formAction
   if (accion === 'prima-tecnica-minima') {
-    guardarPrimaTecnicaMinima(form.dataset.id, form);
+    guardarPrimaTecnicaMinima(form.dataset.id, form)
   } else if (accion === 'tasa-rpf') {
-    guardarTasaRpf(form.dataset.id, Number(form.dataset.planId), form);
+    guardarTasaRpf(form.dataset.id, Number(form.dataset.planId), form)
   } else if (accion === 'monto-franquicia') {
-    guardarMontoFranquicia(form.dataset.id, Number(form.dataset.planId), form);
+    guardarMontoFranquicia(form.dataset.id, Number(form.dataset.planId), form)
   } else if (accion === 'rubro-actividad-tasas') {
-    guardarRubroActividadTasas(form.dataset.id, form);
+    guardarRubroActividadTasas(form.dataset.id, form)
   }
 }
 
 function onModalSubmit(form) {
-  const tipo = state.modal.tipo;
-  if (tipo === 'crear') guardarModalCrear(form);
-  else if (tipo === 'editar') guardarModalEditar(form);
-  else if (tipo === 'password') guardarModalPassword(form);
+  const tipo = state.modal.tipo
+  if (tipo === 'crear') guardarModalCrear(form)
+  else if (tipo === 'editar') guardarModalEditar(form)
+  else if (tipo === 'password') guardarModalPassword(form)
 }
 
-registrarEventos();
-init();
+registrarEventos()
+init()

@@ -14,8 +14,8 @@
  * @returns {Error & { status: number, publicMessage: string }}
  */
 export function httpError(status, message, publicMessage = message) {
-  const err = new Error(message);
-  err.status = status;
-  err.publicMessage = publicMessage;
-  return err;
+  const err = new Error(message)
+  err.status = status
+  err.publicMessage = publicMessage
+  return err
 }

@@ -4,19 +4,34 @@
 // secciones del panel admin, etc.) se sigue armando en cada archivo, por encima
 // de este bloque.
 
-import { ICON_ARROW_LEFT, ICON_CLOCK, ICON_GEAR, ICON_WRENCH, ICON_LOGOUT, ICON_BELL, ICON_CHEVRON_DOWN, renderTrustFooter } from './nav-icons.js';
-import { auth } from './api.js';
-import { escapeHtml } from './dom.js';
+import {
+  ICON_ARROW_LEFT,
+  ICON_CLOCK,
+  ICON_GEAR,
+  ICON_WRENCH,
+  ICON_LOGOUT,
+  ICON_BELL,
+  ICON_CHEVRON_DOWN,
+  renderTrustFooter,
+} from './nav-icons.js'
+import { auth } from './api.js'
+import { escapeHtml } from './dom.js'
 
 function renderSidebarNavLinks(active) {
-  const links = [];
+  const links = []
 
   if (active !== 'cotizar') {
-    links.push(`<a class="nav-item nav-item--icon" href="../cotizar/"><span class="nav-item__badge">${ICON_ARROW_LEFT}</span><span>Volver a cotizar</span></a>`);
+    links.push(
+      `<a class="nav-item nav-item--icon" href="../cotizar/"><span class="nav-item__badge">${ICON_ARROW_LEFT}</span><span>Volver a cotizar</span></a>`
+    )
   }
 
-  links.push(`<a class="nav-item nav-item--icon ${active === 'historial' ? 'nav-item--active' : ''}" href="${active === 'historial' ? './' : '../historial/'}"><span class="nav-item__badge">${ICON_CLOCK}</span><span>Historial de cotizaciones</span></a>`);
-  links.push(`<a class="nav-item nav-item--icon ${active === 'configuracion' ? 'nav-item--active' : ''}" href="${active === 'configuracion' ? './' : '../configuracion/'}"><span class="nav-item__badge">${ICON_GEAR}</span><span>Configuración</span></a>`);
+  links.push(
+    `<a class="nav-item nav-item--icon ${active === 'historial' ? 'nav-item--active' : ''}" href="${active === 'historial' ? './' : '../historial/'}"><span class="nav-item__badge">${ICON_CLOCK}</span><span>Historial de cotizaciones</span></a>`
+  )
+  links.push(
+    `<a class="nav-item nav-item--icon ${active === 'configuracion' ? 'nav-item--active' : ''}" href="${active === 'configuracion' ? './' : '../configuracion/'}"><span class="nav-item__badge">${ICON_GEAR}</span><span>Configuración</span></a>`
+  )
 
   // <button> nativo en vez del <div data-action="logout"> anterior — el div no era
   // alcanzable por teclado (Tab no lo enfocaba, Enter/Space no lo activaban). Un
@@ -26,16 +41,18 @@ function renderSidebarNavLinks(active) {
   // `button { font-family: inherit; }` y `.nav-item { background: transparent;
   // border: none; cursor: pointer; }` de shared/cotizador.css, así que no hace
   // falta CSS nuevo para que quede idéntico a los demás nav-item (que son <a>).
-  links.push(`<button type="button" class="nav-item nav-item--icon" data-action="logout"><span class="nav-item__badge">${ICON_LOGOUT}</span><span>Cerrar sesión</span></button>`);
+  links.push(
+    `<button type="button" class="nav-item nav-item--icon" data-action="logout"><span class="nav-item__badge">${ICON_LOGOUT}</span><span>Cerrar sesión</span></button>`
+  )
 
-  return links.join('');
+  return links.join('')
 }
 
 // active: 'cotizar' | 'historial' | 'configuracion' | 'admin' | null
 // El bloque de perfil del agente vive ahora en el topbar (renderTopbarUser) — ya no se
 // duplica acá abajo del sidebar (pedido de Kevin al migrar a "Diseño 2").
 export function renderSidebarFooter(active) {
-  return `${renderSidebarNavLinks(active)}${renderTrustFooter()}`;
+  return `${renderSidebarNavLinks(active)}${renderTrustFooter()}`
 }
 
 // Bloque de usuario del topbar ("Diseño 2" — mockup docs/mockups/diseno-2-app-shell.html):
@@ -46,12 +63,16 @@ export function renderSidebarFooter(active) {
 // admin o permisos, mismo gate que ya aplicaba en el sidebar).
 // active: página actual ('admin' cuando ya se está en el panel) para no repetir el link.
 export function renderTopbarUser(active) {
-  const usuario = auth.getUsuario();
-  const nombreAgente = usuario?.nombre || 'Agente';
-  const esAdmin = usuario?.rol === 'admin';
-  const rolLabel = esAdmin ? 'Administrador' : usuario?.rol === 'agente' ? 'Agente' : 'Analista comercial';
-  const inicial = nombreAgente.trim().charAt(0).toUpperCase() || 'A';
-  const mostrarAccesoAdmin = auth.tieneAccesoAdmin() && active !== 'admin';
+  const usuario = auth.getUsuario()
+  const nombreAgente = usuario?.nombre || 'Agente'
+  const esAdmin = usuario?.rol === 'admin'
+  const rolLabel = esAdmin
+    ? 'Administrador'
+    : usuario?.rol === 'agente'
+      ? 'Agente'
+      : 'Analista comercial'
+  const inicial = nombreAgente.trim().charAt(0).toUpperCase() || 'A'
+  const mostrarAccesoAdmin = auth.tieneAccesoAdmin() && active !== 'admin'
 
   return `
     <div class="topbar__user">
@@ -65,40 +86,44 @@ export function renderTopbarUser(active) {
           </div>
           <span class="topbar__user-chevron">${ICON_CHEVRON_DOWN}</span>
         </button>
-        ${mostrarAccesoAdmin ? `
+        ${
+          mostrarAccesoAdmin
+            ? `
           <div class="topbar__user-menu" hidden>
             <a class="topbar__user-menu-item" href="../admin/"><span class="nav-item__badge">${ICON_WRENCH}</span><span>Panel de administración</span></a>
           </div>
-        ` : ''}
+        `
+            : ''
+        }
       </div>
     </div>
-  `;
+  `
 }
 
 // Delegación global (registrada una única vez para todas las páginas que usan el topbar)
 // para abrir/cerrar el menú desplegable del perfil y cerrarlo al hacer click afuera.
-let topbarUserMenuBound = false;
+let topbarUserMenuBound = false
 function bindTopbarUserMenuOnce() {
-  if (topbarUserMenuBound) return;
-  topbarUserMenuBound = true;
+  if (topbarUserMenuBound) return
+  topbarUserMenuBound = true
 
   document.addEventListener('click', (e) => {
-    const trigger = e.target.closest('[data-action="toggle-user-menu"]');
-    const wrap = e.target.closest('.topbar__user-menu-wrap');
+    const trigger = e.target.closest('[data-action="toggle-user-menu"]')
+    const wrap = e.target.closest('.topbar__user-menu-wrap')
 
     document.querySelectorAll('.topbar__user-menu-wrap').forEach((otherWrap) => {
-      if (otherWrap === wrap && trigger) return;
-      const menu = otherWrap.querySelector('.topbar__user-menu');
-      const btn = otherWrap.querySelector('.topbar__user-trigger');
-      if (menu) menu.hidden = true;
-      if (btn) btn.setAttribute('aria-expanded', 'false');
-    });
+      if (otherWrap === wrap && trigger) return
+      const menu = otherWrap.querySelector('.topbar__user-menu')
+      const btn = otherWrap.querySelector('.topbar__user-trigger')
+      if (menu) menu.hidden = true
+      if (btn) btn.setAttribute('aria-expanded', 'false')
+    })
 
-    if (!trigger || !wrap) return;
-    const menu = wrap.querySelector('.topbar__user-menu');
-    if (!menu) return;
-    menu.hidden = !menu.hidden;
-    trigger.setAttribute('aria-expanded', String(!menu.hidden));
-  });
+    if (!trigger || !wrap) return
+    const menu = wrap.querySelector('.topbar__user-menu')
+    if (!menu) return
+    menu.hidden = !menu.hidden
+    trigger.setAttribute('aria-expanded', String(!menu.hidden))
+  })
 }
-bindTopbarUserMenuOnce();
+bindTopbarUserMenuOnce()

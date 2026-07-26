@@ -23,7 +23,11 @@ body {
   width: 100%;
   height: 100%;
   pointer-events: none;
-  -webkit-mask-image: radial-gradient(circle at 88% 8%, rgba(0, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0) 42%);
+  -webkit-mask-image: radial-gradient(
+    circle at 88% 8%,
+    rgba(0, 0, 0, 0.55) 0%,
+    rgba(0, 0, 0, 0) 42%
+  );
   mask-image: radial-gradient(circle at 88% 8%, rgba(0, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0) 42%);
 }
 
@@ -111,7 +115,10 @@ body {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
   cursor: pointer;
   font-family: inherit;
-  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    border-color 0.18s ease;
 }
 
 .bv-card:hover {
@@ -203,7 +210,9 @@ body {
 
 .bv-ramo-row--disponible {
   cursor: pointer;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .bv-ramo-row--disponible:hover {

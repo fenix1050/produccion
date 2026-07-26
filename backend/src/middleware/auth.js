@@ -1,6 +1,6 @@
-import jwt from 'jsonwebtoken';
-import * as usuariosRepository from '../repositories/usuarios.repository.js';
-import { httpError } from '../utils/http-error.js';
+import jwt from 'jsonwebtoken'
+import * as usuariosRepository from '../repositories/usuarios.repository.js'
+import { httpError } from '../utils/http-error.js'
 
 /**
  * Verifica el JWT del header Authorization y adjunta `req.usuario`. Va a buscar el
@@ -9,30 +9,30 @@ import { httpError } from '../utils/http-error.js';
  */
 export async function requireAuth(req, res, next) {
   try {
-    const header = req.headers.authorization || '';
-    const [scheme, token] = header.split(' ');
+    const header = req.headers.authorization || ''
+    const [scheme, token] = header.split(' ')
 
     if (scheme !== 'Bearer' || !token) {
-      throw httpError(401, 'Falta el token de autenticación');
+      throw httpError(401, 'Falta el token de autenticación')
     }
 
-    let payload;
+    let payload
     try {
-      payload = jwt.verify(token, process.env.JWT_SECRET);
+      payload = jwt.verify(token, process.env.JWT_SECRET)
     } catch {
-      throw httpError(401, 'Token inválido o expirado');
+      throw httpError(401, 'Token inválido o expirado')
     }
 
-    const usuario = await usuariosRepository.findById(payload.sub);
+    const usuario = await usuariosRepository.findById(payload.sub)
     if (!usuario || !usuario.activo) {
-      throw httpError(401, 'Usuario inválido o inactivo');
+      throw httpError(401, 'Usuario inválido o inactivo')
     }
 
     // Compara contra el valor fresco de la DB, no contra el que traía el token viejo:
     // logout, cambio de contraseña o reseteo por admin incrementan token_version, así que
     // un token firmado con una versión anterior queda inválido aunque no haya expirado.
     if (payload.token_version !== usuario.token_version) {
-      throw httpError(401, 'Token inválido o expirado');
+      throw httpError(401, 'Token inválido o expirado')
     }
 
     req.usuario = {
@@ -46,39 +46,45 @@ export async function requireAuth(req, res, next) {
       email: usuario.email,
       descuento_maximo_pct: usuario.descuento_maximo_pct,
       recargo_maximo_pct: usuario.recargo_maximo_pct,
-    };
+    }
 
-    next();
+    next()
   } catch (err) {
-    next(err);
+    next(err)
   }
 }
 
 export function requireRole(...roles) {
   return (req, res, next) => {
     if (!req.usuario || !roles.includes(req.usuario.rol)) {
-      return next(httpError(403, 'No tenés permiso para acceder a este recurso'));
+      return next(httpError(403, 'No tenés permiso para acceder a este recurso'))
     }
-    next();
-  };
+    next()
+  }
 }
 
 function requirePermiso(campo, mensaje) {
   return (req, res, next) => {
     if (!req.usuario || !req.usuario[campo]) {
-      return next(httpError(403, mensaje));
+      return next(httpError(403, mensaje))
     }
-    next();
-  };
+    next()
+  }
 }
 
-export const requireTasasEdit = requirePermiso('puede_editar_tasas', 'No tenés permiso para editar tasas');
+export const requireTasasEdit = requirePermiso(
+  'puede_editar_tasas',
+  'No tenés permiso para editar tasas'
+)
 export const requireUsuariosEdit = requirePermiso(
   'puede_gestionar_usuarios',
   'No tenés permiso para gestionar usuarios'
-);
+)
 export const requireCoberturasEdit = requirePermiso(
   'puede_editar_coberturas',
   'No tenés permiso para editar coberturas'
-);
-export const requirePlanesEdit = requirePermiso('puede_editar_planes', 'No tenés permiso para editar planes');
+)
+export const requirePlanesEdit = requirePermiso(
+  'puede_editar_planes',
+  'No tenés permiso para editar planes'
+)

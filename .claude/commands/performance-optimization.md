@@ -35,6 +35,7 @@ Check for these categories:
    - Cache invalidation correctness: stale-cache bugs are worse than no cache — flag any cache without a clear invalidation path
 
 For each finding, report:
+
 - File and line reference
 - What's wrong and why it matters (concrete impact: query count, memory growth, blocking time)
 - A concrete fix, respecting the existing layered architecture (`routes → controllers → services → repositories`) and the `RamoCalculator` interface — do not propose introducing a new framework or abstraction to fix a local issue

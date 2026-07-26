@@ -1,4 +1,4 @@
-import { supabase } from '../config/supabase.js';
+import { supabase } from '../config/supabase.js'
 
 // Repository compartido de catálogo de coberturas / tasas / rubros para los ramos de
 // "Otros Riesgos" (MRC, Incendio, TRO...). Ver sección 4 de PLAN_DESARROLLO.md.
@@ -9,11 +9,11 @@ import { supabase } from '../config/supabase.js';
 export async function findRubrosActividad(grupo) {
   // order('id'): conserva el orden real de la pantalla "Tipo de Riesgo" del sistema de
   // escritorio (orden de inserción de la migración 012), no alfabético.
-  let query = supabase.from('rubros_actividad').select('*').order('id');
-  if (grupo) query = query.eq('grupo', grupo);
-  const { data, error } = await query;
-  if (error) throw error;
-  return data;
+  let query = supabase.from('rubros_actividad').select('*').order('id')
+  if (grupo) query = query.eq('grupo', grupo)
+  const { data, error } = await query
+  if (error) throw error
+  return data
 }
 
 /**
@@ -27,9 +27,9 @@ export async function actualizarRubroActividad(id, cambios) {
     .update(cambios)
     .eq('id', id)
     .select('*')
-    .maybeSingle();
-  if (error) throw error;
-  return data;
+    .maybeSingle()
+  if (error) throw error
+  return data
 }
 
 export async function findRubroPorNombre(nombre) {
@@ -37,9 +37,9 @@ export async function findRubroPorNombre(nombre) {
     .from('rubros_actividad')
     .select('*')
     .eq('nombre', nombre)
-    .maybeSingle();
-  if (error) throw error;
-  return data;
+    .maybeSingle()
+  if (error) throw error
+  return data
 }
 
 export async function findCoberturasCatalogoByRamoId(ramoId) {
@@ -47,9 +47,9 @@ export async function findCoberturasCatalogoByRamoId(ramoId) {
     .from('coberturas_catalogo')
     .select('*')
     .eq('ramo_id', ramoId)
-    .eq('activo', true);
-  if (error) throw error;
-  return data;
+    .eq('activo', true)
+  if (error) throw error
+  return data
 }
 
 /**
@@ -62,23 +62,23 @@ export async function findCoberturasCatalogoByRamoId(ramoId) {
  * dependiera del orden no garantizado que devuelve Supabase.
  */
 export async function findTasasCoberturaRamo(ramoId) {
-  const hoy = new Date().toISOString().slice(0, 10);
+  const hoy = new Date().toISOString().slice(0, 10)
   const { data, error } = await supabase
     .from('tasas_cobertura_ramo')
     .select('tasa_valor, unidad, vigente_desde, coberturas_catalogo(codigo)')
     .eq('ramo_id', ramoId)
     .lte('vigente_desde', hoy)
-    .order('vigente_desde', { ascending: false });
-  if (error) throw error;
+    .order('vigente_desde', { ascending: false })
+  if (error) throw error
 
-  const vigentesPorCodigo = new Map();
+  const vigentesPorCodigo = new Map()
   for (const fila of data) {
-    const codigo = fila.coberturas_catalogo?.codigo;
+    const codigo = fila.coberturas_catalogo?.codigo
     if (codigo && !vigentesPorCodigo.has(codigo)) {
-      vigentesPorCodigo.set(codigo, fila);
+      vigentesPorCodigo.set(codigo, fila)
     }
   }
-  return [...vigentesPorCodigo.values()];
+  return [...vigentesPorCodigo.values()]
 }
 
 /**
@@ -91,9 +91,9 @@ export async function findTarifasGenericoByPlanId(planId) {
   const { data, error } = await supabase
     .from('tarifas_generico')
     .select('variables')
-    .eq('plan_id', planId);
-  if (error) throw error;
-  return data.map((row) => row.variables);
+    .eq('plan_id', planId)
+  if (error) throw error
+  return data.map((row) => row.variables)
 }
 
 // --- Fase 5 / WU3: panel admin ---
@@ -107,19 +107,22 @@ export async function findPlanCoberturasByPlanId(planId) {
     .from('plan_coberturas')
     .select('*, coberturas_catalogo(*)')
     .eq('plan_id', planId)
-    .order('id');
-  if (error) throw error;
-  return data;
+    .order('id')
+  if (error) throw error
+  return data
 }
 
-export async function crearPlanCobertura(planId, { cobertura_id, incluida_por_defecto, monto, franquicia }) {
+export async function crearPlanCobertura(
+  planId,
+  { cobertura_id, incluida_por_defecto, monto, franquicia }
+) {
   const { data, error } = await supabase
     .from('plan_coberturas')
     .insert({ plan_id: planId, cobertura_id, incluida_por_defecto, monto, franquicia })
     .select('*, coberturas_catalogo(*)')
-    .single();
-  if (error) throw error;
-  return data;
+    .single()
+  if (error) throw error
+  return data
 }
 
 export async function actualizarPlanCobertura(id, cambios) {
@@ -128,14 +131,14 @@ export async function actualizarPlanCobertura(id, cambios) {
     .update(cambios)
     .eq('id', id)
     .select('*, coberturas_catalogo(*)')
-    .maybeSingle();
-  if (error) throw error;
-  return data;
+    .maybeSingle()
+  if (error) throw error
+  return data
 }
 
 export async function eliminarPlanCobertura(id) {
-  const { error } = await supabase.from('plan_coberturas').delete().eq('id', id);
-  if (error) throw error;
+  const { error } = await supabase.from('plan_coberturas').delete().eq('id', id)
+  if (error) throw error
 }
 
 /**
@@ -149,9 +152,9 @@ export async function findTasasCoberturaRamoConHistorial(ramoId) {
     .from('tasas_cobertura_ramo')
     .select('*, coberturas_catalogo(id, codigo, nombre)')
     .eq('ramo_id', ramoId)
-    .order('vigente_desde', { ascending: false });
-  if (error) throw error;
-  return data;
+    .order('vigente_desde', { ascending: false })
+  if (error) throw error
+  return data
 }
 
 // Borra una versión puntual (ej. tasa cargada por error). No es un UPDATE de la fila —
@@ -159,13 +162,16 @@ export async function findTasasCoberturaRamoConHistorial(ramoId) {
 // versión mal cargada (típicamente la más reciente, antes de que se haya usado para
 // cotizar) simplemente hace que vuelva a regir la versión anterior.
 export async function eliminarTasaCoberturaRamo(id) {
-  const { error } = await supabase.from('tasas_cobertura_ramo').delete().eq('id', id);
-  if (error) throw error;
+  const { error } = await supabase.from('tasas_cobertura_ramo').delete().eq('id', id)
+  if (error) throw error
 }
 
 // Inserta una versión NUEVA — nunca UPDATE. Ver decisión de "versionado por
 // inserción" en docs/PLAN_ADMIN_FASE5.md.
-export async function crearTasaCoberturaRamo(ramoId, { cobertura_id, tasa_valor, unidad, vigente_desde }) {
+export async function crearTasaCoberturaRamo(
+  ramoId,
+  { cobertura_id, tasa_valor, unidad, vigente_desde }
+) {
   const { data, error } = await supabase
     .from('tasas_cobertura_ramo')
     .insert({
@@ -176,7 +182,7 @@ export async function crearTasaCoberturaRamo(ramoId, { cobertura_id, tasa_valor,
       vigente_desde: vigente_desde ?? new Date().toISOString().slice(0, 10),
     })
     .select('*, coberturas_catalogo(id, codigo, nombre)')
-    .single();
-  if (error) throw error;
-  return data;
+    .single()
+  if (error) throw error
+  return data
 }

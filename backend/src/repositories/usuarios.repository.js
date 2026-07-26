@@ -1,4 +1,4 @@
-import { supabase } from '../config/supabase.js';
+import { supabase } from '../config/supabase.js'
 
 // Migración 031: `rol` (string) + los 4 booleanos sueltos de permisos se reemplazaron
 // por `roles` (tabla configurable) referenciada vía `usuarios.rol_id`. Este repository
@@ -6,11 +6,12 @@ import { supabase } from '../config/supabase.js';
 // al nivel superior) para que middleware/auth.js (armado de req.usuario) y cualquier
 // código downstream que lea `usuario.rol` / `usuario.puede_editar_tasas` etc. no necesiten
 // cambiar — ver docs/ESTADO_PROYECTO.md.
-const CAMPOS_ROL = 'roles(nombre, puede_editar_tasas, puede_gestionar_usuarios, puede_editar_coberturas, puede_editar_planes)';
+const CAMPOS_ROL =
+  'roles(nombre, puede_editar_tasas, puede_gestionar_usuarios, puede_editar_coberturas, puede_editar_planes)'
 
 function aplanar(usuario) {
-  if (!usuario) return usuario;
-  const { roles, ...resto } = usuario;
+  if (!usuario) return usuario
+  const { roles, ...resto } = usuario
   return {
     ...resto,
     rol: roles?.nombre ?? null,
@@ -18,35 +19,39 @@ function aplanar(usuario) {
     puede_gestionar_usuarios: roles?.puede_gestionar_usuarios ?? false,
     puede_editar_coberturas: roles?.puede_editar_coberturas ?? false,
     puede_editar_planes: roles?.puede_editar_planes ?? false,
-  };
+  }
 }
 
 export async function findByEmail(email) {
   const { data, error } = await supabase
     .from('usuarios')
-    .select(`id, nombre, email, rol_id, ${CAMPOS_ROL}, activo, password_hash, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct, token_version`)
+    .select(
+      `id, nombre, email, rol_id, ${CAMPOS_ROL}, activo, password_hash, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct, token_version`
+    )
     .eq('email', email)
-    .maybeSingle();
-  if (error) throw error;
-  return aplanar(data);
+    .maybeSingle()
+  if (error) throw error
+  return aplanar(data)
 }
 
 export async function findById(id) {
   const { data, error } = await supabase
     .from('usuarios')
-    .select(`id, nombre, email, rol_id, ${CAMPOS_ROL}, activo, password_hash, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct, token_version`)
+    .select(
+      `id, nombre, email, rol_id, ${CAMPOS_ROL}, activo, password_hash, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct, token_version`
+    )
     .eq('id', id)
-    .maybeSingle();
-  if (error) throw error;
-  return aplanar(data);
+    .maybeSingle()
+  if (error) throw error
+  return aplanar(data)
 }
 
 export async function actualizarUltimaSesion(id) {
   const { error } = await supabase
     .from('usuarios')
     .update({ ultima_sesion: new Date().toISOString() })
-    .eq('id', id);
-  if (error) throw error;
+    .eq('id', id)
+  if (error) throw error
 }
 
 // --- Fase 5 / WU3: gestión de usuarios desde el panel admin ---
@@ -55,10 +60,12 @@ export async function actualizarUltimaSesion(id) {
 export async function findAll() {
   const { data, error } = await supabase
     .from('usuarios')
-    .select(`id, nombre, email, rol_id, ${CAMPOS_ROL}, activo, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct`)
-    .order('id');
-  if (error) throw error;
-  return (data ?? []).map(aplanar);
+    .select(
+      `id, nombre, email, rol_id, ${CAMPOS_ROL}, activo, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct`
+    )
+    .order('id')
+  if (error) throw error
+  return (data ?? []).map(aplanar)
 }
 
 export async function crear({ nombre, email, rol_id, password_hash }) {
@@ -71,10 +78,12 @@ export async function crear({ nombre, email, rol_id, password_hash }) {
       password_hash,
       activo: true,
     })
-    .select(`id, nombre, email, rol_id, ${CAMPOS_ROL}, activo, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct`)
-    .single();
-  if (error) throw error;
-  return aplanar(data);
+    .select(
+      `id, nombre, email, rol_id, ${CAMPOS_ROL}, activo, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct`
+    )
+    .single()
+  if (error) throw error
+  return aplanar(data)
 }
 
 export async function actualizar(id, cambios) {
@@ -82,15 +91,17 @@ export async function actualizar(id, cambios) {
     .from('usuarios')
     .update(cambios)
     .eq('id', id)
-    .select(`id, nombre, email, rol_id, ${CAMPOS_ROL}, activo, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct`)
-    .maybeSingle();
-  if (error) throw error;
-  return aplanar(data);
+    .select(
+      `id, nombre, email, rol_id, ${CAMPOS_ROL}, activo, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct`
+    )
+    .maybeSingle()
+  if (error) throw error
+  return aplanar(data)
 }
 
 export async function actualizarPassword(id, password_hash) {
-  const { error } = await supabase.from('usuarios').update({ password_hash }).eq('id', id);
-  if (error) throw error;
+  const { error } = await supabase.from('usuarios').update({ password_hash }).eq('id', id)
+  if (error) throw error
 }
 
 // Invalida de golpe cualquier JWT ya emitido para este usuario (requireAuth compara el
@@ -100,16 +111,16 @@ export async function actualizarPassword(id, password_hash) {
 // se escribe el siguiente, aceptando la ventana de carrera teórica (mismo criterio que el
 // resto del repo, que no usa transacciones explícitas para estos UPDATE simples).
 export async function incrementarTokenVersion(id) {
-  const usuario = await findById(id);
-  if (!usuario) return;
+  const usuario = await findById(id)
+  if (!usuario) return
   const { error } = await supabase
     .from('usuarios')
     .update({ token_version: usuario.token_version + 1 })
-    .eq('id', id);
-  if (error) throw error;
+    .eq('id', id)
+  if (error) throw error
 }
 
 export async function eliminar(id) {
-  const { error } = await supabase.from('usuarios').delete().eq('id', id);
-  if (error) throw error;
+  const { error } = await supabase.from('usuarios').delete().eq('id', id)
+  if (error) throw error
 }

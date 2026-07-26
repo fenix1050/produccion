@@ -1,4 +1,4 @@
-import * as coberturasRepository from '../../repositories/coberturas.repository.js';
+import * as coberturasRepository from '../../repositories/coberturas.repository.js'
 
 // --- Tasas ---
 // `coberturasRepository.findTasasCoberturaRamo` (usado por los calculadores en tiempo de
@@ -8,13 +8,13 @@ import * as coberturasRepository from '../../repositories/coberturas.repository.
 // reflejan en vivo en el cotizador para cualquier rol, sin caché ni reinicio de por medio.
 
 export async function listarTasasDeRamo(ramoId) {
-  return coberturasRepository.findTasasCoberturaRamoConHistorial(ramoId);
+  return coberturasRepository.findTasasCoberturaRamoConHistorial(ramoId)
 }
 
 export async function crearVersionDeTasa(ramoId, datos) {
-  return coberturasRepository.crearTasaCoberturaRamo(ramoId, datos);
+  return coberturasRepository.crearTasaCoberturaRamo(ramoId, datos)
 }
 
 export async function eliminarTasa(id) {
-  return coberturasRepository.eliminarTasaCoberturaRamo(id);
+  return coberturasRepository.eliminarTasaCoberturaRamo(id)
 }

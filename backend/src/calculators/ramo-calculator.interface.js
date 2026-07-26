@@ -9,4 +9,4 @@
 
 // No hay código ejecutable acá — es documentación de contrato para los calculadores
 // en /calculators. Cada archivo de calculador debe exportar funciones con esta forma.
-export {};
+export {}

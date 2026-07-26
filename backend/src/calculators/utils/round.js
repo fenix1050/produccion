@@ -3,7 +3,7 @@
  * Usado en el motor de cálculo para RPF e IVA/Premio.
  */
 export function redondearSup(valor, paso = 1000) {
-  return Math.ceil(valor / paso) * paso;
+  return Math.ceil(valor / paso) * paso
 }
 
 /**
@@ -14,7 +14,7 @@ export function redondearSup(valor, paso = 1000) {
  * exacto el Premio (ver PLAN_DESARROLLO.md sección 5).
  */
 export function redondearInf(valor, paso = 1000) {
-  return Math.floor(valor / paso) * paso;
+  return Math.floor(valor / paso) * paso
 }
 
 /**
@@ -28,7 +28,7 @@ export function redondearInf(valor, paso = 1000) {
  * 4 calculadores (Auto/MRC/Incendio/Vida-AP), que usaban la misma fórmula duplicada.
  */
 export function calcularCuotaInicial(premio, cuotas) {
-  const cuota = redondearInf(premio / (cuotas + 1));
-  const inicial = redondearInf(premio - cuotas * cuota);
-  return { cuota, inicial };
+  const cuota = redondearInf(premio / (cuotas + 1))
+  const inicial = redondearInf(premio - cuotas * cuota)
+  return { cuota, inicial }
 }

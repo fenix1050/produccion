@@ -1,18 +1,18 @@
-import { api, auth } from '../shared/api.js';
-import { crearBadge } from '../shared/badge.js';
-import { escapeHtml, enfocarPrimerElemento, atraparFoco } from '../shared/dom.js';
-import { renderSidebarFooter, renderTopbarUser } from '../shared/sidebar.js';
-import { fmtGsConPrefijo as fmtGs } from '../shared/format.js';
+import { api, auth } from '../shared/api.js'
+import { crearBadge } from '../shared/badge.js'
+import { escapeHtml, enfocarPrimerElemento, atraparFoco } from '../shared/dom.js'
+import { renderSidebarFooter, renderTopbarUser } from '../shared/sidebar.js'
+import { fmtGsConPrefijo as fmtGs } from '../shared/format.js'
 
 // Historial de cotizaciones (Fase 5/WU5) — mismo patrón Vanilla JS que admin.js: state +
 // renderApp() que reconstruye innerHTML + bindEvents() post-render + modal vía state.modal.
 // historial-guard.js (cargado antes en index.html) ya resuelve el redirect si no hay sesión.
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 20
 
 // Estados reales de `cotizaciones.estado` (ver comentario de la columna en
 // backend/migrations/005_cotizaciones.sql: borrador / cotizada / aceptada / vencida / convertida).
-const ESTADOS = ['borrador', 'cotizada', 'aceptada', 'vencida', 'convertida'];
+const ESTADOS = ['borrador', 'cotizada', 'aceptada', 'vencida', 'convertida']
 
 // Variante de badge por estado — antes todo se mostraba en gris "neutral" sin distinción
 // visual entre un borrador y una cotización aceptada. Colores con significado real:
@@ -23,14 +23,14 @@ const ESTADO_BADGE = {
   aceptada: 'success',
   vencida: 'warning',
   convertida: 'agent',
-};
+}
 
 // Criterio real de disponibilidad de la Carta Oferta: hoy solo hay builder de páginas para
 // el calculador 'mrc' (ver BUILDERS_POR_CALCULADOR en backend/src/templates/oferta/index.js —
 // ofertaDisponibleParaRamo(ramo) devuelve true solo si ramo.calculador tiene builder). El join
 // de findCotizaciones trae `ramos.calculador` embebido para reproducir el mismo chequeo acá
 // sin pegarle de nuevo a la API por cada fila.
-const CALCULADORES_CON_OFERTA_PDF = ['mrc'];
+const CALCULADORES_CON_OFERTA_PDF = ['mrc']
 
 const state = {
   ramos: [],
@@ -49,40 +49,39 @@ const state = {
     fecha_hasta: '',
     estado: '',
   },
-};
+}
 
-const app = document.getElementById('app');
+const app = document.getElementById('app')
 
 // Elemento que disparó la apertura del modal de detalle ("Ver detalle") — se
 // restaura el foco ahí al cerrar (focus trap, WU accesibilidad).
-let elementoDisparadorModal = null;
+let elementoDisparadorModal = null
 
 async function init() {
-  renderApp();
+  renderApp()
   try {
-    state.ramos = await api.get('/ramos');
+    state.ramos = await api.get('/ramos')
   } catch {
-    state.ramos = [];
+    state.ramos = []
   }
-  await cargarCotizaciones();
+  await cargarCotizaciones()
 }
 
 async function cerrarSesion() {
-  await auth.logout();
-  window.location.href = '../login/';
+  await auth.logout()
+  window.location.href = '../login/'
 }
 
 function fmtFecha(iso) {
-  if (!iso) return '—';
-  const fecha = new Date(iso);
-  if (Number.isNaN(fecha.getTime())) return '—';
-  return fecha.toLocaleDateString('es-PY', { year: 'numeric', month: '2-digit', day: '2-digit' });
+  if (!iso) return '—'
+  const fecha = new Date(iso)
+  if (Number.isNaN(fecha.getTime())) return '—'
+  return fecha.toLocaleDateString('es-PY', { year: 'numeric', month: '2-digit', day: '2-digit' })
 }
 
-
 function mostrarBanner(tipo, texto) {
-  state.banner = { tipo, texto };
-  renderApp();
+  state.banner = { tipo, texto }
+  renderApp()
 }
 
 // De cotizacion_variantes solo interesa la prima "base" para el listado: no varía por forma
@@ -91,47 +90,47 @@ function mostrarBanner(tipo, texto) {
 // (la franquicia dual es exclusiva de Auto, Fase 1/2 pausada). Se prioriza esa por nombre y,
 // si no está (dato viejo o de Auto), se cae a la primera variante que haya.
 function primaRepresentativa(cotizacion) {
-  const variantes = cotizacion.cotizacion_variantes ?? [];
-  if (!variantes.length) return null;
-  const sinFranquicia = variantes.find((v) => v.tipo_franquicia === 'sin_franquicia');
-  return (sinFranquicia ?? variantes[0]).prima;
+  const variantes = cotizacion.cotizacion_variantes ?? []
+  if (!variantes.length) return null
+  const sinFranquicia = variantes.find((v) => v.tipo_franquicia === 'sin_franquicia')
+  return (sinFranquicia ?? variantes[0]).prima
 }
 
 function ofertaDisponible(cotizacion) {
-  return CALCULADORES_CON_OFERTA_PDF.includes(cotizacion.ramos?.calculador);
+  return CALCULADORES_CON_OFERTA_PDF.includes(cotizacion.ramos?.calculador)
 }
 
 // Ventana de edición del backend (cotizacion.service.js actualizarCotizacion): 30 días corridos
 // desde `created_at`. Se replica acá solo para habilitar/deshabilitar el botón — el backend
 // vuelve a validarlo igual (nunca se confía solo en el chequeo del frontend).
-const VENTANA_EDICION_MS = 30 * 24 * 60 * 60 * 1000;
+const VENTANA_EDICION_MS = 30 * 24 * 60 * 60 * 1000
 
 function dentroDeVentana30Dias(createdAt) {
-  if (!createdAt) return false;
-  const creado = new Date(createdAt).getTime();
-  if (Number.isNaN(creado)) return false;
-  return Date.now() - creado <= VENTANA_EDICION_MS;
+  if (!createdAt) return false
+  const creado = new Date(createdAt).getTime()
+  if (Number.isNaN(creado)) return false
+  return Date.now() - creado <= VENTANA_EDICION_MS
 }
 
 function puedeEditar(cotizacion) {
-  const usuario = auth.getUsuario();
-  if (!usuario) return false;
-  const esDueno = usuario.rol === 'admin' || cotizacion.agente_id === usuario.id;
-  return esDueno && dentroDeVentana30Dias(cotizacion.created_at);
+  const usuario = auth.getUsuario()
+  if (!usuario) return false
+  const esDueno = usuario.rol === 'admin' || cotizacion.agente_id === usuario.id
+  return esDueno && dentroDeVentana30Dias(cotizacion.created_at)
 }
 
 function motivoNoEditable(cotizacion) {
-  const usuario = auth.getUsuario();
-  const esDueno = usuario && (usuario.rol === 'admin' || cotizacion.agente_id === usuario.id);
-  if (!esDueno) return 'No tenés permiso para editar esta cotización.';
+  const usuario = auth.getUsuario()
+  const esDueno = usuario && (usuario.rol === 'admin' || cotizacion.agente_id === usuario.id)
+  if (!esDueno) return 'No tenés permiso para editar esta cotización.'
   if (!dentroDeVentana30Dias(cotizacion.created_at)) {
-    return 'Ya pasaron más de 30 días desde que se generó esta cotización — no se puede editar.';
+    return 'Ya pasaron más de 30 días desde que se generó esta cotización — no se puede editar.'
   }
-  return '';
+  return ''
 }
 
 function editarCotizacion(id) {
-  window.location.href = `../cotizar/?editar=${id}`;
+  window.location.href = `../cotizar/?editar=${id}`
 }
 
 // ---------------------------------------------------------------------------
@@ -139,54 +138,54 @@ function editarCotizacion(id) {
 // ---------------------------------------------------------------------------
 
 async function cargarCotizaciones() {
-  state.loading = true;
-  state.error = '';
-  renderApp();
+  state.loading = true
+  state.error = ''
+  renderApp()
 
-  const params = new URLSearchParams();
-  if (state.filtros.ramo_id) params.set('ramo_id', state.filtros.ramo_id);
-  if (state.filtros.cliente) params.set('cliente', state.filtros.cliente);
-  if (state.filtros.fecha_desde) params.set('fecha_desde', state.filtros.fecha_desde);
-  if (state.filtros.fecha_hasta) params.set('fecha_hasta', state.filtros.fecha_hasta);
-  if (state.filtros.estado) params.set('estado', state.filtros.estado);
-  params.set('limit', String(PAGE_SIZE));
-  params.set('offset', String(state.offset));
+  const params = new URLSearchParams()
+  if (state.filtros.ramo_id) params.set('ramo_id', state.filtros.ramo_id)
+  if (state.filtros.cliente) params.set('cliente', state.filtros.cliente)
+  if (state.filtros.fecha_desde) params.set('fecha_desde', state.filtros.fecha_desde)
+  if (state.filtros.fecha_hasta) params.set('fecha_hasta', state.filtros.fecha_hasta)
+  if (state.filtros.estado) params.set('estado', state.filtros.estado)
+  params.set('limit', String(PAGE_SIZE))
+  params.set('offset', String(state.offset))
 
   try {
-    const { data, count } = await api.get(`/cotizaciones?${params.toString()}`);
-    state.cotizaciones = data;
-    state.count = count ?? 0;
+    const { data, count } = await api.get(`/cotizaciones?${params.toString()}`)
+    state.cotizaciones = data
+    state.count = count ?? 0
   } catch (err) {
-    state.cotizaciones = [];
-    state.count = 0;
-    state.error = err.message || 'No se pudo cargar el historial de cotizaciones.';
+    state.cotizaciones = []
+    state.count = 0
+    state.error = err.message || 'No se pudo cargar el historial de cotizaciones.'
   } finally {
-    state.loading = false;
-    renderApp();
+    state.loading = false
+    renderApp()
   }
 }
 
 function aplicarFiltros() {
-  state.offset = 0;
-  cargarCotizaciones();
+  state.offset = 0
+  cargarCotizaciones()
 }
 
 function limpiarFiltros() {
-  state.filtros = { ramo_id: '', cliente: '', fecha_desde: '', fecha_hasta: '', estado: '' };
-  state.offset = 0;
-  cargarCotizaciones();
+  state.filtros = { ramo_id: '', cliente: '', fecha_desde: '', fecha_hasta: '', estado: '' }
+  state.offset = 0
+  cargarCotizaciones()
 }
 
 function irPaginaAnterior() {
-  if (state.offset === 0) return;
-  state.offset = Math.max(0, state.offset - PAGE_SIZE);
-  cargarCotizaciones();
+  if (state.offset === 0) return
+  state.offset = Math.max(0, state.offset - PAGE_SIZE)
+  cargarCotizaciones()
 }
 
 function irPaginaSiguiente() {
-  if (state.offset + PAGE_SIZE >= state.count) return;
-  state.offset += PAGE_SIZE;
-  cargarCotizaciones();
+  if (state.offset + PAGE_SIZE >= state.count) return
+  state.offset += PAGE_SIZE
+  cargarCotizaciones()
 }
 
 // ---------------------------------------------------------------------------
@@ -194,58 +193,58 @@ function irPaginaSiguiente() {
 // ---------------------------------------------------------------------------
 
 async function verDetalle(id) {
-  const row = state.cotizaciones.find((c) => c.id === id);
-  elementoDisparadorModal = document.activeElement;
-  state.modal = { row, detalle: null, loading: true, error: '' };
-  renderApp();
-  enfocarPrimerElemento(app.querySelector('.admin-modal'));
+  const row = state.cotizaciones.find((c) => c.id === id)
+  elementoDisparadorModal = document.activeElement
+  state.modal = { row, detalle: null, loading: true, error: '' }
+  renderApp()
+  enfocarPrimerElemento(app.querySelector('.admin-modal'))
   try {
-    state.modal.detalle = await api.get(`/cotizaciones/${id}`);
+    state.modal.detalle = await api.get(`/cotizaciones/${id}`)
   } catch (err) {
-    state.modal.error = err.message || 'No se pudo cargar el detalle de la cotización.';
+    state.modal.error = err.message || 'No se pudo cargar el detalle de la cotización.'
   } finally {
-    state.modal.loading = false;
-    renderApp();
+    state.modal.loading = false
+    renderApp()
     // El contenido cambia de "Cargando…" a los datos reales/botones — el nodo del modal
     // es nuevo (innerHTML completo) así que el foco puesto arriba ya no aplica, se repone.
-    enfocarPrimerElemento(app.querySelector('.admin-modal'));
+    enfocarPrimerElemento(app.querySelector('.admin-modal'))
   }
 }
 
 function cerrarModal() {
-  state.modal = null;
-  renderApp();
+  state.modal = null
+  renderApp()
   if (elementoDisparadorModal) {
-    elementoDisparadorModal.focus();
-    elementoDisparadorModal = null;
+    elementoDisparadorModal.focus()
+    elementoDisparadorModal = null
   }
 }
 
 async function descargarOferta(boton, id, numeroCotizacion) {
   // El PDF tarda un rato en generarse (Puppeteer) y el botón no daba ninguna señal mientras
   // tanto, así que un click impaciente terminaba en varias descargas del mismo archivo.
-  const textoOriginal = boton.textContent;
-  boton.disabled = true;
-  boton.setAttribute('aria-disabled', 'true');
-  boton.setAttribute('aria-label', 'Descargando la Carta Oferta, esperá a que termine');
-  boton.textContent = 'Descargando…';
+  const textoOriginal = boton.textContent
+  boton.disabled = true
+  boton.setAttribute('aria-disabled', 'true')
+  boton.setAttribute('aria-label', 'Descargando la Carta Oferta, esperá a que termine')
+  boton.textContent = 'Descargando…'
   try {
-    const blob = await api.getBlob(`/cotizaciones/${id}/pdf-oferta`);
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Carta-Oferta-${numeroCotizacion ?? id}.pdf`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
+    const blob = await api.getBlob(`/cotizaciones/${id}/pdf-oferta`)
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `Carta-Oferta-${numeroCotizacion ?? id}.pdf`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
   } catch (err) {
-    mostrarBanner('error', err.message || 'No se pudo descargar la Carta Oferta.');
+    mostrarBanner('error', err.message || 'No se pudo descargar la Carta Oferta.')
   } finally {
-    boton.disabled = false;
-    boton.removeAttribute('aria-disabled');
-    boton.removeAttribute('aria-label');
-    boton.textContent = textoOriginal;
+    boton.disabled = false
+    boton.removeAttribute('aria-disabled')
+    boton.removeAttribute('aria-label')
+    boton.textContent = textoOriginal
   }
 }
 
@@ -279,8 +278,8 @@ function renderApp() {
       </div>
     </div>
     ${state.modal ? renderModalDetalle() : ''}
-  `;
-  actualizarIndicadorScrollTabla();
+  `
+  actualizarIndicadorScrollTabla()
 }
 
 function renderTopbar() {
@@ -299,7 +298,7 @@ function renderTopbar() {
         ${renderTopbarUser()}
       </div>
     </div>
-  `;
+  `
 }
 
 function renderSidebar() {
@@ -310,22 +309,28 @@ function renderSidebar() {
         ${renderSidebarFooter('historial')}
       </div>
     </div>
-  `;
+  `
 }
 
 function renderBanner() {
-  if (!state.banner) return '';
-  return `<div class="admin-banner admin-banner--${state.banner.tipo}">${escapeHtml(state.banner.texto)}</div>`;
+  if (!state.banner) return ''
+  return `<div class="admin-banner admin-banner--${state.banner.tipo}">${escapeHtml(state.banner.texto)}</div>`
 }
 
 function renderFiltros() {
-  const opcionesRamo = state.ramos.map((r) => `
+  const opcionesRamo = state.ramos
+    .map(
+      (r) => `
     <option value="${r.id}" ${String(state.filtros.ramo_id) === String(r.id) ? 'selected' : ''}>${escapeHtml(r.nombre_display)}</option>
-  `).join('');
+  `
+    )
+    .join('')
 
-  const opcionesEstado = ESTADOS.map((e) => `
+  const opcionesEstado = ESTADOS.map(
+    (e) => `
     <option value="${e}" ${state.filtros.estado === e ? 'selected' : ''}>${escapeHtml(e[0].toUpperCase() + e.slice(1))}</option>
-  `).join('');
+  `
+  ).join('')
 
   return `
     <form class="historial-filtros" id="historial-filtros-form">
@@ -360,24 +365,25 @@ function renderFiltros() {
         <button class="btn-outline" type="button" data-action="limpiar-filtros">Limpiar filtros</button>
       </div>
     </form>
-  `;
+  `
 }
 
 function renderTabla() {
   if (state.loading) {
-    return '<div class="empty-state__subtitle"><span class="spinner" aria-hidden="true"></span> Cargando cotizaciones…</div>';
+    return '<div class="empty-state__subtitle"><span class="spinner" aria-hidden="true"></span> Cargando cotizaciones…</div>'
   }
   if (state.error) {
-    return `<div class="admin-banner admin-banner--error">${escapeHtml(state.error)}</div>`;
+    return `<div class="admin-banner admin-banner--error">${escapeHtml(state.error)}</div>`
   }
   if (!state.cotizaciones.length) {
-    return '<div class="empty-state__subtitle">No se encontraron cotizaciones con estos filtros.</div>';
+    return '<div class="empty-state__subtitle">No se encontraron cotizaciones con estos filtros.</div>'
   }
 
-  const filas = state.cotizaciones.map((c) => {
-    const prima = primaRepresentativa(c);
-    const puedeOferta = ofertaDisponible(c);
-    return `
+  const filas = state.cotizaciones
+    .map((c) => {
+      const prima = primaRepresentativa(c)
+      const puedeOferta = ofertaDisponible(c)
+      return `
       <tr>
         <td><span class="historial-tabla__numero">${escapeHtml(c.numero_cotizacion)}</span></td>
         <td>${escapeHtml(c.cliente_nombre ?? '—')}</td>
@@ -389,14 +395,17 @@ function renderTabla() {
         <td>
           <div class="historial-tabla__actions">
             <button class="historial-tabla__btn-ghost" data-action="ver-detalle" data-id="${c.id}">Ver detalle</button>
-            ${puedeOferta
-              ? `<button class="btn-outline historial-tabla__btn-oferta" data-action="descargar-oferta" data-id="${c.id}" data-numero="${escapeHtml(c.numero_cotizacion)}">Carta Oferta</button>`
-              : `<button class="btn-outline historial-tabla__btn-oferta historial-oferta-disabled" disabled aria-disabled="true" aria-label="Carta Oferta no disponible para este ramo todavía" title="Carta Oferta no disponible para este ramo todavía">Carta Oferta</button>`}
+            ${
+              puedeOferta
+                ? `<button class="btn-outline historial-tabla__btn-oferta" data-action="descargar-oferta" data-id="${c.id}" data-numero="${escapeHtml(c.numero_cotizacion)}">Carta Oferta</button>`
+                : `<button class="btn-outline historial-tabla__btn-oferta historial-oferta-disabled" disabled aria-disabled="true" aria-label="Carta Oferta no disponible para este ramo todavía" title="Carta Oferta no disponible para este ramo todavía">Carta Oferta</button>`
+            }
           </div>
         </td>
       </tr>
-    `;
-  }).join('');
+    `
+    })
+    .join('')
 
   return `
     <div class="historial-tabla-scroll" id="historial-tabla-scroll">
@@ -416,7 +425,7 @@ function renderTabla() {
         <tbody>${filas}</tbody>
       </table>
     </div>
-  `;
+  `
 }
 
 // La tabla puede tener más columnas de las que entran en viewports angostos — antes se
@@ -424,20 +433,23 @@ function renderTabla() {
 // (ver .historial-tabla-scroll) y este listener actualiza el degradé sutil del borde derecho
 // para que desaparezca solo cuando ya no queda contenido oculto a la derecha.
 function actualizarIndicadorScrollTabla() {
-  const el = document.getElementById('historial-tabla-scroll');
-  if (!el) return;
-  const alFinal = el.scrollWidth - el.clientWidth - el.scrollLeft <= 1;
-  el.classList.toggle('historial-tabla-scroll--al-final', alFinal || el.scrollWidth <= el.clientWidth);
+  const el = document.getElementById('historial-tabla-scroll')
+  if (!el) return
+  const alFinal = el.scrollWidth - el.clientWidth - el.scrollLeft <= 1
+  el.classList.toggle(
+    'historial-tabla-scroll--al-final',
+    alFinal || el.scrollWidth <= el.clientWidth
+  )
 }
 
 function renderPaginacion() {
-  const totalPaginas = Math.max(1, Math.ceil(state.count / PAGE_SIZE));
-  const paginaActual = Math.floor(state.offset / PAGE_SIZE) + 1;
+  const totalPaginas = Math.max(1, Math.ceil(state.count / PAGE_SIZE))
+  const paginaActual = Math.floor(state.offset / PAGE_SIZE) + 1
   // GET /cotizaciones ya devuelve `count` (total real de filas que matchean el filtro, no solo
   // las de la página actual — ver cargarCotizaciones()), así que el rango "Mostrando X-Y de Z"
   // sale del mismo dato que ya se usaba para calcular la cantidad de páginas.
-  const desde = state.count === 0 ? 0 : state.offset + 1;
-  const hasta = Math.min(state.offset + PAGE_SIZE, state.count);
+  const desde = state.count === 0 ? 0 : state.offset + 1
+  const hasta = Math.min(state.offset + PAGE_SIZE, state.count)
 
   return `
     <div class="historial-paginacion">
@@ -446,28 +458,34 @@ function renderPaginacion() {
       <span>Página ${paginaActual} de ${totalPaginas}</span>
       <button class="btn-outline" data-action="pagina-siguiente" ${state.offset + PAGE_SIZE >= state.count ? 'disabled' : ''}>Siguiente</button>
     </div>
-  `;
+  `
 }
 
 function renderModalDetalle() {
-  const m = state.modal;
-  const row = m.row;
+  const m = state.modal
+  const row = m.row
 
-  let cuerpo = '<div class="empty-state__subtitle"><span class="spinner" aria-hidden="true"></span> Cargando detalle…</div>';
+  let cuerpo =
+    '<div class="empty-state__subtitle"><span class="spinner" aria-hidden="true"></span> Cargando detalle…</div>'
   if (m.error) {
-    cuerpo = `<div class="admin-modal__error">${escapeHtml(m.error)}</div>`;
+    cuerpo = `<div class="admin-modal__error">${escapeHtml(m.error)}</div>`
   } else if (!m.loading && m.detalle) {
-    const d = m.detalle;
-    const variantesHtml = (d.cotizacion_variantes ?? []).map((v) => {
-      const formasHtml = (v.cotizacion_plan_pago ?? []).map((fp) => `
+    const d = m.detalle
+    const variantesHtml = (d.cotizacion_variantes ?? [])
+      .map((v) => {
+        const formasHtml = (v.cotizacion_plan_pago ?? [])
+          .map(
+            (fp) => `
         <tr>
           <td>${escapeHtml(fp.formas_pago?.nombre_display ?? '—')}</td>
           <td>${fmtGs(fp.premio_total)}</td>
           <td>${fmtGs(fp.monto_inicial)}</td>
           <td>${fmtGs(fp.monto_cuota)}</td>
         </tr>
-      `).join('');
-      return `
+      `
+          )
+          .join('')
+        return `
         <div class="historial-detalle__grupo">
           <div class="historial-detalle__grupo-titulo">
             ${v.tipo_franquicia === 'con_franquicia' ? 'Con franquicia' : 'Sin franquicia'} — Prima ${fmtGs(v.prima)}
@@ -479,16 +497,21 @@ function renderModalDetalle() {
             <tbody>${formasHtml || '<tr><td colspan="4">Sin planes de pago cargados.</td></tr>'}</tbody>
           </table>
         </div>
-      `;
-    }).join('');
+      `
+      })
+      .join('')
 
-    const coberturasHtml = (d.cotizacion_coberturas ?? []).map((c) => `
+    const coberturasHtml = (d.cotizacion_coberturas ?? [])
+      .map(
+        (c) => `
       <tr>
         <td>${escapeHtml(c.nombre_snapshot)}</td>
         <td>${c.monto != null ? fmtGs(c.monto) : '—'}</td>
         <td>${c.franquicia != null ? fmtGs(c.franquicia) : '—'}</td>
       </tr>
-    `).join('');
+    `
+      )
+      .join('')
 
     cuerpo = `
       <div class="historial-detalle__grupo">
@@ -499,7 +522,9 @@ function renderModalDetalle() {
         <div>Estado: ${escapeHtml(d.estado ?? '—')}</div>
       </div>
       ${variantesHtml}
-      ${coberturasHtml ? `
+      ${
+        coberturasHtml
+          ? `
         <div class="historial-detalle__grupo">
           <div class="historial-detalle__grupo-titulo">Coberturas</div>
           <table class="admin-table admin-table--nested">
@@ -507,8 +532,10 @@ function renderModalDetalle() {
             <tbody>${coberturasHtml}</tbody>
           </table>
         </div>
-      ` : ''}
-    `;
+      `
+          : ''
+      }
+    `
   }
 
   return `
@@ -517,14 +544,16 @@ function renderModalDetalle() {
         <div class="admin-modal__title" id="historial-modal-title">Cotización ${escapeHtml(row?.numero_cotizacion ?? '')}</div>
         ${cuerpo}
         <div class="admin-modal__actions">
-          ${row && puedeEditar(row)
-            ? `<button type="button" class="btn-outline" data-action="editar-cotizacion" data-id="${row.id}">Editar</button>`
-            : `<button type="button" class="btn-outline historial-oferta-disabled" disabled title="${escapeHtml(row ? motivoNoEditable(row) : '')}">Editar</button>`}
+          ${
+            row && puedeEditar(row)
+              ? `<button type="button" class="btn-outline" data-action="editar-cotizacion" data-id="${row.id}">Editar</button>`
+              : `<button type="button" class="btn-outline historial-oferta-disabled" disabled title="${escapeHtml(row ? motivoNoEditable(row) : '')}">Editar</button>`
+          }
           <button type="button" class="btn-outline" data-action="cerrar-modal">Cerrar</button>
         </div>
       </div>
     </div>
-  `;
+  `
 }
 
 // ---------------------------------------------------------------------------
@@ -540,41 +569,41 @@ function renderModalDetalle() {
 // "escapar" hacia el data-action del backdrop que lo contiene (antes evitado
 // con e.stopPropagation() en el modal en cada bind).
 function resolveActionTarget(e) {
-  const target = e.target.closest('[data-action]');
-  if (!target || target.disabled) return null;
-  const stopEl = e.target.closest('[data-stop-propagation]');
-  if (stopEl && !stopEl.contains(target)) return null;
-  return target;
+  const target = e.target.closest('[data-action]')
+  if (!target || target.disabled) return null
+  const stopEl = e.target.closest('[data-stop-propagation]')
+  if (stopEl && !stopEl.contains(target)) return null
+  return target
 }
 
 function onAppClick(e) {
-  const target = resolveActionTarget(e);
-  if (!target) return;
-  onActionClick(target);
+  const target = resolveActionTarget(e)
+  if (!target) return
+  onActionClick(target)
 }
 
 function onAppSubmit(e) {
-  if (e.target.id !== 'historial-filtros-form') return;
-  e.preventDefault();
-  const form = e.target;
-  state.filtros.ramo_id = form.ramo_id.value;
-  state.filtros.cliente = form.cliente.value.trim();
-  state.filtros.fecha_desde = form.fecha_desde.value;
-  state.filtros.fecha_hasta = form.fecha_hasta.value;
-  state.filtros.estado = form.estado.value;
-  aplicarFiltros();
+  if (e.target.id !== 'historial-filtros-form') return
+  e.preventDefault()
+  const form = e.target
+  state.filtros.ramo_id = form.ramo_id.value
+  state.filtros.cliente = form.cliente.value.trim()
+  state.filtros.fecha_desde = form.fecha_desde.value
+  state.filtros.fecha_hasta = form.fecha_hasta.value
+  state.filtros.estado = form.estado.value
+  aplicarFiltros()
 }
 
 // Escape cierra el modal de detalle si está abierto. Tab/Shift+Tab quedan atrapados
 // dentro del modal (focus trap) mientras esté abierto.
 function onKeydown(e) {
   if (e.key === 'Escape' && state.modal) {
-    cerrarModal();
-    return;
+    cerrarModal()
+    return
   }
   if (e.key === 'Tab' && state.modal) {
-    const modalAbierto = app.querySelector('.admin-modal');
-    if (modalAbierto) atraparFoco(e, modalAbierto);
+    const modalAbierto = app.querySelector('.admin-modal')
+    if (modalAbierto) atraparFoco(e, modalAbierto)
   }
 }
 
@@ -582,52 +611,52 @@ function onKeydown(e) {
 // (#app, que sobrevive a cada renderApp()) sí se dispara igual durante el recorrido top-down
 // del evento — evita tener que reenganchar el listener cada vez que se recrea la tabla.
 function onAppScroll(e) {
-  if (e.target.id === 'historial-tabla-scroll') actualizarIndicadorScrollTabla();
+  if (e.target.id === 'historial-tabla-scroll') actualizarIndicadorScrollTabla()
 }
 
 function registrarEventos() {
-  app.addEventListener('click', onAppClick);
-  app.addEventListener('submit', onAppSubmit);
-  app.addEventListener('scroll', onAppScroll, true);
-  window.addEventListener('resize', actualizarIndicadorScrollTabla);
-  document.addEventListener('keydown', onKeydown);
+  app.addEventListener('click', onAppClick)
+  app.addEventListener('submit', onAppSubmit)
+  app.addEventListener('scroll', onAppScroll, true)
+  window.addEventListener('resize', actualizarIndicadorScrollTabla)
+  document.addEventListener('keydown', onKeydown)
 }
 
 function onActionClick(el) {
-  const action = el.dataset.action;
+  const action = el.dataset.action
 
   if (action === 'logout') {
-    cerrarSesion();
-    return;
+    cerrarSesion()
+    return
   }
   if (action === 'limpiar-filtros') {
-    limpiarFiltros();
-    return;
+    limpiarFiltros()
+    return
   }
   if (action === 'pagina-anterior') {
-    irPaginaAnterior();
-    return;
+    irPaginaAnterior()
+    return
   }
   if (action === 'pagina-siguiente') {
-    irPaginaSiguiente();
-    return;
+    irPaginaSiguiente()
+    return
   }
   if (action === 'ver-detalle') {
-    verDetalle(Number(el.dataset.id));
-    return;
+    verDetalle(Number(el.dataset.id))
+    return
   }
   if (action === 'descargar-oferta') {
-    descargarOferta(el, Number(el.dataset.id), el.dataset.numero);
-    return;
+    descargarOferta(el, Number(el.dataset.id), el.dataset.numero)
+    return
   }
   if (action === 'editar-cotizacion') {
-    editarCotizacion(Number(el.dataset.id));
-    return;
+    editarCotizacion(Number(el.dataset.id))
+    return
   }
   if (action === 'cerrar-modal' || action === 'cerrar-modal-backdrop') {
-    cerrarModal();
+    cerrarModal()
   }
 }
 
-registrarEventos();
-init();
+registrarEventos()
+init()

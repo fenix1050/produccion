@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import compression from 'compression';
 import { router as apiRouter } from './routes/index.js';
 
 export function createApp() {
@@ -14,6 +15,7 @@ export function createApp() {
   const app = express();
 
   app.use(helmet());
+  app.use(compression());
   app.use(cors({ origin: FRONTEND_URL }));
   app.use(express.json({ limit: '2mb' }));
 

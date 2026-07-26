@@ -1,5 +1,6 @@
-import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { test } from 'node:test'
+
 import { buildMrcOfertaPages } from './mrc.js'
 
 // Regresión del bug de auditoría: la Carta Oferta de MRC hardcodeaba los montos de sub-límites

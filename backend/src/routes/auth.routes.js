@@ -1,4 +1,5 @@
 import { Router } from 'express'
+
 import * as authController from '../controllers/auth.controller.js'
 import { requireAuth } from '../middleware/auth.js'
 import { loginRateLimiter } from '../middleware/rate-limit.js'

@@ -1,6 +1,7 @@
 export { calcularPlanPago } from './utils/plan-pago.js'
-import { sumarAjustes, topeEfectivo } from './utils/ajustes.js'
 import { httpError } from '../utils/http-error.js'
+
+import { sumarAjustes, topeEfectivo } from './utils/ajustes.js'
 
 // Códigos del catálogo (migración 012_seed_mrc.sql) cuya suma asegurada viene directo
 // del formulario (Capital Edificio / Capital Contenido).

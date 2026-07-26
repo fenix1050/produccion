@@ -1,4 +1,5 @@
 import { z } from 'zod'
+
 import { ajusteSchema } from './shared/ajuste.schema.js'
 
 // Datos específicos del riesgo para Incendio — dos formas según el plan (ver

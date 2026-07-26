@@ -1,4 +1,5 @@
 import { z } from 'zod'
+
 import { ajusteSchema } from './shared/ajuste.schema.js'
 
 // Datos específicos del riesgo para Auto — van dentro de `cotizaciones.riesgo_datos` (JSONB).

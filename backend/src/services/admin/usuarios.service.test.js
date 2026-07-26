@@ -1,5 +1,5 @@
-import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { test } from 'node:test'
 
 const USUARIO_OBJETIVO = { id: 5, rol: 'agente', email: 'agente@tajy.com' }
 const ROL_ADMIN = { id: 1, nombre: 'admin' }

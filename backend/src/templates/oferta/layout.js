@@ -226,7 +226,7 @@ export const BASE_CSS = `
 /**
  * @param {{ramoLabel: string, body: string}[]} pages - contenido ya armado por página
  */
-export function renderOferta({ ramoLabel, pages }) {
+export function renderOferta({ pages }) {
   const pagesHtml = pages
     .map(
       (bodyHtml) => `

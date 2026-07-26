@@ -1,8 +1,8 @@
 // El singleton del browser de Puppeteer vive en templates/oferta/pdf-utils.js (lo comparte
 // con measureContentHeightMm) para que no haya dos instancias de Chromium compitiendo ni una
 // dependencia cruzada entre templates/ y services/ — ver ese archivo para el detalle.
-import { getBrowser } from '../templates/oferta/pdf-utils.js'
 import { buildOfertaHtml } from '../templates/oferta/index.js'
+import { getBrowser } from '../templates/oferta/pdf-utils.js'
 
 /**
  * Arma y renderiza la Carta Oferta de `cotizacion` a un buffer PDF, usando una sola página de

@@ -1,7 +1,8 @@
-import express from 'express'
-import cors from 'cors'
-import helmet from 'helmet'
 import compression from 'compression'
+import cors from 'cors'
+import express from 'express'
+import helmet from 'helmet'
+
 import { router as apiRouter } from './routes/index.js'
 
 export function createApp() {
@@ -26,7 +27,7 @@ export function createApp() {
   // Manejador de errores centralizado — todo controller que haga next(err) cae acá.
   // Loguear err.stack (no el objeto err crudo): errores de Zod hacen que
   // console.error(err) explote dentro de util.inspect y tumba el proceso entero.
-  // eslint-disable-next-line no-unused-vars
+   
   app.use((err, _req, res, _next) => {
     console.error(err.stack || err.message || err)
     const status = err.status || 500

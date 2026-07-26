@@ -1,5 +1,6 @@
-import { test, describe } from 'node:test'
 import assert from 'node:assert/strict'
+import { test, describe } from 'node:test'
+
 import { calcularPrima, calcularPlanPago } from './vida-ap.calculator.js'
 
 // Verifica valores reales del motor de Vida y Accidentes Personales contra las reglas

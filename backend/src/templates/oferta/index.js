@@ -1,3 +1,5 @@
+import { httpError } from '../../utils/http-error.js'
+
 import {
   renderOferta,
   buildHeaderTemplate,
@@ -8,7 +10,6 @@ import {
 } from './layout.js'
 import { buildMrcOfertaPages } from './mrc.js'
 import { measureContentHeightMm } from './pdf-utils.js'
-import { httpError } from '../../utils/http-error.js'
 
 // Un builder de páginas por ramo (calculador). Incendio y Vida-AP quedan pendientes: todavía
 // no tienen texto oficial de Carta Oferta confirmado (ver CLAUDE.md, pendientes activos).

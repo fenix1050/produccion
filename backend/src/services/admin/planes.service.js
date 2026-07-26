@@ -1,6 +1,6 @@
 import * as coberturasRepository from '../../repositories/coberturas.repository.js'
-import * as tasasRepository from '../../repositories/tasas.repository.js'
 import * as ramosRepository from '../../repositories/ramos.repository.js'
+import * as tasasRepository from '../../repositories/tasas.repository.js'
 import { httpError } from '../../utils/http-error.js'
 
 // --- Plan coberturas ---

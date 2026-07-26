@@ -1,5 +1,6 @@
-import { test, describe } from 'node:test'
 import assert from 'node:assert/strict'
+import { test, describe } from 'node:test'
+
 import { calcularPrima, calcularPlanPago } from './incendio.calculator.js'
 
 // Verifica valores reales del motor de Incendio contra las reglas confirmadas en

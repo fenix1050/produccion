@@ -1,5 +1,5 @@
-import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { test } from 'node:test'
 
 const ROL_CUSTOM = { id: 5, nombre: 'Jefe de Riesgo', es_sistema: false }
 const ROL_SISTEMA = { id: 1, nombre: 'admin', es_sistema: true }

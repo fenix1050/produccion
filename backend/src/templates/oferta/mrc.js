@@ -104,7 +104,7 @@ Cláusula de cobranza (todas las formas de pago excepto Segucoop).`
  * necesario para que los sub-límites fijos reflejen los montos actuales del admin, no los que
  * tenía la migración de carga original.
  */
-export function buildMrcOfertaPages({ cotizacion, plan, ramo, planCoberturas }) {
+export function buildMrcOfertaPages({ cotizacion, plan, planCoberturas }) {
   const riesgo = cotizacion.riesgo_datos || {}
   const sublimitesFijos = sublimitesFijosMrc(planCoberturas)
   const codigosSublimitesFijos = sublimitesFijos.map((s) => s.codigo)

@@ -9,14 +9,19 @@
     "dev": "npm run dev --workspace=backend",
     "start": "npm start --workspace=backend",
     "format": "prettier . --write",
-    "format:check": "prettier . --check"
+    "format:check": "prettier . --check",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "check": "npm run format:check && npm run lint && npm test"
   },
   "allowScripts": {
     "puppeteer@24.43.1": true
   },
   "devDependencies": {
-    "@eslint/js": "^10.0.1",
-    "eslint": "^10.8.0",
+    "@eslint/js": "^9.39.5",
+    "eslint": "^9.39.5",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-import": "^2.32.0",
     "globals": "^17.7.0",
     "husky": "^9.1.7",
     "lint-staged": "^17.2.0",

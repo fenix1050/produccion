@@ -113,7 +113,7 @@ async function onSubmit(e) {
     auth.setToken(data.token)
     auth.setUsuario(data.usuario)
     window.location.href = '../bienvenida/'
-  } catch (err) {
+  } catch {
     state.enviando = false
     state.error = 'No se pudo iniciar sesión. Revisá el email y la contraseña.'
     render()

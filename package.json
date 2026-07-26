@@ -12,10 +12,21 @@
     "format:check": "prettier . --check",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "check": "npm run format:check && npm run lint && npm test"
+    "test": "npm test --workspace=backend",
+    "check": "npm run format:check && npm run lint && npm test --workspace=backend",
+    "prepare": "husky"
   },
   "allowScripts": {
     "puppeteer@24.43.1": true
+  },
+  "lint-staged": {
+    "*.js": [
+      "prettier --write",
+      "eslint --fix"
+    ],
+    "*.{json,md,yml,yaml}": [
+      "prettier --write"
+    ]
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",

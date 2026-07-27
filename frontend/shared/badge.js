@@ -11,7 +11,7 @@ const BADGE_ICONS = {
 
 /**
  * @param {string} texto - contenido visible del badge.
- * @param {'primary'|'success'|'warning'|'danger'|'info'|'neutral'|'agent'} variante
+ * @param {'primary'|'success'|'warning'|'danger'|'info'|'neutral'|'agent'|'purple'|'teal'|'indigo'|'amber'|'cyan'|'brown'} variante
  * @param {'check'|'shield'} [icono] - opcional, ícono de 12px antes del texto.
  */
 export function crearBadge(texto, variante = 'neutral', icono) {

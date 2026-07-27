@@ -68,6 +68,26 @@ export async function findFormasPagoDelPlan(planId) {
 // A diferencia de findFormasPagoDelPlan (usado por el motor de cotización, que solo debe
 // ver formas de pago habilitadas), esta trae TODAS — el admin necesita ver y poder
 // reactivar una forma de pago deshabilitada, no solo las que ya están activas.
+/**
+ * Cláusulas legales OBLIGATORIAS de un plan específico (`clausulas_catalogo.plan_id`,
+ * migración 038) — a diferencia del catálogo genérico por ramo (`plan_id IS NULL`,
+ * seleccionable a mano por cotización en `cotizacion_clausulas`), estas son fijas del plan
+ * (ej. las 5 cláusulas de "INCENDIO HIPOTECARIO", ver
+ * openspec/changes/incendio-3-planes-y-moneda/specs/incendio-planes-objeto-riesgo/spec.md
+ * "Hipotecario legal content"). Un plan sin cláusulas propias (todas sus filas con
+ * `plan_id` NULL) devuelve lista vacía — no rompe nada.
+ */
+export async function findClausulasObligatoriasByPlanId(planId) {
+  const { data, error } = await supabase
+    .from('clausulas_catalogo')
+    .select('*')
+    .eq('plan_id', planId)
+    .eq('activo', true)
+    .order('id')
+  if (error) throw error
+  return data
+}
+
 export async function findFormasPagoDelPlanTodas(planId) {
   const { data, error } = await supabase
     .from('plan_formas_pago')

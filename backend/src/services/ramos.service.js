@@ -13,6 +13,10 @@ export async function listarCoberturasDePlan(planId) {
   return ramosRepository.findCoberturasByPlanId(planId)
 }
 
+export async function listarClausulasObligatoriasDePlan(planId) {
+  return ramosRepository.findClausulasObligatoriasByPlanId(planId)
+}
+
 export async function listarRubrosActividad(grupo) {
   return coberturasRepository.findRubrosActividad(grupo)
 }

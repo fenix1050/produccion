@@ -246,14 +246,64 @@ Commit único de este batch (`379ffaa`, mismo branch `feature/incendio-moneda-pr
 `npm test --prefix backend` → 97/97 pass, 0 regresiones (este batch no toca código de aplicación,
 solo migraciones de datos).
 
+## Batch 6 — Fix post-verify: exposición de las cláusulas legales del Hipotecario (2026-07-27)
+
+**Branch**: `fix/incendio-hipotecario-clausulas-legales`, creada a partir de `main` (los 3 PRs
+anteriores ya estaban mergeados). Commiteado localmente, **no pusheado ni PR abierto** — queda a
+cargo del orquestador.
+
+**Gap encontrado por `sdd-verify`**: la spec `incendio-planes-objeto-riesgo` (requirement
+"Hipotecario legal content") exige que las 5 cláusulas legales obligatorias del plan
+"INCENDIO HIPOTECARIO" estén disponibles como contenido estructurado al leer los datos del plan.
+La migración 038 sí las cargó en `clausulas_catalogo` con `plan_id` seteado, pero ningún
+repository/service/controller/route del backend leía esa columna — el dato existía en la base
+pero no era recuperable por la aplicación. Confirmado por `rg -n "clausulas_catalogo"` antes de
+empezar: cero referencias fuera de la migración.
+
+### Grupo 8 — Lectura de cláusulas obligatorias de plan (fuera de la numeración original de `tasks.md`, cierre de gap de verify)
+
+| Archivo                                             | Acción   |
+| --------------------------------------------------- | -------- |
+| `backend/src/repositories/ramos.repository.js`      | Modified |
+| `backend/src/repositories/ramos.repository.test.js` | Created  |
+| `backend/src/services/ramos.service.js`             | Modified |
+| `backend/src/controllers/ramos.controller.js`       | Modified |
+| `backend/src/routes/planes.routes.js`               | Modified |
+
+- **Repository**: `findClausulasObligatoriasByPlanId(planId)` — `SELECT * FROM clausulas_catalogo WHERE plan_id = :planId AND activo = true ORDER BY id`. Mismo estilo de query que `findCoberturasByPlanId`/`findPlanCoberturasByPlanId` (mismo archivo). Un `plan_id` sin filas propias (todas NULL, catálogo genérico del ramo) devuelve `[]` — no rompe nada, no se mezcla con las cláusulas genéricas seleccionables por cotización.
+- **Service**: `listarClausulasObligatoriasDePlan(planId)` — wrapper delgado, mismo patrón que `listarCoberturasDePlan`.
+- **Controller/Route**: nuevo endpoint `GET /api/planes/:id/clausulas` (`ramosController.listarClausulasObligatoriasDePlan`), agregado junto al ya existente `GET /api/planes/:id/coberturas` en `planes.routes.js` — mismo router, mismo estilo (no se creó un router nuevo).
+- **Decisión de diseño**: se optó por un endpoint NUEVO (`/clausulas`) en vez de embeber las cláusulas dentro de la respuesta de `/planes/:id/coberturas` o de `findPlanById`. Motivo: `findCoberturasByPlanId`/`findPlanById` ya son consumidos hoy por el motor de cotización (`cotizacion.service.js` vía `resolverContextoRepositorios`) y por el panel admin; agregar un campo nuevo a esas respuestas arriesga inflar el payload de cotización con datos que solo hacen falta para el PDF de Carta Oferta (fuera de alcance de este cambio, ver `proposal.md` "Out of Scope" — el template de Carta Oferta de Incendio todavía no existe). Un endpoint dedicado, espejo de `/coberturas`, mantiene el patrón de capas y no toca ningún consumidor existente.
+- **No se tocó** ninguna mecánica de cálculo (`objeto_riesgo`/`edificio_contenido`/`maquinaria`) ni el schema Zod — este fix es puramente de exposición de datos ya sembrados por la migración 038.
+
+### TDD Cycle Evidence (Strict TDD)
+
+| Task                                | RED                                                                                                                                                                                                                                                                                                | GREEN                                                                                                 | REFACTOR                                                                                             |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `findClausulasObligatoriasByPlanId` | 3 tests escritos primero en `ramos.repository.test.js` (5 cláusulas del Hipotecario, plan sin cláusulas propias → `[]`, propagación de error de Supabase); corridos contra el repository sin la función y confirmados en rojo con `TypeError: findClausulasObligatoriasByPlanId is not a function` | Implementada la función en `ramos.repository.js` + wrappers de service/controller/route; 3/3 en verde | Sin refactor adicional — implementación mínima, mismo estilo que funciones vecinas del mismo archivo |
+
+### Work Unit Evidence
+
+| Evidence                                | Valor                                                                                                                                                                                                                                                                                                       |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Focused test command y resultado exacto | `node --experimental-test-module-mocks --test src/repositories/ramos.repository.test.js` → 3/3 pass                                                                                                                                                                                                         |
+| Runtime harness / regresión completa    | `npm test --prefix backend` → 100/100 pass (97 preexistentes + 3 nuevos), 0 fallos, 0 regresiones                                                                                                                                                                                                           |
+| Rollback boundary                       | Revertir el commit único de este batch revierte 1 archivo nuevo (`ramos.repository.test.js`) y 4 archivos modificados (repository/service/controller/route) — ningún consumidor existente de `ramos.repository.js`/`ramos.service.js`/`ramos.controller.js` se toca, solo se agregan funciones/rutas nuevas |
+
+### Deviations from Design
+
+None — el gap y su fix no estaban en `design.md` original (era un gap descubierto por `sdd-verify` post-merge), pero la solución sigue el mismo patrón de capas (`routes → controllers → services → repositories`) y el mismo estilo de query Supabase que el resto del archivo `ramos.repository.js`.
+
+### Issues Found
+
+None nuevo. No se verificó en vivo contra el VPS en este batch (cambio puramente de backend, cubierto por test unitario + regresión completa); recomendado a Kevin/al orquestador un smoke test manual de `GET /api/planes/:id/clausulas` contra el `id` real del plan Hipotecario antes de dar el gap por cerrado en producción.
+
 ## Status
 
-23/23 tasks completas (los 7 grupos cerrados) **+ verificado en vivo end-to-end** en el VPS, con
-un bug real encontrado y corregido durante la verificación (ver Batch 5). Los 4 PRs de la cadena
-stacked-to-main (migraciones+tipo de cambio → calculador+schema → service de cotización+tests →
-frontend) están commiteados localmente junto con el fix de datos, **ninguno pusheado ni con PR
-abierto todavía** — a cargo de Kevin decidir cuándo abrirlos en GitHub. Migraciones 034-040 ya
-aplicadas contra la base real de Supabase (no solo archivos SQL locales). Sin pendientes de
-verificación conocidos sobre lo implementado; quedan las preguntas de negocio ya documentadas en
-`state.yaml` que no bloquean nada (tasas de tipos de riesgo más allá de Vivienda, confirmación de
-Kevin la semana del 2026-08-03).
+23/23 tasks originales completas + Batch 6 (gap de verify cerrado): 100/100 tests backend en
+verde (97 preexistentes + 3 nuevos de `ramos.repository.test.js`). Los 4 PRs de la cadena
+stacked-to-main ya están mergeados a `main` (#14, #15, #16 — ver `state.yaml`). Este batch vive en
+un branch nuevo (`fix/incendio-hipotecario-clausulas-legales`), **no pusheado ni con PR abierto
+todavía** — a cargo del orquestador. Sin pendientes de verificación conocidos sobre lo
+implementado; quedan las preguntas de negocio ya documentadas en `state.yaml` que no bloquean nada
+(tasas de tipos de riesgo más allá de Vivienda, confirmación de Kevin la semana del 2026-08-03).

@@ -27,6 +27,18 @@ export async function listarCoberturasDePlan(req, res, next) {
   }
 }
 
+// Cláusulas legales OBLIGATORIAS de ESE plan (clausulas_catalogo.plan_id, migración 038) —
+// ej. las 5 cláusulas de "INCENDIO HIPOTECARIO". No confundir con el catálogo genérico de
+// cláusulas del ramo, que se selecciona a mano por cotización (cotizacion_clausulas).
+export async function listarClausulasObligatoriasDePlan(req, res, next) {
+  try {
+    const clausulas = await ramosService.listarClausulasObligatoriasDePlan(req.params.id)
+    res.json(clausulas)
+  } catch (err) {
+    next(err)
+  }
+}
+
 export async function listarRubrosActividad(req, res, next) {
   try {
     const rubros = await ramosService.listarRubrosActividad(req.query.grupo)

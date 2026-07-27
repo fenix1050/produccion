@@ -188,6 +188,72 @@ Migraciones SQL (grupo 1) no son código con test unitario propio — son schema
 | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | 6.1/6.2/6.3 | Sin test dedicado — se verificó primero (antes de escribir código) que no existe ningún `*.test.js` bajo `frontend/` en todo el proyecto, ni un test runner de frontend configurado en `package.json` (mismo hallazgo que en PR 2 para el schema Zod: no hay precedente de test unitario de frontend Vanilla JS en este repo) | Implementado; validado por lectura contra las 3 specs (`cotizacion-moneda`, `incendio-planes-objeto-riesgo`, `incendio-umbral-inspeccion`) + `node --check`/`eslint`/`prettier` en verde | Ninguno — no hubo refactor posterior, código escrito ya en su forma final tras revisar los patrones existentes de `cotizar.js` |
 
+## Batch 5 — Verificación en vivo + fix de datos (2026-07-27, post-PR4)
+
+Con el skill `/run-cotizador` disponible en esta sesión, se levantó backend + frontend en el
+mismo VPS (`http://147.93.132.53:5000`) y se manejó Playwright headless para probar el flujo
+real, con credenciales de Kevin (nunca guardadas en archivos ni en memoria persistente).
+
+### Migraciones 034-038 aplicadas contra Supabase real
+
+Las 5 migraciones del PR 1 (archivos ya commiteados desde esa sesión) **no habían sido aplicadas
+todavía contra la base real** — solo existían como SQL local. Confirmado explícitamente por Kevin,
+se aplicaron en orden vía `mcp__supabase__apply_migration` y se verificaron con
+`list_migrations`. Sin esto, los 3 planes nuevos no aparecían en absoluto en el frontend.
+
+### Migración 039 — pisos y topes pendientes de confirmación
+
+`planEsCalculable` (`cotizar.js:69-73`) exige `plan.prima_tecnica_minima != null` para habilitar
+un plan en el selector — los 3 planes nuevos quedaban con ese campo `NULL` (a propósito, según el
+comentario de la migración 038) y aparecían deshabilitados como "(pendiente de confirmación)".
+Kevin confirmó en vivo:
+
+- Prima técnica mínima: Gs. 409.091 (mismo piso que ya usa MRC) para los 3 planes nuevos.
+- Responsabilidad máxima cotizable: Gs. 60.000.000.000 para los 3 planes nuevos; de paso se cargó
+  el mismo campo para `MAQUINARIA BASICO` (USD 5.000.000), que había quedado `NULL` desde la
+  migración 018.
+- Umbral de inspección: USD 700.000 (el `~USD 700.000, no confirmado` de `design.md`/`038` queda
+  resuelto) para `INCENDIO CON INSPECCION`/`INCENDIO SIN INSPECCION` (Hipotecario sigue exento).
+
+### Migración 040 — bug real encontrado en la verificación
+
+Al cotizar con Tipo de Riesgo = "VIVIENDA" (única opción del catálogo de rubros relevante para
+este tipo de riesgo), el backend rechazaba con 422 "Este Tipo de Riesgo todavía no tiene tasas
+confirmadas" pese a que la migración 038 sí había cargado la tasa. Causa raíz:
+`findTasasRiesgoObjeto` (`coberturas.repository.js:105`) matchea `tipos_riesgo_incendio.nombre`
+contra `riesgoDatos.rubro_actividad` por **igualdad exacta de string**; la migración 038 sembró la
+tasa como `'VIVIENDA FAMILIAR'`, pero el catálogo de rubros de actividad (endpoint
+`/ramos/rubros-actividad`, compartido con MRC) tiene la opción `'VIVIENDA'` — nunca hacían match.
+Kevin confirmó el criterio de fix (renombrar la tasa, no el catálogo): migración 040 hace
+`UPDATE tipos_riesgo_incendio SET nombre = 'VIVIENDA' WHERE nombre = 'VIVIENDA FAMILIAR'`.
+
+### Evidencia de verificación visual (Playwright headless)
+
+| Caso                                                                 | Resultado                                                                                                                  |
+| -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Login + navegación                                                   | OK, sin errores de consola                                                                                                 |
+| Plan legacy Gs. (Incendio Edificio y Contenido)                      | Cotización completa sin regresiones                                                                                        |
+| Plan legacy USD (Maquinaria Básico)                                  | 422 correcto y bien formateado antes de cargar el piso USD; luego confirmado con el piso ya cargado                        |
+| Los 3 planes nuevos en el selector                                   | Aparecen; deshabilitados hasta migración 039, habilitados después                                                          |
+| Selector de moneda (Gs./USD) + 4 campos de objeto de riesgo          | Renderizan con label dinámico por moneda                                                                                   |
+| Cotización "Incendio con Inspección", VIVIENDA, 4 objetos declarados | Antes de 040: 422 "Tipo de Riesgo sin tasas". Después de 040: Gs. 5.233.000 de prima, 4 coberturas, plan de pagos correcto |
+| Umbral de inspección — "sin Inspección" con suma ≥ umbral            | 422 "La suma asegurada declarada supera el umbral que exige inspección — seleccione 'Incendio con Inspección'"             |
+| Umbral de inspección — "con Inspección" con la misma suma alta       | Acepta y cotiza: Gs. 56.760.000 de prima total                                                                             |
+
+Commit único de este batch (`379ffaa`, mismo branch `feature/incendio-moneda-pr3-service-integracion`):
+`backend/migrations/039_pisos_y_topes_incendio_3_planes.sql` y
+`backend/migrations/040_fix_nombre_tipo_riesgo_vivienda.sql`. Pre-commit hook corrió
+`npm test --prefix backend` → 97/97 pass, 0 regresiones (este batch no toca código de aplicación,
+solo migraciones de datos).
+
 ## Status
 
-23/23 tasks completas (los 7 grupos cerrados). **El cambio completo queda listo para `sdd-verify`** — los 4 PRs de la cadena stacked-to-main (migraciones+tipo de cambio → calculador+schema → service de cotización+tests → frontend) están commiteados localmente, ninguno pusheado ni con PR abierto (a cargo del orquestador). Pendiente real antes de dar el cambio por cerrado en producción: verificación visual en navegador (bloqueada en esta sesión por falta del skill `/run-cotizador`) y las preguntas abiertas de negocio ya documentadas en `state.yaml` (montos de umbral/piso USD todavía no confirmados por Kevin — no bloquean el mecanismo genérico, ya implementado y testeado).
+23/23 tasks completas (los 7 grupos cerrados) **+ verificado en vivo end-to-end** en el VPS, con
+un bug real encontrado y corregido durante la verificación (ver Batch 5). Los 4 PRs de la cadena
+stacked-to-main (migraciones+tipo de cambio → calculador+schema → service de cotización+tests →
+frontend) están commiteados localmente junto con el fix de datos, **ninguno pusheado ni con PR
+abierto todavía** — a cargo de Kevin decidir cuándo abrirlos en GitHub. Migraciones 034-040 ya
+aplicadas contra la base real de Supabase (no solo archivos SQL locales). Sin pendientes de
+verificación conocidos sobre lo implementado; quedan las preguntas de negocio ya documentadas en
+`state.yaml` que no bloquean nada (tasas de tipos de riesgo más allá de Vivienda, confirmación de
+Kevin la semana del 2026-08-03).

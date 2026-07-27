@@ -6,6 +6,7 @@ import {
   requireUsuariosEdit,
   requireCoberturasEdit,
   requirePlanesEdit,
+  requireRole,
 } from '../middleware/auth.js'
 
 // requireAuth ya corre en routes/index.js antes de llegar acá. Ya NO hay un gate
@@ -60,3 +61,10 @@ router.put('/planes/:id', requirePlanesEdit, adminController.editarPlan)
 router.delete('/planes/:id', requirePlanesEdit, adminController.eliminarPlan)
 router.get('/planes/:id/formas-pago', requirePlanesEdit, adminController.listarFormasPagoDePlan)
 router.put('/plan-formas-pago/:id', requirePlanesEdit, adminController.editarPlanFormaPago)
+
+// Ramos (gate: rol admin literal, no un permiso booleano delegable) — habilitar/deshabilitar
+// un ramo determina qué aparece "Próximamente" en el sidebar del cotizador y si se puede
+// cotizar por ese ramo vía API (ver findRamoById soloActivos), es una decisión a nivel de
+// sistema que Kevin pidió reservar solo para el rol admin.
+router.get('/ramos', requireRole('admin'), adminController.listarRamosAdmin)
+router.put('/ramos/:id', requireRole('admin'), adminController.editarRamo)

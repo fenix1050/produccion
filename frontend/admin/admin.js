@@ -8,6 +8,7 @@ import {
   ICON_ADMIN_TASAS,
   ICON_ADMIN_PLANES,
   ICON_WRENCH,
+  ICON_GEAR,
 } from '../shared/nav-icons.js'
 import {
   fmtGsConPrefijo as fmtGs,
@@ -30,6 +31,11 @@ const SECCIONES = [
   },
   { id: 'tasas', label: 'Tasas', disponible: true, permiso: 'puede_editar_tasas' },
   { id: 'planes', label: 'Planes', disponible: true, permiso: 'puede_editar_planes' },
+  // Sin `permiso`: a diferencia del resto de las secciones (permisos delegables por rol
+  // custom), habilitar/deshabilitar un ramo en el sidebar del cotizador es una decisión de
+  // sistema reservada al rol admin literal — ver seccionesVisibles() y el gate del backend
+  // (requireRole('admin') en admin.routes.js).
+  { id: 'ramos', label: 'Ramos', disponible: true, soloAdmin: true },
 ]
 
 // Colores de badge para roles no-admin (admin usa 'primary' fijo). Se asigna por hash
@@ -55,13 +61,16 @@ const SECCION_ICONOS = {
   coberturas: ICON_ADMIN_COBERTURAS,
   tasas: ICON_ADMIN_TASAS,
   planes: ICON_ADMIN_PLANES,
+  ramos: ICON_GEAR,
 }
 
 // Secciones visibles para el usuario logueado según sus permisos parciales
 // (mismo patrón que puede_editar_tasas, ver docs/ESTADO_PROYECTO.md sección 20a2).
 function seccionesVisibles() {
   const usuario = auth.getUsuario()
-  return SECCIONES.filter((s) => Boolean(usuario?.[s.permiso]))
+  return SECCIONES.filter((s) =>
+    s.soloAdmin ? usuario?.rol === 'admin' : Boolean(usuario?.[s.permiso])
+  )
 }
 
 const state = {
@@ -79,6 +88,9 @@ const state = {
   modalRol: null, // { tipo: 'crear'|'editar', rolId?, nombre, puede_*, error, guardando }
 
   ramos: [],
+  ramosGestion: [],
+  loadingRamosGestion: false,
+  ramosGestionError: '',
   planes: [],
   loadingPlanes: false,
   planesError: '',
@@ -147,6 +159,8 @@ async function init() {
     const ramos = await api.get('/ramos')
     state.ramos = ramos
     renderApp()
+  } else if (state.seccion === 'ramos') {
+    await cargarRamosGestion()
   }
 }
 
@@ -492,6 +506,94 @@ async function guardarModalRol(form) {
     state.modalRol.error = err.message || 'No se pudo guardar el rol.'
     renderApp()
   }
+}
+
+// ---------------------------------------------------------------------------
+// Ramos: carga y acciones (gate: rol admin, ver seccionesVisibles())
+// ---------------------------------------------------------------------------
+
+async function cargarRamosGestion() {
+  state.loadingRamosGestion = true
+  state.ramosGestionError = ''
+  renderApp()
+  try {
+    state.ramosGestion = await api.get('/admin/ramos')
+  } catch (err) {
+    state.ramosGestionError = err.message || 'No se pudieron cargar los ramos.'
+  } finally {
+    state.loadingRamosGestion = false
+    renderApp()
+  }
+}
+
+async function toggleRamoActivo(ramoId, activo) {
+  try {
+    await api.put(`/admin/ramos/${ramoId}`, { activo })
+    const ramo = state.ramosGestion.find((r) => r.id === Number(ramoId))
+    if (ramo) ramo.activo = activo
+    mostrarBanner(
+      'success',
+      activo
+        ? 'Ramo activado. Ya aparece disponible en el sidebar del cotizador.'
+        : 'Ramo desactivado. Ahora aparece como "Próximamente" en el sidebar del cotizador.'
+    )
+    renderApp()
+  } catch (err) {
+    mostrarBanner('error', err.message || 'No se pudo actualizar el ramo.')
+  }
+}
+
+function renderRamosGestion() {
+  return `
+    <div class="panel card">
+      <div class="card__title">Ramos</div>
+      <div class="card__body">
+        ${renderTablaRamosGestion()}
+      </div>
+    </div>
+  `
+}
+
+function renderTablaRamosGestion() {
+  if (state.loadingRamosGestion) {
+    return '<div class="empty-state__subtitle"><span class="spinner" aria-hidden="true"></span> Cargando ramos…</div>'
+  }
+  if (state.ramosGestionError) {
+    return `<div class="admin-banner admin-banner--error">${escapeHtml(state.ramosGestionError)}</div>`
+  }
+  if (!state.ramosGestion.length) {
+    return '<div class="empty-state__subtitle">No hay ramos para mostrar.</div>'
+  }
+
+  const filas = state.ramosGestion
+    .map(
+      (r) => `
+    <tr>
+      <td>${escapeHtml(r.nombre_display)}</td>
+      <td>
+        <label class="admin-modal__checkbox">
+          <input type="checkbox" data-action="toggle-ramo-activo" data-id="${r.id}" ${r.activo ? 'checked' : ''} />
+          ${r.activo ? 'Activo' : 'Próximamente (oculto para cotizar)'}
+        </label>
+      </td>
+    </tr>
+  `
+    )
+    .join('')
+
+  return `
+    <div class="admin-table-scroll">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Ramo</th>
+            <th>Estado en el sidebar</th>
+          </tr>
+        </thead>
+        <tbody>${filas}</tbody>
+      </table>
+    </div>
+  `
 }
 
 // ---------------------------------------------------------------------------
@@ -1112,6 +1214,7 @@ function renderSeccion() {
   if (state.seccion === 'coberturas') return renderCoberturas()
   if (state.seccion === 'planes') return renderPlanes()
   if (state.seccion === 'tasas') return renderTasas()
+  if (state.seccion === 'ramos') return renderRamosGestion()
   return renderProximamente(seccion)
 }
 
@@ -2123,6 +2226,9 @@ function onActionClick(el) {
         renderApp()
       })
     }
+    if (state.seccion === 'ramos' && !state.ramosGestion.length && !state.loadingRamosGestion) {
+      cargarRamosGestion()
+    }
     return
   }
   if (action === 'logout') {
@@ -2176,6 +2282,10 @@ function onActionClick(el) {
   }
   if (action === 'toggle-plan-activo') {
     togglePlanActivo(el.dataset.id, el.checked)
+    return
+  }
+  if (action === 'toggle-ramo-activo') {
+    toggleRamoActivo(el.dataset.id, el.checked)
     return
   }
   if (action === 'toggle-formas-pago') {

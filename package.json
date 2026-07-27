@@ -19,6 +19,10 @@
   "allowScripts": {
     "puppeteer@24.43.1": true
   },
+  "overrides": {
+    "brace-expansion": "^5.0.8",
+    "uuid": "^11.1.1"
+  },
   "lint-staged": {
     "*.js": [
       "prettier --write",

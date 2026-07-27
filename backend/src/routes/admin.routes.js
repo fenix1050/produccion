@@ -57,5 +57,6 @@ router.put('/rubros-actividad/:id', requireTasasEdit, adminController.editarRubr
 // Planes (gate: puede_editar_planes)
 router.get('/planes', requirePlanesEdit, adminController.listarPlanes)
 router.put('/planes/:id', requirePlanesEdit, adminController.editarPlan)
+router.delete('/planes/:id', requirePlanesEdit, adminController.eliminarPlan)
 router.get('/planes/:id/formas-pago', requirePlanesEdit, adminController.listarFormasPagoDePlan)
 router.put('/plan-formas-pago/:id', requirePlanesEdit, adminController.editarPlanFormaPago)

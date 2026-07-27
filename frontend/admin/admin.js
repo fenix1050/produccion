@@ -707,6 +707,20 @@ async function guardarRubroActividadTasas(id, form) {
   }
 }
 
+async function eliminarPlan(id) {
+  const plan = state.planes.find((p) => p.id === id)
+  const nombre = plan?.nombre ?? 'este plan'
+  if (!confirm(`¿Eliminar el plan "${nombre}"? Esta acción no se puede deshacer.`)) return
+
+  try {
+    await api.delete(`/admin/planes/${id}`)
+    mostrarBanner('success', 'Plan eliminado.')
+    await cargarPlanes()
+  } catch (err) {
+    mostrarBanner('error', err.message || 'No se pudo eliminar el plan.')
+  }
+}
+
 async function eliminarTasa(id) {
   const ramoId = state.ramoTasasSeleccionado
   const entry = state.tasasPorRamo[ramoId]
@@ -1320,8 +1334,11 @@ function renderTablaPlanes() {
           ${state.planExpandido === p.id ? 'Ocultar' : 'Formas de pago'}
         </button>
       </td>
+      <td>
+        <button class="btn-outline" data-action="eliminar-plan" data-id="${p.id}">Eliminar</button>
+      </td>
     </tr>
-    ${state.planExpandido === p.id ? `<tr class="admin-subrow"><td colspan="5">${renderFormasPagoDelPlan(p.id)}</td></tr>` : ''}
+    ${state.planExpandido === p.id ? `<tr class="admin-subrow"><td colspan="6">${renderFormasPagoDelPlan(p.id)}</td></tr>` : ''}
   `
     )
     .join('')
@@ -1336,6 +1353,7 @@ function renderTablaPlanes() {
             <th>Estado</th>
             <th>Prima técnica mínima</th>
             <th>Formas de pago</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>${filas}</tbody>
@@ -2194,6 +2212,10 @@ function onActionClick(el) {
   }
   if (action === 'eliminar-tasa') {
     eliminarTasa(Number(el.dataset.id))
+    return
+  }
+  if (action === 'eliminar-plan') {
+    eliminarPlan(Number(el.dataset.id))
     return
   }
   if (action === 'cerrar-modal-tasa' || action === 'cerrar-modal-tasa-backdrop') {

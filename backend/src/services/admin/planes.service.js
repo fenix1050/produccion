@@ -3,6 +3,8 @@ import * as ramosRepository from '../../repositories/ramos.repository.js'
 import * as tasasRepository from '../../repositories/tasas.repository.js'
 import { httpError } from '../../utils/http-error.js'
 
+const CODIGO_FOREIGN_KEY_VIOLATION = '23503' // Postgres: foreign_key_violation
+
 // --- Plan coberturas ---
 
 export async function listarCoberturasDePlan(planId) {
@@ -37,6 +39,28 @@ export async function editarPlan(id, cambios) {
     throw httpError(404, 'Plan no encontrado')
   }
   return plan
+}
+
+// Un plan con cotizaciones asociadas no se puede borrar — Postgres lo rechaza por la FK
+// cotizaciones.plan_id y acá lo traducimos a un 409 explicativo. Para ese caso el flujo
+// correcto es desactivarlo (checkbox "Activo"), no eliminarlo.
+export async function eliminarPlan(id) {
+  const plan = await tasasRepository.findPlanById(id)
+  if (!plan) {
+    throw httpError(404, 'Plan no encontrado')
+  }
+  try {
+    await tasasRepository.eliminarPlan(id)
+  } catch (err) {
+    if (err.code === CODIGO_FOREIGN_KEY_VIOLATION) {
+      throw httpError(
+        409,
+        'Este plan tiene cotizaciones asociadas. Desactivalo en vez de eliminarlo.',
+        'Este plan tiene cotizaciones asociadas. Desactivalo en vez de eliminarlo.'
+      )
+    }
+    throw err
+  }
 }
 
 export async function listarFormasPagoDePlan(planId) {

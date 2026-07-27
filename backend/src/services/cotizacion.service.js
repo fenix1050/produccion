@@ -7,6 +7,7 @@ import { httpError } from '../utils/http-error.js'
 
 import { withCache } from './cache.js'
 import { renderOfertaPdf } from './pdf.service.js'
+import * as tipoCambioService from './tipo-cambio.service.js'
 
 /**
  * Calcula una cotización SIN guardarla — usado para el preview en vivo del frontend.
@@ -45,6 +46,17 @@ export async function crearCotizacion(body, usuario) {
     riesgo_datos: datosValidados.riesgo_datos,
     capital_asegurado: datosValidados.capital_asegurado,
     estado: 'cotizada',
+    moneda: variantesCalculadas.moneda,
+    // Snapshot de tipo de cambio SOLO cuando la cotización realmente necesitó convertir (ver
+    // resolverUmbralInspeccion) — `calcularPreview` nunca llega a este INSERT, así que el preview
+    // nunca persiste snapshot (migración 034: columnas nullable, NULL = "no hubo conversión").
+    ...(variantesCalculadas.tipoCambioUsado
+      ? {
+          tipo_cambio_snapshot: variantesCalculadas.tipoCambioUsado.venta,
+          tipo_cambio_fuente: variantesCalculadas.tipoCambioUsado.fuente,
+          tipo_cambio_fecha: variantesCalculadas.tipoCambioUsado.obtenido_en,
+        }
+      : {}),
   })
 
   await insertarCoberturasYVariantes({
@@ -150,6 +162,16 @@ export async function actualizarCotizacion(id, body, usuario) {
     capital_asegurado: datosValidados.capital_asegurado,
     plan_id: plan.id,
     estado: 'cotizada',
+    moneda: variantesCalculadas.moneda,
+    // Mismo criterio que crearCotizacion: solo se pisa el snapshot si ESTA edición volvió a
+    // necesitar conversión — si no, se deja el `tipo_cambio_snapshot` tal como estaba.
+    ...(variantesCalculadas.tipoCambioUsado
+      ? {
+          tipo_cambio_snapshot: variantesCalculadas.tipoCambioUsado.venta,
+          tipo_cambio_fuente: variantesCalculadas.tipoCambioUsado.fuente,
+          tipo_cambio_fecha: variantesCalculadas.tipoCambioUsado.obtenido_en,
+        }
+      : {}),
   })
 
   if (idsVariantesViejas.length)
@@ -300,7 +322,7 @@ async function validarYResolverContexto(body) {
 // o rubros desde el panel admin (ver invalidarCacheCatalogos en esos endpoints) — el
 // cotizador los re-pide en cada preview mientras el agente edita el formulario, así que se
 // pasan por el caché en memoria de cache.js en vez de pegarle a Supabase en cada tecla.
-async function resolverContextoRepositorios(ramo, plan, riesgoDatos, capital) {
+async function resolverContextoRepositorios(ramo, plan, riesgoDatos, capital, moneda) {
   switch (ramo.calculador) {
     case 'auto':
       return { tasaCapital: await ramosRepository.findTasaCapital(plan.id, capital) }
@@ -319,6 +341,24 @@ async function resolverContextoRepositorios(ramo, plan, riesgoDatos, capital) {
           coberturasRepository.findTasasCoberturaRamo(plan.ramo_id)
         ),
       ])
+
+      // Mecánica "objeto_riesgo" (Incendio Hipotecario / con-sin Inspección, migración 035/036):
+      // además de lo de arriba, resuelve la tasa por objeto de riesgo (findTasasRiesgoObjeto) y
+      // el umbral de inspección — ninguno de los dos aplica a MRC ni a las otras 2 mecánicas de
+      // Incendio, así que quedan afuera del Promise.all de arriba (evita I/O innecesario).
+      if (ramo.calculador === 'incendio' && plan.tipo_mecanica === 'objeto_riesgo') {
+        const tipoRiesgoNombre = riesgoDatos?.rubro_actividad
+        const [tasasObjetoRiesgo, umbralInspeccion] = await Promise.all([
+          tipoRiesgoNombre
+            ? withCache(`tasasObjeto:${plan.ramo_id}:${tipoRiesgoNombre}:${plan.id}`, () =>
+                coberturasRepository.findTasasRiesgoObjeto(plan.ramo_id, tipoRiesgoNombre, plan.id)
+              )
+            : null,
+          resolverUmbralInspeccion(plan, moneda),
+        ])
+        return { rubro, catalogoRamo, tasasRamo, tasasObjetoRiesgo, umbralInspeccion }
+      }
+
       return { rubro, catalogoRamo, tasasRamo }
     }
     case 'vida-ap': {
@@ -336,16 +376,73 @@ async function resolverContextoRepositorios(ramo, plan, riesgoDatos, capital) {
 }
 
 /**
+ * Resuelve el umbral de inspección aplicable al plan, convertido a la moneda de la cotización.
+ * Devuelve `null` si `plan.requiere_inspeccion IS NULL` (la regla no aplica: Hipotecario,
+ * Maquinaria, Edificio y Contenido — migración 035) o si todavía no se cargó el monto (estado
+ * transitorio documentado en design.md/migración 038). Solo invoca al servicio de tipo de
+ * cambio (I/O real) cuando la moneda de la cotización difiere de `umbral_inspeccion_moneda` —
+ * una cotización 100% en la moneda del umbral no paga ningún fetch externo (Threat Matrix de
+ * design.md: "Cotización 100% en una sola moneda → el servicio no se invoca").
+ *
+ * No hay conversión de montos declarados (ver Decision "sin conversión implícita" en design.md):
+ * el tipo de cambio solo se usa acá para poder comparar la suma asegurada (en la moneda de la
+ * cotización) contra un umbral expresado en otra moneda.
+ *
+ * @param {object} plan
+ * @param {'PYG'|'USD'} moneda
+ * @returns {Promise<{requiereInspeccion:boolean, montoEnMonedaCotizacion:number, moneda:string,
+ *   tipoCambio:{venta:number,fuente:string,obtenido_en:string,stale:boolean}|null}|null>}
+ */
+async function resolverUmbralInspeccion(plan, moneda) {
+  if (plan.requiere_inspeccion == null || plan.umbral_inspeccion_monto == null) return null
+
+  if (moneda === plan.umbral_inspeccion_moneda) {
+    return {
+      requiereInspeccion: plan.requiere_inspeccion,
+      montoEnMonedaCotizacion: plan.umbral_inspeccion_monto,
+      moneda,
+      tipoCambio: null,
+    }
+  }
+
+  const tipoCambio = await tipoCambioService.obtenerTipoCambioVigente({ moneda: 'USD' })
+
+  // Umbral en USD, cotización en Gs.: convertir el umbral A Gs. multiplicando por `venta`.
+  // Umbral en Gs., cotización en USD: convertir el umbral A USD dividiendo por `venta`.
+  const montoEnMonedaCotizacion =
+    plan.umbral_inspeccion_moneda === 'USD'
+      ? plan.umbral_inspeccion_monto * tipoCambio.venta
+      : plan.umbral_inspeccion_monto / tipoCambio.venta
+
+  return {
+    requiereInspeccion: plan.requiere_inspeccion,
+    montoEnMonedaCotizacion,
+    moneda,
+    tipoCambio: {
+      venta: tipoCambio.venta,
+      fuente: tipoCambio.fuente,
+      obtenido_en: tipoCambio.obtenido_en,
+      stale: tipoCambio.stale,
+    },
+  }
+}
+
+/**
  * Arma las variantes (sin/con franquicia) según la regla de negocio de Auto
  * (ver sección 5 de PLAN_DESARROLLO.md). Otros ramos no tienen franquicia dual
  * todavía — devuelven siempre 1 variante sin franquicia hasta que se implementen.
  */
 async function construirVariantes({ calculador, plan, ramo, datosValidados, usuario }) {
+  // `moneda` solo existe hoy en el schema de Incendio (grupo 4) — el resto de los ramos cae al
+  // default 'PYG' (mismo default que la columna `cotizaciones.moneda` de la migración 034).
+  const moneda = datosValidados.moneda ?? 'PYG'
+
   const contexto = await resolverContextoRepositorios(
     ramo,
     plan,
     datosValidados.riesgo_datos,
-    datosValidados.capital_asegurado
+    datosValidados.capital_asegurado,
+    moneda
   )
 
   const { prima, detalle, coberturas } = await calculador.calcularPrima({
@@ -356,6 +453,7 @@ async function construirVariantes({ calculador, plan, ramo, datosValidados, usua
     descuentos: datosValidados.descuentos,
     recargos: datosValidados.recargos,
     usuario,
+    moneda,
     ...contexto,
   })
 
@@ -381,7 +479,17 @@ async function construirVariantes({ calculador, plan, ramo, datosValidados, usua
     })),
   }))
 
-  return { prima, detalle, coberturas, variantes }
+  return {
+    prima,
+    detalle,
+    coberturas,
+    variantes,
+    moneda,
+    // Solo no-null cuando resolverUmbralInspeccion tuvo que convertir (moneda de la cotización
+    // distinta de `umbral_inspeccion_moneda`) — `crearCotizacion` lo usa para decidir si persiste
+    // tipo_cambio_snapshot/_fuente/_fecha. `calcularPreview` nunca llega a leer este campo.
+    tipoCambioUsado: contexto.umbralInspeccion?.tipoCambio ?? null,
+  }
 }
 
 /**

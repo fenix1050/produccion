@@ -2,7 +2,7 @@ import { api, auth } from '../shared/api.js'
 import { crearBadge } from '../shared/badge.js'
 import { escapeHtml, enfocarPrimerElemento, atraparFoco } from '../shared/dom.js'
 import { renderSidebarFooter, renderTopbarUser } from '../shared/sidebar.js'
-import { fmtGsConPrefijo as fmtGs } from '../shared/format.js'
+import { fmtMoneda } from '../shared/format.js'
 
 // Historial de cotizaciones (Fase 5/WU5) — mismo patrón Vanilla JS que admin.js: state +
 // renderApp() que reconstruye innerHTML + bindEvents() post-render + modal vía state.modal.
@@ -89,6 +89,11 @@ function mostrarBanner(tipo, texto) {
 // ramos activos hoy (MRC/Incendio/Vida-AP) generan siempre una única variante sin_franquicia
 // (la franquicia dual es exclusiva de Auto, Fase 1/2 pausada). Se prioriza esa por nombre y,
 // si no está (dato viejo o de Auto), se cae a la primera variante que haya.
+//
+// IMPORTANTE (cotizacion-moneda#Historial does not aggregate across currencies): esta pantalla
+// nunca suma `prima`/`premio_total` entre filas — cada fila se formatea con SU PROPIA `moneda`
+// (ver renderTabla/renderModalDetalle). No agregar un total/resumen que sume esta columna sin
+// primero agrupar por moneda; sumar Gs. + USD sin conversión sería un bug de negocio silencioso.
 function primaRepresentativa(cotizacion) {
   const variantes = cotizacion.cotizacion_variantes ?? []
   if (!variantes.length) return null
@@ -382,6 +387,7 @@ function renderTabla() {
   const filas = state.cotizaciones
     .map((c) => {
       const prima = primaRepresentativa(c)
+      const moneda = c.moneda ?? 'PYG'
       const puedeOferta = ofertaDisponible(c)
       return `
       <tr>
@@ -391,7 +397,8 @@ function renderTabla() {
         <td>${escapeHtml(c.planes?.nombre ?? '—')}</td>
         <td>${fmtFecha(c.created_at)}</td>
         <td>${crearBadge(c.estado ?? '—', ESTADO_BADGE[c.estado] ?? 'neutral')}</td>
-        <td class="historial-tabla__prima">${prima != null ? escapeHtml(fmtGs(prima)) : '—'}</td>
+        <td>${escapeHtml(moneda)}</td>
+        <td class="historial-tabla__prima">${prima != null ? escapeHtml(fmtMoneda(prima, moneda)) : '—'}</td>
         <td>
           <div class="historial-tabla__actions">
             <button class="historial-tabla__btn-ghost" data-action="ver-detalle" data-id="${c.id}">Ver detalle</button>
@@ -418,6 +425,7 @@ function renderTabla() {
             <th>Plan</th>
             <th>Fecha</th>
             <th>Estado</th>
+            <th>Moneda</th>
             <th>Prima</th>
             <th>Acciones</th>
           </tr>
@@ -471,6 +479,11 @@ function renderModalDetalle() {
     cuerpo = `<div class="admin-modal__error">${escapeHtml(m.error)}</div>`
   } else if (!m.loading && m.detalle) {
     const d = m.detalle
+    // La moneda de la cotización es una única invariante de cabecera (ver design.md
+    // "moneda en cotizaciones pero no en cotizacion_variantes/cotizacion_plan_pago") — todos los
+    // montos del detalle (variantes, formas de pago, coberturas) se formatean con esa misma moneda.
+    const monedaDetalle = d.moneda ?? 'PYG'
+    const fmtDetalle = (valor) => fmtMoneda(valor, monedaDetalle)
     const variantesHtml = (d.cotizacion_variantes ?? [])
       .map((v) => {
         const formasHtml = (v.cotizacion_plan_pago ?? [])
@@ -478,9 +491,9 @@ function renderModalDetalle() {
             (fp) => `
         <tr>
           <td>${escapeHtml(fp.formas_pago?.nombre_display ?? '—')}</td>
-          <td>${fmtGs(fp.premio_total)}</td>
-          <td>${fmtGs(fp.monto_inicial)}</td>
-          <td>${fmtGs(fp.monto_cuota)}</td>
+          <td>${fmtDetalle(fp.premio_total)}</td>
+          <td>${fmtDetalle(fp.monto_inicial)}</td>
+          <td>${fmtDetalle(fp.monto_cuota)}</td>
         </tr>
       `
           )
@@ -488,7 +501,7 @@ function renderModalDetalle() {
         return `
         <div class="historial-detalle__grupo">
           <div class="historial-detalle__grupo-titulo">
-            ${v.tipo_franquicia === 'con_franquicia' ? 'Con franquicia' : 'Sin franquicia'} — Prima ${fmtGs(v.prima)}
+            ${v.tipo_franquicia === 'con_franquicia' ? 'Con franquicia' : 'Sin franquicia'} — Prima ${fmtDetalle(v.prima)}
           </div>
           <table class="admin-table admin-table--nested">
             <thead>
@@ -506,8 +519,8 @@ function renderModalDetalle() {
         (c) => `
       <tr>
         <td>${escapeHtml(c.nombre_snapshot)}</td>
-        <td>${c.monto != null ? fmtGs(c.monto) : '—'}</td>
-        <td>${c.franquicia != null ? fmtGs(c.franquicia) : '—'}</td>
+        <td>${c.monto != null ? fmtDetalle(c.monto) : '—'}</td>
+        <td>${c.franquicia != null ? fmtDetalle(c.franquicia) : '—'}</td>
       </tr>
     `
       )
@@ -520,6 +533,7 @@ function renderModalDetalle() {
         <div>Contacto: ${escapeHtml(d.cliente_contacto ?? '—')}</div>
         <div>Fecha: ${fmtFecha(d.created_at)}</div>
         <div>Estado: ${escapeHtml(d.estado ?? '—')}</div>
+        <div>Moneda: ${escapeHtml(monedaDetalle)}</div>
       </div>
       ${variantesHtml}
       ${

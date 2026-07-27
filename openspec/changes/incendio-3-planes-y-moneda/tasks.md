@@ -39,9 +39,9 @@ Depende de los grupos 2, 3 y 4 (necesita el servicio de tipo de cambio, el calcu
 
 Depende de los grupos 4 y 5 (contrato de API estable).
 
-- [ ] 6.1 `[P]` Modificar `frontend/shared/format.js`: agregar `fmtMoneda(valor, moneda)` / `fmtUsd*` parametrizable por prefijo de moneda, sin romper los usos existentes de `fmtGs`. `[req: cotizacion-moneda#Legacy USD-only plan marked and formatted correctly]`
-- [ ] 6.2 Modificar `frontend/cotizar/cotizar.js`: selector de moneda (Gs./USD) por cotización; 4 campos opcionales de capital por objeto de riesgo (Edificio, Instalaciones, Contenido Mueble y Equipos, Contenido Mercadería) visibles cuando el plan usa mecánica `objeto_riesgo`; sugerencia de plan con/sin Inspección según suma declarada (no bloqueante — la validación real es del backend). Depende de 6.1 para formateo. `[req: cotizacion-moneda#Currency selection per quote, incendio-planes-objeto-riesgo#Optional risk objects, incendio-umbral-inspeccion#Threshold validated on the backend, source of truth]`
-- [ ] 6.3 `[P]` Modificar `frontend/historial/historial.js`: mostrar la moneda por fila; separar/prohibir sumas de totales entre monedas distintas. `[req: cotizacion-moneda#Historial does not aggregate across currencies]`
+- [x] 6.1 `[P]` Modificar `frontend/shared/format.js`: agregar `fmtMoneda(valor, moneda)` / `fmtUsd*` parametrizable por prefijo de moneda, sin romper los usos existentes de `fmtGs`. `[req: cotizacion-moneda#Legacy USD-only plan marked and formatted correctly]`
+- [x] 6.2 Modificar `frontend/cotizar/cotizar.js`: selector de moneda (Gs./USD) por cotización; 4 campos opcionales de capital por objeto de riesgo (Edificio, Instalaciones, Contenido Mueble y Equipos, Contenido Mercadería) visibles cuando el plan usa mecánica `objeto_riesgo`; sugerencia de plan con/sin Inspección según suma declarada (no bloqueante — la validación real es del backend). Depende de 6.1 para formateo. `[req: cotizacion-moneda#Currency selection per quote, incendio-planes-objeto-riesgo#Optional risk objects, incendio-umbral-inspeccion#Threshold validated on the backend, source of truth]`
+- [x] 6.3 `[P]` Modificar `frontend/historial/historial.js`: mostrar la moneda por fila; separar/prohibir sumas de totales entre monedas distintas. `[req: cotizacion-moneda#Historial does not aggregate across currencies]`
 
 ## 7. Tests de integración y regresión
 

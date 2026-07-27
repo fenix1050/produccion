@@ -16,7 +16,7 @@ import {
 } from '../shared/nav-icons.js'
 import { escapeHtml } from '../shared/dom.js'
 import { renderSidebarFooter, renderTopbarUser } from '../shared/sidebar.js'
-import { fmtGs, fmtGsInput } from '../shared/format.js'
+import { fmtGs, fmtGsInput, fmtMonto, unidadMoneda } from '../shared/format.js'
 
 // Cotizador Tajy — App Shell + Datos + Resultado (Fase 6, alcance MRC plan Normal).
 // Recreación en Vanilla JS del handoff de diseño original (mockup ya migrado y eliminado
@@ -138,6 +138,92 @@ function franquiciasPorCoberturaParaBody() {
 // plan.recargo_maximo (ver mrc.calculator.js / incendio.calculator.js). Vida/AP no tiene ese
 // patrón todavía, no se ofrece ahí.
 const RAMOS_CON_AJUSTES = ['mrc', 'incendio']
+
+// Nombre de campo por objeto de riesgo (PR4 de incendio-3-planes-y-moneda, mecánica
+// `objeto_riesgo` — Hipotecario, con/sin Inspección) — mismo mapeo que
+// `OBJETOS_RIESGO` en backend/src/calculators/incendio.calculator.js, pero acá con la clave
+// de `state.data` (camelCase) en vez del campo de `riesgo_datos` (snake_case).
+const OBJETOS_RIESGO_CAMPOS = [
+  { stateKey: 'capitalEdificio', riesgoKey: 'capital_edificio', label: 'Edificio' },
+  { stateKey: 'capitalInstalaciones', riesgoKey: 'capital_instalaciones', label: 'Instalaciones' },
+  {
+    stateKey: 'capitalContenidoMuebleEquipos',
+    riesgoKey: 'capital_contenido_mueble_equipos',
+    label: 'Contenido Mueble y Equipos',
+  },
+  {
+    stateKey: 'capitalContenidoMercaderia',
+    riesgoKey: 'capital_contenido_mercaderia',
+    label: 'Contenido Mercadería',
+  },
+]
+
+// Moneda efectiva de la cotización según el plan elegido — MAQUINARIA BASICO queda fijo en USD
+// (cierra el gap de formato de la migración 013, ver spec cotizacion-moneda#Legacy USD-only
+// plan), los 3 planes nuevos de mecánica `objeto_riesgo` permiten elegir Gs./USD (selector, ver
+// renderMonedaSelector), y el resto de los planes/ramos (MRC, Edificio y Contenido, Vida-AP)
+// sigue fijo en Gs. — no se ofrece selector ahí en esta pasada.
+function monedaEfectiva(plan) {
+  if (plan?.nombre === 'MAQUINARIA BASICO') return 'USD'
+  if (plan?.tipo_mecanica === 'objeto_riesgo') return state.data.moneda || 'PYG'
+  return 'PYG'
+}
+
+// Plan actualmente elegido — helper repetido en varios puntos de render (panel en vivo,
+// resultado, resumen) que hoy resuelven `state.planes.find(...)` a mano; se centraliza acá para
+// que `monedaCotizacionActual()` (usada por los displays de montos) no duplique la búsqueda.
+function planActual() {
+  return state.planes.find((p) => p.id === state.planId)
+}
+
+// Moneda del plan actualmente elegido — ver monedaEfectiva(). Los displays de montos ya
+// calculados (panel en vivo, resumen de la cotización, coberturas) usan esta función en vez de
+// asumir Gs. siempre, para no repetir el gap de formato de la migración 013 (Maquinaria Básico
+// mostrado con fmtGs pese a cotizar en USD — ver cotizacion-moneda#Legacy USD-only plan).
+function monedaCotizacionActual() {
+  return monedaEfectiva(planActual())
+}
+
+function selectMoneda(moneda) {
+  state.data.moneda = moneda
+  renderApp()
+  scheduleCalculate()
+}
+
+// Suma de los 4 objetos de riesgo declarados (mecánica `objeto_riesgo`) — usada tanto para
+// `capital_asegurado` como para la sugerencia no bloqueante de con/sin Inspección.
+function sumaObjetoRiesgo() {
+  return OBJETOS_RIESGO_CAMPOS.reduce(
+    (acc, { stateKey }) => acc + (Number(state.data[stateKey]) || 0),
+    0
+  )
+}
+
+// Sugerencia de plan con/sin Inspección según la suma declarada — puramente informativa para
+// el agente. La validación real (bloqueante, 422) la hace el backend (ver
+// incendio-umbral-inspeccion#Threshold validated on the backend, source of truth); acá solo se
+// avisa cuando el plan elegido probablemente no sea el correcto para esa suma, sin bloquear nada.
+// Devuelve `null` si no aplica (Hipotecario, umbral todavía no confirmado, sin datos declarados,
+// o si el umbral está en una moneda distinta a la cotización — no se convierte en el frontend).
+function sugerenciaInspeccion(plan) {
+  if (!plan || plan.tipo_mecanica !== 'objeto_riesgo' || plan.requiere_inspeccion == null) {
+    return null
+  }
+  if (plan.umbral_inspeccion_monto == null) return null
+
+  const suma = sumaObjetoRiesgo()
+  if (suma <= 0) return null
+
+  const moneda = monedaEfectiva(plan)
+  if (plan.umbral_inspeccion_moneda && plan.umbral_inspeccion_moneda !== moneda) return null
+
+  const superaUmbral = suma >= plan.umbral_inspeccion_monto
+  if (superaUmbral === plan.requiere_inspeccion) return null
+
+  return superaUmbral
+    ? 'La suma declarada alcanza o supera el umbral de inspección — este plan puede requerir "Incendio con Inspección" (el backend valida al guardar).'
+    : 'La suma declarada está por debajo del umbral de inspección — podés cotizar bajo "Incendio sin Inspección" (el backend valida al guardar).'
+}
 
 // Traduce el descuento/recargo cargado en "Detalle del plan" (state.data.descuentoMonto /
 // state.data.descuentoPorcentaje — dos campos fijos, uno en Gs. y otro en %, en vez de un input
@@ -347,6 +433,10 @@ async function cargarParaEditar(id) {
 function prefillDatosDesdeCotizacion(ramoNombre, plan, cotizacion) {
   const rd = cotizacion.riesgo_datos || {}
   state.data.clienteNombre = cotizacion.cliente_nombre || ''
+  // `moneda` es una columna de cabecera de `cotizaciones` (no vive en `riesgo_datos`) — se
+  // restaura acá para cualquier ramo, aunque hoy solo Incendio (Maquinaria/objeto_riesgo) la usa
+  // para algo distinto de PYG por defecto (ver monedaEfectiva()).
+  state.data.moneda = cotizacion.moneda || 'PYG'
 
   if (ramoNombre === 'mrc') {
     state.data.cedula = rd.cedula || ''
@@ -371,6 +461,11 @@ function prefillDatosDesdeCotizacion(ramoNombre, plan, cotizacion) {
       state.data.capitalMaquinaria = rd.capital_maquinaria || ''
       if (rd.sublimite_vandalismo_porcentaje != null) {
         state.data.sublimiteVandalismoPorcentaje = rd.sublimite_vandalismo_porcentaje
+      }
+    } else if (plan?.tipo_mecanica === 'objeto_riesgo') {
+      state.data.rubroActividad = rd.rubro_actividad || ''
+      for (const { stateKey, riesgoKey } of OBJETOS_RIESGO_CAMPOS) {
+        state.data[stateKey] = rd[riesgoKey] || ''
       }
     } else {
       state.data.rubroActividad = rd.rubro_actividad || ''
@@ -623,6 +718,9 @@ function datosMinimosCompletos() {
     if (plan.nombre === 'MAQUINARIA BASICO') {
       return (Number(d.capitalMaquinaria) || 0) > 0
     }
+    if (plan.tipo_mecanica === 'objeto_riesgo') {
+      return Boolean(d.rubroActividad) && sumaObjetoRiesgo() > 0
+    }
     const capitalEdificio = Number(d.capitalEdificio) || 0
     const capitalContenido = Number(d.capitalContenido) || 0
     return (
@@ -653,6 +751,7 @@ function capitalAseguradoParaBody(plan) {
 
   if (state.ramoId === 'incendio') {
     if (plan?.nombre === 'MAQUINARIA BASICO') return Number(d.capitalMaquinaria) || 0
+    if (plan?.tipo_mecanica === 'objeto_riesgo') return sumaObjetoRiesgo()
     return (Number(d.capitalEdificio) || 0) + (Number(d.capitalContenido) || 0)
   }
 
@@ -693,6 +792,19 @@ function armarRiesgoDatos(plan) {
         ...(d.sublimiteVandalismoPorcentaje !== undefined && d.sublimiteVandalismoPorcentaje !== ''
           ? { sublimite_vandalismo_porcentaje: Number(d.sublimiteVandalismoPorcentaje) }
           : {}),
+      }
+    }
+    if (plan.tipo_mecanica === 'objeto_riesgo') {
+      // Los 4 objetos de riesgo son opcionales (ver incendio-planes-objeto-riesgo#Optional risk
+      // objects) — se manda el número declarado (0 si no se cargó), el backend solo suma los
+      // que tengan capital > 0 (ver calcularPorObjetoRiesgo en incendio.calculator.js).
+      const objetosDeclarados = {}
+      for (const { stateKey, riesgoKey } of OBJETOS_RIESGO_CAMPOS) {
+        objetosDeclarados[riesgoKey] = Number(d[stateKey]) || 0
+      }
+      return {
+        rubro_actividad: d.rubroActividad || '',
+        ...objetosDeclarados,
       }
     }
     return {
@@ -749,6 +861,7 @@ async function calcularPreview() {
     descuentos: descuentosParaBody(),
     recargos: recargosParaBody(),
     cliente_nombre: d.clienteNombre || '',
+    moneda: monedaEfectiva(plan),
     ...(d.cuotas ? { cuotas: Number(d.cuotas) } : {}),
   }
 
@@ -800,6 +913,7 @@ async function emitirCartaOferta() {
     descuentos: descuentosParaBody(),
     recargos: recargosParaBody(),
     cliente_nombre: d.clienteNombre || '',
+    moneda: monedaEfectiva(plan),
     ...(d.cuotas ? { cuotas: Number(d.cuotas) } : {}),
   }
 
@@ -1142,6 +1256,76 @@ function campoSublimitePorcentaje(field, label) {
   `
 }
 
+// Selector Gs./USD — mismo look de pill que el selector de forma de pago (ver
+// renderFormaPagoPills). Solo se ofrece en planes de mecánica `objeto_riesgo` (Hipotecario,
+// con/sin Inspección): el resto de los ramos/planes sigue fijo en Gs. (o USD fijo para Maquinaria
+// Básico, sin selector — ver monedaEfectiva()).
+function renderMonedaSelector() {
+  const monedaActual = state.data.moneda || 'PYG'
+  const opciones = [
+    { valor: 'PYG', label: 'Gs.' },
+    { valor: 'USD', label: 'USD' },
+  ]
+  const pills = opciones
+    .map(
+      (o) => `
+      <button
+        type="button"
+        class="plan-pill ${o.valor === monedaActual ? 'plan-pill--active' : ''}"
+        data-action="select-moneda"
+        data-moneda="${o.valor}"
+      >${o.label}</button>
+    `
+    )
+    .join('')
+
+  return `
+    <div class="field field--span2">
+      <label id="moneda-cotizacion-label">Moneda de la cotización</label>
+      <div class="forma-pago-row__pills" role="group" aria-labelledby="moneda-cotizacion-label">${pills}</div>
+    </div>
+  `
+}
+
+// Campos del plan con mecánica `objeto_riesgo` (migración 035/036/038 — Hipotecario, con/sin
+// Inspección): "Tipo de Riesgo" (reusa `state.rubros`, ya cargado para mrc/incendio — ver
+// selectRamo/cargarParaEditar; el campo real que espera el backend es `rubro_actividad`,
+// confirmado por Kevin como el mismo campo que identifica el "Tipo de Riesgo" acá, ej. "VIVIENDA
+// FAMILIAR"), el selector de moneda, y los 4 objetos de riesgo opcionales (Edificio,
+// Instalaciones, Contenido Mueble y Equipos, Contenido Mercadería — ninguno es obligatorio, ver
+// incendio-planes-objeto-riesgo#Optional risk objects).
+function camposObjetoRiesgo(plan) {
+  const moneda = monedaEfectiva(plan)
+  const unidad = unidadMoneda(moneda)
+  const sugerencia = sugerenciaInspeccion(plan)
+
+  const camposCapital = OBJETOS_RIESGO_CAMPOS.map(
+    ({ stateKey, label }) => `
+      <div class="field">
+        <label for="${idParaCampo(stateKey)}">${label} (${unidad})</label>
+        <input class="field-input" id="${idParaCampo(stateKey)}" type="text" inputmode="numeric" data-field="${stateKey}" data-money="true" placeholder="0" value="${fmtGsInput(state.data[stateKey])}" />
+      </div>
+    `
+  ).join('')
+
+  return `
+    <div class="field">
+      <label for="${idParaCampo('rubroActividad')}">Tipo de Riesgo</label>
+      <select class="field-input" id="${idParaCampo('rubroActividad')}" data-field="rubroActividad">
+        <option value="">Seleccioná un tipo de riesgo…</option>
+        ${state.rubros.map((r) => `<option value="${escapeHtml(r.nombre)}" ${state.data.rubroActividad === r.nombre ? 'selected' : ''}>${escapeHtml(r.nombre)}</option>`).join('')}
+      </select>
+    </div>
+    ${renderMonedaSelector()}
+    ${camposCapital}
+    ${
+      sugerencia
+        ? `<div class="field field--span2"><div class="live-summary__pending live-summary__pending--gap">${escapeHtml(sugerencia)}</div></div>`
+        : ''
+    }
+  `
+}
+
 function camposEspecificosParaRamo(ramo, plan) {
   if (ramo.nombre === 'mrc') {
     return `
@@ -1164,6 +1348,9 @@ function camposEspecificosParaRamo(ramo, plan) {
         </div>
         ${campoSublimitePorcentaje('sublimiteVandalismoPorcentaje', 'Sublímite Vandalismo (%)')}
       `
+    }
+    if (plan.tipo_mecanica === 'objeto_riesgo') {
+      return camposObjetoRiesgo(plan)
     }
     return camposEdificioContenido(
       campoSublimitePorcentaje(
@@ -1401,13 +1588,15 @@ function renderLivePanelBody() {
 
   const fp = formaPagoSeleccionada()
   const coberturasCount = state.preview.coberturas?.length ?? 0
+  const moneda = monedaCotizacionActual()
+  const unidad = unidadMoneda(moneda)
 
   return `
     ${renderLiveLabel()}
     ${renderFormaPagoPills()}
     <div class="live-summary__price-label">Prima total ${ICON_INFO}</div>
-    <div class="live-summary__price">${fmtGs(fp.cuota || fp.premio)} <span class="live-summary__price-unit">Gs.</span></div>
-    <div class="live-summary__sub">Gs.${fp.codigo === 'contado' ? '' : ' / mes'} · ${fmtGs(fp.premio)} Gs. premio total</div>
+    <div class="live-summary__price">${fmtMonto(fp.cuota || fp.premio, moneda)} <span class="live-summary__price-unit">${unidad}</span></div>
+    <div class="live-summary__sub">${unidad}${fp.codigo === 'contado' ? '' : ' / mes'} · ${fmtMonto(fp.premio, moneda)} ${unidad} premio total</div>
     <div class="live-summary__divider"></div>
     ${renderCuotasSelect()}
     <div class="live-summary__rows">
@@ -1601,7 +1790,7 @@ function renderResultadoView(ramo) {
                       </div>
                       <div class="cobertura-card__monto">
                         <span>Suma asegurada</span>
-                        <div>${typeof c.monto === 'number' ? `${fmtGs(c.monto)} <em>Gs.</em>` : escapeHtml(c.monto ?? '—')}</div>
+                        <div>${typeof c.monto === 'number' ? `${fmtMonto(c.monto, monedaCotizacionActual())} <em>${unidadMoneda(monedaCotizacionActual())}</em>` : escapeHtml(c.monto ?? '—')}</div>
                       </div>
                     </div>
                   `
@@ -1662,13 +1851,15 @@ function renderResumenCotizacion(plan) {
     const cuentaParaTotal = !esSublimite && c.incluye_en_suma_asegurada_total !== false
     return acc + (cuentaParaTotal ? Number(c.monto) || 0 : 0)
   }, 0)
+  const moneda = monedaEfectiva(plan)
+  const unidad = unidadMoneda(moneda)
 
   return `
     <div class="resumen-sistema">
       <div class="resumen-sistema__block">
         <div class="resumen-sistema__title">Resumen de la cotización</div>
         <div class="resumen-sistema__total-label">Suma asegurada total</div>
-        <div class="resumen-sistema__total-value">${fmtGs(sumaAsegurada)} <em>Gs.</em></div>
+        <div class="resumen-sistema__total-value">${fmtMonto(sumaAsegurada, moneda)} <em>${unidad}</em></div>
       </div>
       ${
         contado
@@ -1678,7 +1869,7 @@ function renderResumenCotizacion(plan) {
           <div class="resumen-sistema__block-title">Pago contado</div>
           <div class="resumen-sistema__row">
             <span>Costo total</span>
-            <span>${fmtGs(contado.premio)} <em>Gs.</em></span>
+            <span>${fmtMonto(contado.premio, moneda)} <em>${unidad}</em></span>
           </div>
         </div>
       `
@@ -1692,18 +1883,18 @@ function renderResumenCotizacion(plan) {
           <div class="resumen-sistema__block-title">Financiado</div>
           <div class="resumen-sistema__row">
             <span>Inicial</span>
-            <span>${fmtGs(financiado.inicial)} <em>Gs.</em></span>
+            <span>${fmtMonto(financiado.inicial, moneda)} <em>${unidad}</em></span>
           </div>
           <div class="resumen-sistema__row">
             <span>${financiado.cantidad_cuotas} cuotas de</span>
-            <span>${fmtGs(financiado.cuota)} <em>Gs.</em></span>
+            <span>${fmtMonto(financiado.cuota, moneda)} <em>${unidad}</em></span>
           </div>
           <div class="resumen-sistema__subdivider"></div>
           <div class="resumen-sistema__row resumen-sistema__row--stacked">
             <span>Premio financiado</span>
             <div>
-              <div>${fmtGs(financiado.premio)} <em>Gs.</em></div>
-              <small>Inicial Gs. ${fmtGs(financiado.inicial)}</small>
+              <div>${fmtMonto(financiado.premio, moneda)} <em>${unidad}</em></div>
+              <small>Inicial ${unidad} ${fmtMonto(financiado.inicial, moneda)}</small>
             </div>
           </div>
         </div>
@@ -1813,6 +2004,7 @@ app.addEventListener('click', (e) => {
   if (action === 'logout') cerrarSesion()
   else if (action === 'select-ramo') selectRamo(target.dataset.ramo)
   else if (action === 'select-forma-pago') selectFormaPago(target.dataset.forma)
+  else if (action === 'select-moneda') selectMoneda(target.dataset.moneda)
   else if (action === 'show-tab') setView(target.dataset.view)
   else if (action === 'add-cobertura-linea') addCoberturaLinea()
   else if (action === 'remove-cobertura-linea') removeCoberturaLinea(target.dataset.lineaId)

@@ -11,6 +11,11 @@ export async function nextNumeroCorrelativo(ramoId) {
   return data
 }
 
+// `cotizacion` puede traer `moneda`/`tipo_cambio_snapshot`/`tipo_cambio_fuente`/`tipo_cambio_fecha`
+// (migración 034) cuando cotizacion.service.js (crearCotizacion) los arma — el snapshot solo
+// viaja cuando esa cotización necesitó convertir moneda para el umbral de inspección
+// (resolverUmbralInspeccion); `calcularPreview` nunca invoca esta función, así que el preview
+// nunca persiste nada acá. Sin whitelist de columnas: se inserta tal cual lo que arma el caller.
 export async function insertCotizacion(cotizacion) {
   const { data, error } = await supabase.from('cotizaciones').insert(cotizacion).select().single()
   if (error) throw error
@@ -77,6 +82,8 @@ export async function updateCotizacion(id, fields) {
   return data
 }
 
+// `*` ya expone `moneda`/`tipo_cambio_snapshot`/`tipo_cambio_fuente`/`tipo_cambio_fecha`
+// (migración 034) sin necesidad de listarlas a mano — son columnas reales de `cotizaciones`.
 export async function findCotizacionById(id) {
   const { data, error } = await supabase
     .from('cotizaciones')
@@ -110,6 +117,10 @@ export async function findCotizacionById(id) {
 // 1/2, pausada). MRC/Incendio/Vida-AP (únicos ramos activos hoy) generan siempre una única
 // variante `sin_franquicia` por cotización, así que no hay ambigüedad real al elegirla en el
 // frontend (ver historial.js, primaRepresentativa()).
+//
+// `*` expone `moneda` por fila (migración 034) — el frontend de historial la usa para no sumar
+// primas de cotizaciones en monedas distintas (requirement "Historial does not aggregate across
+// currencies").
 export async function findCotizaciones({
   ramoId,
   estado,

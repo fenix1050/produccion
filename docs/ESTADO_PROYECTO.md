@@ -1506,3 +1506,54 @@ fuente de detalle histórico/pendiente.
   `frontend/bienvenida/` ya separa el flujo "Cotizar" de "Elaborar una Propuesta Formal", pero el
   segundo todavía muestra solo "Próximamente". No confundir esta navegación nueva con Fase 4
   cerrada: la Propuesta Formal sigue pendiente a nivel funcional y de PDF.
+
+## 32. Incendio — 3 planes nuevos (Hipotecario, con/sin Inspección) + moneda USD/Gs. — implementado y verificado en vivo (2026-07-27)
+
+Cambio SDD `incendio-3-planes-y-moneda` (`openspec/changes/incendio-3-planes-y-moneda/`), 23/23
+tasks completas en 4 PRs encadenados (`stacked-to-main`), commiteados localmente en
+`feature/incendio-moneda-pr3-service-integracion` — **ninguno pusheado ni con PR abierto
+todavía**, queda a cargo de Kevin decidir cuándo abrir los PRs en GitHub.
+
+- **PR 1** (`a6062fa`): migraciones 034-038 (moneda, `tipo_mecanica`, tasas por objeto de riesgo,
+  tipos de cambio, seed de los 3 planes) + servicio de tipo de cambio (`tipo-cambio.service.js`,
+  fetch a dolarPy con fallback a último valor persistido, TTL 15 min).
+- **PR 2** (`a7583dc`): tercera mecánica del calculador de Incendio (`calcularPorObjetoRiesgo`,
+  `pisoPrimaTecnica`) + schema Zod. 27/27 tests del calculador en verde.
+- **PR 3** (`d217a72`): `findTasasRiesgoObjeto`, `resolverUmbralInspeccion`, extensión de
+  `resolverContextoRepositorios` con `moneda`, persistencia de snapshot de tipo de cambio solo al
+  emitir. 97/97 tests backend en verde.
+- **PR 4** (`7a81a17`): frontend — `fmtMoneda`, selector de moneda (Gs./USD), 4 campos opcionales
+  de objeto de riesgo, historial con columna de moneda.
+- **Fix post-verificación** (`379ffaa`): ver detalle abajo.
+
+**Migraciones 034-040 aplicadas contra la base real de Supabase** (no solo archivos SQL locales)
+durante esta sesión, con confirmación explícita de Kevin antes de cada tanda.
+
+**Verificación en vivo** (Playwright headless contra `http://147.93.132.53:5000`, backend y
+frontend levantados en el mismo VPS): login, los 3 planes nuevos aparecen en el selector de
+Incendio, selector de moneda y 4 campos de objeto de riesgo con label dinámico, cotización en
+vivo con las 4 formas de pago, umbral de inspección bloqueando "sin Inspección" y aceptando "con
+Inspección" con la misma suma alta, plan legacy en Gs. y en USD sin regresiones.
+
+**Dos vacíos de datos cerrados con Kevin durante la verificación** (antes bloqueaban el selector
+o el cálculo, no eran bugs de lógica):
+
+- Prima técnica mínima (Gs. 409.091, mismo piso que MRC) y responsabilidad máxima cotizable
+  (Gs. 60.000.000.000) para los 3 planes nuevos — sin esto, `planEsCalculable` (`cotizar.js`) los
+  dejaba deshabilitados con "(pendiente de confirmación)". De paso se cargó el tope de
+  `MAQUINARIA BASICO` (USD 5.000.000, migración 018 lo había dejado en `NULL`) y el umbral de
+  inspección (USD 700.000, migración 039).
+- **Bug real encontrado en vivo**: `findTasasRiesgoObjeto` matchea `tipos_riesgo_incendio.nombre`
+  contra `riesgoDatos.rubro_actividad` por igualdad exacta de string. La migración 038 sembró la
+  tasa como `'VIVIENDA FAMILIAR'`, pero el catálogo de rubros de actividad (`/ramos/
+rubros-actividad`, compartido con MRC) usa `'VIVIENDA'` — nunca hacían match, cualquier intento
+  de cotizar Vivienda con los 3 planes nuevos rechazaba con 422 "Tipo de Riesgo sin tasas
+  confirmadas". Corregido en migración 040 (renombra la tasa a `'VIVIENDA'`), confirmado por
+  Kevin. Deja como aprendizaje: si se agregan más tipos de riesgo a futuro, el nombre en
+  `tipos_riesgo_incendio` debe coincidir exactamente con la opción del catálogo de rubros, no con
+  una etiqueta "oficial" distinta.
+
+**Pendiente:** abrir los 4 PRs en GitHub (stacked, cada uno apunta al branch anterior) cuando
+Kevin lo pida; templates de Carta Oferta de Incendio siguen sin texto oficial (gap ya conocido,
+no específico de este cambio); tasas de tipos de riesgo más allá de "Vivienda" (Kevin confirma la
+semana del 2026-08-03, no bloquea lo ya implementado).

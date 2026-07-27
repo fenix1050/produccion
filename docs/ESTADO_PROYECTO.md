@@ -1507,24 +1507,36 @@ fuente de detalle histórico/pendiente.
   segundo todavía muestra solo "Próximamente". No confundir esta navegación nueva con Fase 4
   cerrada: la Propuesta Formal sigue pendiente a nivel funcional y de PDF.
 
-## 32. Incendio — 3 planes nuevos (Hipotecario, con/sin Inspección) + moneda USD/Gs. — implementado y verificado en vivo (2026-07-27)
+## 32. Incendio — 3 planes nuevos (Hipotecario, con/sin Inspección) + moneda USD/Gs. — implementado, verificado en vivo y mergeado a main (2026-07-27)
 
 Cambio SDD `incendio-3-planes-y-moneda` (`openspec/changes/incendio-3-planes-y-moneda/`), 23/23
-tasks completas en 4 PRs encadenados (`stacked-to-main`), commiteados localmente en
-`feature/incendio-moneda-pr3-service-integracion` — **ninguno pusheado ni con PR abierto
-todavía**, queda a cargo de Kevin decidir cuándo abrir los PRs en GitHub.
+tasks completas en 3 PRs encadenados (`stacked-to-main`), **mergeados a `main`**:
+[#14](https://github.com/fenix1050/produccion/pull/14) (17:40 UTC),
+[#15](https://github.com/fenix1050/produccion/pull/15) (17:50 UTC),
+[#16](https://github.com/fenix1050/produccion/pull/16) (17:55 UTC). Ramas
+`feature/incendio-moneda-pr1/pr2/pr3-*` borradas (local y remota) tras el merge. `main` en verde:
+97/97 tests backend.
 
-- **PR 1** (`a6062fa`): migraciones 034-038 (moneda, `tipo_mecanica`, tasas por objeto de riesgo,
-  tipos de cambio, seed de los 3 planes) + servicio de tipo de cambio (`tipo-cambio.service.js`,
-  fetch a dolarPy con fallback a último valor persistido, TTL 15 min).
-- **PR 2** (`a7583dc`): tercera mecánica del calculador de Incendio (`calcularPorObjetoRiesgo`,
-  `pisoPrimaTecnica`) + schema Zod. 27/27 tests del calculador en verde.
-- **PR 3** (`d217a72`): `findTasasRiesgoObjeto`, `resolverUmbralInspeccion`, extensión de
-  `resolverContextoRepositorios` con `moneda`, persistencia de snapshot de tipo de cambio solo al
-  emitir. 97/97 tests backend en verde.
-- **PR 4** (`7a81a17`): frontend — `fmtMoneda`, selector de moneda (Gs./USD), 4 campos opcionales
-  de objeto de riesgo, historial con columna de moneda.
-- **Fix post-verificación** (`379ffaa`): ver detalle abajo.
+Nota operativa para futuros PRs stacked: al mergear un PR de la cadena, GitHub retargetea
+automáticamente el siguiente PR a `main` pero **no dispara un nuevo run de CI** (el cambio de base
+es un evento `edited`, no `synchronize`, y los workflows de este repo solo triggerean en
+`opened`/`synchronize`/`reopened`). Los checks quedan en `pending` indefinidamente y bloquean el
+merge (`main` tiene branch protection con `quality` y `Analyze JavaScript` como checks
+obligatorios). Solución aplicada: un commit vacío (`git commit --allow-empty`) al branch del PR
+siguiente fuerza el `synchronize` y dispara los checks.
+
+- **PR 1** (`a6062fa`, mergeado `c6b93fc`): migraciones 034-038 (moneda, `tipo_mecanica`, tasas por
+  objeto de riesgo, tipos de cambio, seed de los 3 planes) + servicio de tipo de cambio
+  (`tipo-cambio.service.js`, fetch a dolarPy con fallback a último valor persistido, TTL 15 min).
+- **PR 2** (`a7583dc`, mergeado `e6f043c`): tercera mecánica del calculador de Incendio
+  (`calcularPorObjetoRiesgo`, `pisoPrimaTecnica`) + schema Zod. 27/27 tests del calculador en
+  verde.
+- **PR 3** (`d217a72` + `7a81a17` + `379ffaa`, combinado con el frontend originalmente planeado
+  como PR 4 — quedaron commiteados en el mismo branch, mergeado como `f678b96`):
+  `findTasasRiesgoObjeto`, `resolverUmbralInspeccion`, extensión de `resolverContextoRepositorios`
+  con `moneda`, persistencia de snapshot de tipo de cambio solo al emitir; frontend —
+  `fmtMoneda`, selector de moneda (Gs./USD), 4 campos opcionales de objeto de riesgo, historial con
+  columna de moneda; fix post-verificación (ver detalle abajo). 97/97 tests backend en verde.
 
 **Migraciones 034-040 aplicadas contra la base real de Supabase** (no solo archivos SQL locales)
 durante esta sesión, con confirmación explícita de Kevin antes de cada tanda.
@@ -1553,7 +1565,8 @@ rubros-actividad`, compartido con MRC) usa `'VIVIENDA'` — nunca hacían match,
   `tipos_riesgo_incendio` debe coincidir exactamente con la opción del catálogo de rubros, no con
   una etiqueta "oficial" distinta.
 
-**Pendiente:** abrir los 4 PRs en GitHub (stacked, cada uno apunta al branch anterior) cuando
-Kevin lo pida; templates de Carta Oferta de Incendio siguen sin texto oficial (gap ya conocido,
-no específico de este cambio); tasas de tipos de riesgo más allá de "Vivienda" (Kevin confirma la
-semana del 2026-08-03, no bloquea lo ya implementado).
+**Pendiente:** templates de Carta Oferta de Incendio siguen sin texto oficial (gap ya conocido, no
+específico de este cambio); tasas de tipos de riesgo más allá de "Vivienda" (Kevin confirma la
+semana del 2026-08-03, no bloquea lo ya implementado). El cambio SDD sigue en `phase: apply` /
+`status: merged` en `state.yaml` — falta correr `sdd-verify` y archivarlo formalmente si se quiere
+cerrar el ciclo SDD completo (no bloquea el uso en producción, el código ya está en `main`).

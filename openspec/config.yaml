@@ -1,0 +1,32 @@
+schema: spec-driven
+
+context: |
+  Tech stack: Node.js + Express (backend), Vanilla JS (frontend), Supabase (PostgreSQL), Zod, Puppeteer (PDF).
+  Architecture: routes -> controllers -> services -> repositories; un calculador por ramo en /calculators;
+  validacion Zod en el borde de la API; frontend nunca habla directo con Supabase.
+  Testing: Vitest (backend), Strict TDD Mode activo.
+  Style: ver CLAUDE.md del repo para convenciones completas.
+
+rules:
+  proposal:
+    - Incluir plan de rollback para cambios de schema
+    - Marcar explicitamente preguntas abiertas de negocio como bloqueantes de diseno, no de propuesta
+  specs:
+    - Usar Given/When/Then para escenarios
+    - Usar RFC 2119 (MUST, SHALL, SHOULD, MAY)
+  design:
+    - Documentar decisiones de arquitectura con justificacion
+  tasks:
+    - Agrupar por fase, numeracion jerarquica
+    - No mezclar tareas de dos fases del roadmap del proyecto en la misma tanda
+  apply:
+    guidelines:
+      - Seguir patrones existentes (ver mrc.js como referencia de template de Carta Oferta)
+    tdd: true
+    test_command: 'npm test --prefix backend'
+  verify:
+    test_command: 'npm test --prefix backend'
+    build_command: ''
+    coverage_threshold: 0
+  archive:
+    - Avisar antes de mergear deltas destructivos

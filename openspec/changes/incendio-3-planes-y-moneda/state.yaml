@@ -57,7 +57,7 @@ phases:
     remaining_tasks: []
     branch: feature/incendio-moneda-pr3-service-integracion
     base_branch: feature/incendio-moneda-pr2-calculador-schema
-    pr_slice: 'PR 4 of 4 (stacked-to-main) — frontend (moneda + objeto de riesgo + historial), commiteado sobre el mismo branch de PR 3 (frontend puro, sin nueva rama stacked adicional)'
+    pr_slice: 'PR 4 of 4 (stacked-to-main) — frontend (moneda + objeto de riesgo + historial), commiteado sobre el mismo branch de PR 3 (frontend puro, sin nueva rama stacked adicional). Batch 5 post-PR4 (commit 379ffaa, mismo branch): migraciones 039 (pisos/topes) y 040 (fix nombre VIVIENDA) tras verificación en vivo. Migraciones 034-040 ya aplicadas contra Supabase real. Ninguno de los 4 PRs pusheado ni con PR abierto todavía.'
 capabilities:
   new:
     - incendio-planes-objeto-riesgo
@@ -74,13 +74,14 @@ resolved_questions:
   - 'DISENO: no hay conversion de montos entre monedas; el tipo de cambio solo se usa para comparar contra el umbral y como snapshot de trazabilidad.'
   - 'DISENO: piso prima_tecnica_minima por moneda explicito (columna prima_tecnica_minima_usd), sin conversion implicita; 422 si falta el piso de la moneda cotizada.'
   - "CONFIRMADO POR KEVIN (contexto de arranque de PR4, 2026-07-27): riesgo_datos.rubro_actividad es el campo correcto para llevar el nombre del 'Tipo de Riesgo' (tipos_riesgo_incendio.nombre, ej. 'VIVIENDA FAMILIAR') en la mecanica objeto_riesgo — no hace falta un campo dedicado nuevo. Cierra la pregunta abierta que habia quedado documentada en el batch 3 de apply-progress.md."
+  - 'CONFIRMADO POR KEVIN en verificacion en vivo (2026-07-27, migracion 039): prima tecnica minima de los 3 planes nuevos = Gs. 409.091 (mismo piso que MRC); responsabilidad maxima cotizable = Gs. 60.000.000.000 para los 3 planes nuevos y USD 5.000.000 para MAQUINARIA BASICO (quedaba NULL desde la migracion 018); umbral de inspeccion = USD 700.000 para con/sin Inspeccion.'
+  - "BUG REAL encontrado y corregido en verificacion en vivo (2026-07-27, migracion 040): tipos_riesgo_incendio.nombre quedo sembrado como 'VIVIENDA FAMILIAR' (migracion 038) pero el catalogo de rubros de actividad (/ramos/rubros-actividad, compartido con MRC) usa 'VIVIENDA' — findTasasRiesgoObjeto matchea por igualdad exacta de string, nunca hacian match, rechazaba con 422 cualquier cotizacion de Vivienda. Kevin confirmo renombrar la tasa (no el catalogo). Ver detalle en apply-progress.md Batch 5."
 open_questions:
-  - 'Tasas global/minima/maxima por tipo de riesgo mas alla de Vivienda Familiar — Kevin confirma la semana del 2026-08-03. No bloquea implementar el mecanismo generico.'
-  - 'Monto final del umbral de inspeccion (~USD 700.000, no confirmado) y en que moneda se expresa canonicamente.'
-  - 'Prima tecnica minima propia de los 3 planes nuevos y en que moneda.'
+  - 'Tasas global/minima/maxima por tipo de riesgo mas alla de Vivienda — Kevin confirma la semana del 2026-08-03. No bloquea implementar el mecanismo generico.'
   - 'Si el umbral (en USD) se compara contra una cotizacion en Gs., que manda: monto declarado o conversion con el tipo de cambio snapshot de esa cotizacion.'
   - 'RESUELTA EN DISENO: frecuencia/cacheo del tipo de cambio — on-demand con TTL de 15 min y fallback al ultimo valor persistido.'
   - 'RESUELTA EN PR2 (ver apply-progress.md, Deviations from Design): semantica de tasa_minima/tasa_maxima cerrada como clamp de la tasa EFECTIVA agregada (costoTotal/sumaTotal), no de cada objeto por separado. Ya implementada y testeada en incendio.calculator.js.'
+  - 'RESUELTA EN VERIFICACION EN VIVO (2026-07-27): monto/moneda del umbral de inspeccion = USD 700.000 (migracion 039). Prima tecnica minima y responsabilidad maxima cotizable de los 3 planes nuevos tambien resueltas (ver resolved_questions).'
   - "Se permite 'con Inspeccion' por debajo del umbral (sobre-inspeccionar), o tambien se bloquea. El diseno hoy solo bloquea la direccion insegura."
   - 'El override manual de tipo de cambio necesita UI en el panel admin en este cambio, o alcanza con INSERT por SQL como salvavidas.'
 notes:
@@ -88,3 +89,4 @@ notes:
   - 'sdd-spec y sdd-design pueden correr en paralelo; ambos dependen de proposal.'
   - 'dolar.melizeche.com es un servicio de terceros no oficial (Apache 2.0, activo, sin SLA) — diseno debe contemplar fallback a ultimo valor conocido si el fetch falla.'
   - "TASKS: estimacion total ~845 lineas, por encima del presupuesto de 800 acordado con Kevin para el cambio completo. Se propone entrega en 4 PRs encadenados (cada uno <800 lineas). Requiere decision de Kevin antes de sdd-apply: presupuesto por PR (avanzar tal cual) o por cambio completo (recortar alcance, ej. posponer frontend). Ver 'Review Workload Forecast' en tasks.md."
+  - 'VERIFICACION EN VIVO (2026-07-27): migraciones 034-040 aplicadas contra Supabase real y flujo completo probado con Playwright headless contra http://147.93.132.53:5000 (login, 3 planes nuevos, selector de moneda, objetos de riesgo, umbral de inspeccion, plan legacy sin regresiones). Detalle completo en apply-progress.md Batch 5. Backend y frontend quedaron corriendo en el VPS para que Kevin verifique tambien manualmente.'

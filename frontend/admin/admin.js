@@ -9,7 +9,11 @@ import {
   ICON_ADMIN_PLANES,
   ICON_WRENCH,
 } from '../shared/nav-icons.js'
-import { fmtGsConPrefijo as fmtGs, capitalizar } from '../shared/format.js'
+import {
+  fmtGsConPrefijo as fmtGs,
+  fmtUsdConPrefijo as fmtUsd,
+  capitalizar,
+} from '../shared/format.js'
 
 // Panel de Administración del Cotizador Tajy — WU5, primera porción (Usuarios).
 // Mismo patrón Vanilla JS que cotizar.js: state + render + delegación de eventos por
@@ -537,11 +541,12 @@ function cancelarEdicionPrima(planId) {
 }
 
 async function guardarPrimaTecnicaMinima(planId, form) {
-  const valor = form.prima_tecnica_minima.value
-  const prima_tecnica_minima = valor === '' ? null : Number(valor)
+  const campo = form.prima_tecnica_minima_usd ? 'prima_tecnica_minima_usd' : 'prima_tecnica_minima'
+  const valor = form[campo].value
+  const cambios = { [campo]: valor === '' ? null : Number(valor) }
 
   try {
-    const plan = await api.put(`/admin/planes/${planId}`, { prima_tecnica_minima })
+    const plan = await api.put(`/admin/planes/${planId}`, cambios)
     const idx = state.planes.findIndex((p) => p.id === Number(planId))
     if (idx !== -1) state.planes[idx] = { ...state.planes[idx], ...plan }
     state.primaEnEdicion.delete(Number(planId))
@@ -1384,18 +1389,31 @@ function renderFormasPagoDelPlan(planId) {
   `
 }
 
+function esPlanSoloUsd(plan) {
+  return (
+    Array.isArray(plan.monedas_permitidas) &&
+    plan.monedas_permitidas.length === 1 &&
+    plan.monedas_permitidas[0] === 'USD'
+  )
+}
+
 function renderCampoPrimaTecnicaMinima(plan) {
+  const soloUsd = esPlanSoloUsd(plan)
+  const campo = soloUsd ? 'prima_tecnica_minima_usd' : 'prima_tecnica_minima'
+  const valor = plan[campo]
+  const fmt = soloUsd ? fmtUsd : fmtGs
+
   if (!state.primaEnEdicion.has(plan.id)) {
     return `
       <div class="admin-valor-fijo">
-        <span>${plan.prima_tecnica_minima != null ? escapeHtml(fmtGs(plan.prima_tecnica_minima)) : '—'}</span>
+        <span>${valor != null ? escapeHtml(fmt(valor)) : '—'}</span>
         <button class="btn-outline" data-action="editar-prima-tecnica-minima" data-id="${plan.id}">Editar</button>
       </div>
     `
   }
   return `
     <form class="admin-inline-form" data-form-action="prima-tecnica-minima" data-id="${plan.id}">
-      <input class="field-input field-input--sm" type="number" step="0.01" name="prima_tecnica_minima" value="${plan.prima_tecnica_minima ?? ''}" autofocus />
+      <input class="field-input field-input--sm" type="number" step="0.01" name="${campo}" value="${valor ?? ''}" autofocus />
       <button class="btn-outline" type="submit">Guardar</button>
       <button class="btn-outline" type="button" data-action="cancelar-prima-tecnica-minima" data-id="${plan.id}">Cancelar</button>
     </form>

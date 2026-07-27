@@ -1,0 +1,67 @@
+change: incendio-3-planes-y-moneda
+created: 2026-07-27
+phase: apply
+status: partial
+next_recommended: [sdd-apply]
+dependencies:
+  proposal: [explore]
+  specs: [proposal]
+  design: [proposal]
+  tasks: [specs, design]
+  apply: [tasks]
+  verify: [apply]
+  archive: [verify]
+artifacts:
+  explore: exploration.md
+  proposal: proposal.md
+  design: design.md
+phases:
+  design:
+    status: done
+    completed: 2026-07-27
+    artifact: openspec/changes/incendio-3-planes-y-moneda/design.md
+  specs:
+    - specs/incendio-planes-objeto-riesgo/spec.md
+    - specs/incendio-umbral-inspeccion/spec.md
+    - specs/cotizacion-moneda/spec.md
+  tasks:
+    status: done
+    completed: 2026-07-27
+    artifact: openspec/changes/incendio-3-planes-y-moneda/tasks.md
+  apply:
+    status: partial
+    updated: 2026-07-27
+    artifact: openspec/changes/incendio-3-planes-y-moneda/apply-progress.md
+    completed_tasks: [1.1, 1.2, 1.3, 1.4, 1.5, 2.1, 2.2, 2.3]
+    remaining_tasks: [3.1, 3.2, 4.1, 5.1, 5.2, 5.3, 6.1, 6.2, 6.3, 7.1, 7.2]
+    branch: feature/incendio-moneda-pr1-migraciones-tipo-cambio
+    pr_slice: 'PR 1 of 4 (stacked-to-main) — migraciones SQL 034-038 + servicio tipo-cambio, sin pushear ni PR abierto todavia'
+capabilities:
+  new:
+    - incendio-planes-objeto-riesgo
+    - incendio-umbral-inspeccion
+    - cotizacion-moneda
+  modified: []
+resolved_questions:
+  - 'Tipo de cambio: tabla vigente, poblada automaticamente desde API publica de dolarPy (cotizacion SET, https://dolar.melizeche.com/api/1.0/). Confirmado por Kevin 2026-07-27.'
+  - 'Umbral de inspeccion aplica SOLO a con/sin Inspeccion. Incendio Hipotecario queda fuera de la regla. Confirmado por Kevin 2026-07-27.'
+  - 'Los 4 objetos de riesgo son opcionales, no obligatorios. Confirmado por Kevin 2026-07-27.'
+  - "DISENO: snapshot de tipo de cambio usa el campo 'venta' de dolarpy.set (criterio conservador); se persisten compra y venta para poder cambiar de criterio sin re-fetch."
+  - 'DISENO: tipo de cambio on-demand con withCache (TTL 15 min) + tabla append-only tipos_cambio como fallback durable. Sin cron/setInterval.'
+  - 'DISENO: umbral de inspeccion como columnas de planes (requiere_inspeccion / umbral_inspeccion_monto / umbral_inspeccion_moneda), NULL = regla no aplica. Editable desde el panel admin sin deploy.'
+  - 'DISENO: no hay conversion de montos entre monedas; el tipo de cambio solo se usa para comparar contra el umbral y como snapshot de trazabilidad.'
+  - 'DISENO: piso prima_tecnica_minima por moneda explicito (columna prima_tecnica_minima_usd), sin conversion implicita; 422 si falta el piso de la moneda cotizada.'
+open_questions:
+  - 'Tasas global/minima/maxima por tipo de riesgo mas alla de Vivienda Familiar — Kevin confirma la semana del 2026-08-03. No bloquea implementar el mecanismo generico.'
+  - 'Monto final del umbral de inspeccion (~USD 700.000, no confirmado) y en que moneda se expresa canonicamente.'
+  - 'Prima tecnica minima propia de los 3 planes nuevos y en que moneda.'
+  - 'Si el umbral (en USD) se compara contra una cotizacion en Gs., que manda: monto declarado o conversion con el tipo de cambio snapshot de esa cotizacion.'
+  - 'RESUELTA EN DISENO: frecuencia/cacheo del tipo de cambio — on-demand con TTL de 15 min y fallback al ultimo valor persistido.'
+  - 'Semantica exacta de tasa_minima/tasa_maxima por tipo de riesgo: banda de validacion de la tasa global o clamp de la tasa efectiva. El diseno las persiste pero NO las aplica como clamp hasta confirmar.'
+  - "Se permite 'con Inspeccion' por debajo del umbral (sobre-inspeccionar), o tambien se bloquea. El diseno hoy solo bloquea la direccion insegura."
+  - 'El override manual de tipo de cambio necesita UI en el panel admin en este cambio, o alcanza con INSERT por SQL como salvavidas.'
+notes:
+  - 'Engram no disponible en esta sesion — artifact store: solo OpenSpec.'
+  - 'sdd-spec y sdd-design pueden correr en paralelo; ambos dependen de proposal.'
+  - 'dolar.melizeche.com es un servicio de terceros no oficial (Apache 2.0, activo, sin SLA) — diseno debe contemplar fallback a ultimo valor conocido si el fetch falla.'
+  - "TASKS: estimacion total ~845 lineas, por encima del presupuesto de 800 acordado con Kevin para el cambio completo. Se propone entrega en 4 PRs encadenados (cada uno <800 lineas). Requiere decision de Kevin antes de sdd-apply: presupuesto por PR (avanzar tal cual) o por cambio completo (recortar alcance, ej. posponer frontend). Ver 'Review Workload Forecast' en tasks.md."

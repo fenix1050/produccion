@@ -28,6 +28,21 @@ const SECCIONES = [
   { id: 'planes', label: 'Planes', disponible: true, permiso: 'puede_editar_planes' },
 ]
 
+// Colores de badge para roles no-admin (admin usa 'primary' fijo). Se asigna por hash
+// del nombre de rol en vez de por índice/orden de carga, así el color de un rol no
+// cambia entre refrescos aunque cambie el orden en que vuelve del backend.
+const PALETA_BADGE_ROLES = ['info', 'purple', 'teal', 'indigo', 'amber', 'cyan', 'brown']
+
+function varianteBadgeRol(nombreRol) {
+  if (nombreRol === 'admin') return 'primary'
+  let hash = 0
+  for (let i = 0; i < nombreRol.length; i++) {
+    hash = (hash * 31 + nombreRol.charCodeAt(i)) | 0
+  }
+  const indice = Math.abs(hash) % PALETA_BADGE_ROLES.length
+  return PALETA_BADGE_ROLES[indice]
+}
+
 // Íconos SVG por sección — mismo estilo de línea (18x18) que el resto de la nav del
 // sidebar (ramos en cotizar.js, links de shared/sidebar.js), separado del array de
 // arriba para no mezclar datos de negocio con presentación.
@@ -1207,7 +1222,7 @@ function renderTablaUsuarios() {
     <tr>
       <td>${escapeHtml(u.nombre)}</td>
       <td>${escapeHtml(u.email)}</td>
-      <td>${crearBadge(capitalizar(u.rol), u.rol === 'admin' ? 'primary' : 'neutral')}</td>
+      <td>${crearBadge(capitalizar(u.rol), varianteBadgeRol(u.rol))}</td>
       <td>${crearBadge(u.activo ? 'Activo' : 'Inactivo', u.activo ? 'success' : 'neutral')}</td>
       <td>
         <div class="admin-table__actions">

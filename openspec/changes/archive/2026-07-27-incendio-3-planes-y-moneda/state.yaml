@@ -1,8 +1,10 @@
 change: incendio-3-planes-y-moneda
 created: 2026-07-27
-phase: apply
-status: merged
-next_recommended: [sdd-verify]
+phase: archive
+status: archived
+archived_date: 2026-07-27
+archived_to: openspec/changes/archive/2026-07-27-incendio-3-planes-y-moneda/
+next_recommended: none
 dependencies:
   proposal: [explore]
   specs: [proposal]
@@ -58,6 +60,17 @@ phases:
     branch: main
     base_branch: main
     pr_slice: 'Los 3 PRs mergeados a main: #14 (2026-07-27T17:40:41Z), #15 (2026-07-27T17:50:16Z), #16 (2026-07-27T17:55:35Z). Ramas feature/incendio-moneda-pr1/pr2/pr3 borradas (local y remota) tras el merge. main en verde: 97/97 tests. Migraciones 034-040 aplicadas contra Supabase real.'
+  verify:
+    status: done
+    completed: 2026-07-27
+    critical_issue_found: 'Hipotecario legal content (spec incendio-planes-objeto-riesgo): clausulas_catalogo.plan_id sembrado en migracion 038 pero sin ningun repository/service/route que lo leyera.'
+    critical_issue_fixed: 'PR #18 (main, commit 82eee4e): GET /api/planes/:id/clausulas + findClausulasObligatoriasByPlanId + 3 tests. Verificado en vivo contra el VPS con curl autenticado: 200 OK, devuelve las 5 clausulas del plan Hipotecario (id 17).'
+    warning_not_blocking: "Spec incendio-planes-objeto-riesgo mencionaba el tipo de riesgo como 'VIVIENDA FAMILIAR'; corregido a 'VIVIENDA' al mergear specs (coincide con migracion 040 y el catalogo real de rubros)."
+  archive:
+    status: done
+    completed: 2026-07-27
+    main_specs_location: openspec/specs/
+    archived_to: openspec/changes/archive/2026-07-27-incendio-3-planes-y-moneda/
 capabilities:
   new:
     - incendio-planes-objeto-riesgo

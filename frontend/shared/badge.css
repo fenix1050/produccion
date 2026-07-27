@@ -11,6 +11,23 @@
   --badge-agent-bg: #f4e3e0;
   --badge-neutral-fg: #5a5a5a;
   --badge-neutral-bg: #ececea;
+
+  /* Paleta de roles — se asigna por hash del nombre de rol (ver admin.js),
+     así cada rol custom queda con un color propio y estable en vez de
+     compartir el mismo azul de --badge-info. Todos los pares fg/bg
+     mantienen >4.5:1 de contraste (AA) sobre fondo opaco. */
+  --badge-purple-fg: #6a3aad;
+  --badge-purple-bg: #f0e9f9;
+  --badge-teal-fg: #0f766e;
+  --badge-teal-bg: #e3f5f3;
+  --badge-indigo-fg: #3949ab;
+  --badge-indigo-bg: #e8eaf9;
+  --badge-amber-fg: #8a5a00;
+  --badge-amber-bg: #fbf0dc;
+  --badge-cyan-fg: #146c94;
+  --badge-cyan-bg: #e2f2f8;
+  --badge-brown-fg: #7a4a26;
+  --badge-brown-bg: #f3e7dc;
 }
 
 .badge {
@@ -74,4 +91,34 @@
 .badge--agent {
   color: var(--badge-agent-fg);
   background: var(--badge-agent-bg);
+}
+
+.badge--purple {
+  color: var(--badge-purple-fg);
+  background: var(--badge-purple-bg);
+}
+
+.badge--teal {
+  color: var(--badge-teal-fg);
+  background: var(--badge-teal-bg);
+}
+
+.badge--indigo {
+  color: var(--badge-indigo-fg);
+  background: var(--badge-indigo-bg);
+}
+
+.badge--amber {
+  color: var(--badge-amber-fg);
+  background: var(--badge-amber-bg);
+}
+
+.badge--cyan {
+  color: var(--badge-cyan-fg);
+  background: var(--badge-cyan-bg);
+}
+
+.badge--brown {
+  color: var(--badge-brown-fg);
+  background: var(--badge-brown-bg);
 }

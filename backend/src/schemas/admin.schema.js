@@ -84,6 +84,7 @@ export const editarRubroActividadSchema = z.object({
 export const editarPlanSchema = z.object({
   activo: z.boolean().optional(),
   prima_tecnica_minima: z.number().nullable().optional(),
+  prima_tecnica_minima_usd: z.number().nullable().optional(),
 })
 
 export const editarPlanFormaPagoSchema = z.object({

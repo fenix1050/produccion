@@ -59,6 +59,11 @@ export async function actualizarPlan(id, cambios) {
   return data
 }
 
+export async function eliminarPlan(id) {
+  const { error } = await supabase.from('planes').delete().eq('id', id)
+  if (error) throw error
+}
+
 export async function findPlanFormaPagoById(id) {
   const { data, error } = await supabase
     .from('plan_formas_pago')

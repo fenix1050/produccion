@@ -215,6 +215,15 @@ export async function editarPlan(req, res, next) {
   }
 }
 
+export async function eliminarPlan(req, res, next) {
+  try {
+    await planesService.eliminarPlan(req.params.id)
+    res.status(204).end()
+  } catch (err) {
+    next(err)
+  }
+}
+
 export async function listarFormasPagoDePlan(req, res, next) {
   try {
     res.json(await planesService.listarFormasPagoDePlan(req.params.id))

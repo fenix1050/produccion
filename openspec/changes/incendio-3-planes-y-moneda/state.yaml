@@ -57,7 +57,7 @@ phases:
     remaining_tasks: []
     branch: feature/incendio-moneda-pr3-service-integracion
     base_branch: feature/incendio-moneda-pr2-calculador-schema
-    pr_slice: 'PR 4 of 4 (stacked-to-main) — frontend (moneda + objeto de riesgo + historial), commiteado sobre el mismo branch de PR 3 (frontend puro, sin nueva rama stacked adicional). Batch 5 post-PR4 (commit 379ffaa, mismo branch): migraciones 039 (pisos/topes) y 040 (fix nombre VIVIENDA) tras verificación en vivo. Migraciones 034-040 ya aplicadas contra Supabase real. Ninguno de los 4 PRs pusheado ni con PR abierto todavía.'
+    pr_slice: 'PR 3+4 combinado (stacked-to-main), pusheado y abierto: https://github.com/fenix1050/produccion/pull/16 (base: PR2). PR1 https://github.com/fenix1050/produccion/pull/14 (base: main) y PR2 https://github.com/fenix1050/produccion/pull/15 (base: PR1) ya estaban pusheados/abiertos de una sesión previa. Migraciones 034-040 ya aplicadas contra Supabase real.'
 capabilities:
   new:
     - incendio-planes-objeto-riesgo

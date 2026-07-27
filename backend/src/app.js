@@ -3,6 +3,7 @@ import cors from 'cors'
 import express from 'express'
 import helmet from 'helmet'
 
+import { apiRateLimiter } from './middleware/rate-limit.js'
 import { router as apiRouter } from './routes/index.js'
 
 export function createApp() {
@@ -22,7 +23,7 @@ export function createApp() {
 
   app.get('/health', (_req, res) => res.json({ status: 'ok' }))
 
-  app.use('/api', apiRouter)
+  app.use('/api', apiRateLimiter, apiRouter)
 
   // Manejador de errores centralizado — todo controller que haga next(err) cae acá.
   // Loguear err.stack (no el objeto err crudo): errores de Zod hacen que

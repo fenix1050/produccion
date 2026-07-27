@@ -515,8 +515,15 @@ function mostrarBanner(tipo, texto) {
   renderApp()
 }
 
+// El estado 'disponible'/'proximamente' de un ramo ya no es un valor fijo de RAMOS_UI: se
+// deriva del flag `activo` de la tabla `ramos` (togglable desde el panel admin, sección
+// Ramos, solo rol admin). RAMOS_UI ahora solo aporta metadata de UI (code/label/estado
+// original, usado como fallback si `/ramos` no cargó — ver init()).
 function ramoInfo(nombre) {
-  return RAMOS_UI.find((r) => r.nombre === nombre) || null
+  const base = RAMOS_UI.find((r) => r.nombre === nombre)
+  if (!base) return null
+  const estado = ramoActivo(nombre) ? 'disponible' : 'proximamente'
+  return { ...base, estado }
 }
 
 function ramoActivo(nombre) {
@@ -1061,10 +1068,10 @@ function renderTopbar(ramo) {
 }
 
 function renderSidebar() {
-  const rows = RAMOS_UI.map((r) => {
+  const rows = RAMOS_UI.map((base) => {
+    const r = ramoInfo(base.nombre)
     const activa = r.nombre === state.ramoId
-    const estadoTexto =
-      r.estado === 'pausa' ? 'En pausa' : r.estado === 'proximamente' ? 'Próximamente' : ''
+    const estadoTexto = r.estado === 'proximamente' ? 'Próximamente' : ''
     return `
       <div class="ramo-row ${activa ? 'ramo-row--activa' : ''} ${r.estado !== 'disponible' ? `ramo-row--${r.estado}` : ''}" data-action="select-ramo" data-ramo="${r.nombre}">
         <div class="ramo-row__icon">${RAMO_ICONOS[r.nombre] || ''}</div>

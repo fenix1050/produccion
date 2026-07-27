@@ -18,6 +18,25 @@ export async function findRamoById(ramoId, { soloActivos = false } = {}) {
   return data
 }
 
+// A diferencia de findRamosActivos (usado por el cotizador — solo ramos habilitados),
+// el panel admin necesita ver también los inactivos para poder reactivarlos.
+export async function findAllRamos() {
+  const { data, error } = await supabase.from('ramos').select('*').order('id')
+  if (error) throw error
+  return data
+}
+
+export async function actualizarRamo(id, cambios) {
+  const { data, error } = await supabase
+    .from('ramos')
+    .update(cambios)
+    .eq('id', id)
+    .select('*')
+    .maybeSingle()
+  if (error) throw error
+  return data
+}
+
 export async function findPlanesByRamoId(ramoId) {
   const { data, error } = await supabase
     .from('planes')

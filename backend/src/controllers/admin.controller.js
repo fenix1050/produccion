@@ -10,8 +10,10 @@ import {
   editarRubroActividadSchema,
   editarPlanSchema,
   editarPlanFormaPagoSchema,
+  editarRamoSchema,
 } from '../schemas/admin.schema.js'
 import * as planesService from '../services/admin/planes.service.js'
+import * as ramosService from '../services/admin/ramos.service.js'
 import * as rolesService from '../services/admin/roles.service.js'
 import * as rubrosActividadService from '../services/admin/rubros-actividad.service.js'
 import * as tasasCoberturaService from '../services/admin/tasas-cobertura.service.js'
@@ -237,6 +239,26 @@ export async function editarPlanFormaPago(req, res, next) {
     const cambios = editarPlanFormaPagoSchema.parse(req.body)
     const fila = await planesService.editarPlanFormaPago(req.params.id, cambios)
     res.json(fila)
+  } catch (err) {
+    next(err)
+  }
+}
+
+// --- Ramos ---
+
+export async function listarRamosAdmin(_req, res, next) {
+  try {
+    res.json(await ramosService.listarRamos())
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function editarRamo(req, res, next) {
+  try {
+    const cambios = editarRamoSchema.parse(req.body)
+    const ramo = await ramosService.editarRamo(req.params.id, cambios)
+    res.json(ramo)
   } catch (err) {
     next(err)
   }

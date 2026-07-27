@@ -108,9 +108,13 @@ Supuestos asumidos en esta propuesta y que el usuario debería corregir si está
 
 ## Success Criteria
 
-- [ ] Un agente puede cotizar los 3 planes nuevos declarando los 4 objetos de riesgo y obtener prima correcta con las tasas de Vivienda Familiar (0,90 / 0,90 / 1,34 / 1,34%).
-- [ ] Agregar un tipo de riesgo nuevo con su tasa global solo requiere una fila de seed, sin tocar código.
-- [ ] Una suma asegurada por encima del umbral no puede emitirse como "sin Inspección".
-- [ ] Toda cotización nueva persiste su moneda; el historial la muestra y nunca suma montos de monedas distintas.
-- [ ] "MAQUINARIA BASICO" queda marcado en USD y se formatea como USD (gap de la migración 013 cerrado).
-- [ ] Tests unitarios del calculador en verde (`npm test --prefix backend`), sin regresión en los 84 existentes.
+- [x] Un agente puede cotizar los 3 planes nuevos declarando los 4 objetos de riesgo y obtener prima correcta con las tasas de Vivienda (0,90 / 0,90 / 1,34 / 1,34%).
+- [x] Agregar un tipo de riesgo nuevo con su tasa global solo requiere una fila de seed, sin tocar código.
+- [x] Una suma asegurada por encima del umbral no puede emitirse como "sin Inspección".
+- [x] Toda cotización nueva persiste su moneda; el historial la muestra y nunca suma montos de monedas distintas.
+- [x] "MAQUINARIA BASICO" queda marcado en USD y se formatea como USD (gap de la migración 013 cerrado).
+- [x] Tests unitarios del calculador en verde (`npm test --prefix backend`), sin regresión en los 84 existentes (100/100 tras el fix final de PR #18).
+
+## Archivado (2026-07-27)
+
+Cambio implementado, verificado en vivo y mergeado a `main` en 4 PRs: #14, #15, #16 (implementación) y #18 (fix del gap crítico de `sdd-verify` sobre las cláusulas legales del Hipotecario, no expuestas por ningún endpoint hasta ese PR). 100/100 tests backend en verde. Ver `apply-progress.md` y `archive-report.md` en esta misma carpeta para el detalle completo de cada batch. Specs consolidadas en `openspec/specs/`.

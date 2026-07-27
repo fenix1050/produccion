@@ -1,7 +1,7 @@
 change: incendio-3-planes-y-moneda
 created: 2026-07-27
 phase: apply
-status: partial
+status: merged
 next_recommended: [sdd-verify]
 dependencies:
   proposal: [explore]
@@ -55,9 +55,9 @@ phases:
         7.2,
       ]
     remaining_tasks: []
-    branch: feature/incendio-moneda-pr3-service-integracion
-    base_branch: feature/incendio-moneda-pr2-calculador-schema
-    pr_slice: 'PR 3+4 combinado (stacked-to-main), pusheado y abierto: https://github.com/fenix1050/produccion/pull/16 (base: PR2). PR1 https://github.com/fenix1050/produccion/pull/14 (base: main) y PR2 https://github.com/fenix1050/produccion/pull/15 (base: PR1) ya estaban pusheados/abiertos de una sesión previa. Migraciones 034-040 ya aplicadas contra Supabase real.'
+    branch: main
+    base_branch: main
+    pr_slice: 'Los 3 PRs mergeados a main: #14 (2026-07-27T17:40:41Z), #15 (2026-07-27T17:50:16Z), #16 (2026-07-27T17:55:35Z). Ramas feature/incendio-moneda-pr1/pr2/pr3 borradas (local y remota) tras el merge. main en verde: 97/97 tests. Migraciones 034-040 aplicadas contra Supabase real.'
 capabilities:
   new:
     - incendio-planes-objeto-riesgo

@@ -361,7 +361,7 @@ function prefillDatosDesdeCotizacion(ramoNombre, plan, cotizacion) {
     const codigosFijos = new Set(sublimitesFijosMrc().map((s) => s.codigo))
     state.coberturasAdicionales = (rd.coberturas_adicionales || [])
       .filter((c) => c.codigo && !codigosFijos.has(c.codigo))
-      .map((c) => ({ id: crypto.randomUUID(), codigo: c.codigo, sumaAsegurada: c.suma_asegurada }))
+      .map((c) => ({ id: idLinea(), codigo: c.codigo, sumaAsegurada: c.suma_asegurada }))
 
     for (const [codigo, monto] of Object.entries(rd.franquicias_por_cobertura || {})) {
       state.franquiciasPorCobertura[codigo] = franquiciaValorPorDefecto(monto)
@@ -577,8 +577,16 @@ function scheduleCalculate() {
 // Coberturas adicionales: líneas cobertura/sublímite más allá de Incendio Edificio/Contenido.
 // ---------------------------------------------------------------------------
 
+// crypto.randomUUID() exige contexto seguro (HTTPS o localhost) — cae acá
+// si se accede por HTTP a una IP directa. Solo hace falta un id único de fila.
+function idLinea() {
+  return crypto.randomUUID
+    ? crypto.randomUUID()
+    : `linea-${Date.now()}-${Math.random().toString(36).slice(2)}`
+}
+
 function addCoberturaLinea() {
-  state.coberturasAdicionales.push({ id: crypto.randomUUID(), codigo: '', sumaAsegurada: '' })
+  state.coberturasAdicionales.push({ id: idLinea(), codigo: '', sumaAsegurada: '' })
   renderApp() // fila nueva: hace falta re-render completo
 }
 

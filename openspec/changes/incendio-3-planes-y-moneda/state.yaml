@@ -85,6 +85,7 @@ open_questions:
   - "Se permite 'con Inspeccion' por debajo del umbral (sobre-inspeccionar), o tambien se bloquea. El diseno hoy solo bloquea la direccion insegura."
   - 'El override manual de tipo de cambio necesita UI en el panel admin en este cambio, o alcanza con INSERT por SQL como salvavidas.'
 notes:
+  - 'GAP DE VERIFY CERRADO (2026-07-27, batch 6 de apply-progress.md): la spec incendio-planes-objeto-riesgo#Hipotecario legal content exigia que las 5 clausulas legales obligatorias del plan Hipotecario fueran recuperables como datos estructurados al leer el plan; la migracion 038 las habia sembrado en clausulas_catalogo.plan_id pero ningun repository/service/controller/route las leia. Se agrego findClausulasObligatoriasByPlanId (ramos.repository.js) + wrappers de service/controller + endpoint GET /api/planes/:id/clausulas (planes.routes.js), con 3 tests nuevos en ramos.repository.test.js. 100/100 tests backend en verde. Branch fix/incendio-hipotecario-clausulas-legales, creado desde main, no pusheado.'
   - 'Engram no disponible en esta sesion — artifact store: solo OpenSpec.'
   - 'sdd-spec y sdd-design pueden correr en paralelo; ambos dependen de proposal.'
   - 'dolar.melizeche.com es un servicio de terceros no oficial (Apache 2.0, activo, sin SLA) — diseno debe contemplar fallback a ultimo valor conocido si el fetch falla.'

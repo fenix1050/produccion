@@ -1,7 +1,7 @@
 // Wrapper simple de fetch para hablar con la API — mismo patrón que Siniestros Tajy.
 // Nunca se llama a Supabase directo desde acá.
 
-const API_BASE_URL = window.API_BASE_URL || 'http://localhost:3000/api'
+const API_BASE_URL = window.API_BASE_URL || `${window.location.origin}/api`
 
 const TOKEN_KEY = 'tajy_token'
 const USUARIO_KEY = 'tajy_usuario'

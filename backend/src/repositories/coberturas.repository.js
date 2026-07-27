@@ -82,6 +82,70 @@ export async function findTasasCoberturaRamo(ramoId) {
 }
 
 /**
+ * Cabecera (`tipos_riesgo_incendio`) + detalle (`tasas_riesgo_objeto`) para la mecánica
+ * `objeto_riesgo` de Incendio (planes Hipotecario, con/sin Inspección — migración 036). Un
+ * override por `plan_id` tiene precedencia sobre la fila genérica (`plan_id IS NULL`) del mismo
+ * objeto de riesgo — ver `ux_tasas_riesgo_objeto_generica`/`ux_tasas_riesgo_objeto_plan` en
+ * design.md. Devuelve `null` si el tipo de riesgo no existe (o no está activo) o si no tiene
+ * ninguna fila de tasa confirmada — el calculador (incendio.calculator.js) es quien traduce ese
+ * `null` en el 422 de "Tipo de Riesgo no encontrado o sin tasas confirmadas".
+ *
+ * @param {number} ramoId
+ * @param {string} tipoRiesgoNombre - ej. 'VIVIENDA FAMILIAR' (viaja en riesgo_datos.rubro_actividad,
+ *   mismo campo reusado por la mecánica edificio_contenido para el rubro de rubros_actividad).
+ * @param {number} planId
+ * @returns {Promise<{tipo_riesgo:{nombre:string,tasa_global:number,tasa_minima:number|null,
+ *   tasa_maxima:number|null,unidad:string}, objetos:Object<string,{tasa_valor:number,unidad:string}>}|null>}
+ */
+export async function findTasasRiesgoObjeto(ramoId, tipoRiesgoNombre, planId) {
+  const { data: tipoRiesgo, error: errorTipoRiesgo } = await supabase
+    .from('tipos_riesgo_incendio')
+    .select('*')
+    .eq('ramo_id', ramoId)
+    .eq('nombre', tipoRiesgoNombre)
+    .eq('activo', true)
+    .maybeSingle()
+  if (errorTipoRiesgo) throw errorTipoRiesgo
+  if (!tipoRiesgo) return null
+
+  const { data: tasas, error: errorTasas } = await supabase
+    .from('tasas_riesgo_objeto')
+    .select('*')
+    .eq('tipo_riesgo_id', tipoRiesgo.id)
+    .eq('activo', true)
+    .or(`plan_id.is.null,plan_id.eq.${planId}`)
+  if (errorTasas) throw errorTasas
+  if (!tasas?.length) return null
+
+  // Resolución override-primero: si ya hay una fila genérica (plan_id NULL) cargada para ese
+  // objeto y llega una fila específica de ESTE plan, la específica gana — sin importar el orden
+  // en que Supabase devolvió las filas.
+  const filaPorObjeto = new Map()
+  for (const fila of tasas) {
+    const existente = filaPorObjeto.get(fila.objeto_riesgo)
+    if (!existente || (existente.plan_id == null && fila.plan_id != null)) {
+      filaPorObjeto.set(fila.objeto_riesgo, fila)
+    }
+  }
+
+  const objetos = {}
+  for (const [objeto, fila] of filaPorObjeto) {
+    objetos[objeto] = { tasa_valor: fila.tasa_valor, unidad: fila.unidad }
+  }
+
+  return {
+    tipo_riesgo: {
+      nombre: tipoRiesgo.nombre,
+      tasa_global: tipoRiesgo.tasa_global,
+      tasa_minima: tipoRiesgo.tasa_minima,
+      tasa_maxima: tipoRiesgo.tasa_maxima,
+      unidad: tipoRiesgo.unidad,
+    },
+    objetos,
+  }
+}
+
+/**
  * Filas de `tarifas_generico` de un plan (usado por Vida y Accidentes Personales — tarificación
  * que no encaja en tasa fija por ramo ni en tasa por capital, ver migración 015/016). Cada fila
  * es un JSONB en `variables` con su propia forma según `variables.tipo` o las claves presentes

@@ -32,11 +32,12 @@ phases:
     status: partial
     updated: 2026-07-27
     artifact: openspec/changes/incendio-3-planes-y-moneda/apply-progress.md
-    completed_tasks: [1.1, 1.2, 1.3, 1.4, 1.5, 2.1, 2.2, 2.3, 3.1, 3.2, 4.1]
-    remaining_tasks: [5.1, 5.2, 5.3, 6.1, 6.2, 6.3, 7.1, 7.2]
-    branch: feature/incendio-moneda-pr2-calculador-schema
-    base_branch: feature/incendio-moneda-pr1-migraciones-tipo-cambio
-    pr_slice: 'PR 2 of 4 (stacked-to-main) — calculador de Incendio (mecanica objeto_riesgo) + schema Zod, apunta al branch del PR 1, sin pushear ni PR abierto todavia'
+    completed_tasks:
+      [1.1, 1.2, 1.3, 1.4, 1.5, 2.1, 2.2, 2.3, 3.1, 3.2, 4.1, 5.1, 5.2, 5.3, 7.1, 7.2]
+    remaining_tasks: [6.1, 6.2, 6.3]
+    branch: feature/incendio-moneda-pr3-service-integracion
+    base_branch: feature/incendio-moneda-pr2-calculador-schema
+    pr_slice: 'PR 3 of 4 (stacked-to-main) — service de cotizacion + tests de integracion/regresion'
 capabilities:
   new:
     - incendio-planes-objeto-riesgo

@@ -187,6 +187,284 @@ describe('incendio.calculator — redondeo e invariante Inicial + N×Cuota === P
   })
 })
 
+// --- Tercera mecánica: "objeto_riesgo" (planes Hipotecario, con/sin Inspección) ---
+// A diferencia de las 2 mecánicas anteriores, las tasas NO vienen de rubro/tasasRamo sino de
+// `tasasObjetoRiesgo` (resuelto por cotizacion.service.js vía coberturas.repository —
+// findTasasRiesgoObjeto), con la forma:
+//   { tipo_riesgo: {nombre, tasa_global, tasa_minima, tasa_maxima, unidad},
+//     objetos: { edificio: {tasa_valor, unidad}, instalaciones: {...}, ... } }
+
+function planObjetoRiesgo(overrides = {}) {
+  return {
+    nombre: 'INCENDIO CON INSPECCION',
+    tipo_mecanica: 'objeto_riesgo',
+    prima_tecnica_minima: 100,
+    prima_tecnica_minima_usd: 50,
+    responsabilidad_maxima_cotizable: 5_000_000_000,
+    descuento_maximo: 20,
+    recargo_maximo: 20,
+    ...overrides,
+  }
+}
+
+function tasasObjetoRiesgoBase(overrides = {}) {
+  return {
+    tipo_riesgo: {
+      nombre: 'VIVIENDA FAMILIAR',
+      tasa_global: 2.24,
+      tasa_minima: 0.6,
+      tasa_maxima: 35.48,
+      unidad: 'porcentaje',
+    },
+    objetos: {
+      edificio: { tasa_valor: 0.9, unidad: 'porcentaje' },
+      instalaciones: { tasa_valor: 0.9, unidad: 'porcentaje' },
+      contenido_mueble_equipos: { tasa_valor: 1.34, unidad: 'porcentaje' },
+      contenido_mercaderia: { tasa_valor: 1.34, unidad: 'porcentaje' },
+    },
+    ...overrides,
+  }
+}
+
+function catalogoObjetoRiesgo() {
+  return [
+    { codigo: 'incendio_edificio', nombre: 'Incendio de Edificio', franquicia_default: null },
+    {
+      codigo: 'incendio_instalaciones',
+      nombre: 'Incendio de Instalaciones',
+      franquicia_default: null,
+    },
+    {
+      codigo: 'incendio_contenido_mueble_equipos',
+      nombre: 'Incendio de Contenido Mueble y Equipos',
+      franquicia_default: null,
+    },
+    {
+      codigo: 'incendio_contenido_mercaderia',
+      nombre: 'Incendio de Contenido Mercadería',
+      franquicia_default: null,
+    },
+  ]
+}
+
+describe('incendio.calculator — mecánica "objeto_riesgo" (Hipotecario / con-sin Inspección)', () => {
+  test('prima con los 4 objetos de riesgo declarados: suma de cada capital × tasa del objeto', async () => {
+    const resultado = await calcularPrima({
+      plan: planObjetoRiesgo(),
+      riesgoDatos: {
+        capital_edificio: 100_000_000,
+        capital_instalaciones: 100_000_000,
+        capital_contenido_mueble_equipos: 100_000_000,
+        capital_contenido_mercaderia: 100_000_000,
+      },
+      catalogoRamo: catalogoObjetoRiesgo(),
+      tasasObjetoRiesgo: tasasObjetoRiesgoBase(),
+    })
+    // costo = 100M*0.9% + 100M*0.9% + 100M*1.34% + 100M*1.34% = 900k+900k+1.34M+1.34M = 4.48M
+    assert.equal(resultado.detalle.costo_edificio, 900_000)
+    assert.equal(resultado.detalle.costo_instalaciones, 900_000)
+    assert.equal(resultado.detalle.costo_contenido_mueble_equipos, 1_340_000)
+    assert.equal(resultado.detalle.costo_contenido_mercaderia, 1_340_000)
+    assert.equal(resultado.prima, 4_480_000)
+    assert.equal(resultado.coberturas.length, 4)
+  })
+
+  test('objeto no declarado no suma a la prima (solo 2 de 4 declarados)', async () => {
+    const resultado = await calcularPrima({
+      plan: planObjetoRiesgo(),
+      riesgoDatos: {
+        capital_edificio: 100_000_000,
+        capital_instalaciones: 100_000_000,
+      },
+      catalogoRamo: catalogoObjetoRiesgo(),
+      tasasObjetoRiesgo: tasasObjetoRiesgoBase(),
+    })
+    // costo = 900k + 900k = 1.8M — sin contenido mueble/mercadería
+    assert.equal(resultado.prima, 1_800_000)
+    assert.equal(resultado.coberturas.length, 2)
+    assert.equal(resultado.detalle.costo_contenido_mueble_equipos, undefined)
+    assert.equal(resultado.detalle.costo_contenido_mercaderia, undefined)
+  })
+
+  test('sin ningún objeto de riesgo declarado rechaza con 422', async () => {
+    await assert.rejects(
+      () =>
+        calcularPrima({
+          plan: planObjetoRiesgo(),
+          riesgoDatos: {},
+          catalogoRamo: catalogoObjetoRiesgo(),
+          tasasObjetoRiesgo: tasasObjetoRiesgoBase(),
+        }),
+      (err) => {
+        assert.equal(err.status, 422)
+        assert.match(err.message, /al menos un objeto de riesgo/)
+        return true
+      }
+    )
+  })
+
+  test('tipo de riesgo sin tasas confirmadas rechaza con 422', async () => {
+    await assert.rejects(
+      () =>
+        calcularPrima({
+          plan: planObjetoRiesgo(),
+          riesgoDatos: { capital_edificio: 100_000_000 },
+          catalogoRamo: catalogoObjetoRiesgo(),
+          tasasObjetoRiesgo: null,
+        }),
+      (err) => {
+        assert.equal(err.status, 422)
+        assert.match(err.message, /Tipo de Riesgo/)
+        return true
+      }
+    )
+  })
+
+  test('suma declarada supera la Responsabilidad Máx. Cotizable rechaza con 422', async () => {
+    await assert.rejects(
+      () =>
+        calcularPrima({
+          plan: planObjetoRiesgo({ responsabilidad_maxima_cotizable: 50_000_000 }),
+          riesgoDatos: { capital_edificio: 100_000_000 },
+          catalogoRamo: catalogoObjetoRiesgo(),
+          tasasObjetoRiesgo: tasasObjetoRiesgoBase(),
+        }),
+      (err) => {
+        assert.equal(err.status, 422)
+        assert.match(err.message, /supera la Responsabilidad Máx\. Cotizable/)
+        return true
+      }
+    )
+  })
+
+  test('tasa efectiva bajo tasa_minima del tipo de riesgo: se aplica el piso (clamp)', async () => {
+    const resultado = await calcularPrima({
+      plan: planObjetoRiesgo(),
+      riesgoDatos: {
+        capital_edificio: 100_000_000,
+        capital_instalaciones: 100_000_000,
+        capital_contenido_mueble_equipos: 100_000_000,
+        capital_contenido_mercaderia: 100_000_000,
+      },
+      catalogoRamo: catalogoObjetoRiesgo(),
+      // tasa_minima 2% > tasa efectiva real (4.48M/400M = 1.12%) → debe aplicarse el clamp
+      tasasObjetoRiesgo: tasasObjetoRiesgoBase({
+        tipo_riesgo: {
+          nombre: 'VIVIENDA FAMILIAR',
+          tasa_global: 2.24,
+          tasa_minima: 2,
+          tasa_maxima: 35.48,
+          unidad: 'porcentaje',
+        },
+      }),
+    })
+    // clamp: 400M × 2% = 8.000.000, en vez de los 4.480.000 sin clamp
+    assert.equal(resultado.prima, 8_000_000)
+    assert.notEqual(resultado.prima, 4_480_000)
+  })
+
+  test('"sin Inspección" con suma ≥ umbral rechaza con 422', async () => {
+    await assert.rejects(
+      () =>
+        calcularPrima({
+          plan: planObjetoRiesgo({ nombre: 'INCENDIO SIN INSPECCION' }),
+          riesgoDatos: { capital_edificio: 800_000_000 },
+          catalogoRamo: catalogoObjetoRiesgo(),
+          tasasObjetoRiesgo: tasasObjetoRiesgoBase(),
+          umbralInspeccion: { requiereInspeccion: false, montoEnMonedaCotizacion: 700_000_000 },
+        }),
+      (err) => {
+        assert.equal(err.status, 422)
+        assert.match(err.message, /Incendio con Inspección/)
+        return true
+      }
+    )
+  })
+
+  test('"con Inspección" con suma ≥ umbral es aceptada (no rechaza)', async () => {
+    const resultado = await calcularPrima({
+      plan: planObjetoRiesgo({ nombre: 'INCENDIO CON INSPECCION' }),
+      riesgoDatos: { capital_edificio: 800_000_000 },
+      catalogoRamo: catalogoObjetoRiesgo(),
+      tasasObjetoRiesgo: tasasObjetoRiesgoBase(),
+      umbralInspeccion: { requiereInspeccion: true, montoEnMonedaCotizacion: 700_000_000 },
+    })
+    assert.equal(resultado.detalle.suma_asegurada_total, 800_000_000)
+  })
+
+  test('Hipotecario exento del umbral en cualquier suma (umbralInspeccion=null, no aplica)', async () => {
+    const resultado = await calcularPrima({
+      plan: planObjetoRiesgo({ nombre: 'INCENDIO HIPOTECARIO' }),
+      riesgoDatos: { capital_edificio: 5_000_000_000 - 1 },
+      catalogoRamo: catalogoObjetoRiesgo(),
+      tasasObjetoRiesgo: tasasObjetoRiesgoBase(),
+      umbralInspeccion: null,
+    })
+    assert.equal(resultado.detalle.suma_asegurada_total, 5_000_000_000 - 1)
+  })
+
+  test('piso prima_tecnica_minima en PYG se aplica cuando la prima calculada es menor', async () => {
+    const resultado = await calcularPrima({
+      plan: planObjetoRiesgo({ prima_tecnica_minima: 2_000_000 }),
+      riesgoDatos: { capital_edificio: 1_000_000 },
+      catalogoRamo: catalogoObjetoRiesgo(),
+      tasasObjetoRiesgo: tasasObjetoRiesgoBase(),
+    })
+    // costo real: 1.000.000*0.9% = 9.000, muy por debajo del piso 2.000.000
+    assert.equal(resultado.prima, 2_000_000)
+  })
+
+  test('piso prima_tecnica_minima_usd se aplica cuando la cotización es en USD (piso distinto al de PYG)', async () => {
+    const resultado = await calcularPrima({
+      plan: planObjetoRiesgo({ prima_tecnica_minima: 2_000_000, prima_tecnica_minima_usd: 300 }),
+      riesgoDatos: { capital_edificio: 1_000 },
+      catalogoRamo: catalogoObjetoRiesgo(),
+      tasasObjetoRiesgo: tasasObjetoRiesgoBase(),
+      moneda: 'USD',
+    })
+    // costo real: 1.000*0.9% = 9, muy por debajo del piso USD 300 (y del piso PYG 2.000.000)
+    assert.equal(resultado.prima, 300)
+  })
+
+  test('USD sin piso prima_tecnica_minima_usd cargado rechaza con 422', async () => {
+    await assert.rejects(
+      () =>
+        calcularPrima({
+          plan: planObjetoRiesgo({ prima_tecnica_minima_usd: null }),
+          riesgoDatos: { capital_edificio: 1_000_000 },
+          catalogoRamo: catalogoObjetoRiesgo(),
+          tasasObjetoRiesgo: tasasObjetoRiesgoBase(),
+          moneda: 'USD',
+        }),
+      (err) => {
+        assert.equal(err.status, 422)
+        assert.match(err.message, /USD/)
+        return true
+      }
+    )
+  })
+
+  test('dispatch usa plan.tipo_mecanica explícito, sin importar plan.nombre', async () => {
+    const resultado = await calcularPrima({
+      plan: planObjetoRiesgo({ nombre: 'CUALQUIER NOMBRE', tipo_mecanica: 'objeto_riesgo' }),
+      riesgoDatos: { capital_edificio: 100_000_000 },
+      catalogoRamo: catalogoObjetoRiesgo(),
+      tasasObjetoRiesgo: tasasObjetoRiesgoBase(),
+    })
+    assert.equal(resultado.detalle.costo_edificio, 900_000)
+  })
+
+  test('dispatch cae a "maquinaria" por nombre cuando tipo_mecanica es NULL (columna no poblada aún)', async () => {
+    const resultado = await calcularPrima({
+      plan: planMaquinaria({ tipo_mecanica: null }),
+      riesgoDatos: { capital_maquinaria: 100_000_000 },
+      catalogoRamo: catalogoBase(),
+      tasasRamo: tasasMaquinaria(7),
+    })
+    assert.equal(resultado.detalle.costo_maquinaria, 700_000)
+  })
+})
+
 describe('incendio.calculator — casos de error explícitos', () => {
   test('rechaza si el plan no tiene prima_tecnica_minima confirmada', async () => {
     await assert.rejects(

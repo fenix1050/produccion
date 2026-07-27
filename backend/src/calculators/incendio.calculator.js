@@ -11,6 +11,26 @@ const CODIGO_INCENDIO_MAQUINARIA = 'incendio_maquinaria'
 const CODIGO_SUBLIMITE_FENOMENOS_NATURALES = 'sublimite_fenomenos_naturales'
 const CODIGO_SUBLIMITE_VANDALISMO_MAQUINARIA = 'sublimite_vandalismo_maquinaria'
 
+// Tercera mecánica de tasa (planes Hipotecario, con Inspección, sin Inspección — migraciones
+// 035/036/038): 4 objetos de riesgo OPCIONALES, cada uno con su propia tasa dentro de un
+// "Tipo de Riesgo" (ej. VIVIENDA FAMILIAR). El campo del riesgo_datos, el nombre interno del
+// objeto (clave de `tasasObjetoRiesgo.objetos`) y el código de catálogo van de la mano acá para
+// no repetir el mapeo en 3 lugares distintos.
+const OBJETOS_RIESGO = [
+  { campo: 'capital_edificio', objeto: 'edificio', codigo: 'incendio_edificio' },
+  { campo: 'capital_instalaciones', objeto: 'instalaciones', codigo: 'incendio_instalaciones' },
+  {
+    campo: 'capital_contenido_mueble_equipos',
+    objeto: 'contenido_mueble_equipos',
+    codigo: 'incendio_contenido_mueble_equipos',
+  },
+  {
+    campo: 'capital_contenido_mercaderia',
+    objeto: 'contenido_mercaderia',
+    codigo: 'incendio_contenido_mercaderia',
+  },
+]
+
 /**
  * Calculador de Incendio — dos planes con mecánica distinta (migración 013):
  *
@@ -56,31 +76,42 @@ export async function calcularPrima({
   rubro,
   catalogoRamo,
   tasasRamo,
+  tasasObjetoRiesgo,
+  umbralInspeccion,
+  moneda = 'PYG',
 }) {
-  if (!plan.prima_tecnica_minima) {
-    throw httpError(
-      422,
-      `El plan "${plan.nombre}" todavía no tiene RPF/prima técnica mínima confirmados — no se puede cotizar.`,
-      'Este plan está pendiente de confirmación de tasas.'
-    )
-  }
+  const pisoPlan = pisoPrimaTecnica(plan, moneda)
 
   const catalogoPorCodigo = new Map(catalogoRamo.map((c) => [c.codigo, c]))
 
-  const esMaquinariaBasico = plan.nombre === NOMBRE_PLAN_MAQUINARIA
+  // Dispatch por `plan.tipo_mecanica` (migración 035). Fallback por nombre mientras la columna
+  // no esté poblada en filas viejas (rollback nivel 2 documentado en design.md) — preserva el
+  // comportamiento anterior a la migración para los 2 planes ya productivos.
+  const mecanica =
+    plan.tipo_mecanica ??
+    (plan.nombre === NOMBRE_PLAN_MAQUINARIA ? 'maquinaria' : 'edificio_contenido')
 
   const {
     primaBase: primaCalculada,
     detalle,
     coberturas,
-  } = esMaquinariaBasico
-    ? await calcularMaquinariaBasico({ plan, riesgoDatos, catalogoPorCodigo, tasasRamo })
-    : await calcularEdificioYContenido({ plan, riesgoDatos, catalogoPorCodigo, rubro })
+  } = mecanica === 'objeto_riesgo'
+    ? await calcularPorObjetoRiesgo({
+        plan,
+        riesgoDatos,
+        catalogoPorCodigo,
+        tasasObjetoRiesgo,
+        umbralInspeccion,
+        moneda,
+      })
+    : mecanica === 'maquinaria'
+      ? await calcularMaquinariaBasico({ plan, riesgoDatos, catalogoPorCodigo, tasasRamo })
+      : await calcularEdificioYContenido({ plan, riesgoDatos, catalogoPorCodigo, rubro })
 
   // A pedido de Kevin (2026-07-15): sí se pueden cotizar capitales que generen una prima menor
   // a la Prima Técnica Mínima del plan — no se bloquea con alerta. En ese caso se aplica el
   // piso en silencio: la Prima Técnica Mínima pasa a ser la prima base de la cotización.
-  const primaBase = Math.max(primaCalculada, plan.prima_tecnica_minima)
+  const primaBase = Math.max(primaCalculada, pisoPlan)
 
   const totalDescuentos = sumarAjustes(
     descuentos,
@@ -100,7 +131,7 @@ export async function calcularPrima({
     detalle: {
       ...detalle,
       prima_base: primaBase,
-      prima_tecnica_minima: plan.prima_tecnica_minima,
+      prima_tecnica_minima: pisoPlan,
       total_descuentos: totalDescuentos,
       total_recargos: totalRecargos,
     },
@@ -251,6 +282,191 @@ async function calcularMaquinariaBasico({ plan, riesgoDatos, catalogoPorCodigo, 
       capital_maquinaria: capitalMaquinaria,
       tasa_incendio_maquinaria: tasaMaquinaria.tasa_valor,
       costo_maquinaria: costoMaquinaria,
+    },
+    coberturas,
+  }
+}
+
+/**
+ * Piso de Prima Técnica Mínima, específico por moneda (migración 034 —
+ * `planes.prima_tecnica_minima` en Gs., `planes.prima_tecnica_minima_usd` nullable). Sin
+ * conversión implícita: una cotización en USD sin piso USD confirmado rechaza con 422 en vez de
+ * reusar/convertir el piso en Gs. (criterio cerrado en design.md — el piso es un valor de
+ * suscripción negociado, no un monto convertible).
+ *
+ * @param {object} plan
+ * @param {'PYG'|'USD'} moneda
+ * @returns {number}
+ */
+function pisoPrimaTecnica(plan, moneda) {
+  if (moneda === 'USD') {
+    if (plan.prima_tecnica_minima_usd == null) {
+      throw httpError(
+        422,
+        `El plan "${plan.nombre}" todavía no tiene Prima Técnica Mínima en USD confirmada — no se puede cotizar en esa moneda.`,
+        'Este plan todavía no tiene el piso de prima en USD confirmado.'
+      )
+    }
+    return plan.prima_tecnica_minima_usd
+  }
+
+  if (!plan.prima_tecnica_minima) {
+    throw httpError(
+      422,
+      `El plan "${plan.nombre}" todavía no tiene RPF/prima técnica mínima confirmados — no se puede cotizar.`,
+      'Este plan está pendiente de confirmación de tasas.'
+    )
+  }
+  return plan.prima_tecnica_minima
+}
+
+/**
+ * Tercera mecánica de tasa (planes Hipotecario, con Inspección, sin Inspección — migración 035).
+ * Prima = Σ capital_i × tasa_i sobre los objetos de riesgo DECLARADOS (capital > 0) — los 4
+ * objetos son opcionales, sin ninguno declarado rechaza con 422. La tasa efectiva del conjunto
+ * (costoTotal / sumaTotal) se clampea contra `tasa_minima`/`tasa_maxima` del tipo de riesgo si
+ * cae fuera de ese rango.
+ *
+ * El umbral de inspección ya viene resuelto por cotizacion.service.js (I/O de tipo de cambio
+ * hecho upstream, ver design.md) — `umbralInspeccion == null` significa que la regla no aplica
+ * (plan Hipotecario, o cualquier plan con `requiere_inspeccion IS NULL`).
+ *
+ * @param {object} params
+ * @param {object} params.plan
+ * @param {object} params.riesgoDatos - capital_edificio/capital_instalaciones/
+ *   capital_contenido_mueble_equipos/capital_contenido_mercaderia, todos opcionales
+ * @param {Map<string,object>} params.catalogoPorCodigo
+ * @param {{tipo_riesgo:object, objetos:object}|null|undefined} params.tasasObjetoRiesgo
+ * @param {{requiereInspeccion:boolean, montoEnMonedaCotizacion:number}|null|undefined} params.umbralInspeccion
+ * @param {'PYG'|'USD'} params.moneda
+ * @returns {Promise<{primaBase:number, detalle:object, coberturas:Array<object>}>}
+ */
+async function calcularPorObjetoRiesgo({
+  plan,
+  riesgoDatos,
+  catalogoPorCodigo,
+  tasasObjetoRiesgo,
+  umbralInspeccion,
+  moneda,
+}) {
+  if (!tasasObjetoRiesgo) {
+    throw httpError(
+      422,
+      `Tipo de Riesgo no encontrado o sin tasas confirmadas para el plan "${plan.nombre}".`,
+      'Este Tipo de Riesgo todavía no tiene tasas confirmadas.'
+    )
+  }
+
+  const { tipo_riesgo: tipoRiesgo, objetos } = tasasObjetoRiesgo
+
+  const declarados = OBJETOS_RIESGO.map(({ campo, objeto, codigo }) => ({
+    objeto,
+    codigo,
+    capital: riesgoDatos[campo] ?? 0,
+  })).filter((d) => d.capital > 0)
+
+  if (declarados.length === 0) {
+    throw httpError(
+      422,
+      `Debe declarar al menos un objeto de riesgo (Edificio, Instalaciones, Contenido Mueble y Equipos, Contenido Mercadería) para el plan "${plan.nombre}".`,
+      'Debe declarar al menos un objeto de riesgo con suma asegurada.'
+    )
+  }
+
+  const sumaTotal = declarados.reduce((acc, d) => acc + d.capital, 0)
+
+  if (
+    plan.responsabilidad_maxima_cotizable != null &&
+    sumaTotal > plan.responsabilidad_maxima_cotizable
+  ) {
+    throw httpError(
+      422,
+      `La suma asegurada declarada supera la Responsabilidad Máx. Cotizable del plan "${plan.nombre}" (${plan.responsabilidad_maxima_cotizable}).`,
+      `El capital declarado supera el máximo cotizable para este plan.`
+    )
+  }
+
+  // Umbral de inspección (migración 035 + design.md): "sin Inspección" con suma ≥ umbral se
+  // rechaza — debe cotizarse "con Inspección". La dirección segura ("con Inspección" por debajo
+  // del umbral, sobre-inspeccionar) NO se bloquea (open question resuelta como no-bloqueante).
+  if (
+    umbralInspeccion &&
+    umbralInspeccion.requiereInspeccion === false &&
+    sumaTotal >= umbralInspeccion.montoEnMonedaCotizacion
+  ) {
+    throw httpError(
+      422,
+      `La suma asegurada declarada (${sumaTotal}) alcanza o supera el umbral de inspección — debe cotizarse bajo el plan "Incendio con Inspección".`,
+      'La suma asegurada declarada supera el umbral que exige inspección — seleccione "Incendio con Inspección".'
+    )
+  }
+
+  let costoTotal = 0
+  const detalleObjetos = {}
+  const coberturas = []
+
+  for (const { objeto, codigo, capital } of declarados) {
+    const tasaObjeto = objetos?.[objeto]
+    if (!tasaObjeto || tasaObjeto.tasa_valor == null) {
+      throw httpError(
+        422,
+        `Falta la tasa de "${objeto}" para el Tipo de Riesgo "${tipoRiesgo?.nombre}".`,
+        'El Tipo de Riesgo todavía no tiene todas las tasas confirmadas.'
+      )
+    }
+
+    const divisorObjeto = tasaObjeto.unidad === 'permil' ? 1000 : 100
+    // Redondeo a 2 decimales: evita ruido de punto flotante (ej. 100_000_000*0.9/100 =
+    // 900000.0000000001 en JS) sin perder precisión real de negocio (montos en Gs./USD no
+    // manejan más de centavos).
+    const costo = Math.round(capital * (tasaObjeto.tasa_valor / divisorObjeto) * 100) / 100
+    costoTotal += costo
+
+    detalleObjetos[`capital_${objeto}`] = capital
+    detalleObjetos[`tasa_${objeto}`] = tasaObjeto.tasa_valor
+    detalleObjetos[`costo_${objeto}`] = costo
+
+    const catalogo = catalogoPorCodigo.get(codigo)
+    coberturas.push({
+      codigo,
+      nombre: catalogo?.nombre ?? codigo,
+      monto: capital,
+      franquicia_default: catalogo?.franquicia_default ?? null,
+      tipo_aplicacion: 'cobertura',
+      incluye_en_suma_asegurada_total: true,
+    })
+  }
+
+  // Clamp de la tasa EFECTIVA del conjunto (costoTotal / sumaTotal) contra tasa_minima/
+  // tasa_maxima del tipo de riesgo — Requirement "Rate floor and cap per risk type". Las tasas
+  // por objeto son datos oficiales ya redondeados (no se tocan individualmente); el clamp actúa
+  // sobre el resultado agregado si cae fuera de la banda de suscripción del tipo de riesgo.
+  let primaObjetos = costoTotal
+  let tasaEfectivaAplicada = null
+  if (sumaTotal > 0 && (tipoRiesgo?.tasa_minima != null || tipoRiesgo?.tasa_maxima != null)) {
+    const divisorGlobal = tipoRiesgo.unidad === 'permil' ? 1000 : 100
+    const tasaEfectiva = (costoTotal / sumaTotal) * divisorGlobal
+    let tasaClamped = tasaEfectiva
+    if (tipoRiesgo.tasa_minima != null && tasaClamped < tipoRiesgo.tasa_minima) {
+      tasaClamped = tipoRiesgo.tasa_minima
+    }
+    if (tipoRiesgo.tasa_maxima != null && tasaClamped > tipoRiesgo.tasa_maxima) {
+      tasaClamped = tipoRiesgo.tasa_maxima
+    }
+    if (tasaClamped !== tasaEfectiva) {
+      primaObjetos = Math.round(sumaTotal * (tasaClamped / divisorGlobal) * 100) / 100
+      tasaEfectivaAplicada = tasaClamped
+    }
+  }
+
+  return {
+    primaBase: primaObjetos,
+    detalle: {
+      tipo_riesgo: tipoRiesgo?.nombre ?? null,
+      suma_asegurada_total: sumaTotal,
+      moneda,
+      ...detalleObjetos,
+      ...(tasaEfectivaAplicada != null ? { tasa_efectiva_aplicada: tasaEfectivaAplicada } : {}),
     },
     coberturas,
   }

@@ -11,3 +11,15 @@ export const loginRateLimiter = rateLimit({
   keyGenerator: (req) => `${ipKeyGenerator(req.ip)}:${String(req.body?.email || '').toLowerCase()}`,
   message: { error: 'Demasiados intentos de inicio de sesión. Probá de nuevo más tarde.' },
 })
+
+// Throttle general para toda la API autenticada (ramos, planes, cotizaciones, admin, etc.):
+// un token JWT filtrado o un cliente con bug no debería poder golpear la base sin límite.
+// Límite generoso porque cubre navegación normal de varios agentes detrás de la misma IP/NAT.
+export const apiRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => ipKeyGenerator(req.ip),
+  message: { error: 'Demasiadas solicitudes. Probá de nuevo más tarde.' },
+})

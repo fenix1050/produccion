@@ -22,6 +22,16 @@ export async function insertCotizacion(cotizacion) {
   return data
 }
 
+// Rollback manual de una cabecera recién insertada cuando `insertarCoberturasYVariantes` falla
+// a mitad de camino (cotizacion.service.js, crearCotizacion) — no hay transacción multi-statement
+// vía el cliente PostgREST de Supabase, así que la compensación es un DELETE explícito por id.
+// `cotizaciones` tiene ON DELETE CASCADE hacia cotizacion_variantes/cotizacion_coberturas
+// (migración 005), así que esto no deja huérfanos en esas tablas.
+export async function deleteCotizacion(id) {
+  const { error } = await supabase.from('cotizaciones').delete().eq('id', id)
+  if (error) throw error
+}
+
 export async function insertVariante(variante) {
   const { data, error } = await supabase
     .from('cotizacion_variantes')

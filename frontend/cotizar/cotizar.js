@@ -927,14 +927,24 @@ async function emitirCartaOferta() {
   state.emitiendoCarta = true
   renderApp()
 
+  // Abrir la pestaña ya mismo, en el mismo tick del click: si se abre recién después
+  // de los await de abajo, el navegador ya no lo asocia al gesto del usuario y la
+  // bloquea como pop-up.
+  const pestañaPdf = window.open('', '_blank')
+
   try {
     const cotizacion = state.editandoId
       ? await api.put(`/cotizaciones/${state.editandoId}`, body)
       : await api.post('/cotizaciones', body)
     const blob = await api.getBlob(`/cotizaciones/${cotizacion.id}/pdf-oferta`)
     const url = URL.createObjectURL(blob)
-    window.open(url, '_blank')
+    if (pestañaPdf) {
+      pestañaPdf.location.href = url
+    } else {
+      window.open(url, '_blank')
+    }
   } catch (err) {
+    pestañaPdf?.close()
     mostrarBanner('error', err.message || 'No se pudo generar la Carta Oferta.')
   } finally {
     state.emitiendoCarta = false

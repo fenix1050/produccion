@@ -90,7 +90,9 @@ Este proyecto se construye **fase por fase**, en este orden fijo (detalle comple
 
 **Panel admin — eliminar planes + habilitar/deshabilitar ramos del sidebar (2026-07-28), commiteado y pusheado, sin mergear a `main` todavía.** Rama `fix/admin-badge-colores-rol`. Botón Eliminar en Planes (409 si el plan tiene cotizaciones asociadas). Nueva sección "Ramos" en el panel, primera gateada por rol admin literal (no permiso delegable) para togglear `ramos.activo` — el sidebar de `/cotizar` ya no hardcodea "próximamente", lo deriva de esa columna. Migración 041 aplicada contra Supabase real (fija `auto`/`hogar` en `activo=false` para no cambiar el comportamiento actual). Detalle completo en `docs/ESTADO_PROYECTO.md` sección 33 — incluye una aclaración importante: `147.93.132.53` **no es una VPS separada**, es el mismo sandbox de cada sesión expuesto en IP pública, no persiste entre sesiones.
 
-**Próximo paso confirmado con Kevin:** agregar templates de Carta Oferta de Incendio y Vida/AP (requieren texto oficial), cerrar el cambio con `sdd-verify`/archivo formal si se pide, o retomar Fase 2 (Auto) si se pide.
+**Template de Carta Oferta de Incendio agregado (2026-07-28), sin commitear todavía.** `backend/src/templates/oferta/incendio.js` + `incendio.test.js`, enganchado en `BUILDERS_POR_CALCULADOR` (`backend/src/templates/oferta/index.js`). Cubre los 4 planes reales del calculador (`INCENDIO HIPOTECARIO`, `INCENDIO CON INSPECCION`, `INCENDIO SIN INSPECCION`, `MAQUINARIA BASICO`) con texto legal verbatim provisto por Kevin, uno distinto por plan (a diferencia de MRC que tiene un solo texto fijo). `MAQUINARIA BASICO` quedó sin secciones de Exclusiones/Recomendaciones porque el texto provisto no las incluía — no se rellenaron con contenido de otro plan. El placeholder `INSPECCION DE RIESGO No. XXXX/XXXX` del plan con inspección queda literal (no hay campo de número/fecha de inspección en el modelo de datos actual para interpolarlo). Tests: 5/5 verde, suite completa de backend 100/100 verde. Vida/AP sigue pendiente de texto oficial.
+
+**Próximo paso confirmado con Kevin:** revisar/commitear el template de Incendio, agregar el de Vida/AP (requiere texto oficial), cerrar el cambio con `sdd-verify`/archivo formal si se pide, o retomar Fase 2 (Auto) si se pide.
 
 **Roadmap pre-producción (auditoría integral 2026-07-24, detalle y sprints en `docs/ESTADO_PROYECTO.md` sección 30):** 4 sprints pendientes antes de lanzar sin restricciones — accesibilidad/errores silenciosos, mantenibilidad puntual, RLS/concurrencia/responsive, y sesión httpOnly + logging + modularización. Sprint 1 es condición dura antes de producción sin restricciones.
 
@@ -137,7 +139,7 @@ Contado: Inicial = Premio completo, Cuota = 0
 
 Lista corta de lo que un cambio de código puede pisar sin querer. El detalle completo de cada uno (y otros pendientes menores) está en `docs/ESTADO_PROYECTO.md` sección 8 y sección 31 — no se repite acá.
 
-- **Templates de Carta Oferta para Incendio y Vida/AP**: no existen todavía (falta texto oficial). Los calculadores de esos 2 ramos SÍ están completos y testeados — no asumir que están "pendientes" sin verificar `backend/src/calculators/`.
+- **Template de Carta Oferta para Vida/AP**: no existe todavía (falta texto oficial). El de Incendio ya está (`backend/src/templates/oferta/incendio.js`, ver sección "Estado actual del proyecto"). El calculador de Vida/AP SÍ está completo y testeado — no asumir que está "pendiente" sin verificar `backend/src/calculators/`.
 - **RPF de "COMERCIO PROTECCION TOTAL"** (MRC): no confirmado — plan desactivado (`activo = FALSE`), no aparece en el selector.
 - **Auto individual (Fase 1/2)**: pausado por prioridad del cliente, no tocar hasta que se reactive.
 - **RLS en Supabase**: 30 tablas de `public` sin RLS. No explotable hoy (frontend nunca habla directo con Supabase), pero requiere decisión de Kevin antes de actuar — no activar sin diseñar policies primero.

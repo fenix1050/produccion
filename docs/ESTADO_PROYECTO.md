@@ -1611,6 +1611,44 @@ automatizar el deploy (`git pull` + restart vía GitHub Action) — se le explic
 mientras el destino sea temporal/indefinido; conviene retomarlo recién en Fase 8 (Deploy) cuando
 se decida Railway/Render.
 
+## 34. Template de Carta Oferta de Incendio (2026-07-28)
+
+Sin commitear todavía (trabajo de esta sesión). Kevin pasó el texto legal oficial de los 4 planes
+reales de Incendio (confirmados contra `backend/migrations/038_seed_incendio_3_planes.sql` y la
+constante `NOMBRE_PLAN_MAQUINARIA` de `incendio.calculator.js`): `INCENDIO HIPOTECARIO`,
+`INCENDIO CON INSPECCION`, `INCENDIO SIN INSPECCION` y `MAQUINARIA BASICO` (este último con
+mecánica de cálculo `maquinaria`, distinta a los otros 3 que usan `objeto_riesgo`).
+
+Se creó `backend/src/templates/oferta/incendio.js` siguiendo el mismo patrón de
+`mrc.js` (`buildIncendioOfertaPages({ cotizacion, plan })` → `{ paginaUno, paginaDosFlex,
+paginaDosBalanceada }`), enganchado en `BUILDERS_POR_CALCULADOR` de
+`backend/src/templates/oferta/index.js`. A diferencia de MRC (un solo plan, un solo texto legal
+fijo), Incendio necesita texto distinto por plan — se armó un mapa `TEXTOS_POR_PLAN` keyeado por
+el nombre exacto del plan en DB.
+
+**Decisiones de diseño tomadas por texto incompleto/ambiguo:**
+
+- `MAQUINARIA BASICO` quedó sin secciones "Exclusiones"/"Recomendaciones" — el texto que pasó
+  Kevin no las incluía. No se rellenaron con contenido de otro plan; el bloque simplemente se
+  omite para ese plan (verificado con test que confirma que esos títulos no aparecen en su HTML).
+- El placeholder `INSPECCION DE RIESGO No. XXXX/XXXX realizada en fecha XX de XXXXXXX de XXXX`
+  (plan con inspección) queda **literal** en el PDF — no hay campo de número/fecha de inspección
+  puntual en `riesgo_datos` ni en el modelo de cotización del que interpolarlo hoy. Si Kevin
+  confirma que ese dato se va a cargar en algún lado, esto se puede resolver después.
+- Fallback si `plan.nombre` no matchea ninguna key conocida: en vez de romper, muestra un bloque
+  único "Texto legal pendiente de carga para el plan «X»" — mismo criterio defensivo que usa
+  `mrc.js` para catálogo ausente.
+- **Fuera de alcance a propósito** (ya lo estaba desde el cambio `incendio-3-planes-y-moneda`,
+  sección 32): las 5 cláusulas obligatorias de Hipotecario que quedaron guardadas en DB
+  (`ramosRepository.findClausulasObligatoriasByPlanId`) NO se renderizan en este PDF — es un gap
+  conocido, pendiente de un cambio aparte si Kevin lo pide.
+
+Tests: `backend/src/templates/oferta/incendio.test.js` (5/5 verde, uno por plan + fallback).
+Suite completa de backend: 100/100 verde, sin regresiones. **Sin commitear ni verificado en vivo
+todavía** — falta decidir con Kevin si se commitea en esta misma rama
+(`fix/node22-supabase-realtime`) o en una rama nueva, ya que el nombre de rama actual no
+corresponde a este cambio.
+
 **Pendiente:** mergear `fix/admin-badge-colores-rol` a `main` (Kevin no lo pidió todavía en esta
 sesión — solo commit + push). Si se quiere tratar como cambio SDD formal en vez de fix suelto,
 faltaría abrir `openspec/changes/` retroactivo o dejarlo así (decisión de Kevin, no crítica).

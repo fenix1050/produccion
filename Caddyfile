@@ -1,0 +1,3 @@
+147-93-132-53.sslip.io {
+	reverse_proxy backend:3000
+}

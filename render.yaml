@@ -3,7 +3,7 @@ services:
     name: cotizador-tajy-backend
     runtime: docker
     dockerfilePath: ./backend/Dockerfile
-    dockerContext: ./backend
+    dockerContext: .
     plan: free
     region: oregon
     healthCheckPath: /health

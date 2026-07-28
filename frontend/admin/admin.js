@@ -1121,7 +1121,7 @@ function renderApp() {
     ${renderTopbar()}
     <div class="app-body">
       ${renderSidebar()}
-      <div class="main">
+      <main class="main">
         <div class="main-header">
           <div>
             <div class="main-header__title">Administración</div>
@@ -1132,7 +1132,7 @@ function renderApp() {
           ${renderBanner()}
           ${renderSeccion()}
         </div>
-      </div>
+      </main>
     </div>
     ${state.modal ? renderModal() : ''}
     ${state.modalRol ? renderModalRol() : ''}

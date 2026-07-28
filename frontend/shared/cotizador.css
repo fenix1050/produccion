@@ -11,7 +11,10 @@
   --tajy-ink: #1a1a1a;
   --tajy-bg: #f4f3f1;
   --tajy-pink: #fbeaea;
-  --tajy-green-fg: #1e8a4c;
+  /* #1e8a4c sobre --tajy-green-bg daba ~3.96:1, por debajo de WCAG AA (4.5:1)
+     para texto de 12px (mismo problema que --tajy-maroon/--tajy-pink más abajo).
+     #146c3c mantiene el mismo verde de marca y da ~5.86:1. */
+  --tajy-green-fg: #146c3c;
   --tajy-green-bg: #e9f7ee;
   /* Alias único de "verde de éxito" — antes cotizador.css y configuracion.css
      tenían cada uno su propio verde hardcodeado para el mismo estado visual.

@@ -26,12 +26,15 @@ ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 WORKDIR /app
 
-COPY package*.json ./
-RUN npm ci --omit=dev
+# El lockfile vive en la raíz del monorepo (npm workspaces), no dentro de backend/,
+# por eso el build context es el repo completo y no solo esta carpeta.
+COPY package.json package-lock.json ./
+COPY backend/package.json ./backend/package.json
+RUN npm ci --omit=dev --workspace=backend
 
-COPY . .
+COPY backend ./backend
 
 ENV NODE_ENV=production
 EXPOSE 3000
 
-CMD ["node", "src/server.js"]
+CMD ["node", "backend/src/server.js"]

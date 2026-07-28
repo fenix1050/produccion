@@ -1,0 +1,34 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: cotizador-tajy-backend
+    restart: unless-stopped
+    env_file:
+      - backend/.env
+    expose:
+      - '3000'
+    networks:
+      - web
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: cotizador-tajy-caddy
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - web
+
+networks:
+  web:
+
+volumes:
+  caddy_data:
+  caddy_config:

@@ -1570,3 +1570,47 @@ específico de este cambio); tasas de tipos de riesgo más allá de "Vivienda" (
 semana del 2026-08-03, no bloquea lo ya implementado). El cambio SDD sigue en `phase: apply` /
 `status: merged` en `state.yaml` — falta correr `sdd-verify` y archivarlo formalmente si se quiere
 cerrar el ciclo SDD completo (no bloquea el uso en producción, el código ya está en `main`).
+
+## 33. Panel admin — eliminar planes + habilitar/deshabilitar ramos del sidebar (2026-07-28)
+
+Dos cambios chicos hechos fuera de un ciclo SDD formal (pedidos puntuales de Kevin en sesión de
+chat), commiteados en la rama `fix/admin-badge-colores-rol` (junto con los fixes previos de esa
+rama — prima técnica mínima USD, badge de color por rol), pusheados pero **todavía sin PR/merge a
+`main`**. 100/100 tests backend en verde en ambos commits.
+
+**a) Eliminar planes desde el panel** (`41500ca`) — botón "Eliminar" en la tabla de Planes
+(`frontend/admin/admin.js`), con `confirm()` antes de borrar. Backend: `DELETE
+/api/admin/planes/:id` (gate `requirePlanesEdit`, igual que el resto de la sección). Si el plan
+tiene cotizaciones asociadas, Postgres rechaza el DELETE por la FK `cotizaciones.plan_id` y el
+service (`planes.service.js`) lo traduce a 409 "Este plan tiene cotizaciones asociadas.
+Desactivalo en vez de eliminarlo." — mismo patrón que `eliminarRol` en `roles.service.js`. Sin
+migración: la tabla `planes` y la FK ya existían.
+
+**b) Habilitar/deshabilitar ramos del sidebar — solo rol admin** (`809f5f5`) — nueva sección
+"Ramos" en el panel admin, primera del panel gateada por `usuario.rol === 'admin'` literal en vez
+de un permiso booleano delegable (`seccionesVisibles()` en `admin.js` ahora soporta `soloAdmin:
+true` además de `permiso: '...'`; backend usa `requireRole('admin')`, middleware que ya existía
+sin uso). Decisión de diseño: no se agregó columna nueva — se reusó `ramos.activo` (ya
+existía, ya gateaba `findRamoById(id, {soloActivos:true})` en la creación de cotizaciones, pero
+nunca se togleaba desde ningún lado). El sidebar de `/cotizar` (`RAMOS_UI` en `cotizar.js`) tenía
+el estado "disponible"/"próximamente" hardcodeado por ramo, sin relación con la DB — ahora
+`ramoInfo()` lo deriva de `state.ramosActivos` (`GET /ramos`, ya se cargaba, solo no se usaba para
+esto). Como **todos** los 8 ramos seedeados en la migración 002 tienen `activo=TRUE` por default de
+columna (incluidos `auto`/`hogar`, que la UI mostraba como "próximamente" solo por el hardcode),
+hizo falta la migración **041** (`UPDATE ramos SET activo=false WHERE nombre IN ('auto','hogar')`)
+para no des-hardcodear a "disponible" de golpe algo que Kevin no pidió — **aplicada contra
+Supabase real** con confirmación explícita antes de correrla.
+
+**Verificación en vivo** (Playwright headless): las dos features se probaron contra
+`http://147.93.132.53:5000` — confirmado en esta sesión que esa dirección **no es una VPS
+separada**, es el mismo sandbox de esta sesión expuesto en una IP pública (nunca hubo un servidor
+remoto real; el proceso backend corre local, sin `pm2`/`systemd`, se cae si se reinicia el
+sandbox). Ojo con esto en la próxima sesión: no asumir que "el VPS" persiste entre sesiones ni que
+alguien lo mantiene — hay que relevantarlo (`skill run-cotizador`) cada vez. Kevin preguntó por
+automatizar el deploy (`git pull` + restart vía GitHub Action) — se le explicó que no tiene sentido
+mientras el destino sea temporal/indefinido; conviene retomarlo recién en Fase 8 (Deploy) cuando
+se decida Railway/Render.
+
+**Pendiente:** mergear `fix/admin-badge-colores-rol` a `main` (Kevin no lo pidió todavía en esta
+sesión — solo commit + push). Si se quiere tratar como cambio SDD formal en vez de fix suelto,
+faltaría abrir `openspec/changes/` retroactivo o dejarlo así (decisión de Kevin, no crítica).

@@ -91,3 +91,9 @@ export const editarPlanFormaPagoSchema = z.object({
   tasa_rpf: z.number().optional(),
   habilitada: z.boolean().optional(),
 })
+
+// ---- Ramos ----
+
+export const editarRamoSchema = z.object({
+  activo: z.boolean(),
+})

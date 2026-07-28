@@ -18,8 +18,11 @@ import { getBrowser } from '../templates/oferta/pdf-utils.js'
  * sin marca las hojas de overflow cuando el contenido no entra en una sola hoja.
  */
 export async function renderOfertaPdf({ cotizacion, plan, ramo, planCoberturas }) {
+  const t0 = Date.now()
   const browser = await getBrowser()
+  const t1 = Date.now()
   const page = await browser.newPage()
+  const t2 = Date.now()
   try {
     const { html, headerTemplate, footerTemplate, margin } = await buildOfertaHtml({
       cotizacion,
@@ -28,11 +31,13 @@ export async function renderOfertaPdf({ cotizacion, plan, ramo, planCoberturas }
       planCoberturas,
       page,
     })
+    const t3 = Date.now()
     // `waitUntil: 'load'`, no 'networkidle0' -- verificado empíricamente: un segundo setContent()
     // en la MISMA página que ya hizo networkidle0 antes (measureContentHeightMm) nunca resuelve la
     // espera de red inactiva y cuelga hasta el timeout de Puppeteer (30s). 'load' alcanza igual acá
     // porque el HTML de la Carta Oferta es autocontenido (SVG inline, sin fuentes/imagenes externas).
     await page.setContent(html, { waitUntil: 'load' })
+    const t4 = Date.now()
     const pdf = await page.pdf({
       format: 'Legal',
       printBackground: true,
@@ -41,6 +46,10 @@ export async function renderOfertaPdf({ cotizacion, plan, ramo, planCoberturas }
       headerTemplate: headerTemplate ?? '<span></span>',
       footerTemplate: footerTemplate ?? '<span></span>',
     })
+    const t5 = Date.now()
+    console.log(
+      `[perf-oferta] getBrowser=${t1 - t0}ms newPage=${t2 - t1}ms buildOfertaHtml(measure)=${t3 - t2}ms setContent(final)=${t4 - t3}ms page.pdf=${t5 - t4}ms`
+    )
     // page.pdf() devuelve un Uint8Array, no un Buffer de Node — res.send() lo serializa mal
     // como JSON ({"0":37,"1":80,...}) si no se envuelve acá.
     return Buffer.from(pdf)

@@ -38,9 +38,12 @@ const PX_POR_MM = 96 / 25.4
  */
 export async function measureContentHeightMm(page, bodyHtml, cssText, widthMm = 215.9) {
   await page.setViewport({ width: Math.ceil(widthMm * PX_POR_MM), height: 200 })
+  // 'load', no 'networkidle0' — igual que el setContent() final en renderOfertaPdf: el HTML es
+  // autocontenido (SVG inline, sin fuentes/imágenes externas), así que no hay red que esperar y
+  // 'networkidle0' solo suma el timeout de idle (~500ms+) sin ninguna ganancia de precisión.
   await page.setContent(
     `<!doctype html><html><head><style>${cssText}</style></head><body><div class="page"><div class="body">${bodyHtml}</div></div></body></html>`,
-    { waitUntil: 'networkidle0' }
+    { waitUntil: 'load' }
   )
   const heightPx = await page.evaluate(() => document.querySelector('.body').scrollHeight)
   return heightPx / PX_POR_MM

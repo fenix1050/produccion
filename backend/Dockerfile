@@ -1,4 +1,4 @@
-FROM node:20-slim
+FROM node:22-slim
 
 # Dependencias de sistema que Chromium necesita para correr (Puppeteer las requiere
 # para generar los PDF de Carta Oferta / Propuesta Formal).

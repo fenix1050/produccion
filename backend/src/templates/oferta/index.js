@@ -1,5 +1,6 @@
 import { httpError } from '../../utils/http-error.js'
 
+import { buildIncendioOfertaPages } from './incendio.js'
 import {
   renderOferta,
   buildHeaderTemplate,
@@ -11,10 +12,11 @@ import {
 import { buildMrcOfertaPages } from './mrc.js'
 import { measureContentHeightMm } from './pdf-utils.js'
 
-// Un builder de páginas por ramo (calculador). Incendio y Vida-AP quedan pendientes: todavía
-// no tienen texto oficial de Carta Oferta confirmado (ver CLAUDE.md, pendientes activos).
+// Un builder de páginas por ramo (calculador). Vida-AP queda pendiente: todavía no tiene texto
+// oficial de Carta Oferta confirmado (ver CLAUDE.md, pendientes activos).
 const BUILDERS_POR_CALCULADOR = {
   mrc: buildMrcOfertaPages,
+  incendio: buildIncendioOfertaPages,
 }
 
 // Margen de seguridad contra la medición aproximada de measureContentHeightMm (viewport normal,

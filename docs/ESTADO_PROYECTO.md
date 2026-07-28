@@ -1611,6 +1611,103 @@ automatizar el deploy (`git pull` + restart vía GitHub Action) — se le explic
 mientras el destino sea temporal/indefinido; conviene retomarlo recién en Fase 8 (Deploy) cuando
 se decida Railway/Render.
 
+## 34. Template de Carta Oferta de Incendio (2026-07-28)
+
+Sin commitear todavía (trabajo de esta sesión). Kevin pasó el texto legal oficial de los 4 planes
+reales de Incendio (confirmados contra `backend/migrations/038_seed_incendio_3_planes.sql` y la
+constante `NOMBRE_PLAN_MAQUINARIA` de `incendio.calculator.js`): `INCENDIO HIPOTECARIO`,
+`INCENDIO CON INSPECCION`, `INCENDIO SIN INSPECCION` y `MAQUINARIA BASICO` (este último con
+mecánica de cálculo `maquinaria`, distinta a los otros 3 que usan `objeto_riesgo`).
+
+Se creó `backend/src/templates/oferta/incendio.js` siguiendo el mismo patrón de
+`mrc.js` (`buildIncendioOfertaPages({ cotizacion, plan })` → `{ paginaUno, paginaDosFlex,
+paginaDosBalanceada }`), enganchado en `BUILDERS_POR_CALCULADOR` de
+`backend/src/templates/oferta/index.js`. A diferencia de MRC (un solo plan, un solo texto legal
+fijo), Incendio necesita texto distinto por plan — se armó un mapa `TEXTOS_POR_PLAN` keyeado por
+el nombre exacto del plan en DB.
+
+**Decisiones de diseño tomadas por texto incompleto/ambiguo:**
+
+- `MAQUINARIA BASICO` quedó sin secciones "Exclusiones"/"Recomendaciones" — el texto que pasó
+  Kevin no las incluía. No se rellenaron con contenido de otro plan; el bloque simplemente se
+  omite para ese plan (verificado con test que confirma que esos títulos no aparecen en su HTML).
+- El placeholder `INSPECCION DE RIESGO No. XXXX/XXXX realizada en fecha XX de XXXXXXX de XXXX`
+  (plan con inspección) queda **literal** en el PDF — no hay campo de número/fecha de inspección
+  puntual en `riesgo_datos` ni en el modelo de cotización del que interpolarlo hoy. Si Kevin
+  confirma que ese dato se va a cargar en algún lado, esto se puede resolver después.
+- Fallback si `plan.nombre` no matchea ninguna key conocida: en vez de romper, muestra un bloque
+  único "Texto legal pendiente de carga para el plan «X»" — mismo criterio defensivo que usa
+  `mrc.js` para catálogo ausente.
+- **Fuera de alcance a propósito** (ya lo estaba desde el cambio `incendio-3-planes-y-moneda`,
+  sección 32): las 5 cláusulas obligatorias de Hipotecario que quedaron guardadas en DB
+  (`ramosRepository.findClausulasObligatoriasByPlanId`) NO se renderizan en este PDF — es un gap
+  conocido, pendiente de un cambio aparte si Kevin lo pide.
+
+Tests: `backend/src/templates/oferta/incendio.test.js` (5/5 verde, uno por plan + fallback).
+Commiteado en rama nueva `feat/incendio-carta-oferta-pdf` (creada a propósito, la rama de trabajo
+de esta sesión era `fix/node22-supabase-realtime` y no correspondía a este cambio). Verificado en
+vivo end-to-end (ver sección 35) — los 3 planes de mecánica `objeto_riesgo` confirmados con PDF
+real generado por la API, texto correcto sin mezcla entre planes.
+
+**Correcciones aparte, commiteadas en la misma rama** (no relacionadas al PDF en sí, encontradas
+sin querer al verificarlo en vivo):
+
+- `fix(a11y)`: `<main>` semántico en admin + contraste de `--tajy-green-fg` (cambio que ya estaba
+  suelto en el working directory al empezar la sesión).
+- `fix(cotizaciones)`: ver sección 35 — dos bugs reales de `crearCotizacion`/`numero_variante`.
+
+## 35. Bugs reales encontrados al verificar en vivo el PDF de Incendio (2026-07-28)
+
+Verificar el template de Incendio en vivo (sección 34) reventó dos bugs preexistentes, sin
+relación con el PDF en sí — el template estaba bien, lo que rompía era la creación de la
+cotización antes de llegar al PDF.
+
+**Bug 1 — `cotizacion_variantes.numero_variante` con `UNIQUE` global en vez de por-cotización.**
+La columna se puebla desde `nextNumeroCorrelativo(ramoId)` (RPC `siguiente_correlativo`, un
+contador **por ramo**), pero la migración 005 la declaró `UNIQUE` a nivel de toda la tabla. En
+cuanto el contador de un ramo alcanza un número que otro ramo ya usó (ej. Incendio llegando a "7"
+cuando MRC, que tiene muchísimas más cotizaciones, ya usó ese "7" hace rato), el INSERT revienta
+con `duplicate key value violates unique constraint "cotizacion_variantes_numero_variante_key"` —
+500 en `Emitir carta oferta`. Confirmado con `rg -n "numero_variante"` que la columna no se
+muestra en ningún lado (frontend ni PDF) — es puramente interno, solo necesita ser distinta
+dentro de la misma cotización. Corregido con la migración **042**
+(`ALTER TABLE ... DROP CONSTRAINT ... numero_variante_key; ALTER TABLE ... ADD CONSTRAINT UNIQUE
+(cotizacion_id, numero_variante)`), aplicada contra Supabase real. `nextNumeroCorrelativo` no se
+tocó — el bug era solo el scope del constraint, no la generación.
+
+**Bug 2 — `crearCotizacion` no atómico, dejaba cotizaciones huérfanas.** Cuando el Bug 1 (o
+cualquier otra falla) rompía `insertarCoberturasYVariantes`, la cabecera de `cotizaciones` ya
+insertada quedaba persistida sin ninguna variante — huérfana, con un `numero_cotizacion` quemado
+que nunca se reutiliza, y rompiendo cualquier intento posterior de generar su Carta Oferta.
+`actualizarCotizacion` ya tenía este problema resuelto (inserta lo nuevo antes de tocar lo viejo,
+ver comentario en el código) pero `crearCotizacion` no. Corregido envolviendo la segunda mitad de
+`crearCotizacion` en un try/catch: si falla, borra la cabecera recién creada
+(`cotizacionesRepository.deleteCotizacion`, nuevo — usa el `ON DELETE CASCADE` ya existente hacia
+variantes/coberturas) y relanza el error original sin envolverlo.
+
+**Verificación**: fix hecho con TDD (test rojo→verde en `cotizacion.service.test.js`, mockeando el
+segundo fallo). Suite completa: 101/101 verde. Confirmado además en vivo, end-to-end por browser
+real: los 3 planes de Incendio (Hipotecario, con/sin Inspección) crean cotización + generan PDF
+sin error, con su variante persistida en la base real (antes: 500 consistente en los 3).
+
+**Limpieza de datos**: se encontraron y borraron 4 cotizaciones huérfanas reales en la base
+(`INCENDIO-5/7/9/11`, ids 147-150) generadas durante la verificación, antes del fix. Las
+cotizaciones de prueba generadas DESPUÉS del fix (`INCENDIO-13/15/17/19`, ids 151-154, cliente
+"Cliente QA Incendio", con variante OK) se dejaron sin borrar a pedido de Kevin — mismo criterio
+que otras sesiones de QA en vivo.
+
+**Corrección a un dato de `docs/ESTADO_PROYECTO.md` sección 33**: la nota de que
+`147.93.132.53` "no es una VPS separada, es el mismo sandbox" quedó desactualizada. Confirmado en
+esta sesión: ahora SÍ hay un deploy Docker real y persistente en esa IP (contenedores
+`cotizador-tajy-backend` + `cotizador-tajy-caddy`, reverse proxy HTTPS en
+`147-93-132-53.sslip.io`, que es a donde apunta el frontend de Vercel) — coincide con los commits
+recientes `fix(deploy): usar Node 22 en la imagen de Docker` / `saltar scripts de npm en el build
+de Docker`. Lo que sí seguía siendo cierto es que además de eso hay procesos `node
+src/server.js` sueltos en el host (fuera de Docker, sin `pm2`/`systemd`), leftover de sesiones QA
+anteriores directamente en el puerto 3000 — no forman parte del deploy real, se acumulan sesión
+tras sesión si no se matan. Uno de esos procesos tenía cargado un `FRONTEND_URL` viejo que causó
+un rato de confusión por CORS al levantar el backend local de esta sesión.
+
 **Pendiente:** mergear `fix/admin-badge-colores-rol` a `main` (Kevin no lo pidió todavía en esta
 sesión — solo commit + push). Si se quiere tratar como cambio SDD formal en vez de fix suelto,
 faltaría abrir `openspec/changes/` retroactivo o dejarlo así (decisión de Kevin, no crítica).

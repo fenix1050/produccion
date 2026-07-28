@@ -1,0 +1,4 @@
+{
+  "buildCommand": "printf \"window.API_BASE_URL = '%s'\\n\" \"$API_BASE_URL\" > shared/config.js",
+  "outputDirectory": "."
+}

@@ -59,11 +59,23 @@ export async function crearCotizacion(body, usuario) {
       : {}),
   })
 
-  await insertarCoberturasYVariantes({
-    cotizacionId: cotizacion.id,
-    ramoId: ramo.id,
-    variantesCalculadas,
-  })
+  try {
+    await insertarCoberturasYVariantes({
+      cotizacionId: cotizacion.id,
+      ramoId: ramo.id,
+      variantesCalculadas,
+    })
+  } catch (error) {
+    // Rollback manual: sin esto, la cabecera insertada arriba queda huérfana (sin variantes) si
+    // este paso falla (ej. duplicate-key del Bug 1, o cualquier otra falla de red/RPC) — rompe la
+    // generación de Carta Oferta más tarde y quema un `numero_cotizacion` que nunca se reutiliza.
+    // Mismo espíritu que el comentario de `actualizarCotizacion` sobre no dejar estados
+    // intermedios rotos, pero acá el mecanismo es un DELETE compensatorio (no hay nada previo que
+    // preservar: la cabecera se acaba de crear en este mismo call). Se re-lanza el error original
+    // sin envolverlo para no ocultar la causa real.
+    await cotizacionesRepository.deleteCotizacion(cotizacion.id)
+    throw error
+  }
 
   return cotizacionesRepository.findCotizacionById(cotizacion.id)
 }

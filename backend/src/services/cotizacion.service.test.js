@@ -203,6 +203,90 @@ test('resolución de tasa por objeto de riesgo con override de plan gana sobre l
   assert.equal(resultado.detalle.costo_edificio, 5_000)
 })
 
+test('crearCotizacion borra la cabecera recién creada y re-lanza el error original si insertarCoberturasYVariantes falla', async (t) => {
+  invalidarCacheCatalogos()
+
+  const errorOriginal = new Error('duplicate key value violates unique constraint')
+  const cotizacionesInsertadas = []
+  const idsBorrados = []
+  let llamadasCorrelativo = 0
+
+  t.mock.module('../repositories/ramos.repository.js', {
+    exports: {
+      findPlanById: async () => PLAN_OBJETO_RIESGO,
+      findRamoById: async () => RAMO_INCENDIO,
+      findFormasPagoDelPlan: async () => FORMAS_PAGO_CONTADO,
+      findCoberturasByPlanId: async () => [],
+    },
+  })
+
+  t.mock.module('../repositories/coberturas.repository.js', {
+    exports: {
+      findRubroPorNombre: async () => null,
+      findCoberturasCatalogoByRamoId: async () => [
+        { codigo: 'incendio_edificio', nombre: 'Incendio de Edificio', franquicia_default: null },
+      ],
+      findTasasCoberturaRamo: async () => [],
+      findTasasRiesgoObjeto: async () => TASAS_OBJETO_RIESGO_VIVIENDA_FAMILIAR,
+    },
+  })
+
+  t.mock.module('./tipo-cambio.service.js', {
+    exports: {
+      obtenerTipoCambioVigente: async () => ({
+        venta: 7300.75,
+        compra: 7250.5,
+        obtenido_en: '2026-07-27T00:00:00Z',
+        fuente: 'dolarpy:set',
+        origen: 'api',
+        stale: false,
+      }),
+      registrarTipoCambioManual: async () => {},
+    },
+  })
+
+  t.mock.module('../repositories/cotizaciones.repository.js', {
+    exports: {
+      // 1ra llamada: numero_cotizacion del header (crearCotizacion, línea ~40) — debe resolver OK.
+      // 2da llamada: numero_variante dentro de insertarCoberturasYVariantes — acá reproducimos el
+      // duplicate-key del Bug 1 (mismo valor de correlativo colisionando entre ramos).
+      nextNumeroCorrelativo: async () => {
+        llamadasCorrelativo += 1
+        if (llamadasCorrelativo === 1) return 1
+        throw errorOriginal
+      },
+      insertCotizacion: async (cotizacion) => {
+        const fila = { id: 99, ...cotizacion }
+        cotizacionesInsertadas.push(fila)
+        return fila
+      },
+      deleteCotizacion: async (id) => {
+        idsBorrados.push(id)
+      },
+      findCotizacionById: async (id) => ({ id }),
+      insertCoberturas: async () => [],
+      insertVariante: async () => ({ id: 1 }),
+      insertPlanesPago: async () => [],
+      insertAjustes: async () => [],
+      deleteVariantesByIds: async () => {},
+      deleteCoberturasByIds: async () => {},
+    },
+  })
+
+  const { crearCotizacion } = await import('./cotizacion.service.js?case=crear-rollback-error')
+
+  await assert.rejects(
+    () => crearCotizacion(bodyBase({ moneda: 'PYG' }), USUARIO),
+    (err) => {
+      assert.equal(err, errorOriginal, 'debe re-lanzar el error original sin envolverlo')
+      return true
+    }
+  )
+
+  assert.equal(cotizacionesInsertadas.length, 1)
+  assert.deepEqual(idsBorrados, [99], 'debe borrar la cabecera recién creada exactamente una vez')
+})
+
 test('actualizarCotizacion con nueva moneda:USD persiste moneda + snapshot en el UPDATE', async (t) => {
   invalidarCacheCatalogos()
   const cotizacionExistente = {

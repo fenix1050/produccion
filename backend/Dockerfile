@@ -30,7 +30,7 @@ WORKDIR /app
 # por eso el build context es el repo completo y no solo esta carpeta.
 COPY package.json package-lock.json ./
 COPY backend/package.json ./backend/package.json
-RUN npm ci --omit=dev --workspace=backend
+RUN npm ci --omit=dev --workspace=backend --ignore-scripts
 
 COPY backend ./backend
 

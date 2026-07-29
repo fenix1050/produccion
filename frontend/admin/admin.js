@@ -739,25 +739,28 @@ async function seleccionarRamoTasas(ramoId) {
     cargarTasasDeRamo(state.ramoTasasSeleccionado),
     cargarCatalogoDeRamo(state.ramoTasasSeleccionado),
   ]
-  if (ramoUsaRubrosActividad(state.ramoTasasSeleccionado) && state.rubrosActividad.datos == null) {
-    tareas.push(cargarRubrosActividad())
+  if (ramoUsaRubrosActividad(state.ramoTasasSeleccionado)) {
+    // Cambio "incendio-tasas-por-rubro": el catálogo ahora se filtra por ramo
+    // (rubro_actividad_ramo), así que MRC e Incendio ya NO comparten la misma lista —
+    // hay que refetchear al cambiar de ramo, no cachear una sola vez para siempre.
+    tareas.push(cargarRubrosActividad(state.ramoTasasSeleccionado))
   }
   await Promise.all(tareas)
 }
 
-// rubros_actividad es compartida entre MRC e Incendio (no tiene ramo_id propio) —
-// se muestra solo cuando el ramo seleccionado es uno de esos dos (nombre = slug, no
-// nombre_display), evita mostrarla para Vida/AP u otros ramos que no la usan.
+// rubros_actividad se muestra solo cuando el ramo seleccionado es uno de los que la
+// usan (nombre = slug, no nombre_display); evita mostrarla para Vida/AP u otros ramos
+// que no la usan.
 function ramoUsaRubrosActividad(ramoId) {
   const ramo = state.ramos.find((r) => String(r.id) === String(ramoId))
   return ramo?.nombre === 'mrc' || ramo?.nombre === 'incendio'
 }
 
-async function cargarRubrosActividad() {
+async function cargarRubrosActividad(ramoId) {
   state.rubrosActividad = { loading: true, error: '', datos: state.rubrosActividad.datos ?? [] }
   renderApp()
   try {
-    const datos = await api.get('/admin/rubros-actividad')
+    const datos = await api.get(`/admin/rubros-actividad?ramo_id=${ramoId}`)
     state.rubrosActividad = { loading: false, error: '', datos }
   } catch (err) {
     state.rubrosActividad = {

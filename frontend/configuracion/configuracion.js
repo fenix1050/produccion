@@ -162,7 +162,7 @@ function renderPerfilHeader() {
     ? 'Administrador'
     : usuario?.rol === 'agente'
       ? 'Agente'
-      : 'Analista comercial'
+      : usuario?.rol || 'Agente'
   const iniciales =
     nombreAgente
       .split(' ')
@@ -207,7 +207,7 @@ function renderApp() {
     ? 'Administrador'
     : usuario?.rol === 'agente'
       ? 'Agente'
-      : 'Analista comercial'
+      : usuario?.rol || 'Agente'
 
   app.innerHTML = `
     ${renderTopbar()}

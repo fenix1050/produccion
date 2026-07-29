@@ -70,7 +70,7 @@ export function renderTopbarUser(active) {
     ? 'Administrador'
     : usuario?.rol === 'agente'
       ? 'Agente'
-      : 'Analista comercial'
+      : usuario?.rol || 'Agente'
   const inicial = nombreAgente.trim().charAt(0).toUpperCase() || 'A'
   const mostrarAccesoAdmin = auth.tieneAccesoAdmin() && active !== 'admin'
 

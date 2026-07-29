@@ -14,10 +14,19 @@
   margin-bottom: 18px;
 }
 
+/* span 2 columnas del grid en vez de 1: con "Buscar" + "Limpiar filtros" lado a lado, una
+   sola columna auto-fit (min 150px) no alcanza y el texto del botón outline se corta a 2
+   líneas, quedando más alto que "Buscar" — ver nowrap abajo para reforzarlo. */
 .historial-filtros__acciones {
   display: flex;
   gap: 10px;
   align-items: center;
+  grid-column: span 2;
+}
+
+.historial-filtros__acciones .btn-primary,
+.historial-filtros__acciones .btn-outline {
+  white-space: nowrap;
 }
 
 .historial-filtros__campo {
@@ -30,6 +39,14 @@
   font-size: 11.5px;
   font-weight: 600;
   color: var(--tajy-text-body);
+}
+
+/* select/date/text comparten .field-input pero el navegador les da una altura intrínseca
+   distinta (el <select> y el <input type="date"> traen su propio chrome nativo) — fijamos
+   altura y line-height acá para que las 5 columnas queden alineadas sobre la misma línea. */
+.historial-filtros__campo .field-input {
+  height: 40px;
+  line-height: 1.3;
 }
 
 .historial-paginacion {

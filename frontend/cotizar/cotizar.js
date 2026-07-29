@@ -408,7 +408,10 @@ async function cargarParaEditar(id) {
 
   if (ramo.nombre === 'mrc' || ramo.nombre === 'incendio') {
     try {
-      state.rubros = await api.get('/ramos/rubros-actividad')
+      // Cambio "incendio-tasas-por-rubro": el catálogo ahora se filtra por ramo
+      // (rubro_actividad_ramo) — cada ramo trae solo sus propios rubros, ya no la
+      // lista compartida sin filtrar entre MRC/Incendio/TRO.
+      state.rubros = await api.get(`/ramos/rubros-actividad?ramo_id=${ramo.id}`)
     } catch (err) {
       console.error('No se pudieron cargar los tipos de riesgo', err)
       state.rubros = []
@@ -573,10 +576,10 @@ async function selectRamo(nombre) {
 
     if (nombre === 'mrc' || nombre === 'incendio') {
       try {
-        // Sin filtro de grupo: la pantalla "Tipo de Riesgo" del sistema de escritorio
-        // muestra los 49 rubros juntos (MRC y TRO comparten la misma lista visual). Incendio
-        // solo usa esta lista para el plan "Edificio y Contenido" (Maquinaria Básico no).
-        state.rubros = await api.get('/ramos/rubros-actividad')
+        // Cambio "incendio-tasas-por-rubro": filtrado por ramo (rubro_actividad_ramo).
+        // Incendio solo usa esta lista para el plan "Edificio y Contenido" (Maquinaria
+        // Básico no); un rubro multi-ramo (ej. "CHANCHERIAS") aparece en ambos selectores.
+        state.rubros = await api.get(`/ramos/rubros-actividad?ramo_id=${ramo.id}`)
       } catch (err) {
         console.error('No se pudieron cargar los tipos de riesgo', err)
         state.rubros = []

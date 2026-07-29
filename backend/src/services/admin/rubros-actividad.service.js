@@ -3,8 +3,8 @@ import { httpError } from '../../utils/http-error.js'
 
 // rubros_actividad no tiene vigente_desde/versionado (a diferencia de
 // tasas_cobertura_ramo) — se edita con UPDATE directo, mismo patrón que editarPlan.
-export async function listarRubrosActividad(grupo) {
-  return coberturasRepository.findRubrosActividad(grupo)
+export async function listarRubrosActividad(ramoId) {
+  return coberturasRepository.findRubrosActividad(ramoId)
 }
 
 export async function editarRubroActividad(id, cambios) {

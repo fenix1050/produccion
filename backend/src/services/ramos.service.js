@@ -17,8 +17,8 @@ export async function listarClausulasObligatoriasDePlan(planId) {
   return ramosRepository.findClausulasObligatoriasByPlanId(planId)
 }
 
-export async function listarRubrosActividad(grupo) {
-  return coberturasRepository.findRubrosActividad(grupo)
+export async function listarRubrosActividad(ramoId) {
+  return coberturasRepository.findRubrosActividad(ramoId)
 }
 
 export async function listarCoberturasCatalogoDeRamo(ramoId) {

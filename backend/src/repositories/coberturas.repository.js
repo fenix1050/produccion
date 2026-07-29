@@ -4,16 +4,29 @@ import { supabase } from '../config/supabase.js'
 // "Otros Riesgos" (MRC, Incendio, TRO...). Ver sección 4 de PLAN_DESARROLLO.md.
 
 /**
- * @param {string} [grupo] - 'MRC' | 'TRO' | undefined (todos)
+ * Rubros de actividad ofrecidos por UN ramo (cambio "incendio-tasas-por-rubro"): la
+ * pertenencia rubro↔ramo ya no vive en el escalar `rubros_actividad.grupo` (legacy,
+ * un solo valor, no se toca acá) sino en la relación muchos-a-muchos
+ * `rubro_actividad_ramo`. `!inner` convierte el embed en JOIN real — sin él,
+ * PostgREST devolvería TODOS los rubros con el embed en `[]` cuando no matchea, en
+ * vez de filtrar. La PK compuesta de `rubro_actividad_ramo` garantiza <=1 fila por
+ * (rubro, ramo), así que el JOIN no puede duplicar un rubro multi-ramo dentro de la
+ * respuesta de un mismo ramo.
+ *
+ * @param {number} ramoId
  */
-export async function findRubrosActividad(grupo) {
+export async function findRubrosActividad(ramoId) {
   // order('id'): conserva el orden real de la pantalla "Tipo de Riesgo" del sistema de
   // escritorio (orden de inserción de la migración 012), no alfabético.
-  let query = supabase.from('rubros_actividad').select('*').order('id')
-  if (grupo) query = query.eq('grupo', grupo)
-  const { data, error } = await query
+  const { data, error } = await supabase
+    .from('rubros_actividad')
+    .select('*, rubro_actividad_ramo!inner(ramo_id)')
+    .eq('rubro_actividad_ramo.ramo_id', ramoId)
+    .order('id')
   if (error) throw error
-  return data
+  // El embed no es parte del contrato público del endpoint (misma forma que antes
+  // de este cambio) — se descarta acá, no en el controller/service.
+  return data.map(({ rubro_actividad_ramo: _pertenencia, ...rubro }) => rubro)
 }
 
 /**

@@ -117,3 +117,77 @@ test('findTasasRiesgoObjeto: tipo de riesgo existe pero sin ninguna tasa confirm
 
   assert.equal(resultado, null)
 })
+
+// ---- findRubrosActividad (cambio "incendio-tasas-por-rubro", grupo 6) ----
+// El filtro pasa de `.eq('grupo', ...)` a un JOIN `!inner` contra la tabla nueva
+// `rubro_actividad_ramo`, filtrando por `ramo_id`. El repositorio descarta la
+// propiedad del embed antes de devolver, para no cambiar la forma de la fila.
+
+function mockearSupabaseRubros(t, { data, error = null }) {
+  const llamadas = { select: [], eq: [], order: [] }
+  t.mock.module('../config/supabase.js', {
+    exports: {
+      supabase: {
+        from(tabla) {
+          assert.equal(tabla, 'rubros_actividad')
+          const builder = {
+            select: (arg) => {
+              llamadas.select.push(arg)
+              return builder
+            },
+            eq: (columna, valor) => {
+              llamadas.eq.push([columna, valor])
+              return builder
+            },
+            order: (columna) => {
+              llamadas.order.push(columna)
+              return Promise.resolve({ data, error })
+            },
+          }
+          return builder
+        },
+      },
+    },
+  })
+  return llamadas
+}
+
+test('findRubrosActividad: el select lleva !inner y filtra por rubro_actividad_ramo.ramo_id', async (t) => {
+  const llamadas = mockearSupabaseRubros(t, {
+    data: [{ id: 1, nombre: 'VIVIENDA', rubro_actividad_ramo: [{ ramo_id: 3 }] }],
+  })
+
+  const { findRubrosActividad } = await import('./coberturas.repository.js?case=select-inner')
+  await findRubrosActividad(3)
+
+  assert.ok(llamadas.select.some((arg) => /rubro_actividad_ramo!inner/.test(arg)))
+  assert.ok(
+    llamadas.eq.some(
+      ([columna, valor]) => columna === 'rubro_actividad_ramo.ramo_id' && valor === 3
+    )
+  )
+})
+
+test('findRubrosActividad: la fila devuelta NO trae la propiedad del embed', async (t) => {
+  mockearSupabaseRubros(t, {
+    data: [{ id: 1, nombre: 'VIVIENDA', rubro_actividad_ramo: [{ ramo_id: 3 }] }],
+  })
+
+  const { findRubrosActividad } = await import('./coberturas.repository.js?case=sin-embed')
+  const resultado = await findRubrosActividad(3)
+
+  assert.equal(resultado.length, 1)
+  assert.equal('rubro_actividad_ramo' in resultado[0], false)
+  assert.deepEqual(resultado[0], { id: 1, nombre: 'VIVIENDA' })
+})
+
+test('findRubrosActividad: un rubro multi-ramo aparece exactamente una vez por ramo consultado', async (t) => {
+  // El fixture ya simula lo que Supabase devolvería para CADA consulta (una por ramo);
+  // lo que se prueba es que el repositorio no duplica ni pierde la fila en ninguna.
+  mockearSupabaseRubros(t, {
+    data: [{ id: 5, nombre: 'CHANCHERIAS', rubro_actividad_ramo: [{ ramo_id: 2 }] }],
+  })
+  const { findRubrosActividad } = await import('./coberturas.repository.js?case=multi-ramo-mrc')
+  const resultadoMrc = await findRubrosActividad(2)
+  assert.equal(resultadoMrc.filter((r) => r.id === 5).length, 1)
+})

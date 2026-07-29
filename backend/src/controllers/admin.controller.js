@@ -12,6 +12,7 @@ import {
   editarPlanFormaPagoSchema,
   editarRamoSchema,
 } from '../schemas/admin.schema.js'
+import { rubrosActividadQuerySchema } from '../schemas/ramos.schema.js'
 import * as planesService from '../services/admin/planes.service.js'
 import * as ramosService from '../services/admin/ramos.service.js'
 import * as rolesService from '../services/admin/roles.service.js'
@@ -19,6 +20,7 @@ import * as rubrosActividadService from '../services/admin/rubros-actividad.serv
 import * as tasasCoberturaService from '../services/admin/tasas-cobertura.service.js'
 import * as usuariosService from '../services/admin/usuarios.service.js'
 import { invalidarCacheCatalogos } from '../services/cache.js'
+import { httpError } from '../utils/http-error.js'
 
 // --- Usuarios ---
 
@@ -178,9 +180,16 @@ export async function eliminarTasa(req, res, next) {
   }
 }
 
+// Cambio "incendio-tasas-por-rubro": mismo contrato que GET /ramos/rubros-actividad —
+// `ramo_id` obligatorio, 400 sin él. El parámetro legacy `grupo` deja de interpretarse
+// (ya era código muerto: frontend/admin/admin.js no lo enviaba).
 export async function listarRubrosActividad(req, res, next) {
   try {
-    res.json(await rubrosActividadService.listarRubrosActividad(req.query.grupo))
+    const parseo = rubrosActividadQuerySchema.safeParse(req.query)
+    if (!parseo.success) {
+      throw httpError(400, parseo.error.issues.map((i) => i.message).join('; '))
+    }
+    res.json(await rubrosActividadService.listarRubrosActividad(parseo.data.ramo_id))
   } catch (err) {
     next(err)
   }

@@ -1712,13 +1712,12 @@ un rato de confusión por CORS al levantar el backend local de esta sesión.
 sesión — solo commit + push). Si se quiere tratar como cambio SDD formal en vez de fix suelto,
 faltaría abrir `openspec/changes/` retroactivo o dejarlo así (decisión de Kevin, no crítica).
 
-## 36. Incendio — tasas por rubro de actividad (~207 rubros) + pertenencia rubro-ramo (2026-07-29, código listo, migraciones SIN aplicar)
+## 36. Incendio — tasas por rubro de actividad (~207 rubros) + pertenencia rubro-ramo (2026-07-29, migraciones aplicadas y verificadas)
 
-Cambio SDD `incendio-tasas-por-rubro` (ver `openspec/changes/incendio-tasas-por-rubro/`).
-Implementado hasta el punto en que se requiere una decisión de Kevin — código y migraciones
-escritos, pero **las dos migraciones SQL (043 y 044) NO fueron aplicadas contra Supabase real**,
-a propósito: son cambios sobre la base de producción de un cliente real y quedan pendientes de
-confirmación humana.
+Cambio SDD `incendio-tasas-por-rubro` (ver `openspec/changes/incendio-tasas-por-rubro/`, PR #38).
+Código completo y **las dos migraciones SQL (043 y 044) ya fueron aplicadas contra Supabase real**
+el 2026-07-29, tras la revisión de Kevin del reporte de warnings (ver bloque de warnings más abajo)
+y su confirmación explícita: "apliquemos tal cual".
 
 **Hecho (verificado con `npm test --prefix backend`: 128/128 en verde, sin regresión sobre los
 101 previos):**
@@ -1754,34 +1753,54 @@ confirmación humana.
   cacheaba una sola vez para toda la sesión, lo cual ya no es válido porque MRC e Incendio dejan
   de compartir la misma lista).
 
-**BLOQUEANTE para Kevin antes de aplicar 044 (`tasa_minima` vs. derivación 40/60%):** de los 184
-rubros nuevos, **176 (~96%) activarían el clamp del calculador** (`incendio.calculator.js`)
-porque `0.4 × tasa_global < tasa_minima` — la tasa mínima histórica del pivot es, para la enorme
-mayoría de los rubros, prácticamente igual a la tasa global (muchos rubros tienen una sola
-cotización histórica, así que min = max = global), y el objeto más bajo del desglose (Edificio/
-Instalaciones al 40%) cae sistemáticamente por debajo de ese mínimo. Efecto: no rompe (no da 422),
-pero distorsiona la prima porque cada cotización de esos rubros terminaría clampeada al mínimo
-histórico en vez de usar la derivación 40/60%. Alternativas para Kevin: (a) aplicar 044 tal cual
-y aceptar el clamp por ahora (queda editable después vía `UPDATE tasas_riesgo_objeto`/panel
-admin, sin cambio de código); (b) ajustar `tasa_minima` con un `UPDATE` antes de aplicar 044 para
-los rubros más críticos. El reporte completo de los 184 warnings (rubro por fila, con los valores
-exactos) está en el historial de esta sesión / Engram `sdd/incendio-tasas-por-rubro/apply-progress`
-y se le entregó íntegro en el resultado de esta tarea. Aparte: 7 warnings de "tasa_global fuera de
-[min,max]" son ruido de precisión de punto flotante (diferencias del orden de 1e-15), no una
-anomalía real de negocio.
+**Decisión de Kevin sobre `tasa_minima` vs. derivación 40/60% (clamp del calculador):** de los 184
+rubros nuevos, **176 (~96%) activan el clamp del calculador** (`incendio.calculator.js`) porque
+`0.4 × tasa_global < tasa_minima` — la tasa mínima histórica del pivot es, para la enorme mayoría
+de los rubros, prácticamente igual a la tasa global (muchos rubros tienen una sola cotización
+histórica, así que min = max = global), y el objeto más bajo del desglose (Edificio/Instalaciones
+al 40%) cae sistemáticamente por debajo de ese mínimo. Efecto: no rompe (no da 422), pero
+distorsiona la prima porque cada cotización de esos rubros queda clampeada al mínimo histórico en
+vez de usar la derivación 40/60%. **Kevin confirmó explícitamente "apliquemos tal cual"**: se
+acepta el clamp por ahora, sin inventar un piso — queda editable después vía `UPDATE
+tasas_riesgo_objeto`/panel admin, sin cambio de código, rubro por rubro si aparecen primas raras en
+el uso real. Aparte: 7 warnings de "tasa_global fuera de [min,max]" son ruido de precisión de
+punto flotante (diferencias del orden de 1e-15), no una anomalía real de negocio.
 
-**Pendiente (en orden):**
+**Migraciones aplicadas y verificadas contra Supabase real (2026-07-29):**
 
-1. Kevin revisa el reporte de warnings y decide sobre el clamp (arriba).
-2. Aplicar `043_rubro_actividad_ramo.sql` contra Supabase real, verificar asserts.
-3. Aplicar `044_seed_tasas_incendio_rubros.sql`, verificar asserts.
-4. Deploy de backend + frontend JUNTOS (el backend pasa a exigir `ramo_id`, 400 sin él — desplegar
-   uno solo rompe el selector de "Tipo de Riesgo").
-5. Verificación en vivo (tasks.md grupo 9): conteos por ramo, multi-ramo sin duplicados, cotizar
-   rubros nuevos sin 422, `grupo IS NULL` sigue siendo 5.
-6. **Follow-up explícito, fuera de este cambio**: `DROP COLUMN rubros_actividad.grupo` (queda
+- `043_rubro_actividad_ramo.sql`: los 3 asserts en verde (backfill 1:1 sin residuo, 8 filas
+  explícitas completas, 0 rubros huérfanos).
+- `044_seed_tasas_incendio_rubros.sql`: los 3 asserts en verde. Resultado: 206
+  `tipos_riesgo_incendio` (205 nuevos + VIVIENDA preexistente sin cambios: 0.90/0.90/1.34/1.34),
+  824 `tasas_riesgo_objeto` (206 × 4, exacto).
+- Verificación cruzada independiente contra el `.sql` commiteado (no solo contra los asserts):
+  TRACTOR, VIVIENDA y SILOS coinciden byte a byte entre archivo y base real.
+- Conteo por ramo tras el cambio: `incendio` 209, `mrc` 18 (15 originales + los 3 multi-ramo:
+  CONSULTORIO MEDICO, CHANCHERIAS, GRANJA EN GENERAL), `tro` 29 (sin cambios). CONSULTORIO
+  MEDICO/CHANCHERIAS/GRANJA EN GENERAL aparecen en `incendio` **y** `mrc`; VIVIENDA/SILOS solo en
+  `incendio`. 0 rubros huérfanos (todos con al menos una fila de pertenencia).
+- `rubros_actividad` con `grupo IS NULL` pasó de 5 a 189 — **esperado, no un bug**: las 184 filas
+  nuevas nacen con `grupo` NULL a propósito (columna deprecada, no se puebla para filas nuevas).
+- Aplicación técnica: la migración 044 (1652 líneas, 483KB) se aplicó en varios chunks idempotentes
+  (`WHERE NOT EXISTS`/`ON CONFLICT DO NOTHING`, seguro correrlos de a partes o repetirlos). Un
+  chunk de tasas por objeto tuvo un error de transcripción manual al aplicarlo (rollback atómico,
+  sin corrupción); se resolvió aplicando la fórmula genérica confirmada (`edificio = instalaciones
+= ROUND(tasa_global × 0.4, 2)`, `contenido_mueble_equipos = contenido_mercaderia =
+ROUND(tasa_global × 0.6, 2)`) en un solo `INSERT ... SELECT` guardado, verificado sin
+  discrepancias contra las 820 filas fuente antes de aplicar.
+
+**Pendiente:**
+
+1. **9.3 de `tasks.md`**: cotizar 3-4 rubros nuevos en vivo sin recibir 422 — requiere credenciales
+   de login que no estaban disponibles en la sesión que aplicó las migraciones. Falta que Kevin lo
+   confirme con la app corriendo, o pase un usuario de QA.
+2. Deploy de backend + frontend JUNTOS a producción (el backend ya exige `ramo_id`, 400 sin él —
+   desplegar uno solo rompe el selector de "Tipo de Riesgo"). El código está en la rama
+   `sdd/incendio-tasas-por-rubro` (PR #38), sin mergear a `main` todavía.
+3. **Follow-up explícito, fuera de este cambio**: `DROP COLUMN rubros_actividad.grupo` (queda
    legacy de solo lectura desde este cambio — ya no la lee ningún código nuevo, pero se conserva
    por ahora para no forzar un `DROP` de golpe); UI de admin dedicada para
    `tipos_riesgo_incendio`/`tasas_riesgo_objeto` (hoy se edita por SQL/`UPDATE` directo, que ya
    cumple el requisito de "editable sin cambio de código"); definir tasas de Incendio para los 27
-   rubros fuera de alcance.
+   rubros fuera de alcance; revisar caso por caso los 176 rubros con clamp activo si en el uso real
+   se detectan primas distorsionadas.

@@ -15,7 +15,7 @@ de forma incompatible (`ramo_id` pasa a ser obligatorio).
 - [x] 1.2 En el mismo archivo, BLOQUE 1 — backfill 1:1 de los rubros con `grupo` no-NULL vía `INSERT INTO rubro_actividad_ramo (rubro_id, ramo_id) SELECT ra.id, r.id FROM rubros_actividad ra JOIN ramos r ON r.nombre = lower(ra.grupo) WHERE ra.grupo IS NOT NULL ON CONFLICT DO NOTHING` (nunca una lista escrita a mano) + assert `DO $$` que aborta si el conteo de filas insertadas no coincide con el conteo de rubros con `grupo IS NOT NULL`. Depende de 1.1. `[req: incendio-planes-objeto-riesgo#Ramo-scoped risk-type catalog endpoint]`
 - [x] 1.3 En el mismo archivo, BLOQUE 2 — 8 filas explícitas vía `VALUES` + JOIN por nombre para los 5 rubros con `grupo = NULL`: `VIVIENDA→incendio`, `SILOS→incendio`, `CONSULTORIO MEDICO→{mrc,incendio}`, `CHANCHERIAS→{mrc,incendio}`, `GRANJA EN GENERAL→{mrc,incendio}`, `ON CONFLICT DO NOTHING` + assert que las 8 filas existen (nunca un default masivo). Depende de 1.1. `[req: incendio-planes-objeto-riesgo#Ramo-scoped risk-type catalog endpoint]`
 - [x] 1.4 Cerrar el archivo con el assert final: 0 filas en `rubros_actividad` sin al menos una fila en `rubro_actividad_ramo`. `grupo` no se toca (ni UPDATE ni DROP). Depende de 1.2 y 1.3. `[req: incendio-planes-objeto-riesgo#Ramo-scoped risk-type catalog endpoint]`
-- [ ] 1.5 Aplicar 043 contra Supabase real y verificar en vivo: conteo por ramo vía la tabla nueva == conteo previo por `grupo` para `mrc` y `tro`; `count(*)` de `rubros_actividad` con `grupo IS NULL` sigue siendo 5. Depende de 1.1-1.4.
+- [x] 1.5 Aplicar 043 contra Supabase real y verificar en vivo: conteo por ramo vía la tabla nueva == conteo previo por `grupo` para `mrc` y `tro`; `count(*)` de `rubros_actividad` con `grupo IS NULL` sigue siendo 5. Depende de 1.1-1.4. Aplicada 2026-07-29, asserts en verde.
 
 ## 2. Núcleo puro `tasas-incendio.service.js` (backend, TDD)
 
@@ -32,7 +32,7 @@ de forma incompatible (`ramo_id` pasa a ser obligatorio).
 
 ## 5. Aplicar migración 044
 
-- [ ] 5.1 Aplicar `044_seed_tasas_incendio_rubros.sql` contra Supabase real (`BEGIN;...COMMIT;`, idempotente vía `WHERE NOT EXISTS`/`ON CONFLICT DO NOTHING`) y verificar los asserts: 0 `tipos_riesgo_incendio` sin rubro homónimo carácter a carácter; todo tipo tiene exactamente 4 tasas genéricas; VIVIENDA sigue en 0.90/0.90/1.34/1.34; 0 rubros sin pertenencia en `rubro_actividad_ramo`. Depende de 4.1 (revisión de Kevin completada) y de 1.5. `[req: incendio-planes-objeto-riesgo#Global rate breakdown by risk object, incendio-planes-objeto-riesgo#Rate table is data-driven, not hardcoded per risk type]`
+- [x] 5.1 Aplicar `044_seed_tasas_incendio_rubros.sql` contra Supabase real (`BEGIN;...COMMIT;`, idempotente vía `WHERE NOT EXISTS`/`ON CONFLICT DO NOTHING`) y verificar los asserts: 0 `tipos_riesgo_incendio` sin rubro homónimo carácter a carácter; todo tipo tiene exactamente 4 tasas genéricas; VIVIENDA sigue en 0.90/0.90/1.34/1.34; 0 rubros sin pertenencia en `rubro_actividad_ramo`. Depende de 4.1 (revisión de Kevin completada) y de 1.5. `[req: incendio-planes-objeto-riesgo#Global rate breakdown by risk object, incendio-planes-objeto-riesgo#Rate table is data-driven, not hardcoded per risk type]`. Aplicada 2026-07-29: Kevin confirmó "apliquemos tal cual" (acepta el clamp en ~176 rubros por ahora, ajustable después por UPDATE sin cambio de código). 206 tipos_riesgo_incendio, 824 tasas_riesgo_objeto, los 3 asserts en verde, verificado además contra el .sql commiteado (TRACTOR/VIVIENDA/SILOS coinciden exacto).
 
 ## 6. Backend — filtro por ramo en el catálogo de rubros
 
@@ -59,10 +59,10 @@ Depende del grupo 6 (el backend ya exige `ramo_id`; desplegar frontend antes rom
 
 Depende de que backend (grupo 6) y frontend (grupo 7) se desplieguen JUNTOS (el backend exige `ramo_id`; desplegar uno solo rompe el selector).
 
-- [ ] 9.1 Verificar conteo por ramo vía `rubro_actividad_ramo` == conteo previo por `grupo` para `mrc` y `tro`.
-- [ ] 9.2 Verificar que `CONSULTORIO MEDICO`, `CHANCHERIAS` y `GRANJA EN GENERAL` aparecen tanto en el selector de MRC como en el de Incendio; `VIVIENDA` y `SILOS` solo en el de Incendio.
+- [x] 9.1 Verificar conteo por ramo vía `rubro_actividad_ramo` == conteo previo por `grupo` para `mrc` y `tro`. Verificado 2026-07-29: MRC 18 (15 originales + 3 multi-ramo), TRO 29 (sin cambios) — exacto.
+- [x] 9.2 Verificar que `CONSULTORIO MEDICO`, `CHANCHERIAS` y `GRANJA EN GENERAL` aparecen tanto en el selector de MRC como en el de Incendio; `VIVIENDA` y `SILOS` solo en el de Incendio. Verificado 2026-07-29 vía SQL directo — exacto.
 - [ ] 9.3 Cotizar 3-4 rubros nuevos del pivot en los 3 planes `objeto_riesgo` de Incendio sin recibir 422.
-- [ ] 9.4 Confirmar que un rubro con `grupo IS NULL` original (los 5 casos) sigue siendo 5 tras la migración, y que ningún rubro quedó invisible en todos los ramos.
+- [x] 9.4 Confirmar que ningún rubro quedó invisible en todos los ramos (0 huérfanos, verificado). Nota: `grupo IS NULL` pasó de 5 a 189 — esperado y correcto, no un bug: las 184 filas nuevas de `rubros_actividad` sembradas por 044 nacen con `grupo` NULL a propósito (columna deprecada, ver diseño), no se puebla para filas nuevas.
 - [ ] 9.5 Si PostgREST responde "could not find a relationship" tras aplicar 043, ejecutar `NOTIFY pgrst, 'reload schema'` (Supabase recarga el schema cache solo tras DDL; puede necesitar un empujón manual).
 
 ## 10. Cierre de documentación

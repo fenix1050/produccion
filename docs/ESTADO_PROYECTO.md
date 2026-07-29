@@ -1711,3 +1711,77 @@ un rato de confusión por CORS al levantar el backend local de esta sesión.
 **Pendiente:** mergear `fix/admin-badge-colores-rol` a `main` (Kevin no lo pidió todavía en esta
 sesión — solo commit + push). Si se quiere tratar como cambio SDD formal en vez de fix suelto,
 faltaría abrir `openspec/changes/` retroactivo o dejarlo así (decisión de Kevin, no crítica).
+
+## 36. Incendio — tasas por rubro de actividad (~207 rubros) + pertenencia rubro-ramo (2026-07-29, código listo, migraciones SIN aplicar)
+
+Cambio SDD `incendio-tasas-por-rubro` (ver `openspec/changes/incendio-tasas-por-rubro/`).
+Implementado hasta el punto en que se requiere una decisión de Kevin — código y migraciones
+escritos, pero **las dos migraciones SQL (043 y 044) NO fueron aplicadas contra Supabase real**,
+a propósito: son cambios sobre la base de producción de un cliente real y quedan pendientes de
+confirmación humana.
+
+**Hecho (verificado con `npm test --prefix backend`: 128/128 en verde, sin regresión sobre los
+101 previos):**
+
+- Núcleo puro `backend/src/services/tasas-incendio.service.js` (+ 16 tests): normaliza nombres,
+  parsea el pivot `docs/insumos/Tasa sistema Incendio.xlsx` con Zod, deriva las 4 tasas por
+  objeto (40/40/60/60, regresión de migración 038 confirmada: 2.24% → 0.90/0.90/1.34/1.34), cruza
+  contra el catálogo existente y genera el SQL determinista.
+- CLI `backend/scripts/generar-migracion-tasas-incendio.js`: cero escrituras a la base (solo
+  SELECT de `rubros_actividad`/`tipos_riesgo_incendio`), aborta ante ambigüedad de cruce o
+  regresión de redondeo, reporta warnings por stdout.
+- `backend/migrations/043_rubro_actividad_ramo.sql` (escrita a mano): tabla
+  `rubro_actividad_ramo (rubro_id, ramo_id)` PK compuesta + backfill 1:1 de los rubros con
+  `grupo` NOT NULL + las 8 filas explícitas de los 5 rubros antes `grupo = NULL` (VIVIENDA,
+  SILOS → incendio; CONSULTORIO MEDICO, CHANCHERIAS, GRANJA EN GENERAL → mrc **e** incendio) +
+  asserts. `rubros_actividad.grupo` NO se toca (legacy de solo lectura).
+- `backend/migrations/044_seed_tasas_incendio_rubros.sql` (generada, 1652 líneas): corrida real
+  del script contra el pivot y la base real (solo lecturas). Resultado: 206 filas de pivot →
+  21 reutilizados (cruce por nombre existente), 184 nuevos, 1 ya sembrado (VIVIENDA, correctamente
+  omitido del bloque de tasas — su tasa 2.24%/0.90/0.90/1.34/1.34 no se toca), 27 rubros del
+  catálogo existente sin fila en el pivot (coincide exacto con los 27 "Out of Scope" de
+  `proposal.md`). **Desviación de `tasks.md` 4.1 documentada**: la fila 211 del pivot es
+  "Total general" (fila de totales de la tabla dinámica de Excel, no un rubro real) — se corrió
+  el script con `--hasta 210`, no 211 como decía literalmente la tarea, para no sembrar un tipo
+  de riesgo falso.
+- Backend: `coberturas.repository.js` (`findRubrosActividad`) pasa de `.eq('grupo', ...)` a JOIN
+  `!inner` contra `rubro_actividad_ramo` filtrando por `ramo_id`; `backend/src/schemas/ramos.schema.js`
+  nuevo (`rubrosActividadQuerySchema`); `ramos.controller.js` y `admin.controller.js` (mismo
+  endpoint) exigen `ramo_id` (entero positivo) con 400 si falta/inválido — el parámetro legacy
+  `grupo` deja de interpretarse en ambos.
+- Frontend: `cotizar/cotizar.js` (2 call sites) y `admin/admin.js` (`cargarRubrosActividad`) pasan
+  `ramo_id`/`ramoId`; el panel admin ahora refetchea el catálogo al cambiar de ramo (antes lo
+  cacheaba una sola vez para toda la sesión, lo cual ya no es válido porque MRC e Incendio dejan
+  de compartir la misma lista).
+
+**BLOQUEANTE para Kevin antes de aplicar 044 (`tasa_minima` vs. derivación 40/60%):** de los 184
+rubros nuevos, **176 (~96%) activarían el clamp del calculador** (`incendio.calculator.js`)
+porque `0.4 × tasa_global < tasa_minima` — la tasa mínima histórica del pivot es, para la enorme
+mayoría de los rubros, prácticamente igual a la tasa global (muchos rubros tienen una sola
+cotización histórica, así que min = max = global), y el objeto más bajo del desglose (Edificio/
+Instalaciones al 40%) cae sistemáticamente por debajo de ese mínimo. Efecto: no rompe (no da 422),
+pero distorsiona la prima porque cada cotización de esos rubros terminaría clampeada al mínimo
+histórico en vez de usar la derivación 40/60%. Alternativas para Kevin: (a) aplicar 044 tal cual
+y aceptar el clamp por ahora (queda editable después vía `UPDATE tasas_riesgo_objeto`/panel
+admin, sin cambio de código); (b) ajustar `tasa_minima` con un `UPDATE` antes de aplicar 044 para
+los rubros más críticos. El reporte completo de los 184 warnings (rubro por fila, con los valores
+exactos) está en el historial de esta sesión / Engram `sdd/incendio-tasas-por-rubro/apply-progress`
+y se le entregó íntegro en el resultado de esta tarea. Aparte: 7 warnings de "tasa_global fuera de
+[min,max]" son ruido de precisión de punto flotante (diferencias del orden de 1e-15), no una
+anomalía real de negocio.
+
+**Pendiente (en orden):**
+
+1. Kevin revisa el reporte de warnings y decide sobre el clamp (arriba).
+2. Aplicar `043_rubro_actividad_ramo.sql` contra Supabase real, verificar asserts.
+3. Aplicar `044_seed_tasas_incendio_rubros.sql`, verificar asserts.
+4. Deploy de backend + frontend JUNTOS (el backend pasa a exigir `ramo_id`, 400 sin él — desplegar
+   uno solo rompe el selector de "Tipo de Riesgo").
+5. Verificación en vivo (tasks.md grupo 9): conteos por ramo, multi-ramo sin duplicados, cotizar
+   rubros nuevos sin 422, `grupo IS NULL` sigue siendo 5.
+6. **Follow-up explícito, fuera de este cambio**: `DROP COLUMN rubros_actividad.grupo` (queda
+   legacy de solo lectura desde este cambio — ya no la lee ningún código nuevo, pero se conserva
+   por ahora para no forzar un `DROP` de golpe); UI de admin dedicada para
+   `tipos_riesgo_incendio`/`tasas_riesgo_objeto` (hoy se edita por SQL/`UPDATE` directo, que ya
+   cumple el requisito de "editable sin cambio de código"); definir tasas de Incendio para los 27
+   rubros fuera de alcance.

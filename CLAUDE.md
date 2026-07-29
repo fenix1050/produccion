@@ -94,6 +94,8 @@ Este proyecto se construye **fase por fase**, en este orden fijo (detalle comple
 
 **Próximo paso confirmado con Kevin:** revisar/commitear el template de Incendio, agregar el de Vida/AP (requiere texto oficial), cerrar el cambio con `sdd-verify`/archivo formal si se pide, o retomar Fase 2 (Auto) si se pide.
 
+**Incendio — tasas por rubro de actividad (~207 rubros) + pertenencia rubro-ramo (2026-07-29), código listo, migraciones SIN aplicar.** Cambio SDD `incendio-tasas-por-rubro` (rama `sdd/incendio-tasas-por-rubro`). Implementado: núcleo puro `tasas-incendio.service.js` (16 tests), CLI `generar-migracion-tasas-incendio.js`, migración `043_rubro_actividad_ramo.sql` (tabla nueva `rubro_actividad_ramo`, muchos-a-muchos rubro↔ramo, reemplaza el filtro por el escalar legacy `rubros_actividad.grupo`), migración generada `044_seed_tasas_incendio_rubros.sql`, filtro `ramo_id` obligatorio en `GET /ramos/rubros-actividad` y `GET /admin/rubros-actividad`, y los dos call sites de frontend actualizados. `npm test --prefix backend`: 128/128 verde. Detalle completo, incluido el reporte de warnings del script (176/184 rubros nuevos activarían el clamp del calculador por `tasa_minima` del pivot) y los próximos pasos, en `docs/ESTADO_PROYECTO.md` sección 36. **NINGUNA de las dos migraciones se aplicó contra Supabase real** — quedan pendientes de que Kevin revise el reporte de warnings y confirme.
+
 **Roadmap pre-producción (auditoría integral 2026-07-24, detalle y sprints en `docs/ESTADO_PROYECTO.md` sección 30):** 4 sprints pendientes antes de lanzar sin restricciones — accesibilidad/errores silenciosos, mantenibilidad puntual, RLS/concurrencia/responsive, y sesión httpOnly + logging + modularización. Sprint 1 es condición dura antes de producción sin restricciones.
 
 **Fase 1 de Auto (schema base, importador de tasas) sigue como estaba** — pausado, no se retoma hasta que el cliente lo pida.
@@ -143,6 +145,8 @@ Lista corta de lo que un cambio de código puede pisar sin querer. El detalle co
 - **RPF de "COMERCIO PROTECCION TOTAL"** (MRC): no confirmado — plan desactivado (`activo = FALSE`), no aparece en el selector.
 - **Auto individual (Fase 1/2)**: pausado por prioridad del cliente, no tocar hasta que se reactive.
 - **RLS en Supabase**: 30 tablas de `public` sin RLS. No explotable hoy (frontend nunca habla directo con Supabase), pero requiere decisión de Kevin antes de actuar — no activar sin diseñar policies primero.
+- **Migraciones 043/044 (rubro_actividad_ramo + tasas de Incendio por rubro) sin aplicar**: código y migraciones listos en `sdd/incendio-tasas-por-rubro`, pero NO corridas contra Supabase real — no asumir que el filtro por `ramo_id` ya funciona en producción. Pendiente decisión de Kevin sobre el clamp de `tasa_minima` (ver `docs/ESTADO_PROYECTO.md` sección 36) antes de aplicar. El backend ya exige `ramo_id` en el código de esta rama — al mergear, desplegar backend+frontend juntos.
+- **Follow-up `DROP COLUMN rubros_actividad.grupo`**: la columna queda legacy de solo lectura desde el cambio `incendio-tasas-por-rubro` (reemplazada por `rubro_actividad_ramo`), pero no se borra en ese cambio — pendiente de un DROP explícito más adelante, una vez confirmado que ningún código la lee.
 
 ## Al empezar una sesión nueva
 

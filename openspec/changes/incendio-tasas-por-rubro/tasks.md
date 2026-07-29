@@ -61,9 +61,9 @@ Depende de que backend (grupo 6) y frontend (grupo 7) se desplieguen JUNTOS (el 
 
 - [x] 9.1 Verificar conteo por ramo vía `rubro_actividad_ramo` == conteo previo por `grupo` para `mrc` y `tro`. Verificado 2026-07-29: MRC 18 (15 originales + 3 multi-ramo), TRO 29 (sin cambios) — exacto.
 - [x] 9.2 Verificar que `CONSULTORIO MEDICO`, `CHANCHERIAS` y `GRANJA EN GENERAL` aparecen tanto en el selector de MRC como en el de Incendio; `VIVIENDA` y `SILOS` solo en el de Incendio. Verificado 2026-07-29 vía SQL directo — exacto.
-- [ ] 9.3 Cotizar 3-4 rubros nuevos del pivot en los 3 planes `objeto_riesgo` de Incendio sin recibir 422.
+- [x] 9.3 Cotizar 3-4 rubros nuevos del pivot en los 3 planes `objeto_riesgo` de Incendio sin recibir 422. Verificado 2026-07-29 en vivo (login qatest@test.com, plan INCENDIO HIPOTECARIO/SIN INSPECCION): TRACTOR cotiza OK (tasa efectiva clampeada a 7 = su tasa_minima, según warning); SILOS cotiza OK (tasa efectiva clampeada a 1.1994 = su tasa_minima); CHANCHERIAS (fuera de alcance, sin tasa) da 422 como corresponde — confirma que el filtro por ramo y el clamp funcionan exactamente como se diseñó. Nota: el backend corriendo en :3000 era un proceso viejo (arrancado 28/07) que no había recogido el código nuevo por `--watch`; se reinició para esta verificación.
 - [x] 9.4 Confirmar que ningún rubro quedó invisible en todos los ramos (0 huérfanos, verificado). Nota: `grupo IS NULL` pasó de 5 a 189 — esperado y correcto, no un bug: las 184 filas nuevas de `rubros_actividad` sembradas por 044 nacen con `grupo` NULL a propósito (columna deprecada, ver diseño), no se puebla para filas nuevas.
-- [ ] 9.5 Si PostgREST responde "could not find a relationship" tras aplicar 043, ejecutar `NOTIFY pgrst, 'reload schema'` (Supabase recarga el schema cache solo tras DDL; puede necesitar un empujón manual).
+- [x] 9.5 Si PostgREST responde "could not find a relationship" tras aplicar 043, ejecutar `NOTIFY pgrst, 'reload schema'` (Supabase recarga el schema cache solo tras DDL; puede necesitar un empujón manual). No hizo falta: la verificación 9.3 confirmó que el JOIN `!inner` contra `rubro_actividad_ramo` funciona sin error de schema cache.
 
 ## 10. Cierre de documentación
 

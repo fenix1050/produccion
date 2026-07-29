@@ -1,4 +1,6 @@
+import { rubrosActividadQuerySchema } from '../schemas/ramos.schema.js'
 import * as ramosService from '../services/ramos.service.js'
+import { httpError } from '../utils/http-error.js'
 
 export async function listarRamos(_req, res, next) {
   try {
@@ -39,9 +41,17 @@ export async function listarClausulasObligatoriasDePlan(req, res, next) {
   }
 }
 
+// Cambio "incendio-tasas-por-rubro": `ramo_id` es OBLIGATORIO — sin él, no
+// numérico o <=0, 400 en vez de la lista completa (fallar cerrado es el punto
+// del cambio, ver spec "Ramo-scoped risk-type catalog endpoint"). El parámetro
+// legacy `grupo` deja de interpretarse.
 export async function listarRubrosActividad(req, res, next) {
   try {
-    const rubros = await ramosService.listarRubrosActividad(req.query.grupo)
+    const parseo = rubrosActividadQuerySchema.safeParse(req.query)
+    if (!parseo.success) {
+      throw httpError(400, parseo.error.issues.map((i) => i.message).join('; '))
+    }
+    const rubros = await ramosService.listarRubrosActividad(parseo.data.ramo_id)
     res.json(rubros)
   } catch (err) {
     next(err)

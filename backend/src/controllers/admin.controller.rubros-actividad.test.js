@@ -6,6 +6,16 @@ import { test } from 'node:test'
 // filtrado (`ramo_id`), el parámetro legacy `grupo` deja de interpretarse acá también.
 // Archivo separado (no admin.controller.test.js) para no acoplar este test a mockear
 // TODOS los servicios que admin.controller.js importa.
+//
+// admin.controller.js importa estáticamente 6 servicios (planes/ramos/roles/rubros-
+// actividad/tasas-cobertura/usuarios); import() los carga TODOS aunque el test solo
+// ejercite listarRubrosActividad. Sin backend/.env real (como en CI), esos otros
+// servicios explotan al cargar su repository, que importa config/supabase.js — que
+// lanza si faltan SUPABASE_URL/SUPABASE_SERVICE_KEY. Mockear el cliente acá evita que
+// cualquiera de esos módulos toque Supabase de verdad con solo importarse.
+function mockearSupabase(t) {
+  t.mock.module('../config/supabase.js', { exports: { supabase: {} } })
+}
 
 function crearResFake() {
   const res = { statusCode: 200, body: undefined }
@@ -21,6 +31,7 @@ function crearResFake() {
 }
 
 test('admin listarRubrosActividad: sin ramo_id responde 400 y no llama al service', async (t) => {
+  mockearSupabase(t)
   let llamado = false
   t.mock.module('../services/admin/rubros-actividad.service.js', {
     exports: {
@@ -46,6 +57,7 @@ test('admin listarRubrosActividad: sin ramo_id responde 400 y no llama al servic
 })
 
 test('admin listarRubrosActividad: ramo_id=abc responde 400', async (t) => {
+  mockearSupabase(t)
   t.mock.module('../services/admin/rubros-actividad.service.js', {
     exports: { listarRubrosActividad: () => [], editarRubroActividad: () => null },
   })
@@ -63,6 +75,7 @@ test('admin listarRubrosActividad: ramo_id=abc responde 400', async (t) => {
 })
 
 test('admin listarRubrosActividad: ramo_id<=0 responde 400', async (t) => {
+  mockearSupabase(t)
   t.mock.module('../services/admin/rubros-actividad.service.js', {
     exports: { listarRubrosActividad: () => [], editarRubroActividad: () => null },
   })
@@ -81,6 +94,7 @@ test('admin listarRubrosActividad: ramo_id<=0 responde 400', async (t) => {
 })
 
 test('admin listarRubrosActividad: ramo_id válido llama al service con el número parseado', async (t) => {
+  mockearSupabase(t)
   let ramoIdRecibido
   t.mock.module('../services/admin/rubros-actividad.service.js', {
     exports: {

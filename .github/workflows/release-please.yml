@@ -1,0 +1,48 @@
+name: Release Please
+
+on:
+  workflow_run:
+    workflows:
+      - CI
+      - CodeQL
+    types:
+      - completed
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: read
+
+jobs:
+  gate:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    outputs:
+      ready: ${{ steps.check.outputs.ready }}
+    steps:
+      - id: check
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const sha = context.payload.workflow_run.head_sha;
+            const required = ['CI', 'CodeQL'];
+            const { data } = await github.rest.actions.listWorkflowRunsForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              head_sha: sha,
+            });
+            const ready = required.every((name) =>
+              data.workflow_runs.some(
+                (run) => run.name === name && run.conclusion === 'success',
+              ),
+            );
+            core.setOutput('ready', ready);
+
+  release-please:
+    needs: gate
+    if: ${{ needs.gate.outputs.ready == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v4

@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.1.3](https://github.com/fenix1050/produccion/compare/v0.1.2...v0.1.3) (2026-07-30)
+
+
+### Bug Fixes
+
+* **ci:** instalar postgresql-client-17 para matchear versión del server Supabase ([ef6b5d9](https://github.com/fenix1050/produccion/commit/ef6b5d9e4bf2e33796cbbc430dbfb5b7655d64e3))
+* **ci:** usar binario pg_dump 17 explícito, el runner ya tenía v16 en PATH ([9d4eff1](https://github.com/fenix1050/produccion/commit/9d4eff163073f28a03d9b88ee543348a6ea03bcb))
+
+## [0.1.2](https://github.com/fenix1050/produccion/compare/v0.1.1...v0.1.2) (2026-07-30)
+
+
+### Bug Fixes
+
+* **login:** contraste WCAG AA y landmark main ([f5d292c](https://github.com/fenix1050/produccion/commit/f5d292ceef0ece1a61207fb3fa860c6954198ada))
+* **login:** contraste WCAG AA y landmark main del login ([911106d](https://github.com/fenix1050/produccion/commit/911106d4c93ae9a955a894a27ac807225a7678f6))
+
 ## [0.1.1](https://github.com/fenix1050/produccion/compare/v0.1.0...v0.1.1) (2026-07-30)
 
 

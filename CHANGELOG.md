@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.4](https://github.com/fenix1050/produccion/compare/v0.1.3...v0.1.4) (2026-07-30)
+
+
+### Bug Fixes
+
+* **security:** activar RLS en las 34 tablas públicas marcadas CRITICAL ([9f201cf](https://github.com/fenix1050/produccion/commit/9f201cf27d9700adfb36c8b6632d3d95ffffe695))
+* **security:** activar RLS en las 34 tablas públicas marcadas CRITICAL ([1470c0a](https://github.com/fenix1050/produccion/commit/1470c0abf16dccf8fd86b257cda53c2d1770f326))
+
 ## [0.1.3](https://github.com/fenix1050/produccion/compare/v0.1.2...v0.1.3) (2026-07-30)
 
 

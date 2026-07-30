@@ -79,6 +79,7 @@ export async function calcularPrima({
   tasasObjetoRiesgo,
   umbralInspeccion,
   moneda = 'PYG',
+  forzadoPorPlan = false,
 }) {
   const pisoPlan = pisoPrimaTecnica(plan, moneda)
 
@@ -113,10 +114,13 @@ export async function calcularPrima({
   // piso en silencio: la Prima Técnica Mínima pasa a ser la prima base de la cotización.
   const primaBase = Math.max(primaCalculada, pisoPlan)
 
+  // `forzadoPorPlan` (cambio SDD `mrc-plan-descuento-fijo`, mismo one-liner que
+  // mrc.calculator.js por simetría — inerte hoy, ningún plan de Incendio seedea
+  // `descuento_default` todavía). Default `false`: cero cambio de comportamiento.
   const totalDescuentos = sumarAjustes(
     descuentos,
     primaBase,
-    topeEfectivo(plan.descuento_maximo, usuario?.descuento_maximo_pct)
+    topeEfectivo(plan.descuento_maximo, forzadoPorPlan ? null : usuario?.descuento_maximo_pct)
   )
   const totalRecargos = sumarAjustes(
     recargos,

@@ -1,7 +1,7 @@
 import { supabase } from '../config/supabase.js'
 
 const CAMPOS =
-  'id, nombre, puede_editar_tasas, puede_gestionar_usuarios, puede_editar_coberturas, puede_editar_planes, es_sistema, activo, created_at, updated_at'
+  'id, nombre, puede_editar_tasas, puede_gestionar_usuarios, puede_editar_coberturas, puede_editar_planes, puede_editar_descuento_plan, es_sistema, activo, created_at, updated_at'
 
 export async function findAll() {
   const { data, error } = await supabase.from('roles').select(CAMPOS).order('id')
@@ -21,6 +21,7 @@ export async function crear({
   puede_gestionar_usuarios,
   puede_editar_coberturas,
   puede_editar_planes,
+  puede_editar_descuento_plan,
 }) {
   const { data, error } = await supabase
     .from('roles')
@@ -30,6 +31,7 @@ export async function crear({
       puede_gestionar_usuarios,
       puede_editar_coberturas,
       puede_editar_planes,
+      puede_editar_descuento_plan,
       es_sistema: false,
     })
     .select(CAMPOS)

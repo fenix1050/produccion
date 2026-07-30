@@ -7,7 +7,7 @@ import { supabase } from '../config/supabase.js'
 // código downstream que lea `usuario.rol` / `usuario.puede_editar_tasas` etc. no necesiten
 // cambiar — ver docs/ESTADO_PROYECTO.md.
 const CAMPOS_ROL =
-  'roles(nombre, puede_editar_tasas, puede_gestionar_usuarios, puede_editar_coberturas, puede_editar_planes)'
+  'roles(nombre, puede_editar_tasas, puede_gestionar_usuarios, puede_editar_coberturas, puede_editar_planes, puede_editar_descuento_plan)'
 
 function aplanar(usuario) {
   if (!usuario) return usuario
@@ -19,6 +19,7 @@ function aplanar(usuario) {
     puede_gestionar_usuarios: roles?.puede_gestionar_usuarios ?? false,
     puede_editar_coberturas: roles?.puede_editar_coberturas ?? false,
     puede_editar_planes: roles?.puede_editar_planes ?? false,
+    puede_editar_descuento_plan: roles?.puede_editar_descuento_plan ?? false,
   }
 }
 

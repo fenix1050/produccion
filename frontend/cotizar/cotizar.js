@@ -303,6 +303,14 @@ const CODIGOS_COBERTURA_EXCLUIDOS_BASE = [
   'equipos_electronicos',
 ]
 
+// Cuántas veces puede cargarse la MISMA cobertura entre las líneas de "Coberturas adicionales"
+// (con distinta suma asegurada cada vez). Por defecto 1 (sin repetición) — 'robo_contenido' es
+// la única excepción confirmada por Kevin (2026-07-13, ver mrc.calculator.js): en la práctica
+// puede aparecer 2 veces con sumas distintas. Ajustado el 2026-07-30 a pedido de Kevin: el resto
+// del catálogo ya NO puede repetirse (antes cualquier cobertura era repetible sin límite).
+const LIMITE_REPETICION_COBERTURA_MRC = { robo_contenido: 2 }
+const LIMITE_REPETICION_COBERTURA_MRC_DEFAULT = 1
+
 // Ícono por código de sublímite en el panel "Cotización en vivo" — códigos reales de MRC
 // (migración 012/019), fallback genérico para cualquier código sin ícono propio definido.
 const SUBLIMITE_ICONOS = {
@@ -704,6 +712,12 @@ function updateCoberturaLinea(id, field, value) {
   const linea = state.coberturasAdicionales.find((l) => l.id === id)
   if (!linea) return
   linea[field] = value
+  if (field === 'codigo') {
+    // Re-renderiza para que las demás filas reflejen el límite por cobertura recién elegida
+    // (ver renderCoberturasAdicionales/LIMITE_REPETICION_COBERTURA_MRC) — no se hace en cada
+    // tecleo de sumaAsegurada para no perder el foco del input mientras el agente escribe.
+    renderApp()
+  }
   scheduleCalculate()
 }
 
@@ -1489,8 +1503,26 @@ function renderDatosView(ramo) {
 // Contenido. `catalogoDisponible` ya viene sin las 2 fijas y sin sublimite_cctv (ver
 // coberturasDisponibles()).
 function renderCoberturasAdicionales(catalogoDisponible) {
-  const opciones = (codigoActual) =>
-    catalogoDisponible
+  // Cuenta de veces que cada código ya está elegido en OTRAS filas — el select de cada fila
+  // excluye los códigos que llegaron a su límite (ver LIMITE_REPETICION_COBERTURA_MRC),
+  // manteniendo siempre disponible el propio valor actual de la fila.
+  const conteoPorCodigo = (codigoExcluir) => {
+    const conteo = new Map()
+    for (const l of state.coberturasAdicionales) {
+      if (!l.codigo || l.codigo === codigoExcluir) continue
+      conteo.set(l.codigo, (conteo.get(l.codigo) || 0) + 1)
+    }
+    return conteo
+  }
+
+  const opciones = (codigoActual) => {
+    const conteo = conteoPorCodigo(codigoActual)
+    return catalogoDisponible
+      .filter((c) => {
+        const limite =
+          LIMITE_REPETICION_COBERTURA_MRC[c.codigo] ?? LIMITE_REPETICION_COBERTURA_MRC_DEFAULT
+        return (conteo.get(c.codigo) || 0) < limite
+      })
       .map(
         (c) => `
     <option value="${escapeHtml(c.codigo)}" ${c.codigo === codigoActual ? 'selected' : ''}>
@@ -1499,6 +1531,7 @@ function renderCoberturasAdicionales(catalogoDisponible) {
   `
       )
       .join('')
+  }
 
   // Cada fila es repetible (el agente puede agregar varias líneas de cobertura), así que
   // el id de cada campo usa l.id (clave estable de la fila, ver agregarCoberturaLinea) para
@@ -1531,11 +1564,18 @@ function renderCoberturasAdicionales(catalogoDisponible) {
     )
     .join('')
 
+  const conteoTotal = conteoPorCodigo(null)
+  const quedanCoberturasPorAgregar = catalogoDisponible.some((c) => {
+    const limite =
+      LIMITE_REPETICION_COBERTURA_MRC[c.codigo] ?? LIMITE_REPETICION_COBERTURA_MRC_DEFAULT
+    return (conteoTotal.get(c.codigo) || 0) < limite
+  })
+
   return `
     <div class="coberturas-adicionales" role="group" aria-labelledby="coberturas-adicionales-label">
       <label id="coberturas-adicionales-label">Coberturas adicionales</label>
       ${filas}
-      <button type="button" class="btn-outline" data-action="add-cobertura-linea">+ Agregar cobertura</button>
+      <button type="button" class="btn-outline" data-action="add-cobertura-linea" ${quedanCoberturasPorAgregar ? '' : 'disabled title="Ya agregaste el máximo de coberturas disponibles"'}>+ Agregar cobertura</button>
     </div>
   `
 }

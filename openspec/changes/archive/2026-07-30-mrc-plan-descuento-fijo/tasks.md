@@ -30,7 +30,7 @@ Chain strategy: pending
 - [x] 1.3 In same file: `INSERT INTO planes (...)` new MRC plan row, placeholder name, `descuento_default = 10`, `descuento_maximo = 10`, `cotizacion_combinada = FALSE`
 - [x] 1.4 In same file: `plan_formas_pago` rows via `CROSS JOIN (VALUES ...)` pattern from `012_seed_mrc.sql` — contado `habilitada=TRUE, tasa_rpf=0`; cobrador/boca_cobranza/tarjeta `habilitada=FALSE`
 - [x] 1.5 Add header comment explaining `descuento_default` reuse and the `cotizacion_combinada` guard; add N1/N2/N3 rollback statements as comments
-- [ ] 1.6 Flag task (not auto-run): apply migration via `mcp__supabase__apply_migration` ONLY after Kevin confirms plan name/roles/coverages — do not execute in this change (explicitly NOT applied against Supabase in this apply run, per instructions)
+- [x] 1.6 Apply migration via `mcp__supabase__apply_migration` — Kevin confirmed plan name (MULTIRRIESGO COMERCIO - SEGUCOOP), roles (admin, Analista de Riesgo, Jefe de Análisis de Riesgo) and coverage inheritance (from MULTIRRIESGO COMERCIO - NORMAL) on 2026-07-30; applied against real Supabase, verified: plan id 20, 3 roles with the permission, 5 `plan_coberturas` rows copied
 
 ## Phase 2: Backend Core (TDD)
 
@@ -52,12 +52,12 @@ Chain strategy: pending
 
 ## Phase 3: Frontend
 
-- [ ] 3.1 `frontend/admin/admin.js` — add `puede_editar_descuento_plan` checkbox in `abrirModalRolCrear`/`Editar`/`guardarModalRol`, plus a badge column in the Roles table
-- [ ] 3.2 `frontend/cotizar/cotizar.js` — prefill `state.data.descuentoPorcentaje = plan?.descuento_default ?? null` at load (~line 582) and in `selectPlan` (~610-621)
-- [ ] 3.3 `frontend/cotizar/cotizar.js` — in `renderAjusteField` (~1950), compute `bloqueado = prefijo === 'descuento' && plan?.descuento_default != null && !usuario?.puede_editar_descuento_plan` and add to the existing `disabled` conditions on both inputs (~1988, ~1996); add helper text "Descuento fijo del plan"
+- [x] 3.1 `frontend/admin/admin.js` — add `puede_editar_descuento_plan` checkbox in `abrirModalRolCrear`/`Editar`/`guardarModalRol`, plus a badge column in the Roles table
+- [x] 3.2 `frontend/cotizar/cotizar.js` — prefill `state.data.descuentoPorcentaje = plan?.descuento_default ?? null` at load (~line 582) and in `selectPlan` (~610-621)
+- [x] 3.3 `frontend/cotizar/cotizar.js` — in `renderAjusteField` (~1950), compute `bloqueado = prefijo === 'descuento' && plan?.descuento_default != null && !usuario?.puede_editar_descuento_plan` and add to the existing `disabled` conditions on both inputs (~1988, ~1996); add helper text "Descuento fijo del plan"
 
 ## Phase 4: Verification & Docs
 
-- [ ] 4.1 Manual verification via `run-cotizador` skill: login as test user (no permission), select new MRC plan, confirm only Contado shown, field shows 10% and is locked, resulting prima reflects 10%
-- [ ] 4.2 Manual verification: grant `puede_editar_descuento_plan` via admin Roles, re-login, confirm field becomes editable and a custom discount is respected within caps
-- [ ] 4.3 Update `docs/ESTADO_PROYECTO.md` and `CLAUDE.md` with the change summary, noting migration 046 is committed but NOT applied to Supabase pending plan-name confirmation
+- [x] 4.1 Manual verification via `run-cotizador` skill (2026-07-30, Playwright): logged in as test user (agente, no permission), selected "MULTIRRIESGO COMERCIO - SEGUCOOP" in step 2 "Detalle del plan" — badge shows only "Contado" (no Cobrador/Boca de Cobranza/Tarjeta), the "Ajustes (opcionales)" Descuento field (both monto and % inputs) confirmed `disabled=""` via DOM inspection with value `10` and hint text "Descuento fijo del plan"; no console/network errors on the final calculated state
+- [ ] 4.2 Manual verification: grant `puede_editar_descuento_plan` via admin Roles, re-login, confirm field becomes editable and a custom discount is respected within caps — SKIPPED: would require flipping a role permission (e.g. on `agente`) against real Supabase data outside the confirmed role list (admin/Analista de Riesgo/Jefe de Análisis de Riesgo) just for the test, then reverting; judged not worth the risk given the override path is already covered by backend tests 2.6/2.7 (`resolverDescuentos` unit tests + the security bypass test) proving a user WITH the permission keeps their submitted value. Recommend Kevin verify this manually once logged in as a user with one of the 3 confirmed roles.
+- [x] 4.3 Update `docs/ESTADO_PROYECTO.md` and `CLAUDE.md` with the change summary — migration 046 applied against Supabase real on 2026-07-30 (plan id 20), not just committed

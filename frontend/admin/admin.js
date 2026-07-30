@@ -436,6 +436,7 @@ function abrirModalRolCrear() {
     puede_gestionar_usuarios: false,
     puede_editar_coberturas: false,
     puede_editar_planes: false,
+    puede_editar_descuento_plan: false,
   }
   renderApp()
   enfocarPrimerElemento(app.querySelector('.admin-modal'))
@@ -455,6 +456,7 @@ function abrirModalRolEditar(rolId) {
     puede_gestionar_usuarios: Boolean(rol.puede_gestionar_usuarios),
     puede_editar_coberturas: Boolean(rol.puede_editar_coberturas),
     puede_editar_planes: Boolean(rol.puede_editar_planes),
+    puede_editar_descuento_plan: Boolean(rol.puede_editar_descuento_plan),
   }
   renderApp()
   enfocarPrimerElemento(app.querySelector('.admin-modal'))
@@ -477,6 +479,7 @@ async function guardarModalRol(form) {
     puede_gestionar_usuarios: form.puede_gestionar_usuarios.checked,
     puede_editar_coberturas: form.puede_editar_coberturas.checked,
     puede_editar_planes: form.puede_editar_planes.checked,
+    puede_editar_descuento_plan: form.puede_editar_descuento_plan.checked,
   }
 
   if (!nombre) {
@@ -1369,6 +1372,7 @@ function renderTablaRoles() {
       <td>${crearBadge(r.puede_editar_coberturas ? 'Sí' : 'No', r.puede_editar_coberturas ? 'success' : 'neutral')}</td>
       <td>${crearBadge(r.puede_editar_tasas ? 'Sí' : 'No', r.puede_editar_tasas ? 'success' : 'neutral')}</td>
       <td>${crearBadge(r.puede_editar_planes ? 'Sí' : 'No', r.puede_editar_planes ? 'success' : 'neutral')}</td>
+      <td>${crearBadge(r.puede_editar_descuento_plan ? 'Sí' : 'No', r.puede_editar_descuento_plan ? 'success' : 'neutral')}</td>
       <td>
         <div class="admin-table__actions">
           ${
@@ -1398,6 +1402,7 @@ function renderTablaRoles() {
             <th>Edita coberturas</th>
             <th>Edita tasas</th>
             <th>Edita planes</th>
+            <th>Edita descuento del plan</th>
             <th>Acciones</th>
           </tr>
         </thead>
@@ -2149,6 +2154,12 @@ function renderModalRol() {
             <label class="admin-modal__checkbox">
               <input type="checkbox" name="puede_editar_planes" ${m.puede_editar_planes ? 'checked' : ''} />
               Puede editar planes
+            </label>
+          </div>
+          <div class="admin-modal__field">
+            <label class="admin-modal__checkbox">
+              <input type="checkbox" name="puede_editar_descuento_plan" ${m.puede_editar_descuento_plan ? 'checked' : ''} />
+              Puede editar el descuento fijo de un plan
             </label>
           </div>
           <div class="admin-modal__actions">

@@ -307,3 +307,5 @@ Ver `docs/ESTADO_PROYECTO.md` para el detalle completo de:
 - Migraciones SQL aplicadas
 
 La sección "Estado actual del proyecto" en `CLAUDE.md` resume la fase activa, próximos pasos y reglas de negocio.
+
+<!-- test: verificación del gate CI+CodeQL de release-please -->

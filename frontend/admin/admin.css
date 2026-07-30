@@ -178,6 +178,19 @@
   font-size: 12px;
 }
 
+.admin-ramo-nombre {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  max-width: 260px;
+}
+
+.admin-ramo-nombre__accion button {
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
 .admin-subrow td {
   background: var(--tajy-pink);
   padding: 14px 16px;

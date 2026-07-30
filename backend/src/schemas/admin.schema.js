@@ -95,6 +95,11 @@ export const editarPlanFormaPagoSchema = z.object({
 
 // ---- Ramos ----
 
-export const editarRamoSchema = z.object({
-  activo: z.boolean(),
-})
+export const editarRamoSchema = z
+  .object({
+    activo: z.boolean().optional(),
+    nombre_display: z.string().trim().min(1).max(100).optional(),
+  })
+  .refine((datos) => datos.activo !== undefined || datos.nombre_display !== undefined, {
+    message: 'Debe enviarse activo y/o nombre_display',
+  })

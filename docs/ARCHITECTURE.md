@@ -113,7 +113,7 @@ Frontend
 
 - **Backend:** VPS propia, Docker Compose (`docker-compose.yml`, `backend/Dockerfile`) detrás de
   Caddy como reverse proxy TLS (`Caddyfile`, dominio `api.cotizador.lat`). Redeploy manual (`git
-  pull` + `docker compose up --build`) — sin pipeline de CD. `render.yaml` queda como alternativa
+pull` + `docker compose up --build`) — sin pipeline de CD. `render.yaml` queda como alternativa
   no activa.
 - **Frontend:** Vercel, auto-deploy al pushear a `main` (integración nativa de Vercel con GitHub,
   configurada en `frontend/vercel.json`).

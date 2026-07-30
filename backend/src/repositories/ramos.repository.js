@@ -37,6 +37,35 @@ export async function actualizarRamo(id, cambios) {
   return data
 }
 
+export async function countPlanesByRamoId(ramoId) {
+  const { count, error } = await supabase
+    .from('planes')
+    .select('id', { count: 'exact', head: true })
+    .eq('ramo_id', ramoId)
+  if (error) throw error
+  return count
+}
+
+export async function countCotizacionesByRamoId(ramoId) {
+  const { count, error } = await supabase
+    .from('cotizaciones')
+    .select('id', { count: 'exact', head: true })
+    .eq('ramo_id', ramoId)
+  if (error) throw error
+  return count
+}
+
+// `correlativos` tiene una fila por ramo desde que el ramo existe (seed en 005_cotizaciones.sql,
+// FK ramo_id NOT NULL) — hay que borrarla antes que la fila de `ramos` o la FK de `correlativos`
+// rechaza el DELETE aunque el ramo no tenga planes ni cotizaciones.
+export async function eliminarRamo(id) {
+  const { error: errorCorrelativo } = await supabase.from('correlativos').delete().eq('ramo_id', id)
+  if (errorCorrelativo) throw errorCorrelativo
+
+  const { error } = await supabase.from('ramos').delete().eq('id', id)
+  if (error) throw error
+}
+
 export async function findPlanesByRamoId(ramoId) {
   const { data, error } = await supabase
     .from('planes')

@@ -272,3 +272,12 @@ export async function editarRamo(req, res, next) {
     next(err)
   }
 }
+
+export async function eliminarRamo(req, res, next) {
+  try {
+    await ramosService.eliminarRamo(req.params.id)
+    res.status(204).end()
+  } catch (err) {
+    next(err)
+  }
+}

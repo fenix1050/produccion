@@ -24,7 +24,7 @@ jobs:
         run: |
           DATE=$(date +%Y-%m-%d)
           FILENAME="supabase-backup-${DATE}.dump"
-          pg_dump "$DATABASE_URL" -F c -f "$FILENAME"
+          /usr/lib/postgresql/17/bin/pg_dump "$DATABASE_URL" -F c -f "$FILENAME"
           gzip "$FILENAME"
           echo "DATE=${DATE}" >> "$GITHUB_ENV"
           echo "FILENAME=${FILENAME}.gz" >> "$GITHUB_ENV"

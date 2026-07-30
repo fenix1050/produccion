@@ -86,7 +86,38 @@ None. Badge column in the Roles table (tasks.md 3.1 and design.md's file table b
 - Boundary: starts from `sdd/mrc-plan-descuento-fijo-backend` @ `e60a35b`, branch `sdd/mrc-plan-descuento-fijo-frontend` created off it. Neither branch pushed, no PRs opened — Kevin will push/PR both.
 - Rollback: revert the PR2 commit; no schema change, purely UI + docs.
 
+## Migration Application + Live Verification (orchestrator, 2026-07-30)
+
+Kevin confirmed the three open business questions:
+
+- Plan name: **MULTIRRIESGO COMERCIO - SEGUCOOP**
+- Roles beyond `admin`: **Analista de Riesgo** (id 12) and **Jefe de Análisis de Riesgo** (id 7)
+- Coverages/legal text: inherited from **MULTIRRIESGO COMERCIO - NORMAL**
+
+Migration 046 updated on the backend branch (commit `4a8ab39`, on top of `e60a35b`): real plan name replaces the placeholder throughout, `UPDATE roles` extended to the 2 confirmed roles, and a new step 4 (`INSERT INTO plan_coberturas ... SELECT ... FROM plan_coberturas WHERE plan_origen.nombre = 'MULTIRRIESGO COMERCIO - NORMAL'`) copies the 5 coverage rows 1:1 into the new plan. Rollback block extended to match (roles reset, `plan_coberturas` delete). `npm test --prefix backend`: 166/166 green (pre-commit hook), no regressions.
+
+Applied via `mcp__supabase__apply_migration` against real Supabase. Verified post-apply:
+
+- 3 roles with `puede_editar_descuento_plan = TRUE`: `admin`, `Analista de Riesgo`, `Jefe de Análisis de Riesgo`.
+- Plan id `20`, `descuento_default = 10`, `descuento_maximo = 10`, `cotizacion_combinada = false`.
+- 5 `plan_coberturas` rows copied from "MULTIRRIESGO COMERCIO - NORMAL".
+
+Frontend branch (`sdd/mrc-plan-descuento-fijo-frontend`) rebased onto the updated backend branch tip — no conflicts, single-commit replay.
+
+### 4.1 — Manual verification (Playwright via `run-cotizador` skill)
+
+Logged in as `test@test.com` (role `agente`, does NOT have the new permission). Selected "MULTIRRIESGO COMERCIO - SEGUCOOP" in Datos del plan, filled the required MRC fields (including 3 additional coverage lines to satisfy the pre-existing "mínimo 3 coberturas" business rule, unrelated to this change), advanced to "Detalle del plan":
+
+- Forma de pago badge shows **only "Contado"** (no Cobrador/Boca de Cobranza/Tarjeta).
+- "Ajustes (opcionales)" → Descuento: both `#campo-descuento-monto` and `#campo-descuento-porcentaje` inspected in the live DOM with `disabled=""`, `#campo-descuento-porcentaje` value `10`, hint text "Descuento fijo del plan".
+- No console errors or failed network requests on the final calculated state (one transient 422 during incremental form-fill before all required fields were set — expected debounce behavior of the live-preview calculator, not a defect).
+
+### 4.2 — Manual verification (permission-holder path) — SKIPPED
+
+Would require granting `puede_editar_descuento_plan` to a role/user outside the 3 confirmed ones (e.g. `agente`) against real Supabase data, just for the test, then reverting. Judged not worth the risk: the override path (user WITH the permission keeps their submitted discount) is already proven by backend tests 2.6/2.7 (`resolverDescuentos` unit tests + the `calcularPreview` security/override integration tests). Recommended Kevin verify this manually once logged in as a user with one of the 3 confirmed roles.
+
 ## Status
 
-PR1: 17/20 Phase 1+2 tasks complete (1.6 deliberately deferred, explicit gate).
-PR2: Phase 3 fully complete (3/3), Phase 4 docs task complete (1/1), manual verification (4.1/4.2) remaining — next step is the orchestrator's `run-cotizador` verification pass, then `sdd-verify`.
+PR1: 18/20 Phase 1+2 tasks complete (1.6 now applied and verified).
+PR2: Phase 3 complete (3/3), Phase 4: 4.1 verified live, 4.2 deliberately skipped (see above), 4.3 docs updated to reflect the applied migration.
+Remaining before archive: `sdd-verify`, then Kevin pushes both branches and opens the 2 chained PRs.

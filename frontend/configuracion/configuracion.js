@@ -213,7 +213,7 @@ function renderApp() {
     ${renderTopbar()}
     <div class="app-body">
       ${renderSidebar()}
-      <div class="main">
+      <main class="main">
         <div class="main-header">
           <div>
             <div class="main-header__title">Configuración</div>
@@ -295,7 +295,7 @@ function renderApp() {
             </div>
           </div>
         </div>
-      </div>
+      </main>
     </div>
   `
 

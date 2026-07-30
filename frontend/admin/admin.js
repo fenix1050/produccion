@@ -1393,7 +1393,7 @@ function renderPlanes() {
     <div class="panel card">
       <div class="card__title card__title--toolbar">
         <span>Planes</span>
-        <select class="field-input" style="width: auto;" data-action="filtrar-ramo">
+        <select class="field-input" style="width: auto;" data-action="filtrar-ramo" aria-label="Filtrar por ramo">
           <option value="todos" ${state.ramoFiltro === 'todos' ? 'selected' : ''}>Todos los ramos</option>
           ${opcionesRamo}
         </select>
@@ -1578,7 +1578,7 @@ function renderTasas() {
       <div class="card__title card__title--toolbar">
         <span>Tasas</span>
         <div class="card__title__actions">
-          <select class="field-input" style="width: auto;" data-action="seleccionar-ramo-tasas">
+          <select class="field-input" style="width: auto;" data-action="seleccionar-ramo-tasas" aria-label="Elegí un ramo">
             <option value="">Elegí un ramo…</option>
             ${opcionesRamo}
           </select>
@@ -1665,7 +1665,7 @@ function renderCamposTasaEdificioContenido(rubro) {
   ).join('')
   return `
     <form class="admin-inline-form" data-form-action="rubro-actividad-tasas" data-id="${rubro.id}">
-      <select class="field-input field-input--sm" name="categoria" autofocus>${opcionesCategoria}</select>
+      <select class="field-input field-input--sm" name="categoria" autofocus aria-label="Categoría">${opcionesCategoria}</select>
       <input class="field-input field-input--sm" type="number" step="0.001" name="tasa_edificio" placeholder="Edificio" value="${rubro.tasa_edificio ?? ''}" />
       <input class="field-input field-input--sm" type="number" step="0.001" name="tasa_contenido" placeholder="Contenido" value="${rubro.tasa_contenido ?? ''}" />
       <button class="btn-outline" type="submit">Guardar</button>
@@ -1757,14 +1757,14 @@ function renderCoberturas() {
       <div class="card__title card__title--toolbar">
         <span>Coberturas por plan</span>
         <div class="card__title__actions">
-          <select class="field-input" style="width: auto;" data-action="seleccionar-ramo-coberturas">
+          <select class="field-input" style="width: auto;" data-action="seleccionar-ramo-coberturas" aria-label="Elegí un ramo">
             <option value="">Elegí un ramo…</option>
             ${opcionesRamo}
           </select>
           ${
             state.ramoCoberturasSeleccionado
               ? `
-            <select class="field-input" style="width: auto;" data-action="seleccionar-plan-coberturas">
+            <select class="field-input" style="width: auto;" data-action="seleccionar-plan-coberturas" aria-label="Elegí un plan">
               <option value="">Elegí un plan…</option>
               ${opcionesPlan}
             </select>

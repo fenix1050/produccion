@@ -91,6 +91,7 @@ const state = {
   ramosGestion: [],
   loadingRamosGestion: false,
   ramosGestionError: '',
+  ramoNombreEnEdicion: new Set(), // ids de ramo con el campo de nombre_display en edición
   planes: [],
   loadingPlanes: false,
   planesError: '',
@@ -543,6 +544,55 @@ async function toggleRamoActivo(ramoId, activo) {
   }
 }
 
+function habilitarEdicionNombreRamo(ramoId) {
+  state.ramoNombreEnEdicion.add(ramoId)
+  renderApp()
+}
+
+function cancelarEdicionNombreRamo(ramoId) {
+  state.ramoNombreEnEdicion.delete(ramoId)
+  renderApp()
+}
+
+async function guardarNombreRamo(ramoId, form) {
+  const nombre_display = form.nombre_display.value.trim()
+  if (!nombre_display) {
+    mostrarBanner('error', 'El nombre del ramo no puede quedar vacío.')
+    return
+  }
+
+  try {
+    const ramo = await api.put(`/admin/ramos/${ramoId}`, { nombre_display })
+    const entry = state.ramosGestion.find((r) => r.id === Number(ramoId))
+    if (entry) entry.nombre_display = ramo.nombre_display
+    state.ramoNombreEnEdicion.delete(Number(ramoId))
+    mostrarBanner('success', 'Nombre del ramo actualizado.')
+    renderApp()
+  } catch (err) {
+    mostrarBanner('error', err.message || 'No se pudo actualizar el nombre del ramo.')
+  }
+}
+
+async function eliminarRamo(ramoId) {
+  const ramo = state.ramosGestion.find((r) => r.id === ramoId)
+  if (!ramo) return
+  if (
+    !confirm(
+      `¿Eliminar el ramo "${ramo.nombre_display}" definitivamente? Esta acción no se puede deshacer.`
+    )
+  )
+    return
+
+  try {
+    await api.delete(`/admin/ramos/${ramoId}`)
+    state.ramosGestion = state.ramosGestion.filter((r) => r.id !== ramoId)
+    mostrarBanner('success', `Ramo "${ramo.nombre_display}" eliminado.`)
+    renderApp()
+  } catch (err) {
+    mostrarBanner('error', err.message || 'No se pudo eliminar el ramo.')
+  }
+}
+
 function renderRamosGestion() {
   return `
     <div class="panel card">
@@ -569,12 +619,15 @@ function renderTablaRamosGestion() {
     .map(
       (r) => `
     <tr>
-      <td>${escapeHtml(r.nombre_display)}</td>
+      <td>${renderCampoNombreRamo(r)}</td>
       <td>
         <label class="admin-modal__checkbox">
           <input type="checkbox" data-action="toggle-ramo-activo" data-id="${r.id}" ${r.activo ? 'checked' : ''} />
           ${r.activo ? 'Activo' : 'Próximamente (oculto para cotizar)'}
         </label>
+      </td>
+      <td>
+        <button class="btn-outline" data-action="eliminar-ramo" data-id="${r.id}">Eliminar</button>
       </td>
     </tr>
   `
@@ -588,11 +641,38 @@ function renderTablaRamosGestion() {
           <tr>
             <th>Ramo</th>
             <th>Estado en el sidebar</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>${filas}</tbody>
       </table>
     </div>
+  `
+}
+
+// El nombre de un ramo (nombre_display) rara vez cambia, así que se edita inline en la
+// misma fila — mismo patrón que renderCampoPrimaTecnicaMinima/renderCampoTasaRpf. El botón
+// "Editar" va en una columna de ancho fijo (`admin-ramo-nombre__accion`), separada del texto
+// del nombre: los nombres de ramo varían mucho de largo ("Automóviles" vs "Multirriesgo
+// Comercio"), así que compartir un solo <td> con flex dejaba el botón a distinta distancia
+// en cada fila en vez de alineado en columna.
+function renderCampoNombreRamo(ramo) {
+  if (!state.ramoNombreEnEdicion.has(ramo.id)) {
+    return `
+      <div class="admin-ramo-nombre">
+        <span class="admin-ramo-nombre__texto">${escapeHtml(ramo.nombre_display)}</span>
+        <span class="admin-ramo-nombre__accion">
+          <button class="btn-outline" data-action="editar-nombre-ramo" data-id="${ramo.id}">Editar</button>
+        </span>
+      </div>
+    `
+  }
+  return `
+    <form class="admin-inline-form" data-form-action="nombre-ramo" data-id="${ramo.id}">
+      <input class="field-input field-input--sm" type="text" name="nombre_display" value="${escapeHtml(ramo.nombre_display)}" autofocus />
+      <button class="btn-outline" type="submit">Guardar</button>
+      <button class="btn-outline" type="button" data-action="cancelar-nombre-ramo" data-id="${ramo.id}">Cancelar</button>
+    </form>
   `
 }
 
@@ -2308,6 +2388,18 @@ function onActionClick(el) {
     toggleRamoActivo(el.dataset.id, el.checked)
     return
   }
+  if (action === 'editar-nombre-ramo') {
+    habilitarEdicionNombreRamo(Number(el.dataset.id))
+    return
+  }
+  if (action === 'cancelar-nombre-ramo') {
+    cancelarEdicionNombreRamo(Number(el.dataset.id))
+    return
+  }
+  if (action === 'eliminar-ramo') {
+    eliminarRamo(Number(el.dataset.id))
+    return
+  }
   if (action === 'toggle-formas-pago') {
     toggleFormasPago(Number(el.dataset.id))
     return
@@ -2397,6 +2489,8 @@ function onInlineFormSubmit(form) {
   const accion = form.dataset.formAction
   if (accion === 'prima-tecnica-minima') {
     guardarPrimaTecnicaMinima(form.dataset.id, form)
+  } else if (accion === 'nombre-ramo') {
+    guardarNombreRamo(form.dataset.id, form)
   } else if (accion === 'tasa-rpf') {
     guardarTasaRpf(form.dataset.id, Number(form.dataset.planId), form)
   } else if (accion === 'monto-franquicia') {

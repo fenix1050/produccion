@@ -1,4 +1,4 @@
--- 046_ramos_flota_tro_transporte_activo_false.sql
+-- 047_ramos_flota_tro_transporte_activo_false.sql
 -- El sidebar de /cotizar acaba de sumar 'auto-flota', 'tro' y 'transporte' a RAMOS_UI
 -- (frontend/cotizar/cotizar.js) para que el toggle "Activo" del panel admin (sección Ramos)
 -- realmente controle su visibilidad ahí, igual que ya pasa con el resto de los ramos.

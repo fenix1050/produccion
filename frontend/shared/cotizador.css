@@ -4,6 +4,10 @@
 
 :root {
   --tajy-red: #d8132e;
+  /* #d8132e sobre --tajy-pink da ~4.46:1, por debajo de WCAG AA (4.5:1) para
+     texto — mismo patrón que --tajy-green-fg más abajo. #c8112a mantiene el
+     rojo de marca y da ~5.06:1. Usar solo para texto sobre --tajy-pink. */
+  --tajy-red-a11y: #c8112a;
   --tajy-red-soft: rgba(216, 19, 46, 0.25);
   --tajy-red-gradient: linear-gradient(180deg, #d8132e 0%, #7a0f11 100%);
   --tajy-maroon: #5c0e10;
@@ -22,10 +26,14 @@
   --tajy-success: var(--tajy-green-fg);
   --tajy-border: #ddd;
   --tajy-border-light: #eee;
-  --tajy-text-secondary: #8a8a8a;
   /* #999 sobre fondo blanco daba ~2.85:1 (falla WCAG AA 4.5:1 para texto
      normal). #6e6e6e mantiene el mismo rol "muted" pero cumple ~5.1:1. */
   --tajy-text-muted: #6e6e6e;
+  /* --tajy-text-secondary (#8a8a8a, ~3.45:1 sobre blanco) fallaba WCAG AA en
+     cada lugar donde se usaba para texto real (Vercel lo fue reportando de a
+     uno por scan). Es el mismo rol "gris secundario" que --tajy-text-muted —
+     alias directo en vez de mantener dos tonos "secundarios" distintos. */
+  --tajy-text-secondary: var(--tajy-text-muted);
   --tajy-text-body: #444;
   --tajy-text-dark: #333;
   --tajy-font-mono: 'Roboto Mono', ui-monospace, monospace;
@@ -158,6 +166,9 @@ button {
 
 .topbar__logo {
   height: 32px;
+  /* Reserva el ancho antes de que el SVG cargue (evita el layout shift que
+     reportaba Vercel Speed Insights). Ratio real del asset: 206.2 / 156. */
+  aspect-ratio: 206.2 / 156;
 }
 
 .topbar__brand-text {
@@ -190,7 +201,8 @@ button {
 }
 
 .topbar__crumb-item {
-  color: rgba(255, 255, 255, 0.75);
+  /* 0.75 de opacidad sobre --tajy-red daba ~3.37:1, por debajo de WCAG AA. */
+  color: rgba(255, 255, 255, 0.94);
 }
 
 .topbar__crumb-item--current {
@@ -253,7 +265,8 @@ button {
 
 .topbar__user-role {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.75);
+  /* 0.75 de opacidad sobre --tajy-red daba ~3.37:1, por debajo de WCAG AA. */
+  color: rgba(255, 255, 255, 0.94);
 }
 
 .topbar__user-chevron {
@@ -346,7 +359,7 @@ button {
   font-weight: 500;
   border: 1px solid var(--tajy-red);
   background: var(--tajy-pink);
-  color: var(--tajy-red);
+  color: var(--tajy-red-a11y);
   cursor: pointer;
   transition: background 0.15s;
   font-family: inherit;
@@ -474,7 +487,7 @@ button {
 
 .ramo-row--activa .ramo-row__label {
   font-weight: 600;
-  color: var(--tajy-red);
+  color: var(--tajy-red-a11y);
 }
 
 .ramo-row__estado {
@@ -486,11 +499,13 @@ button {
 }
 
 .ramo-row--activa .ramo-row__estado {
-  color: var(--tajy-red);
+  color: var(--tajy-red-a11y);
 }
 
-.ramo-row--pausa,
-.ramo-row--proximamente {
+/* Atenuar solo el ícono: aplicar la opacidad al texto (label/estado) bajaba
+   el contraste por debajo de WCAG AA. */
+.ramo-row--pausa .ramo-row__icon,
+.ramo-row--proximamente .ramo-row__icon {
   opacity: 0.6;
 }
 
@@ -550,7 +565,8 @@ button {
   margin-top: auto;
   padding-top: 16px;
   border-top: 1px solid var(--tajy-border-light);
-  color: var(--tajy-text-secondary);
+  /* --tajy-text-secondary sobre blanco daba ~3.45:1, por debajo de WCAG AA. */
+  color: var(--tajy-text-muted);
   font-size: 12px;
   line-height: 1.4;
 }
@@ -595,7 +611,8 @@ button {
 }
 
 .sidebar__credit strong {
-  color: var(--tajy-text-secondary);
+  /* --tajy-text-secondary sobre blanco daba ~3.45:1, por debajo de WCAG AA. */
+  color: var(--tajy-text-muted);
   font-weight: 700;
 }
 
@@ -676,7 +693,7 @@ button {
 .tab-btn--active {
   border-color: var(--tajy-red);
   background: var(--tajy-pink);
-  color: var(--tajy-red);
+  color: var(--tajy-red-a11y);
 }
 
 .plan-row {
@@ -1487,7 +1504,7 @@ button {
 
 .cobertura-card__status--warning {
   background: var(--tajy-pink);
-  color: var(--tajy-red);
+  color: var(--tajy-red-a11y);
 }
 
 .cobertura-card__icon {

@@ -56,14 +56,26 @@ function catalogoBase() {
       franquicia_default: null,
       incluye_en_suma_asegurada_total: true,
     },
+    {
+      codigo: 'robo_contenido',
+      nombre: 'Robo y/o Asalto del Contenido',
+      categoria: 'Coberturas',
+      franquicia_default: null,
+      incluye_en_suma_asegurada_total: true,
+    },
   ]
 }
 
-function tasasBase({ tasaRC = 2 } = {}) {
+function tasasBase({ tasaRC = 2, tasaRoboContenido = 8 } = {}) {
   return [
     {
       coberturas_catalogo: { codigo: 'responsabilidad_civil' },
       tasa_valor: tasaRC,
+      unidad: 'permil',
+    },
+    {
+      coberturas_catalogo: { codigo: 'robo_contenido' },
+      tasa_valor: tasaRoboContenido,
       unidad: 'permil',
     },
   ]
@@ -314,6 +326,85 @@ describe('mrc.calculator — casos de error explícitos', () => {
       (err) => {
         assert.equal(err.status, 422)
         assert.match(err.message, /no existe o no está activa en el catálogo del ramo MRC/)
+        return true
+      }
+    )
+  })
+})
+
+// A pedido de Kevin (2026-07-30): ninguna cobertura adicional debe poder cargarse más de una
+// vez, salvo 'robo_contenido' que puede repetirse hasta 2 veces (regla original confirmada
+// 2026-07-13 contra "Version 01 - Calculo Varios.xlsx", ver LIMITE_REPETICION_COBERTURA_MRC).
+describe('mrc.calculator — límite de repetición por cobertura adicional', () => {
+  test('rechaza una cobertura sin excepción (ej. responsabilidad_civil) cargada 2 veces', async () => {
+    await assert.rejects(
+      () =>
+        calcularPrima({
+          plan: planBase(),
+          riesgoDatos: {
+            rubro_actividad: 'Bazar',
+            capital_edificio: 1_000_000,
+            capital_contenido: 1_000_000,
+            coberturas_adicionales: [
+              { codigo: 'responsabilidad_civil', suma_asegurada: 500_000 },
+              { codigo: 'responsabilidad_civil', suma_asegurada: 200_000 },
+            ],
+          },
+          rubro: rubroBase(),
+          catalogoRamo: catalogoBase(),
+          tasasRamo: tasasBase(),
+        }),
+      (err) => {
+        assert.equal(err.status, 422)
+        assert.match(err.message, /solo puede cargarse 1 vez\/veces como cobertura adicional/)
+        return true
+      }
+    )
+  })
+
+  test('acepta robo_contenido cargado 2 veces con sumas distintas (excepción confirmada)', async () => {
+    const resultado = await calcularPrima({
+      plan: planBase(),
+      riesgoDatos: {
+        rubro_actividad: 'Bazar',
+        capital_edificio: 1_000_000,
+        capital_contenido: 1_000_000,
+        coberturas_adicionales: [
+          { codigo: 'robo_contenido', suma_asegurada: 50_000_000 },
+          { codigo: 'robo_contenido', suma_asegurada: 10_000_000 },
+        ],
+      },
+      rubro: rubroBase(),
+      catalogoRamo: catalogoBase(),
+      tasasRamo: tasasBase(),
+    })
+
+    const lineasRoboContenido = resultado.coberturas.filter((c) => c.codigo === 'robo_contenido')
+    assert.equal(lineasRoboContenido.length, 2)
+  })
+
+  test('rechaza robo_contenido cargado una 3ra vez (supera la excepción de 2)', async () => {
+    await assert.rejects(
+      () =>
+        calcularPrima({
+          plan: planBase(),
+          riesgoDatos: {
+            rubro_actividad: 'Bazar',
+            capital_edificio: 1_000_000,
+            capital_contenido: 1_000_000,
+            coberturas_adicionales: [
+              { codigo: 'robo_contenido', suma_asegurada: 50_000_000 },
+              { codigo: 'robo_contenido', suma_asegurada: 10_000_000 },
+              { codigo: 'robo_contenido', suma_asegurada: 5_000_000 },
+            ],
+          },
+          rubro: rubroBase(),
+          catalogoRamo: catalogoBase(),
+          tasasRamo: tasasBase(),
+        }),
+      (err) => {
+        assert.equal(err.status, 422)
+        assert.match(err.message, /solo puede cargarse 2 vez\/veces como cobertura adicional/)
         return true
       }
     )

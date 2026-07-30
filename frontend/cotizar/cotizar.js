@@ -12,7 +12,6 @@ import {
   ICON_SUBLIMITE_MURALLAS,
   ICON_SUBLIMITE_GENERICO,
   ICON_ARROW_LEFT as ICON_ARROW_LEFT_ROUND,
-  ICON_X_CIRCLE,
 } from '../shared/nav-icons.js'
 import { escapeHtml } from '../shared/dom.js'
 import { renderSidebarFooter, renderTopbarUser } from '../shared/sidebar.js'
@@ -303,6 +302,14 @@ const CODIGOS_COBERTURA_EXCLUIDOS_BASE = [
   'sublimite_cctv',
   'equipos_electronicos',
 ]
+
+// Cuántas veces puede cargarse la MISMA cobertura entre las líneas de "Coberturas adicionales"
+// (con distinta suma asegurada cada vez). Por defecto 1 (sin repetición) — 'robo_contenido' es
+// la única excepción confirmada por Kevin (2026-07-13, ver mrc.calculator.js): en la práctica
+// puede aparecer 2 veces con sumas distintas. Ajustado el 2026-07-30 a pedido de Kevin: el resto
+// del catálogo ya NO puede repetirse (antes cualquier cobertura era repetible sin límite).
+const LIMITE_REPETICION_COBERTURA_MRC = { robo_contenido: 2 }
+const LIMITE_REPETICION_COBERTURA_MRC_DEFAULT = 1
 
 // Ícono por código de sublímite en el panel "Cotización en vivo" — códigos reales de MRC
 // (migración 012/019), fallback genérico para cualquier código sin ícono propio definido.
@@ -705,6 +712,12 @@ function updateCoberturaLinea(id, field, value) {
   const linea = state.coberturasAdicionales.find((l) => l.id === id)
   if (!linea) return
   linea[field] = value
+  if (field === 'codigo') {
+    // Re-renderiza para que las demás filas reflejen el límite por cobertura recién elegida
+    // (ver renderCoberturasAdicionales/LIMITE_REPETICION_COBERTURA_MRC) — no se hace en cada
+    // tecleo de sumaAsegurada para no perder el foco del input mientras el agente escribe.
+    renderApp()
+  }
   scheduleCalculate()
 }
 
@@ -1034,11 +1047,11 @@ function renderApp() {
     ${renderTopbar(ramo)}
     <div class="app-body">
       ${renderSidebar()}
-      <div class="main">
+      <main class="main">
         ${renderHeader(ramo)}
         ${renderBanner()}
         ${contenido}
-      </div>
+      </main>
     </div>
   `
 }
@@ -1166,7 +1179,7 @@ function renderPlanRow() {
     <div class="plan-row">
       <div class="plan-row__box">
         <div class="plan-row__label">Plan a presentar</div>
-        <select class="field-input plan-row__select" data-action-select="select-plan">${options}</select>
+        <select class="field-input plan-row__select" data-action-select="select-plan" aria-label="Plan a presentar">${options}</select>
       </div>
     </div>
   `
@@ -1481,38 +1494,7 @@ function renderDatosView(ramo) {
           </div>
         </div>
       </div>
-      ${renderExclusionesCard(plan)}
       <div class="live-summary" id="live-summary">${renderLivePanelContent()}</div>
-    </div>
-  `
-}
-
-// Card de exclusiones del plan, visible ya en "Datos del plan" (antes solo aparecía en
-// "Detalle del plan", removida de ahí en el rediseño de 70686b9) — ocupa el espacio libre
-// junto al formulario de datos del asegurado. Vacío si el plan no tiene texto cargado
-// (texto_exclusiones_generales), como Incendio/Vida-AP mientras no tengan template propio.
-function renderExclusionesCard(plan) {
-  if (!plan?.texto_exclusiones_generales) return ''
-
-  const items = plan.texto_exclusiones_generales.split('\n').filter(Boolean)
-
-  return `
-    <div class="card exclusiones-card">
-      <div class="card__title">Exclusiones</div>
-      <div class="card__body">
-        <ul class="texto-legal-list">
-          ${items
-            .map(
-              (linea) => `
-            <li>
-              <span class="texto-legal-list__icon texto-legal-list__icon--danger">${ICON_X_CIRCLE}</span>
-              <span>${escapeHtml(linea)}</span>
-            </li>
-          `
-            )
-            .join('')}
-        </ul>
-      </div>
     </div>
   `
 }
@@ -1521,8 +1503,26 @@ function renderExclusionesCard(plan) {
 // Contenido. `catalogoDisponible` ya viene sin las 2 fijas y sin sublimite_cctv (ver
 // coberturasDisponibles()).
 function renderCoberturasAdicionales(catalogoDisponible) {
-  const opciones = (codigoActual) =>
-    catalogoDisponible
+  // Cuenta de veces que cada código ya está elegido en OTRAS filas — el select de cada fila
+  // excluye los códigos que llegaron a su límite (ver LIMITE_REPETICION_COBERTURA_MRC),
+  // manteniendo siempre disponible el propio valor actual de la fila.
+  const conteoPorCodigo = (codigoExcluir) => {
+    const conteo = new Map()
+    for (const l of state.coberturasAdicionales) {
+      if (!l.codigo || l.codigo === codigoExcluir) continue
+      conteo.set(l.codigo, (conteo.get(l.codigo) || 0) + 1)
+    }
+    return conteo
+  }
+
+  const opciones = (codigoActual) => {
+    const conteo = conteoPorCodigo(codigoActual)
+    return catalogoDisponible
+      .filter((c) => {
+        const limite =
+          LIMITE_REPETICION_COBERTURA_MRC[c.codigo] ?? LIMITE_REPETICION_COBERTURA_MRC_DEFAULT
+        return (conteo.get(c.codigo) || 0) < limite
+      })
       .map(
         (c) => `
     <option value="${escapeHtml(c.codigo)}" ${c.codigo === codigoActual ? 'selected' : ''}>
@@ -1531,6 +1531,7 @@ function renderCoberturasAdicionales(catalogoDisponible) {
   `
       )
       .join('')
+  }
 
   // Cada fila es repetible (el agente puede agregar varias líneas de cobertura), así que
   // el id de cada campo usa l.id (clave estable de la fila, ver agregarCoberturaLinea) para
@@ -1563,11 +1564,18 @@ function renderCoberturasAdicionales(catalogoDisponible) {
     )
     .join('')
 
+  const conteoTotal = conteoPorCodigo(null)
+  const quedanCoberturasPorAgregar = catalogoDisponible.some((c) => {
+    const limite =
+      LIMITE_REPETICION_COBERTURA_MRC[c.codigo] ?? LIMITE_REPETICION_COBERTURA_MRC_DEFAULT
+    return (conteoTotal.get(c.codigo) || 0) < limite
+  })
+
   return `
     <div class="coberturas-adicionales" role="group" aria-labelledby="coberturas-adicionales-label">
       <label id="coberturas-adicionales-label">Coberturas adicionales</label>
       ${filas}
-      <button type="button" class="btn-outline" data-action="add-cobertura-linea">+ Agregar cobertura</button>
+      <button type="button" class="btn-outline" data-action="add-cobertura-linea" ${quedanCoberturasPorAgregar ? '' : 'disabled title="Ya agregaste el máximo de coberturas disponibles"'}>+ Agregar cobertura</button>
     </div>
   `
 }
@@ -1848,7 +1856,7 @@ function renderFranquiciaSelect(cobertura) {
 
   return `
     <div class="cobertura-row__franquicia-label">Franquicia</div>
-    <select class="cobertura-row__franquicia" data-franquicia-cobertura="${cobertura.codigo}">${opciones}</select>
+    <select class="cobertura-row__franquicia" data-franquicia-cobertura="${cobertura.codigo}" aria-label="Franquicia">${opciones}</select>
   `
 }
 

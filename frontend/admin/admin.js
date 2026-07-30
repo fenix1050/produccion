@@ -647,15 +647,22 @@ async function guardarPrimaTecnicaMinima(planId, form) {
   const valor = form[campo].value
   const cambios = { [campo]: valor === '' ? null : Number(valor) }
 
+  const nombre = form.nombre.value.trim()
+  if (!nombre) {
+    mostrarBanner('error', 'El nombre del plan no puede quedar vacío.')
+    return
+  }
+  cambios.nombre = nombre
+
   try {
     const plan = await api.put(`/admin/planes/${planId}`, cambios)
     const idx = state.planes.findIndex((p) => p.id === Number(planId))
     if (idx !== -1) state.planes[idx] = { ...state.planes[idx], ...plan }
     state.primaEnEdicion.delete(Number(planId))
-    mostrarBanner('success', 'Prima técnica mínima actualizada.')
+    mostrarBanner('success', 'Plan actualizado.')
     renderApp()
   } catch (err) {
-    mostrarBanner('error', err.message || 'No se pudo actualizar la prima técnica mínima.')
+    mostrarBanner('error', err.message || 'No se pudo actualizar el plan.')
   }
 }
 
@@ -1393,7 +1400,7 @@ function renderPlanes() {
     <div class="panel card">
       <div class="card__title card__title--toolbar">
         <span>Planes</span>
-        <select class="field-input" style="width: auto;" data-action="filtrar-ramo">
+        <select class="field-input" style="width: auto;" data-action="filtrar-ramo" aria-label="Filtrar por ramo">
           <option value="todos" ${state.ramoFiltro === 'todos' ? 'selected' : ''}>Todos los ramos</option>
           ${opcionesRamo}
         </select>
@@ -1426,7 +1433,7 @@ function renderTablaPlanes() {
     .map(
       (p) => `
     <tr>
-      <td>${escapeHtml(p.nombre)}</td>
+      <td>${renderCampoNombrePlan(p)}</td>
       <td>${escapeHtml(p.ramos?.nombre_display ?? '')}</td>
       <td>
         <label class="admin-modal__checkbox">
@@ -1521,6 +1528,16 @@ function esPlanSoloUsd(plan) {
   )
 }
 
+// El input de nombre (columna PLAN) vive en <td> aparte de este form, así que se
+// asocia via el atributo `form` en vez de anidarlo — un <input> puede pertenecer a un
+// <form> ubicado en cualquier parte del documento mientras comparta el mismo id.
+function renderCampoNombrePlan(plan) {
+  if (!state.primaEnEdicion.has(plan.id)) {
+    return escapeHtml(plan.nombre)
+  }
+  return `<input class="field-input field-input--sm" type="text" name="nombre" form="plan-form-${plan.id}" value="${escapeHtml(plan.nombre)}" />`
+}
+
 function renderCampoPrimaTecnicaMinima(plan) {
   const soloUsd = esPlanSoloUsd(plan)
   const campo = soloUsd ? 'prima_tecnica_minima_usd' : 'prima_tecnica_minima'
@@ -1536,7 +1553,7 @@ function renderCampoPrimaTecnicaMinima(plan) {
     `
   }
   return `
-    <form class="admin-inline-form" data-form-action="prima-tecnica-minima" data-id="${plan.id}">
+    <form class="admin-inline-form" id="plan-form-${plan.id}" data-form-action="prima-tecnica-minima" data-id="${plan.id}">
       <input class="field-input field-input--sm" type="number" step="0.01" name="${campo}" value="${valor ?? ''}" autofocus />
       <button class="btn-outline" type="submit">Guardar</button>
       <button class="btn-outline" type="button" data-action="cancelar-prima-tecnica-minima" data-id="${plan.id}">Cancelar</button>
@@ -1578,7 +1595,7 @@ function renderTasas() {
       <div class="card__title card__title--toolbar">
         <span>Tasas</span>
         <div class="card__title__actions">
-          <select class="field-input" style="width: auto;" data-action="seleccionar-ramo-tasas">
+          <select class="field-input" style="width: auto;" data-action="seleccionar-ramo-tasas" aria-label="Elegí un ramo">
             <option value="">Elegí un ramo…</option>
             ${opcionesRamo}
           </select>
@@ -1665,7 +1682,7 @@ function renderCamposTasaEdificioContenido(rubro) {
   ).join('')
   return `
     <form class="admin-inline-form" data-form-action="rubro-actividad-tasas" data-id="${rubro.id}">
-      <select class="field-input field-input--sm" name="categoria" autofocus>${opcionesCategoria}</select>
+      <select class="field-input field-input--sm" name="categoria" autofocus aria-label="Categoría">${opcionesCategoria}</select>
       <input class="field-input field-input--sm" type="number" step="0.001" name="tasa_edificio" placeholder="Edificio" value="${rubro.tasa_edificio ?? ''}" />
       <input class="field-input field-input--sm" type="number" step="0.001" name="tasa_contenido" placeholder="Contenido" value="${rubro.tasa_contenido ?? ''}" />
       <button class="btn-outline" type="submit">Guardar</button>
@@ -1757,14 +1774,14 @@ function renderCoberturas() {
       <div class="card__title card__title--toolbar">
         <span>Coberturas por plan</span>
         <div class="card__title__actions">
-          <select class="field-input" style="width: auto;" data-action="seleccionar-ramo-coberturas">
+          <select class="field-input" style="width: auto;" data-action="seleccionar-ramo-coberturas" aria-label="Elegí un ramo">
             <option value="">Elegí un ramo…</option>
             ${opcionesRamo}
           </select>
           ${
             state.ramoCoberturasSeleccionado
               ? `
-            <select class="field-input" style="width: auto;" data-action="seleccionar-plan-coberturas">
+            <select class="field-input" style="width: auto;" data-action="seleccionar-plan-coberturas" aria-label="Elegí un plan">
               <option value="">Elegí un plan…</option>
               ${opcionesPlan}
             </select>

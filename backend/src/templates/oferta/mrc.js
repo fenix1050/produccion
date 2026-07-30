@@ -75,7 +75,7 @@ const TEXTO_COBERTURAS_PRINCIPALES = [
   'Robo y/o Asalto del Contenido',
   'Robo (Caja registradora)',
   'Robo (Tránsito)',
-  'Rotura de Cristales, Vidrios o Espejos',
+  'Vidrios, cristales y/o espejos',
   'Responsabilidad Civil',
   'Equipos Electrónicos',
 ]

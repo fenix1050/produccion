@@ -26,10 +26,14 @@
   --tajy-success: var(--tajy-green-fg);
   --tajy-border: #ddd;
   --tajy-border-light: #eee;
-  --tajy-text-secondary: #8a8a8a;
   /* #999 sobre fondo blanco daba ~2.85:1 (falla WCAG AA 4.5:1 para texto
      normal). #6e6e6e mantiene el mismo rol "muted" pero cumple ~5.1:1. */
   --tajy-text-muted: #6e6e6e;
+  /* --tajy-text-secondary (#8a8a8a, ~3.45:1 sobre blanco) fallaba WCAG AA en
+     cada lugar donde se usaba para texto real (Vercel lo fue reportando de a
+     uno por scan). Es el mismo rol "gris secundario" que --tajy-text-muted —
+     alias directo en vez de mantener dos tonos "secundarios" distintos. */
+  --tajy-text-secondary: var(--tajy-text-muted);
   --tajy-text-body: #444;
   --tajy-text-dark: #333;
   --tajy-font-mono: 'Roboto Mono', ui-monospace, monospace;

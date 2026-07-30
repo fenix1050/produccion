@@ -29,7 +29,7 @@ function render() {
   app.innerHTML = `
     <canvas id="fx-canvas-bg"></canvas>
     <div class="login-diagonal"><canvas id="fx-canvas"></canvas></div>
-    <div class="login-card">
+    <main class="login-card">
       <div class="login-card__tab"></div>
       <img class="login-card__logo" src="./assets/logo-rojo-con-negro.svg" alt="Aseguradora Tajy" />
       <h1 class="login-card__title">Bienvenido</h1>
@@ -57,7 +57,7 @@ function render() {
         </button>
       </form>
       <p class="login-card__footer">Aseguradora Tajy Prop. Coop. S.A</p>
-    </div>
+    </main>
   `
 
   document.getElementById('login-form').addEventListener('submit', onSubmit)

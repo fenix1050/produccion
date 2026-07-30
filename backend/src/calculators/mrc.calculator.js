@@ -80,6 +80,7 @@ export async function calcularPrima({
   rubro,
   catalogoRamo,
   tasasRamo,
+  forzadoPorPlan = false,
 }) {
   if (!plan.prima_tecnica_minima) {
     throw httpError(
@@ -230,10 +231,14 @@ export async function calcularPrima({
   // piso en silencio: la Prima Técnica Mínima pasa a ser la prima base de la cotización.
   const primaBase = Math.max(primaCalculada, plan.prima_tecnica_minima)
 
+  // `forzadoPorPlan` (cambio SDD `mrc-plan-descuento-fijo`, design.md Decisión 2): cuando el
+  // descuento viene forzado por `plan.descuento_default` (política de empresa, no discreción
+  // del agente), se neutraliza el tope del USUARIO — el techo del PLAN sigue aplicando.
+  // Default `false`: cero cambio de comportamiento para cotizaciones existentes.
   const totalDescuentos = sumarAjustes(
     descuentos,
     primaBase,
-    topeEfectivo(plan.descuento_maximo, usuario?.descuento_maximo_pct)
+    topeEfectivo(plan.descuento_maximo, forzadoPorPlan ? null : usuario?.descuento_maximo_pct)
   )
   const totalRecargos = sumarAjustes(
     recargos,

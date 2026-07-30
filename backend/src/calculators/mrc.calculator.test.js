@@ -132,6 +132,53 @@ describe('mrc.calculator — calcularPrima — Prima Técnica Mínima (piso)', (
   })
 })
 
+// Cambio SDD `mrc-plan-descuento-fijo` (design.md Decisión 2): `forzadoPorPlan` neutraliza el
+// tope del USUARIO (no el del plan) al resolver `topeEfectivo(plan.descuento_maximo, ...)` en
+// `calcularPrima`. Mismos datos de capital que "capital alto" arriba → primaCalculada = 1.452.000
+// (por encima del piso, así el 10%/5% del descuento se calcula sin interferencia del piso).
+describe('mrc.calculator — calcularPrima — forzadoPorPlan neutraliza el tope del usuario', () => {
+  const RIESGO_DATOS_BASE = {
+    rubro_actividad: 'Bazar',
+    capital_edificio: 500_000_000,
+    capital_contenido: 300_000_000,
+    coberturas_adicionales: [{ codigo: 'responsabilidad_civil', suma_asegurada: 1_000_000 }],
+  }
+  // primaCalculada = 1.452.000 (ver test "capital alto" arriba) — descuento_maximo del plan = 10
+  // (mismo valor sembrado por la migración 046 para el plan real).
+  const PLAN_CON_TOPE_10 = planBase({ descuento_maximo: 10 })
+
+  test('forzadoPorPlan=true: el 10% se aplica COMPLETO aunque usuario.descuento_maximo_pct=5', async () => {
+    const resultado = await calcularPrima({
+      plan: PLAN_CON_TOPE_10,
+      riesgoDatos: RIESGO_DATOS_BASE,
+      descuentos: [{ descripcion: 'Descuento del plan', porcentaje: 10 }],
+      usuario: { descuento_maximo_pct: 5 },
+      forzadoPorPlan: true,
+      rubro: rubroBase(),
+      catalogoRamo: catalogoBase(),
+      tasasRamo: tasasBase(),
+    })
+
+    // primaBase = 1.452.000 → 10% = 145.200, SIN clampear al 5% del usuario.
+    assert.equal(resultado.detalle.total_descuentos, 145_200)
+  })
+
+  test('forzadoPorPlan=false (default, no-regresión): el mismo 10% SÍ se clampea al 5% del usuario', async () => {
+    const resultado = await calcularPrima({
+      plan: PLAN_CON_TOPE_10,
+      riesgoDatos: RIESGO_DATOS_BASE,
+      descuentos: [{ descripcion: 'Descuento agente', porcentaje: 10 }],
+      usuario: { descuento_maximo_pct: 5 },
+      rubro: rubroBase(),
+      catalogoRamo: catalogoBase(),
+      tasasRamo: tasasBase(),
+    })
+
+    // primaBase = 1.452.000 → tope efectivo = min(10, 5) = 5% = 72.600, el 10% pedido se clampea.
+    assert.equal(resultado.detalle.total_descuentos, 72_600)
+  })
+})
+
 describe('mrc.calculator — calcularPlanPago — 4 formas de pago simultáneas', () => {
   const PRIMA = 1_452_000 // deliberadamente no-redondo para que el redondeo realmente aplique
 

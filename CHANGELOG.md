@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.5](https://github.com/fenix1050/produccion/compare/v0.1.4...v0.1.5) (2026-07-30)
+
+
+### Features
+
+* **admin:** editar/eliminar ramo y ampliar sidebar a 8 ramos ([77e73fa](https://github.com/fenix1050/produccion/commit/77e73fa9933760660d5e649f1abf7b8c4cfcdf4f))
+* **mrc:** plan con descuento fijo del 10% y permiso de rol (backend) ([b22e94f](https://github.com/fenix1050/produccion/commit/b22e94fddd7fdfcf1bb5a2280b79eef6fec28c62))
+* **mrc:** plan con descuento fijo del 10% y permiso de rol (frontend) ([6c9378c](https://github.com/fenix1050/produccion/commit/6c9378c595958c77a20bf14f94894d0c9c25acb1))
+
 ## [0.1.4](https://github.com/fenix1050/produccion/compare/v0.1.3...v0.1.4) (2026-07-30)
 
 

@@ -9,4 +9,6 @@ package-lock.json
 
 *.min.js
 
+CHANGELOG.md
+
 backend/uploads

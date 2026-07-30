@@ -68,3 +68,4 @@ router.put('/plan-formas-pago/:id', requirePlanesEdit, adminController.editarPla
 // sistema que Kevin pidió reservar solo para el rol admin.
 router.get('/ramos', requireRole('admin'), adminController.listarRamosAdmin)
 router.put('/ramos/:id', requireRole('admin'), adminController.editarRamo)
+router.delete('/ramos/:id', requireRole('admin'), adminController.eliminarRamo)

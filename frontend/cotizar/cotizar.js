@@ -1047,11 +1047,11 @@ function renderApp() {
     ${renderTopbar(ramo)}
     <div class="app-body">
       ${renderSidebar()}
-      <div class="main">
+      <main class="main">
         ${renderHeader(ramo)}
         ${renderBanner()}
         ${contenido}
-      </div>
+      </main>
     </div>
   `
 }
@@ -1179,7 +1179,7 @@ function renderPlanRow() {
     <div class="plan-row">
       <div class="plan-row__box">
         <div class="plan-row__label">Plan a presentar</div>
-        <select class="field-input plan-row__select" data-action-select="select-plan">${options}</select>
+        <select class="field-input plan-row__select" data-action-select="select-plan" aria-label="Plan a presentar">${options}</select>
       </div>
     </div>
   `

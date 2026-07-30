@@ -100,7 +100,7 @@ body {
 .login-card__subtitle {
   margin: 0 0 22px;
   font-size: 13.5px;
-  color: #767a80;
+  color: #5b5f65;
   text-align: center;
 }
 
@@ -255,6 +255,6 @@ body {
 .login-card__footer {
   text-align: center;
   font-size: 10.5px;
-  color: #a4a8ad;
+  color: #6b6f75;
   margin: 20px 0 0;
 }

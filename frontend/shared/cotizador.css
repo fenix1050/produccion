@@ -162,6 +162,9 @@ button {
 
 .topbar__logo {
   height: 32px;
+  /* Reserva el ancho antes de que el SVG cargue (evita el layout shift que
+     reportaba Vercel Speed Insights). Ratio real del asset: 206.2 / 156. */
+  aspect-ratio: 206.2 / 156;
 }
 
 .topbar__brand-text {
@@ -604,7 +607,8 @@ button {
 }
 
 .sidebar__credit strong {
-  color: var(--tajy-text-secondary);
+  /* --tajy-text-secondary sobre blanco daba ~3.45:1, por debajo de WCAG AA. */
+  color: var(--tajy-text-muted);
   font-weight: 700;
 }
 

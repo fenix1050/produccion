@@ -27,26 +27,38 @@ import { fmtGs, fmtGsInput, fmtMonto, unidadMoneda } from '../shared/format.js'
 // accesible por lector de pantalla, no solo por el tooltip `title` (ver syncAvanceButtons()).
 const MOTIVO_BLOQUEO_ID = 'motivo-bloqueo-avance'
 
-// ---- Metadata de ramos mostrados en el sidebar (5 ramos reales del sistema) ----
+// ---- Metadata de ramos mostrados en el sidebar (8 ramos seedeados en la tabla `ramos`) ----
 // El código de 2 letras y el estado (disponible/pausa/próximamente) son decisión de UI —
-// no vienen de la base. El resto de los ramos seedeados (auto-flota, tro, transporte) no
-// se muestran acá: no fueron pedidos para este flujo.
+// el estado real se pisa en runtime con `ramoInfo()` según `ramos.activo` (togglable desde
+// el panel admin, sección Ramos). Auto-Flota, TRO y Transporte de Mercadería tienen calculador
+// propio ya escrito (backend/src/calculators/) pero no fueron pedidos para cotizar todavía —
+// por eso quedan acá con estado de fallback 'proximamente' y la migración 046 fuerza
+// `ramos.activo = false` para esos 3, así que aparecer en esta lista es solo para que el
+// toggle del admin los controle: no los deja disponibles por sí solo (mismo criterio que la
+// migración 041 usó para auto/hogar).
 const RAMOS_UI = [
   { nombre: 'auto', code: 'AU', label: 'Auto', estado: 'proximamente' },
+  { nombre: 'auto-flota', code: 'AF', label: 'Automóviles - Flota', estado: 'proximamente' },
   { nombre: 'mrc', code: 'MR', label: 'Multirriesgo Comercio', estado: 'disponible' },
   { nombre: 'incendio', code: 'IN', label: 'Incendio', estado: 'disponible' },
   { nombre: 'vida-ap', code: 'VA', label: 'Vida y Accidentes Personales', estado: 'disponible' },
   { nombre: 'hogar', code: 'MH', label: 'Multirriesgo Hogar', estado: 'proximamente' },
+  { nombre: 'tro', code: 'TR', label: 'Todo Riesgo Operativo', estado: 'proximamente' },
+  { nombre: 'transporte', code: 'TM', label: 'Transporte de Mercadería', estado: 'proximamente' },
 ]
 
 // Íconos por ramo — se usan tanto en el badge de la vista Datos (form-heading__badge)
 // como en el nav del sidebar (.ramo-row__icon), Diseño 2 (docs/mockups/diseno-2-app-shell.html).
+// Auto-Flota/TRO/Transporte no tienen ícono propio diseñado todavía — usan el genérico.
 const RAMO_ICONOS = {
   auto: ICON_RAMO_AUTO,
+  'auto-flota': ICON_SUBLIMITE_GENERICO,
   mrc: ICON_RAMO_MRC,
   incendio: ICON_RAMO_INCENDIO,
   'vida-ap': ICON_RAMO_VIDA_AP,
   hogar: ICON_RAMO_HOGAR,
+  tro: ICON_SUBLIMITE_GENERICO,
+  transporte: ICON_SUBLIMITE_GENERICO,
 }
 
 // Ramos con calculador real conectado en esta pasada (ver CLAUDE.md — MRC primero, luego

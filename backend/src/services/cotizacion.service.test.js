@@ -2,19 +2,32 @@ import assert from 'node:assert/strict'
 import { test, describe } from 'node:test'
 
 import { invalidarCacheCatalogos } from './cache.js'
-import { resolverDescuentos } from './cotizacion.service.js'
 
 // resolverDescuentos: helper puro (cambio SDD `mrc-plan-descuento-fijo`) que decide, ANTES de
 // invocar al calculador, si el descuento efectivo es el que mandó el body o el forzado por
 // `plan.descuento_default` — ver design.md Decisión 1. `forzadoPorPlan` es lo que después
 // neutraliza el tope del usuario en el calculador (Decisión 2), así que se testea acá como
 // parte del contrato del helper, no solo el array de `descuentos`.
+//
+// Import dinámico + repos mockeados en cada test (mismo patrón que el resto del archivo, ver
+// nota debajo): un `import` estático de `cotizacion.service.js` a nivel de módulo se evalúa
+// ANTES de que cualquier mock se registre, así que carga la cadena real de repositories →
+// `config/supabase.js`, que revienta si no hay SUPABASE_URL/SUPABASE_SERVICE_KEY reales — pasaba
+// desapercibido en local (hay `.env` con credenciales reales) pero rompía CI (sin `.env`).
 describe('resolverDescuentos', () => {
   const PLAN_SIN_DESCUENTO_DEFAULT = { descuento_default: null, cotizacion_combinada: false }
   const PLAN_MRC_10 = { descuento_default: 10, cotizacion_combinada: false }
   const PLAN_AUTO_COMBINADO = { descuento_default: 20, cotizacion_combinada: true }
 
-  test('plan sin descuento_default: el body pasa intacto, forzadoPorPlan=false', () => {
+  function mockRepositoriosYObtenerResolverDescuentos(t, caso) {
+    t.mock.module('../repositories/ramos.repository.js', { exports: {} })
+    t.mock.module('../repositories/coberturas.repository.js', { exports: {} })
+    t.mock.module('../repositories/cotizaciones.repository.js', { exports: {} })
+    return import(`./cotizacion.service.js?case=resolver-descuentos-${caso}`)
+  }
+
+  test('plan sin descuento_default: el body pasa intacto, forzadoPorPlan=false', async (t) => {
+    const { resolverDescuentos } = await mockRepositoriosYObtenerResolverDescuentos(t, 1)
     const descuentosBody = [{ descripcion: 'Descuento agente', porcentaje: 15 }]
     const resultado = resolverDescuentos({
       plan: PLAN_SIN_DESCUENTO_DEFAULT,
@@ -26,7 +39,8 @@ describe('resolverDescuentos', () => {
     assert.equal(resultado.forzadoPorPlan, false)
   })
 
-  test('plan con descuento_default + usuario CON permiso: el body pasa intacto', () => {
+  test('plan con descuento_default + usuario CON permiso: el body pasa intacto', async (t) => {
+    const { resolverDescuentos } = await mockRepositoriosYObtenerResolverDescuentos(t, 2)
     const descuentosBody = [{ descripcion: 'Descuento agente', porcentaje: 5 }]
     const resultado = resolverDescuentos({
       plan: PLAN_MRC_10,
@@ -38,7 +52,8 @@ describe('resolverDescuentos', () => {
     assert.equal(resultado.forzadoPorPlan, false)
   })
 
-  test('plan con descuento_default + usuario SIN permiso: ignora el body, fuerza el 10% del plan', () => {
+  test('plan con descuento_default + usuario SIN permiso: ignora el body, fuerza el 10% del plan', async (t) => {
+    const { resolverDescuentos } = await mockRepositoriosYObtenerResolverDescuentos(t, 3)
     const descuentosBody = [{ descripcion: 'Descuento agente', porcentaje: 5 }]
     const resultado = resolverDescuentos({
       plan: PLAN_MRC_10,
@@ -50,7 +65,8 @@ describe('resolverDescuentos', () => {
     assert.equal(resultado.forzadoPorPlan, true)
   })
 
-  test('plan con descuento_default + usuario undefined (sin sesión mockeada): fuerza igual', () => {
+  test('plan con descuento_default + usuario undefined (sin sesión mockeada): fuerza igual', async (t) => {
+    const { resolverDescuentos } = await mockRepositoriosYObtenerResolverDescuentos(t, 4)
     const resultado = resolverDescuentos({
       plan: PLAN_MRC_10,
       descuentosBody: [{ porcentaje: 99 }],
@@ -61,7 +77,8 @@ describe('resolverDescuentos', () => {
     assert.equal(resultado.forzadoPorPlan, true)
   })
 
-  test('plan Auto con cotizacion_combinada=true: NUNCA fuerza, aunque tenga descuento_default', () => {
+  test('plan Auto con cotizacion_combinada=true: NUNCA fuerza, aunque tenga descuento_default', async (t) => {
+    const { resolverDescuentos } = await mockRepositoriosYObtenerResolverDescuentos(t, 5)
     const descuentosBody = [{ porcentaje: 3 }]
     const resultado = resolverDescuentos({
       plan: PLAN_AUTO_COMBINADO,
@@ -73,7 +90,8 @@ describe('resolverDescuentos', () => {
     assert.equal(resultado.forzadoPorPlan, false)
   })
 
-  test('plan con descuento_default + sin body (undefined): fuerza igual, no rompe', () => {
+  test('plan con descuento_default + sin body (undefined): fuerza igual, no rompe', async (t) => {
+    const { resolverDescuentos } = await mockRepositoriosYObtenerResolverDescuentos(t, 6)
     const resultado = resolverDescuentos({
       plan: PLAN_MRC_10,
       descuentosBody: undefined,
@@ -84,7 +102,8 @@ describe('resolverDescuentos', () => {
     assert.equal(resultado.forzadoPorPlan, true)
   })
 
-  test('plan sin descuento_default + body undefined: devuelve array vacío, no rompe', () => {
+  test('plan sin descuento_default + body undefined: devuelve array vacío, no rompe', async (t) => {
+    const { resolverDescuentos } = await mockRepositoriosYObtenerResolverDescuentos(t, 7)
     const resultado = resolverDescuentos({
       plan: PLAN_SIN_DESCUENTO_DEFAULT,
       descuentosBody: undefined,

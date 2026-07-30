@@ -12,7 +12,6 @@ import {
   ICON_SUBLIMITE_MURALLAS,
   ICON_SUBLIMITE_GENERICO,
   ICON_ARROW_LEFT as ICON_ARROW_LEFT_ROUND,
-  ICON_X_CIRCLE,
 } from '../shared/nav-icons.js'
 import { escapeHtml } from '../shared/dom.js'
 import { renderSidebarFooter, renderTopbarUser } from '../shared/sidebar.js'
@@ -1481,38 +1480,7 @@ function renderDatosView(ramo) {
           </div>
         </div>
       </div>
-      ${renderExclusionesCard(plan)}
       <div class="live-summary" id="live-summary">${renderLivePanelContent()}</div>
-    </div>
-  `
-}
-
-// Card de exclusiones del plan, visible ya en "Datos del plan" (antes solo aparecía en
-// "Detalle del plan", removida de ahí en el rediseño de 70686b9) — ocupa el espacio libre
-// junto al formulario de datos del asegurado. Vacío si el plan no tiene texto cargado
-// (texto_exclusiones_generales), como Incendio/Vida-AP mientras no tengan template propio.
-function renderExclusionesCard(plan) {
-  if (!plan?.texto_exclusiones_generales) return ''
-
-  const items = plan.texto_exclusiones_generales.split('\n').filter(Boolean)
-
-  return `
-    <div class="card exclusiones-card">
-      <div class="card__title">Exclusiones</div>
-      <div class="card__body">
-        <ul class="texto-legal-list">
-          ${items
-            .map(
-              (linea) => `
-            <li>
-              <span class="texto-legal-list__icon texto-legal-list__icon--danger">${ICON_X_CIRCLE}</span>
-              <span>${escapeHtml(linea)}</span>
-            </li>
-          `
-            )
-            .join('')}
-        </ul>
-      </div>
     </div>
   `
 }

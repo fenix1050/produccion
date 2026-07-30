@@ -1862,6 +1862,11 @@ redesplegado manualmente después de este merge, el selector de "Tipo de Riesgo"
 producción para **todos** los ramos (Incendio, MRC, TRO) — no solo para los rubros nuevos de
 Incendio — porque el frontend ya no manda el parámetro legacy `grupo` que el backend viejo
 esperaba. No se pudo verificar conectividad a `https://api.cotizador.lat` desde este entorno para
-confirmar la versión corriendo. **Pendiente: Kevin (o quien tenga acceso SSH a la VPS) debe
-confirmar que el backend desplegado incluye el commit `c5a1dd2` o posterior antes de dar por
-cerrado este cambio en producción.**
+confirmar la versión corriendo.
+
+**Verificado y resuelto (2026-07-30):** se probó `https://api.cotizador.lat/api/ramos/rubros-actividad`
+en vivo con un usuario real (login vía `/api/auth/login`). Sin `ramo_id` devuelve `400
+{"error":"Expected number, received nan"}` (Zod validando correctamente); con `ramo_id=3`
+(Incendio) devuelve `200` con rubros reales (`VIVIENDA`, `BAZAR`, etc.). El backend de la VPS ya
+estaba redesplegado con el código de PR #38/#39 al momento de esta verificación — no hubo que
+tomar ninguna acción. Riesgo cerrado, no queda pendiente para Kevin en este punto.

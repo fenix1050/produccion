@@ -450,6 +450,41 @@ async function resolverUmbralInspeccion(plan, moneda) {
 }
 
 /**
+ * Resuelve el descuento efectivo ANTES de invocar al calculador (cambio SDD
+ * `mrc-plan-descuento-fijo`, ver design.md Decisión 1). Cuando `plan.descuento_default` está
+ * seteado, `plan.cotizacion_combinada` es `false` (la franquicia dual de Auto es la otra rama
+ * que lee `descuento_default` — mutuamente excluyentes, Decisión 3) y el usuario NO tiene
+ * `puede_editar_descuento_plan`, se descarta cualquier descuento del body y se fuerza un único
+ * ajuste `{ descripcion: 'Descuento del plan', porcentaje: plan.descuento_default }`. En
+ * cualquier otro caso el body pasa intacto (comportamiento actual, sin cambios).
+ *
+ * `forzadoPorPlan` viaja junto al array resuelto porque el calculador lo necesita para decidir
+ * si neutraliza el tope del USUARIO (`topeEfectivo`, Decisión 2) — es política de empresa, no
+ * discrecionalidad del agente, así que el descuento forzado del plan no debe quedar clampeado
+ * por `usuario.descuento_maximo_pct` en silencio.
+ *
+ * Función pura, exportada para test directo sin mockear repositories.
+ *
+ * @param {object} params
+ * @param {object} params.plan
+ * @param {Array<{monto?: number, porcentaje?: number}>|undefined} params.descuentosBody
+ * @param {object|undefined} params.usuario
+ * @returns {{descuentos: Array<object>, forzadoPorPlan: boolean}}
+ */
+export function resolverDescuentos({ plan, descuentosBody, usuario }) {
+  const aplicaDescuentoDelPlan = plan.descuento_default != null && !plan.cotizacion_combinada
+
+  if (!aplicaDescuentoDelPlan || usuario?.puede_editar_descuento_plan) {
+    return { descuentos: descuentosBody ?? [], forzadoPorPlan: false }
+  }
+
+  return {
+    descuentos: [{ descripcion: 'Descuento del plan', porcentaje: plan.descuento_default }],
+    forzadoPorPlan: true,
+  }
+}
+
+/**
  * Arma las variantes (sin/con franquicia) según la regla de negocio de Auto
  * (ver sección 5 de PLAN_DESARROLLO.md). Otros ramos no tienen franquicia dual
  * todavía — devuelven siempre 1 variante sin franquicia hasta que se implementen.
@@ -467,12 +502,19 @@ async function construirVariantes({ calculador, plan, ramo, datosValidados, usua
     moneda
   )
 
+  const { descuentos, forzadoPorPlan } = resolverDescuentos({
+    plan,
+    descuentosBody: datosValidados.descuentos,
+    usuario,
+  })
+
   const { prima, detalle, coberturas } = await calculador.calcularPrima({
     planId: plan.id,
     plan,
     capital: datosValidados.capital_asegurado,
     riesgoDatos: datosValidados.riesgo_datos,
-    descuentos: datosValidados.descuentos,
+    descuentos,
+    forzadoPorPlan,
     recargos: datosValidados.recargos,
     usuario,
     moneda,

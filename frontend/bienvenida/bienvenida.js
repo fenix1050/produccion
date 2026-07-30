@@ -73,11 +73,11 @@ function render() {
         <img class="bv-header__logo" src="./assets/logo-rojo-con-negro.svg" alt="Aseguradora Tajy" />
         <div class="bv-header__saludo">Hola, <b>${escapeHtml(nombre)}</b></div>
       </header>
-      <div class="bv-fade">
+      <main class="bv-fade">
         ${state.view === 'welcome' ? renderWelcome() : ''}
         ${state.view === 'ramo' ? renderRamo() : ''}
         ${state.view === 'propuesta' ? renderPropuesta() : ''}
-      </div>
+      </main>
     </div>
   `
 

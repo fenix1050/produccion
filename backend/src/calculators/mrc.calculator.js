@@ -14,6 +14,14 @@ const CODIGO_INCENDIO_CONTENIDO = 'incendio_contenido'
 // para este mínimo, van aparte siempre incluidos.
 const MINIMO_COBERTURAS_MRC = 3
 
+// Cuántas veces puede repetirse la MISMA cobertura entre las líneas de "coberturas adicionales"
+// (con distinta suma asegurada cada vez). Por defecto 1 (sin repetición) — 'robo_contenido' es
+// la única excepción confirmada por Kevin (2026-07-13, ver comentario más abajo): en la práctica
+// puede aparecer 2 veces con sumas distintas. Ajustado el 2026-07-30 a pedido de Kevin: el resto
+// del catálogo ya NO puede repetirse (antes cualquier cobertura era repetible sin límite).
+const LIMITE_REPETICION_COBERTURA_MRC = { robo_contenido: 2 }
+const LIMITE_REPETICION_COBERTURA_MRC_DEFAULT = 1
+
 /**
  * Calculador de MRC (Multirriesgo Comercio) — solo el plan "MULTIRRIESGO COMERCIO - NORMAL"
  * tiene RPF y prima_tecnica_minima confirmados contra el sistema real (ver PLAN_DESARROLLO.md
@@ -43,13 +51,15 @@ const MINIMO_COBERTURAS_MRC = 3
  *
  * Coberturas adicionales (desde 2026-07-13): fuera de Incendio Edificio/Contenido, ninguna
  * cobertura se incluye por defecto. El agente agrega explícitamente cada línea vía
- * `riesgoDatos.coberturas_adicionales` ({codigo, suma_asegurada}), y la misma cobertura puede
- * repetirse con distinta suma asegurada (confirmado contra "Version 01 - Calculo Varios.xlsx",
- * hoja MRC/DATOS: "Robo contenido" aparece dos veces en una cotización real con sumas
- * distintas). Cada línea se tarifica con `tasas_cobertura_ramo` (permil) y su costo se suma a
- * la prima; se rechaza con 422 si el código no existe/no está activo en el ramo, si es uno de
- * los 2 códigos fijos (ya cubiertos por el capital declarado), o si no tiene tasa confirmada
- * (hoy el caso de `sublimite_cctv`).
+ * `riesgoDatos.coberturas_adicionales` ({codigo, suma_asegurada}). Cada código puede repetirse
+ * hasta `LIMITE_REPETICION_COBERTURA_MRC[codigo] ?? 1` veces con distinta suma asegurada —
+ * 'robo_contenido' es la única excepción confirmada a 2 (ver "Version 01 - Calculo
+ * Varios.xlsx", hoja MRC/DATOS: aparece dos veces en una cotización real con sumas distintas);
+ * el resto del catálogo, desde 2026-07-30, solo una vez. Cada línea se tarifica con
+ * `tasas_cobertura_ramo` (permil) y su costo se suma a la prima; se rechaza con 422 si el
+ * código no existe/no está activo en el ramo, si es uno de los 2 códigos fijos (ya cubiertos
+ * por el capital declarado), si no tiene tasa confirmada (hoy el caso de `sublimite_cctv`), o
+ * si supera el límite de repetición permitido para ese código.
  *
  * @param {object} input
  * @param {object} input.plan
@@ -132,6 +142,7 @@ export async function calcularPrima({
 
   const coberturasAdicionalesValidadas = []
   let totalCoberturasAdicionales = 0
+  const conteoPorCodigo = new Map()
 
   for (const linea of riesgoDatos.coberturas_adicionales ?? []) {
     const catalogoRow = catalogoPorCodigo.get(linea.codigo)
@@ -140,6 +151,18 @@ export async function calcularPrima({
         422,
         `La cobertura "${linea.codigo}" no existe o no está activa en el catálogo del ramo MRC.`,
         `La cobertura seleccionada no es válida.`
+      )
+    }
+
+    const vecesCargada = (conteoPorCodigo.get(linea.codigo) ?? 0) + 1
+    conteoPorCodigo.set(linea.codigo, vecesCargada)
+    const limiteRepeticion =
+      LIMITE_REPETICION_COBERTURA_MRC[linea.codigo] ?? LIMITE_REPETICION_COBERTURA_MRC_DEFAULT
+    if (vecesCargada > limiteRepeticion) {
+      throw httpError(
+        422,
+        `"${catalogoRow.nombre}" solo puede cargarse ${limiteRepeticion} vez/veces como cobertura adicional.`,
+        `"${catalogoRow.nombre}" ya alcanzó el máximo de ${limiteRepeticion} vez/veces permitido.`
       )
     }
 

@@ -23,6 +23,10 @@ describe('resolverDescuentos', () => {
     t.mock.module('../repositories/ramos.repository.js', { exports: {} })
     t.mock.module('../repositories/coberturas.repository.js', { exports: {} })
     t.mock.module('../repositories/cotizaciones.repository.js', { exports: {} })
+    // cotizacion.service.js también importa tipo-cambio.service.js, que a su vez importa
+    // tipos-cambio.repository.js -> config/supabase.js — sin este mock, el import dinámico de
+    // más abajo sigue reventando en CI (sin .env) aunque los 3 repos de arriba estén mockeados.
+    t.mock.module('./tipo-cambio.service.js', { exports: {} })
     return import(`./cotizacion.service.js?case=resolver-descuentos-${caso}`)
   }
 
@@ -301,6 +305,12 @@ describe('construirVariantes (vía calcularPreview) — enforcement del descuent
         findTasasRiesgoObjeto: async () => null,
       },
     })
+    // cotizacion.service.js importa también cotizaciones.repository.js y tipo-cambio.service.js
+    // (este último con una cadena propia hasta config/supabase.js) — sin mockearlos acá el import
+    // dinámico de más abajo revienta en CI (sin .env), aunque calcularPreview nunca los invoque
+    // en el camino de preview que testean estos casos.
+    t.mock.module('../repositories/cotizaciones.repository.js', { exports: {} })
+    t.mock.module('./tipo-cambio.service.js', { exports: {} })
   }
 
   function bodyMrc(descuentoPorcentaje) {
@@ -386,6 +396,9 @@ describe('construirVariantes (vía calcularPreview) — Auto cotizacion_combinad
         findTasaCapital: async () => ({ tasa_porcentaje: 5 }),
       },
     })
+    t.mock.module('../repositories/coberturas.repository.js', { exports: {} })
+    t.mock.module('../repositories/cotizaciones.repository.js', { exports: {} })
+    t.mock.module('./tipo-cambio.service.js', { exports: {} })
     const { calcularPreview } =
       await import('./cotizacion.service.js?case=regresion-auto-combinado')
 

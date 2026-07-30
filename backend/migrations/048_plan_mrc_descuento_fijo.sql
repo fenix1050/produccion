@@ -1,5 +1,10 @@
--- Migración 046: permiso de rol para editar el descuento fijo de un plan + plan nuevo de MRC
+-- Migración 048: permiso de rol para editar el descuento fijo de un plan + plan nuevo de MRC
 -- con descuento comercial fijo del 10% (cambio SDD `mrc-plan-descuento-fijo`).
+--
+-- Renombrada de 046 a 048 al mergear a main (2026-07-30): colisionaba con
+-- 046_enable_rls_public_tables.sql, que ya estaba en main. Contenido sin cambios — ya estaba
+-- aplicada contra Supabase real bajo el nombre lógico "046_plan_mrc_descuento_fijo" antes del
+-- rename; el nombre del archivo no está atado a ningún tracking automático de migraciones.
 --
 -- Contexto (ver design.md del cambio):
 -- 1. Se agrega `roles.puede_editar_descuento_plan`, siguiendo el modelo de permisos de rol

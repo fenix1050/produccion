@@ -1804,3 +1804,64 @@ ROUND(tasa_global × 0.6, 2)`) en un solo `INSERT ... SELECT` guardado, verifica
    cumple el requisito de "editable sin cambio de código"); definir tasas de Incendio para los 27
    rubros fuera de alcance; revisar caso por caso los 176 rubros con clamp activo si en el uso real
    se detectan primas distorsionadas.
+
+## 37. Corrección de estado — PR #38/#39 y PR #21/#22 ya estaban mergeados a `main`; PR #40 mergeado (2026-07-30)
+
+Auditoría automática de rutina (detección de cambios importantes vs. estado documentado). Al
+comparar `docs/ESTADO_PROYECTO.md`/`CLAUDE.md` contra `git log` de `main`, se encontraron dos
+afirmaciones desactualizadas que quedaron "congeladas" en el texto porque se escribieron en la
+misma sesión que preparó el merge, antes de que el merge ocurriera:
+
+- **Sección 36, "Pendiente" ítem 2**: decía "El código está en la rama
+  `sdd/incendio-tasas-por-rubro` (PR #38), sin mergear a `main` todavía." — **Falso a partir de
+  2026-07-29 08:19**: PR #38 se mergeó (`8f6f1d2`), y una segunda vuelta de la misma rama (un fix
+  de test para que CI pasara sin `.env`, `423fc76`) se mergeó como **PR #39** (`c5a1dd2`,
+  2026-07-29 14:14). Ambos ya están en `main`.
+- **Sección 33**: decía "pusheados pero todavía sin PR/merge a `main`" sobre "eliminar planes" y
+  "habilitar/deshabilitar ramos". **Falso**: esos commits se mergearon como **PR #21** (`391b9fc`,
+  2026-07-28) y el Dockerfile/`render.yaml` de esa misma rama como **PR #22** (`b71954e`,
+  2026-07-28). Ambos ya están en `main`.
+- **Sección 34**: decía "Sin commitear todavía" sobre el template de Carta Oferta de Incendio.
+  **Desactualizado**: se commiteó (`cb4223e`) y se mergeó como parte de **PR #33**
+  (`feat/incendio-carta-oferta-pdf`).
+
+No se reescriben esas secciones (quedan como registro histórico de la sesión en que se escribieron
+— mismo criterio que la corrección de la sección 35 sobre la IP `147.93.132.53`), pero a partir de
+acá: **PR #21, #22, #33, #38 y #39 están todos mergeados a `main`**. El estado real de Incendio es
+el de producción (ver README, tabla de ramos), no "pendiente de merge".
+
+**Commits nuevos en `main` no registrados todavía en este documento (2026-07-29, posteriores a la
+sección 36):**
+
+- `423fc76` `fix(test): mockear config/supabase.js en test de admin rubros-actividad` — el test de
+  `admin.controller.rubros-actividad.test.js` solo mockeaba `rubros-actividad.service.js`, pero
+  `admin.controller.js` importa 6 servicios de forma estática; en CI (sin `backend/.env`) los otros
+  5 explotaban al importar su repository real contra Supabase. Pasaba en local (con `.env` real) y
+  fallaba en GitHub Actions. Mergeado como parte de PR #39.
+- `50a071d` `chore(git): dejar de trackear .atl/` — `.atl/` ya estaba en `.gitignore` pero seguía
+  trackeado desde antes; se destrackearon los 2 archivos cacheados. Sin impacto funcional.
+- `c2ffa62` `fix(frontend): mostrar nombre real de rol en vez de "Analista comercial" fijo` —
+  `frontend/configuracion/configuracion.js` y `frontend/shared/sidebar.js` mostraban el texto fijo
+  "Analista comercial" para cualquier usuario no-admin, aunque su rol real fuera "Analista de
+  Riesgo" o "Jefe de Análisis de Riesgo". Ahora usan `usuario.rol` tal cual viene del repository.
+- `39f6013` `fix(historial): alinear filtros y corregir tamaño de botón Limpiar filtros` (**PR
+  #40**, mergeado `5e60309`) — en `frontend/historial/historial.css`, el `<select>` y los
+  `<input type="date">` compartían la clase `.field-input` pero el navegador les daba una altura
+  intrínseca distinta (desalineados en la fila de filtros), y el botón "Limpiar filtros" (estilo
+  outline) colapsaba a 2 líneas de texto al no tener columna propia en el grid `auto-fit` del
+  formulario de filtros. Fix puramente CSS, sin cambio de comportamiento.
+
+**Hallazgo de esta auditoría — riesgo de despliegue no verificado (acción recomendada para
+Kevin):** PR #38/#39 mergean un cambio de contrato de API: `GET /ramos/rubros-actividad` y
+`GET /admin/rubros-actividad` ahora **exigen** `ramo_id` (400 si falta) y el frontend (`cotizar.js`,
+`admin.js`) ya lo envía. El frontend se despliega automático en Vercel al pushear a `main`
+(`frontend/vercel.json` + integración nativa de Vercel-GitHub); **el backend en la VPS no tiene
+pipeline de CD — el redeploy es manual** (`git pull` + `docker compose up --build`, ver
+`docker-compose.yml`/`Caddyfile` en la raíz). Si el backend de `api.cotizador.lat` no fue
+redesplegado manualmente después de este merge, el selector de "Tipo de Riesgo" puede estar roto en
+producción para **todos** los ramos (Incendio, MRC, TRO) — no solo para los rubros nuevos de
+Incendio — porque el frontend ya no manda el parámetro legacy `grupo` que el backend viejo
+esperaba. No se pudo verificar conectividad a `https://api.cotizador.lat` desde este entorno para
+confirmar la versión corriendo. **Pendiente: Kevin (o quien tenga acceso SSH a la VPS) debe
+confirmar que el backend desplegado incluye el commit `c5a1dd2` o posterior antes de dar por
+cerrado este cambio en producción.**

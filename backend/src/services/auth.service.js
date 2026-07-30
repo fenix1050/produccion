@@ -60,6 +60,7 @@ export async function login(email, password) {
       puede_gestionar_usuarios: usuario.puede_gestionar_usuarios,
       puede_editar_coberturas: usuario.puede_editar_coberturas,
       puede_editar_planes: usuario.puede_editar_planes,
+      puede_editar_descuento_plan: usuario.puede_editar_descuento_plan,
       descuento_maximo_pct: usuario.descuento_maximo_pct,
       recargo_maximo_pct: usuario.recargo_maximo_pct,
       // Snapshot tomado ANTES de actualizarUltimaSesion() de arriba: es la sesión previa

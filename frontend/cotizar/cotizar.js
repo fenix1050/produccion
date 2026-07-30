@@ -1856,7 +1856,7 @@ function renderFranquiciaSelect(cobertura) {
 
   return `
     <div class="cobertura-row__franquicia-label">Franquicia</div>
-    <select class="cobertura-row__franquicia" data-franquicia-cobertura="${cobertura.codigo}">${opciones}</select>
+    <select class="cobertura-row__franquicia" data-franquicia-cobertura="${cobertura.codigo}" aria-label="Franquicia">${opciones}</select>
   `
 }
 

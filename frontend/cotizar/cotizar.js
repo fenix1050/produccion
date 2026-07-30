@@ -580,6 +580,7 @@ async function selectRamo(nombre) {
     const planCalculable = state.planes.find((p) => planEsCalculable(nombre, p))
     state.planId = planCalculable ? planCalculable.id : (state.planes[0]?.id ?? null)
     state.data.cuotas = planCalculable?.cuotas_default ?? null
+    state.data.descuentoPorcentaje = planCalculable?.descuento_default ?? null
 
     if (nombre === 'mrc' || nombre === 'incendio') {
       try {
@@ -612,6 +613,7 @@ function selectPlan(planId) {
   if (!plan || !planEsCalculable(state.ramoId, plan)) return // plan sin RPF/tasas confirmadas: bloqueado
   state.planId = planId
   state.data.cuotas = plan.cuotas_default ?? null
+  state.data.descuentoPorcentaje = plan.descuento_default ?? null
   state.coberturasAdicionales = []
   renderApp()
   scheduleCalculate()
@@ -1966,6 +1968,14 @@ function renderAjusteField(prefijo, label, plan) {
   const montoCargado = state.data[`${prefijo}Monto`] != null && state.data[`${prefijo}Monto`] !== ''
   const porcentajeCargado =
     state.data[`${prefijo}Porcentaje`] != null && state.data[`${prefijo}Porcentaje`] !== ''
+  // Descuento fijo de plan (ver plan.descuento_default, cambio "mrc-plan-descuento-fijo"):
+  // el backend siempre fuerza el 10% del plan para quien no tenga el permiso, sin importar
+  // lo que se envíe acá — este disabled es solo cortesía visual, la regla real vive en
+  // resolverDescuentos() (cotizacion.service.js).
+  const bloqueado =
+    prefijo === 'descuento' &&
+    plan?.descuento_default != null &&
+    !usuario?.puede_editar_descuento_plan
 
   // Un solo <label> visual describe 2 inputs (monto/porcentaje, mutuamente excluyentes) —
   // for/id de a uno solo no alcanza acá, así que se asocian los dos con aria-labelledby
@@ -1985,7 +1995,7 @@ function renderAjusteField(prefijo, label, plan) {
           placeholder="Gs."
           aria-labelledby="${labelId}"
           value="${escapeHtml(fmtGsInput(state.data[`${prefijo}Monto`]))}"
-          ${porcentajeCargado ? 'disabled' : ''}
+          ${porcentajeCargado || bloqueado ? 'disabled' : ''}
         />
         <input
           class="field-input"
@@ -1996,10 +2006,10 @@ function renderAjusteField(prefijo, label, plan) {
           placeholder="%"
           aria-labelledby="${labelId}"
           value="${escapeHtml(String(state.data[`${prefijo}Porcentaje`] ?? ''))}"
-          ${montoCargado ? 'disabled' : ''}
+          ${montoCargado || bloqueado ? 'disabled' : ''}
         />
       </div>
-      <small class="field-row-hint">${tope != null ? `Tope aplicable: ${tope}% de la prima` : 'Sin tope confirmado para este plan'}</small>
+      <small class="field-row-hint">${bloqueado ? 'Descuento fijo del plan' : tope != null ? `Tope aplicable: ${tope}% de la prima` : 'Sin tope confirmado para este plan'}</small>
     </div>
   `
 }

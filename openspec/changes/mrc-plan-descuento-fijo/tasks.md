@@ -52,12 +52,12 @@ Chain strategy: pending
 
 ## Phase 3: Frontend
 
-- [ ] 3.1 `frontend/admin/admin.js` — add `puede_editar_descuento_plan` checkbox in `abrirModalRolCrear`/`Editar`/`guardarModalRol`, plus a badge column in the Roles table
-- [ ] 3.2 `frontend/cotizar/cotizar.js` — prefill `state.data.descuentoPorcentaje = plan?.descuento_default ?? null` at load (~line 582) and in `selectPlan` (~610-621)
-- [ ] 3.3 `frontend/cotizar/cotizar.js` — in `renderAjusteField` (~1950), compute `bloqueado = prefijo === 'descuento' && plan?.descuento_default != null && !usuario?.puede_editar_descuento_plan` and add to the existing `disabled` conditions on both inputs (~1988, ~1996); add helper text "Descuento fijo del plan"
+- [x] 3.1 `frontend/admin/admin.js` — add `puede_editar_descuento_plan` checkbox in `abrirModalRolCrear`/`Editar`/`guardarModalRol`, plus a badge column in the Roles table
+- [x] 3.2 `frontend/cotizar/cotizar.js` — prefill `state.data.descuentoPorcentaje = plan?.descuento_default ?? null` at load (~line 582) and in `selectPlan` (~610-621)
+- [x] 3.3 `frontend/cotizar/cotizar.js` — in `renderAjusteField` (~1950), compute `bloqueado = prefijo === 'descuento' && plan?.descuento_default != null && !usuario?.puede_editar_descuento_plan` and add to the existing `disabled` conditions on both inputs (~1988, ~1996); add helper text "Descuento fijo del plan"
 
 ## Phase 4: Verification & Docs
 
 - [ ] 4.1 Manual verification via `run-cotizador` skill: login as test user (no permission), select new MRC plan, confirm only Contado shown, field shows 10% and is locked, resulting prima reflects 10%
 - [ ] 4.2 Manual verification: grant `puede_editar_descuento_plan` via admin Roles, re-login, confirm field becomes editable and a custom discount is respected within caps
-- [ ] 4.3 Update `docs/ESTADO_PROYECTO.md` and `CLAUDE.md` with the change summary, noting migration 046 is committed but NOT applied to Supabase pending plan-name confirmation
+- [x] 4.3 Update `docs/ESTADO_PROYECTO.md` and `CLAUDE.md` with the change summary, noting migration 046 is committed but NOT applied to Supabase pending plan-name confirmation

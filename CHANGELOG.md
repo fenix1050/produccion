@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.1.9](https://github.com/fenix1050/produccion/compare/v0.1.8...v0.1.9) (2026-07-31)
+
+
+### Features
+
+* **admin:** editar tope de descuento/recargo máximo por plan ([e0e6093](https://github.com/fenix1050/produccion/commit/e0e60930d74ed18f788a73293c7ee38530bea049))
+* **admin:** editar tope de descuento/recargo máximo por plan ([b71410e](https://github.com/fenix1050/produccion/commit/b71410e28ce48086873498a73cf591754e35fc49))
+
+## [0.1.8](https://github.com/fenix1050/produccion/compare/v0.1.7...v0.1.8) (2026-07-31)
+
+
+### Bug Fixes
+
+* **mrc:** completar texto_legal de Resp. Civil en carta oferta ([b7412b3](https://github.com/fenix1050/produccion/commit/b7412b362a9936984fbc28693df608fff072c50e))
+* **mrc:** completar texto_legal de Resp. Civil en carta oferta ([9810787](https://github.com/fenix1050/produccion/commit/9810787fbe197d4a42e77823aa31b016a3a16541))
+
 ## [0.1.7](https://github.com/fenix1050/produccion/compare/v0.1.6...v0.1.7) (2026-07-31)
 
 

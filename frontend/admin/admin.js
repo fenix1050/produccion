@@ -99,6 +99,7 @@ const state = {
   planExpandido: null, // id del plan con la fila de formas de pago abierta
   formasPagoPorPlan: {}, // planId -> { loading, error, datos: [] }
   primaEnEdicion: new Set(), // ids de plan con el campo prima_tecnica_minima habilitado para editar
+  topesEnEdicion: new Set(), // ids de plan con descuento_maximo/recargo_maximo habilitados para editar (solo admin literal)
   tasaRpfEnEdicion: new Set(), // ids de plan_formas_pago con la tasa habilitada para editar
 
   ramoTasasSeleccionado: null,
@@ -749,6 +750,40 @@ async function guardarPrimaTecnicaMinima(planId, form) {
     renderApp()
   } catch (err) {
     mostrarBanner('error', err.message || 'No se pudo actualizar el plan.')
+  }
+}
+
+function habilitarEdicionTopes(planId) {
+  state.topesEnEdicion.add(planId)
+  renderApp()
+}
+
+function cancelarEdicionTopes(planId) {
+  state.topesEnEdicion.delete(planId)
+  renderApp()
+}
+
+// Separado de guardarPrimaTecnicaMinima/PUT /admin/planes/:id a propósito: descuento_maximo
+// y recargo_maximo van por un endpoint propio (PUT /admin/planes/:id/topes) gateado
+// server-side por rol admin literal (requireRole('admin')), no por el permiso delegable
+// puede_editar_planes — ver admin.routes.js y docs/ESTADO_PROYECTO.md.
+async function guardarPlanTopes(planId, form) {
+  const descuento = form.descuento_maximo.value
+  const recargo = form.recargo_maximo.value
+  const cambios = {
+    descuento_maximo: descuento === '' ? null : Number(descuento),
+    recargo_maximo: recargo === '' ? null : Number(recargo),
+  }
+
+  try {
+    const plan = await api.put(`/admin/planes/${planId}/topes`, cambios)
+    const idx = state.planes.findIndex((p) => p.id === Number(planId))
+    if (idx !== -1) state.planes[idx] = { ...state.planes[idx], ...plan }
+    state.topesEnEdicion.delete(Number(planId))
+    mostrarBanner('success', 'Topes del plan actualizados.')
+    renderApp()
+  } catch (err) {
+    mostrarBanner('error', err.message || 'No se pudieron actualizar los topes del plan.')
   }
 }
 
@@ -1532,6 +1567,7 @@ function renderTablaPlanes() {
         </label>
       </td>
       <td>${renderCampoPrimaTecnicaMinima(p)}</td>
+      <td>${renderCampoTopes(p)}</td>
       <td>
         <button class="btn-outline" data-action="toggle-formas-pago" data-id="${p.id}">
           ${state.planExpandido === p.id ? 'Ocultar' : 'Formas de pago'}
@@ -1541,7 +1577,7 @@ function renderTablaPlanes() {
         <button class="btn-outline" data-action="eliminar-plan" data-id="${p.id}">Eliminar</button>
       </td>
     </tr>
-    ${state.planExpandido === p.id ? `<tr class="admin-subrow"><td colspan="6">${renderFormasPagoDelPlan(p.id)}</td></tr>` : ''}
+    ${state.planExpandido === p.id ? `<tr class="admin-subrow"><td colspan="7">${renderFormasPagoDelPlan(p.id)}</td></tr>` : ''}
   `
     )
     .join('')
@@ -1555,6 +1591,7 @@ function renderTablaPlanes() {
             <th>Ramo</th>
             <th>Estado</th>
             <th>Prima técnica mínima</th>
+            <th>Topes desc./recargo (%)</th>
             <th>Formas de pago</th>
             <th></th>
           </tr>
@@ -1647,6 +1684,36 @@ function renderCampoPrimaTecnicaMinima(plan) {
       <input class="field-input field-input--sm" type="number" step="0.01" name="${campo}" value="${valor ?? ''}" autofocus />
       <button class="btn-outline" type="submit">Guardar</button>
       <button class="btn-outline" type="button" data-action="cancelar-prima-tecnica-minima" data-id="${plan.id}">Cancelar</button>
+    </form>
+  `
+}
+
+// Solo el rol admin literal puede editar estos dos campos (ver guardarPlanTopes /
+// admin.routes.js) — un Jefe/Analista de Riesgo puede ver la sección Planes vía
+// puede_editar_planes, pero no debe poder subir el tope que limita su propio descuento
+// (puede_editar_descuento_plan). Sin el botón "Editar" para ellos, solo lectura.
+function renderCampoTopes(plan) {
+  const esAdmin = auth.getUsuario()?.rol === 'admin'
+  const descuento = plan.descuento_maximo
+  const recargo = plan.recargo_maximo
+
+  if (!state.topesEnEdicion.has(plan.id)) {
+    return `
+      <div class="admin-valor-fijo">
+        <span class="admin-valor-fijo__lineas">
+          <span>Desc.: ${descuento != null ? escapeHtml(String(descuento)) + '%' : '—'}</span>
+          <span>Rec.: ${recargo != null ? escapeHtml(String(recargo)) + '%' : '—'}</span>
+        </span>
+        ${esAdmin ? `<button class="btn-outline" data-action="editar-plan-topes" data-id="${plan.id}">Editar</button>` : ''}
+      </div>
+    `
+  }
+  return `
+    <form class="admin-inline-form" id="plan-topes-form-${plan.id}" data-form-action="plan-topes" data-id="${plan.id}">
+      <input class="field-input field-input--sm" type="number" step="0.01" min="0" max="100" name="descuento_maximo" value="${descuento ?? ''}" placeholder="Desc. %" autofocus />
+      <input class="field-input field-input--sm" type="number" step="0.01" min="0" max="100" name="recargo_maximo" value="${recargo ?? ''}" placeholder="Rec. %" />
+      <button class="btn-outline" type="submit">Guardar</button>
+      <button class="btn-outline" type="button" data-action="cancelar-plan-topes" data-id="${plan.id}">Cancelar</button>
     </form>
   `
 }
@@ -2438,6 +2505,14 @@ function onActionClick(el) {
     cancelarEdicionPrima(Number(el.dataset.id))
     return
   }
+  if (action === 'editar-plan-topes') {
+    habilitarEdicionTopes(Number(el.dataset.id))
+    return
+  }
+  if (action === 'cancelar-plan-topes') {
+    cancelarEdicionTopes(Number(el.dataset.id))
+    return
+  }
   if (action === 'editar-tasa-rpf') {
     habilitarEdicionTasaRpf(Number(el.dataset.id))
     return
@@ -2511,6 +2586,8 @@ function onInlineFormSubmit(form) {
   const accion = form.dataset.formAction
   if (accion === 'prima-tecnica-minima') {
     guardarPrimaTecnicaMinima(form.dataset.id, form)
+  } else if (accion === 'plan-topes') {
+    guardarPlanTopes(form.dataset.id, form)
   } else if (accion === 'nombre-ramo') {
     guardarNombreRamo(form.dataset.id, form)
   } else if (accion === 'tasa-rpf') {

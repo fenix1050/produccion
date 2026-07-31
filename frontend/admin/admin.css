@@ -88,6 +88,11 @@
   top: 0;
   background: #fff;
   z-index: 1;
+  /* Sin esto, un header largo (ej. "Descuento máx. (%) / Recargo máx. (%)") envuelve a 2
+     líneas y desalinea la altura de esa fila contra el resto — la tabla ya scrollea
+     horizontal (.admin-table-scroll), así que preferimos ensanchar la columna a romper el
+     texto en dos líneas. */
+  white-space: nowrap;
   /* Refuerzo visual del header sticky: sin esto, el encabezado "flota" sobre las
      filas al scrollear la tabla sin ninguna señal de que quedó fijo (hallazgo de
      auditoría UX/UI). Sombra sutil y permanente en vez de un listener de scroll —
@@ -145,6 +150,13 @@
   font-size: 12px;
 }
 
+/* Mismo criterio que el header: un botón como "Formas de pago" envolvía a 2 líneas
+   apenas la columna se ajustaba (ej. al sumar la columna de topes), quedando más alto
+   que "Eliminar" en la misma fila — ver .admin-table th arriba. */
+.admin-table td button {
+  white-space: nowrap;
+}
+
 .field-input--sm {
   padding: 6px 10px;
   font-size: 12.5px;
@@ -166,6 +178,23 @@
 .admin-valor-fijo span {
   min-width: 110px;
   display: inline-block;
+}
+
+/* Topes de plan (Descuento/Recargo máx.): dos líneas apiladas en vez de un solo string
+   largo con " / " en el medio — ese formato rompía a mitad de palabra ("Rec.:" quedaba
+   solo en la línea de arriba y "20%" caía a la de abajo) apenas la columna se angostaba.
+   Especificidad: `.admin-valor-fijo span` (arriba) ya fija `display: inline-block` con más
+   peso que una clase sola — sin el prefijo `.admin-valor-fijo` acá, ese `flex` nunca gana. */
+.admin-valor-fijo .admin-valor-fijo__lineas {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 110px;
+}
+
+.admin-valor-fijo .admin-valor-fijo__lineas span {
+  min-width: 0;
+  white-space: nowrap;
 }
 
 .admin-valor-fijo button {

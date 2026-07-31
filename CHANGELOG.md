@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.10](https://github.com/fenix1050/produccion/compare/v0.1.9...v0.1.10) (2026-07-31)
+
+
+### Features
+
+* **admin:** add puede_ver_descuento_plan role permission ([36223f7](https://github.com/fenix1050/produccion/commit/36223f74c9a92aa2ee0bc53ec2ad29e4d1b11058))
+* **admin:** permiso de rol para ocultar el campo Descuento ([0563420](https://github.com/fenix1050/produccion/commit/0563420934ad6227f5e3b633f8af87af5cdd5ac7))
+
 ## [0.1.9](https://github.com/fenix1050/produccion/compare/v0.1.8...v0.1.9) (2026-07-31)
 
 

@@ -45,6 +45,18 @@
   --tajy-radius-xl: 14px;
 }
 
+/* Sistema de breakpoints (documentado una sola vez acá — el proyecto no usa
+   preprocesador CSS, así que las custom properties de :root no funcionan
+   dentro de @media, y estos 3 valores se repiten como literales en cada
+   @media de los demás archivos del frontend):
+
+   - 1024px → layouts de 2 columnas pasan a 1 columna o proporción reducida;
+     sidebar colapsa a hamburguesa.
+   - 768px  → ajustes de densidad: paddings, fuentes, tablas a scroll
+     horizontal, modales a ancho fluido.
+   - 480px  → mobile puro: stacks verticales finales, grids a 1-2 columnas,
+     botones full-width. */
+
 * {
   box-sizing: border-box;
 }
@@ -375,6 +387,78 @@ button {
   font-size: 14px;
 }
 
+/* Topbar responsive (≤768px, ver "Sistema de breakpoints" arriba): bug real reportado
+   por Kevin en celular (~390px, 2026-07-31) en cotizar e historial — el ancho fijo de
+   .topbar__red-block (264px, pensado para alinear con el sidebar de escritorio) más el
+   breadcrumb completo más el bloque de usuario completo (nombre + rol + chevron) no
+   entran en simultáneo en una pantalla angosta: el texto del breadcrumb ("Nueva
+   cotización") quedaba cortado contra el borde derecho, y el bloque de usuario/menú
+   ("Panel de administración") quedaba empujado fuera del viewport, superpuesto con la
+   campana. Prioridad en mobile: hamburguesa + logo siempre visibles, breadcrumb reducido
+   al crumb actual, bloque de usuario reducido a avatar + campana (sin nombre/rol/chevron)
+   — todo sigue siendo clickeable, solo se oculta texto redundante. */
+@media (max-width: 768px) {
+  .topbar__red-block {
+    width: auto;
+    padding: 10px 12px;
+    gap: 8px;
+  }
+
+  /* "Sistema de Cotización de Pólizas" es el único contenido de .topbar__brand-text —
+     ocultamos el bloque entero (no solo el texto) para no dejar un contenedor vacío
+     compitiendo por espacio flex. */
+  .topbar__brand-text {
+    display: none;
+  }
+
+  .topbar__crumb-area {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+
+  .topbar__breadcrumb {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .topbar__crumb-item {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* El primer crumb ("Cotizaciones" en el flujo de cotizar) es texto plano sin acción —
+     prescindible en mobile, donde solo importa el crumb actual para saber en qué
+     pantalla se está. */
+  .topbar__crumb-item:not(.topbar__crumb-item--current),
+  .topbar__crumb-sep {
+    display: none;
+  }
+
+  .topbar__user {
+    gap: 8px;
+  }
+
+  /* Nombre + rol del agente quedan ocultos — siguen accesibles al tocar el avatar
+     (mismo trigger, ahora más angosto) para abrir el menú desplegable. */
+  .topbar__user-text,
+  .topbar__user-chevron {
+    display: none;
+  }
+
+  .topbar__user-trigger {
+    gap: 0;
+  }
+
+  /* El menú desplegable se posiciona relativo a .topbar__user-menu-wrap — con el resto
+     del topbar ya angosto, alinearlo al borde derecho de la ventana (no del wrap) evita
+     que se corte contra el borde de la pantalla en viewports muy angostos. */
+  .topbar__user-menu {
+    right: -12px;
+    min-width: 200px;
+  }
+}
+
 .app-body {
   display: flex;
   flex: 1;
@@ -523,6 +607,85 @@ button {
   margin-top: auto;
   padding: 18px 14px 0;
   border-top: 1px solid var(--tajy-border);
+}
+
+/* ---------------------------------------------------------------------------
+   Sidebar hamburguesa + overlay (Fase 2 responsive, breakpoint 1024px — ver
+   el comentario del sistema de breakpoints debajo del :root arriba en este
+   mismo archivo). Patrón compartido: .sidebar/.app-body/.sidebar__footer ya
+   vivían acá porque admin/cotizar/historial/configuración reusan el mismo
+   sidebar, así que el toggle mobile/tablet se documenta una sola vez acá en
+   vez de repetirlo en admin.css/configuracion.css/historial.css.
+
+   Contrato para cada módulo (implementado primero en admin, Fase 2):
+   - Botón hamburguesa nuevo en el topbar de cada módulo, con
+     data-action="toggle-sidebar" y la clase .sidebar-toggle-btn de acá abajo.
+   - Overlay nuevo (<div class="sidebar-overlay">, hijo directo de
+     .app-body, antes de <div class="sidebar">) con
+     data-action="close-sidebar".
+   - Estado de "sidebar abierta" se refleja agregando la clase
+     .sidebar--abierta a .sidebar y .sidebar-overlay--visible al overlay —
+     el JS de cada módulo solo hace classList.toggle, no hay lógica de
+     negocio acá.
+   - En desktop (>1024px) el botón y el overlay quedan ocultos por CSS y la
+     sidebar sigue fija como siempre (sin cambios de comportamiento). --------------------------------------------------------------------------- */
+.sidebar-toggle-btn {
+  display: none;
+}
+
+.sidebar-overlay {
+  display: none;
+}
+
+@media (max-width: 1024px) {
+  .sidebar-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    border-radius: var(--tajy-radius-sm);
+    font-family: inherit;
+  }
+
+  .sidebar-toggle-btn:hover {
+    background: var(--tajy-bg);
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 60;
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+    box-shadow: 2px 0 12px rgba(0, 0, 0, 0.15);
+  }
+
+  .sidebar--abierta {
+    transform: translateX(0);
+  }
+
+  .sidebar-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 55;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+
+  .sidebar-overlay.sidebar-overlay--visible {
+    display: block;
+    opacity: 1;
+    pointer-events: auto;
+  }
 }
 
 /* Iconos de línea + estado activo para los nav-item de todas las pantallas
@@ -1301,7 +1464,7 @@ button {
   min-width: 0;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
   .resultado-layout {
     grid-template-columns: 1fr;
   }
@@ -1619,10 +1782,27 @@ button {
   font-size: 12.5px;
 }
 
+/* Intermedio 768px: solo densidad (padding/gaps/tipografía), sin tocar el grid-template —
+   evita el salto abrupto entre el layout de escritorio y el fallback vertical de 480px. */
+@media (max-width: 768px) {
+  .cobertura-card {
+    column-gap: 12px;
+    padding: 12px 18px;
+  }
+
+  .cobertura-card__name {
+    font-size: 14px;
+  }
+
+  .cobertura-card__monto div {
+    font-size: 15px;
+  }
+}
+
 /* Fallback móvil: el layout de .cobertura-card y .cobertura-adicional-row asume espacio
    horizontal de escritorio (columnas fijas + 1fr); en viewports angostos (ej. 375px) se
    colapsan a una disposición más vertical para que el nombre/monto no queden apretados. */
-@media (max-width: 640px) {
+@media (max-width: 480px) {
   .cobertura-card {
     grid-template-columns: 40px 1fr;
     grid-template-rows: auto auto auto;
@@ -1850,9 +2030,28 @@ button {
   cursor: pointer;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
+  /* Bug real (reportado por Kevin en un celular, 2026-07-31): en desktop `.datos-view`
+     es una fila de 2 columnas donde CADA columna scrollea de forma independiente
+     (`.datos-view__form` y `.live-summary` tienen su propio `overflow: auto`, acotadas
+     por la altura fija de `.datos-view` vía flexbox — sin position:sticky, cada una es
+     su propio pane). Al apilar en columna para mobile, ambas seguían compitiendo por
+     esa MISMA altura acotada: `.datos-view__form` tiene `flex: 1` (flex-shrink:1,
+     basis:0%) y `.live-summary` tiene `flex-shrink: 0` — con overflow:auto en ambas el
+     "automatic minimum size" del form es 0, así que el form se achicaba a ~16px de alto
+     para cederle todo el espacio a `.live-summary`, que quedaba ocupando visualmente
+     donde deberían estar los campos del formulario (tapando "Coberturas adicionales" y
+     el input de monto). Fix: en mobile ninguna de las dos columnas debe pelear por
+     una altura acotada — cada una toma su alto natural (`flex: none`) y es
+     `.datos-view` el que scrollea como una sola columna larga. */
   .datos-view {
     flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .datos-view__form {
+    flex: none;
+    overflow: visible;
   }
 
   .datos-view__form-inner {
@@ -1866,6 +2065,8 @@ button {
 
   .live-summary {
     width: auto;
+    flex: none;
     margin: 0 36px 16px;
+    overflow: visible;
   }
 }

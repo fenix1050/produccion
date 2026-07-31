@@ -12,6 +12,7 @@ import {
   ICON_SUBLIMITE_MURALLAS,
   ICON_SUBLIMITE_GENERICO,
   ICON_ARROW_LEFT as ICON_ARROW_LEFT_ROUND,
+  ICON_MENU,
 } from '../shared/nav-icons.js'
 import { escapeHtml } from '../shared/dom.js'
 import { renderSidebarFooter, renderTopbarUser } from '../shared/sidebar.js'
@@ -265,6 +266,10 @@ const DEBOUNCE_MS = 450
 const state = {
   ramosActivos: [],
   ramoId: null,
+  // Sidebar hamburguesa (Fase 4 responsive, ≤1024px) — puramente visual, mismo patrón
+  // que admin.js/configuracion.js/historial.js. Ver .sidebar/.sidebar-overlay en
+  // frontend/shared/cotizador.css.
+  sidebarAbierta: false,
   planes: [],
   planId: null,
   rubros: [],
@@ -1060,6 +1065,7 @@ function renderApp() {
   app.innerHTML = `
     ${renderTopbar(ramo)}
     <div class="app-body">
+      <div class="sidebar-overlay ${state.sidebarAbierta ? 'sidebar-overlay--visible' : ''}" data-action="close-sidebar"></div>
       ${renderSidebar()}
       <main class="main">
         ${renderHeader(ramo)}
@@ -1084,6 +1090,13 @@ function renderTopbar(ramo) {
   return `
     <div class="topbar">
       <div class="topbar__red-block">
+        <button
+          type="button"
+          class="sidebar-toggle-btn"
+          data-action="toggle-sidebar"
+          aria-label="Abrir menú"
+          aria-expanded="${state.sidebarAbierta}"
+        >${ICON_MENU}</button>
         <img class="topbar__logo" src="../login/assets/logo-rojo-con-negro.svg" alt="Aseguradora Tajy" />
         <div class="topbar__brand-text">
           <div class="topbar__brand-sub">Sistema de Cotización de Pólizas</div>
@@ -1122,7 +1135,7 @@ function renderSidebar() {
   }).join('')
 
   return `
-    <div class="sidebar">
+    <div class="sidebar ${state.sidebarAbierta ? 'sidebar--abierta' : ''}">
       <div class="sidebar__section-label">Cotizar</div>
       <div class="ramo-list">${rows}</div>
       <div class="sidebar__footer">
@@ -2057,7 +2070,13 @@ app.addEventListener('click', (e) => {
 
   const action = target.dataset.action
   if (action === 'logout') cerrarSesion()
-  else if (action === 'select-ramo') selectRamo(target.dataset.ramo)
+  else if (action === 'toggle-sidebar') {
+    state.sidebarAbierta = !state.sidebarAbierta
+    renderApp()
+  } else if (action === 'close-sidebar') {
+    state.sidebarAbierta = false
+    renderApp()
+  } else if (action === 'select-ramo') selectRamo(target.dataset.ramo)
   else if (action === 'select-forma-pago') selectFormaPago(target.dataset.forma)
   else if (action === 'select-moneda') selectMoneda(target.dataset.moneda)
   else if (action === 'show-tab') setView(target.dataset.view)

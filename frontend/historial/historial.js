@@ -3,6 +3,7 @@ import { crearBadge } from '../shared/badge.js'
 import { escapeHtml, enfocarPrimerElemento, atraparFoco } from '../shared/dom.js'
 import { renderSidebarFooter, renderTopbarUser } from '../shared/sidebar.js'
 import { fmtMoneda } from '../shared/format.js'
+import { ICON_MENU } from '../shared/nav-icons.js'
 
 // Historial de cotizaciones (Fase 5/WU5) — mismo patrón Vanilla JS que admin.js: state +
 // renderApp() que reconstruye innerHTML + bindEvents() post-render + modal vía state.modal.
@@ -41,6 +42,9 @@ const state = {
   error: '',
   banner: null, // { tipo: 'error'|'success', texto }
   modal: null, // { row, detalle, loading, error }
+  // Sidebar hamburguesa (Fase 3 responsive, ≤1024px) — puramente visual, mismo patrón
+  // que admin.js. Ver .sidebar/.sidebar-overlay en frontend/shared/cotizador.css.
+  sidebarAbierta: false,
 
   filtros: {
     ramo_id: '',
@@ -261,6 +265,7 @@ function renderApp() {
   app.innerHTML = `
     ${renderTopbar()}
     <div class="app-body">
+      <div class="sidebar-overlay ${state.sidebarAbierta ? 'sidebar-overlay--visible' : ''}" data-action="close-sidebar"></div>
       ${renderSidebar()}
       <main class="main">
         <div class="main-header">
@@ -291,6 +296,13 @@ function renderTopbar() {
   return `
     <div class="topbar">
       <div class="topbar__red-block">
+        <button
+          type="button"
+          class="sidebar-toggle-btn"
+          data-action="toggle-sidebar"
+          aria-label="Abrir menú"
+          aria-expanded="${state.sidebarAbierta}"
+        >${ICON_MENU}</button>
         <img class="topbar__logo" src="../login/assets/logo-rojo-con-negro.svg" alt="Aseguradora Tajy" />
         <div class="topbar__brand-text">
           <div class="topbar__brand-sub">Sistema de Cotización de Pólizas</div>
@@ -308,7 +320,7 @@ function renderTopbar() {
 
 function renderSidebar() {
   return `
-    <div class="sidebar">
+    <div class="sidebar ${state.sidebarAbierta ? 'sidebar--abierta' : ''}">
       <div class="sidebar__nav">
         <div class="sidebar__section-label">Gestión</div>
         ${renderSidebarFooter('historial')}
@@ -503,12 +515,14 @@ function renderModalDetalle() {
           <div class="historial-detalle__grupo-titulo">
             ${v.tipo_franquicia === 'con_franquicia' ? 'Con franquicia' : 'Sin franquicia'} — Prima ${fmtDetalle(v.prima)}
           </div>
-          <table class="admin-table admin-table--nested">
-            <thead>
-              <tr><th>Forma de pago</th><th>Premio total</th><th>Inicial</th><th>Cuota</th></tr>
-            </thead>
-            <tbody>${formasHtml || '<tr><td colspan="4">Sin planes de pago cargados.</td></tr>'}</tbody>
-          </table>
+          <div class="historial-detalle__tabla-scroll">
+            <table class="admin-table admin-table--nested">
+              <thead>
+                <tr><th>Forma de pago</th><th>Premio total</th><th>Inicial</th><th>Cuota</th></tr>
+              </thead>
+              <tbody>${formasHtml || '<tr><td colspan="4">Sin planes de pago cargados.</td></tr>'}</tbody>
+            </table>
+          </div>
         </div>
       `
       })
@@ -541,10 +555,12 @@ function renderModalDetalle() {
           ? `
         <div class="historial-detalle__grupo">
           <div class="historial-detalle__grupo-titulo">Coberturas</div>
-          <table class="admin-table admin-table--nested">
-            <thead><tr><th>Cobertura</th><th>Monto</th><th>Franquicia</th></tr></thead>
-            <tbody>${coberturasHtml}</tbody>
-          </table>
+          <div class="historial-detalle__tabla-scroll">
+            <table class="admin-table admin-table--nested">
+              <thead><tr><th>Cobertura</th><th>Monto</th><th>Franquicia</th></tr></thead>
+              <tbody>${coberturasHtml}</tbody>
+            </table>
+          </div>
         </div>
       `
           : ''
@@ -641,6 +657,16 @@ function onActionClick(el) {
 
   if (action === 'logout') {
     cerrarSesion()
+    return
+  }
+  if (action === 'toggle-sidebar') {
+    state.sidebarAbierta = !state.sidebarAbierta
+    renderApp()
+    return
+  }
+  if (action === 'close-sidebar') {
+    state.sidebarAbierta = false
+    renderApp()
     return
   }
   if (action === 'limpiar-filtros') {

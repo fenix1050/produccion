@@ -111,6 +111,107 @@
   border-bottom: none;
 }
 
+/* Bug real (reportado por Kevin en un celular, 2026-07-31): las tablas anchas del admin
+   (Usuarios, Roles, Coberturas, Tasas, Planes, Ramos) necesitan scroll horizontal en mobile
+   -- eso está bien como affordance -- pero la columna identificadora (la primera: Rol,
+   Nombre, etc.) se perdía de vista apenas el usuario scrolleaba para leer el resto de las
+   columnas, dejando lo "básico" (a qué fila corresponde cada dato) fuera de pantalla.
+   Primer intento: fijar la primera columna con position:sticky. Kevin lo vio en vivo y lo
+   rechazó explícitamente ("no es una solución ni buena práctica") — reemplazado acá por el
+   patrón estándar de tablas responsive: cada <tr> pasa a renderizarse como una card apilada
+   en bloque, con cada <td> mostrando su label (vía `data-label`, agregado en el JS de
+   admin.js al armar cada <td>) antepuesto al valor. Sin scroll horizontal, sin columna
+   fantasma — todo el contenido de la fila queda legible de arriba a abajo. */
+@media (max-width: 768px) {
+  /* La tabla ya no necesita el scroll horizontal contenedor una vez que las filas son
+     cards apiladas — pero dejamos overflow-x en el contenedor por si algún <td> individual
+     (ej. un form inline de edición) sigue siendo más ancho que la pantalla. */
+  .admin-table {
+    min-width: 0;
+  }
+
+  .admin-table thead {
+    /* Los headers ya se repiten como label de cada valor (td::before) — el <thead>
+       original queda solo para accesibilidad/lectores de pantalla, no visible. */
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .admin-table,
+  .admin-table tbody,
+  .admin-table tr {
+    display: block;
+    width: 100%;
+  }
+
+  .admin-table tr {
+    margin-bottom: 12px;
+    padding: 4px 14px;
+    border: 1px solid var(--tajy-border-light);
+    border-radius: var(--tajy-radius-md, 8px);
+  }
+
+  .admin-table tr:last-child {
+    margin-bottom: 0;
+  }
+
+  /* Fila del subrow anidado (ej. formas de pago de un plan) es un <td colspan> que contiene
+     su propia tabla — no es un valor con label, así que se excluye del layout label/valor
+     de abajo y vuelve a comportarse como bloque simple. */
+  .admin-table tr.admin-subrow {
+    border: none;
+    padding: 0;
+  }
+
+  .admin-table tr.admin-subrow td {
+    display: block;
+    padding: 0;
+  }
+
+  .admin-table td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--tajy-border-light);
+    text-align: right;
+  }
+
+  .admin-table td:last-child {
+    border-bottom: none;
+  }
+
+  /* Columnas sin header propio (ej. la de "Eliminar" en Ramos/Tasas, con <th></th>) no
+     llevan data-label — sin contenido, attr(data-label) devuelve una cadena vacía y el
+     ::before no ocupa espacio, así que el valor queda solo, alineado a la derecha. */
+  .admin-table td::before {
+    content: attr(data-label);
+    font-weight: 700;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    color: var(--tajy-text-muted);
+    text-align: left;
+    flex-shrink: 0;
+  }
+
+  /* Tabla de Roles: los badges Sí/No tienen que quedar legibles como "Gestiona
+     usuarios: Sí" (label + badge en la misma línea) — ya es el comportamiento por
+     defecto de .admin-table td de arriba, así que alcanza con anular el centrado
+     desktop (.admin-table--roles th/td) que ya no aplica en layout de card. */
+  .admin-table--roles td:not(:first-child):not(:last-child) {
+    text-align: right;
+  }
+}
+
 /* Tabla de Roles: los headers largos ("Edita descuento del plan") fuerzan columnas
    anchas via white-space:nowrap (ver .admin-table th arriba), pero el contenido es un
    badge chico Sí/No — sin centrar, el badge queda pegado a la izquierda con un montón
@@ -328,7 +429,7 @@
    modales/formularios cortados) en viewports angostos. Deuda pendiente:
    ver nota en el resumen de la auditoría.
    --------------------------------------------------------------------------- */
-@media (max-width: 720px) {
+@media (max-width: 768px) {
   .admin-content {
     padding: 16px;
   }
@@ -361,5 +462,7 @@
   .admin-modal {
     width: 100%;
     padding: 18px;
+    max-height: 90vh;
+    overflow-y: auto;
   }
 }

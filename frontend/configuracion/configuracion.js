@@ -1,6 +1,7 @@
 import { api, auth } from '../shared/api.js'
 import { escapeHtml } from '../shared/dom.js'
 import { renderSidebarFooter, renderTopbarUser } from '../shared/sidebar.js'
+import { ICON_MENU } from '../shared/nav-icons.js'
 
 // Configuración (self-service) — cualquier usuario logueado (admin o agente) ve su propio
 // perfil y cambia su propia contraseña. Distinto del panel /admin/ (gestión de OTROS
@@ -26,6 +27,9 @@ const REQUISITOS_PASSWORD = [
 
 const state = {
   usuario: auth.getUsuario(),
+  // Sidebar hamburguesa (Fase 3 responsive, ≤1024px) — puramente visual, mismo patrón
+  // que admin.js. Ver .sidebar/.sidebar-overlay en frontend/shared/cotizador.css.
+  sidebarAbierta: false,
   form: {
     password_actual: '',
     password_nueva: '',
@@ -101,7 +105,7 @@ async function cerrarSesion() {
 
 function renderSidebar() {
   return `
-    <div class="sidebar">
+    <div class="sidebar ${state.sidebarAbierta ? 'sidebar--abierta' : ''}">
       <div class="sidebar__nav">
         <div class="sidebar__section-label">Gestión</div>
         ${renderSidebarFooter('configuracion')}
@@ -185,6 +189,13 @@ function renderTopbar() {
   return `
     <div class="topbar">
       <div class="topbar__red-block">
+        <button
+          type="button"
+          class="sidebar-toggle-btn"
+          data-action="toggle-sidebar"
+          aria-label="Abrir menú"
+          aria-expanded="${state.sidebarAbierta}"
+        >${ICON_MENU}</button>
         <img class="topbar__logo" src="../login/assets/logo-rojo-con-negro.svg" alt="Aseguradora Tajy" />
         <div class="topbar__brand-text">
           <div class="topbar__brand-sub">Sistema de Cotización de Pólizas</div>
@@ -212,6 +223,7 @@ function renderApp() {
   app.innerHTML = `
     ${renderTopbar()}
     <div class="app-body">
+      <div class="sidebar-overlay ${state.sidebarAbierta ? 'sidebar-overlay--visible' : ''}" data-action="close-sidebar"></div>
       ${renderSidebar()}
       <main class="main">
         <div class="main-header">
@@ -306,6 +318,17 @@ function bindEvents() {
   document.querySelector('.sidebar [data-action="logout"]')?.addEventListener('click', (e) => {
     e.preventDefault()
     cerrarSesion()
+  })
+
+  // Sidebar hamburguesa (Fase 3 responsive, ≤1024px) — mismo patrón que admin.js:
+  // el toggle y el overlay solo cambian una clase, sin lógica de negocio.
+  app.querySelector('[data-action="toggle-sidebar"]')?.addEventListener('click', () => {
+    state.sidebarAbierta = !state.sidebarAbierta
+    renderApp()
+  })
+  app.querySelector('[data-action="close-sidebar"]')?.addEventListener('click', () => {
+    state.sidebarAbierta = false
+    renderApp()
   })
 
   document.getElementById('password-form')?.addEventListener('submit', onSubmit)

@@ -9,6 +9,7 @@ import {
   ICON_ADMIN_PLANES,
   ICON_WRENCH,
   ICON_GEAR,
+  ICON_MENU,
 } from '../shared/nav-icons.js'
 import {
   fmtGsConPrefijo as fmtGs,
@@ -75,6 +76,9 @@ function seccionesVisibles() {
 
 const state = {
   seccion: 'usuarios',
+  // Sidebar hamburguesa (Fase 2 responsive, ≤1024px) — puramente visual, ver
+  // patrón .sidebar/.sidebar-overlay en frontend/shared/cotizador.css.
+  sidebarAbierta: false,
   usuarios: [],
   loadingUsuarios: false,
   usuariosError: '',
@@ -626,14 +630,14 @@ function renderTablaRamosGestion() {
     .map(
       (r) => `
     <tr>
-      <td>${renderCampoNombreRamo(r)}</td>
-      <td>
+      <td data-label="Ramo">${renderCampoNombreRamo(r)}</td>
+      <td data-label="Estado en el sidebar">
         <label class="admin-modal__checkbox">
           <input type="checkbox" data-action="toggle-ramo-activo" data-id="${r.id}" ${r.activo ? 'checked' : ''} />
           ${r.activo ? 'Activo' : 'Próximamente (oculto para cotizar)'}
         </label>
       </td>
-      <td>
+      <td data-label="Acciones">
         <button class="btn-outline" data-action="eliminar-ramo" data-id="${r.id}">Eliminar</button>
       </td>
     </tr>
@@ -1251,6 +1255,7 @@ function renderApp() {
   app.innerHTML = `
     ${renderTopbar()}
     <div class="app-body">
+      <div class="sidebar-overlay ${state.sidebarAbierta ? 'sidebar-overlay--visible' : ''}" data-action="close-sidebar"></div>
       ${renderSidebar()}
       <main class="main">
         <div class="main-header">
@@ -1279,6 +1284,13 @@ function renderTopbar() {
   return `
     <div class="topbar">
       <div class="topbar__red-block">
+        <button
+          type="button"
+          class="sidebar-toggle-btn"
+          data-action="toggle-sidebar"
+          aria-label="Abrir menú"
+          aria-expanded="${state.sidebarAbierta}"
+        >${ICON_MENU}</button>
         <img class="topbar__logo" src="../login/assets/logo-rojo-con-negro.svg" alt="Aseguradora Tajy" />
         <div class="topbar__brand-text">
           <div class="topbar__brand-sub">Sistema de Cotización de Pólizas</div>
@@ -1312,7 +1324,7 @@ function renderSidebar() {
     .join('')
 
   return `
-    <div class="sidebar">
+    <div class="sidebar ${state.sidebarAbierta ? 'sidebar--abierta' : ''}">
       <div class="sidebar__nav">
         <div class="sidebar__section-label">Secciones</div>
         ${items}
@@ -1405,14 +1417,14 @@ function renderTablaRoles() {
     .map(
       (r) => `
     <tr>
-      <td>${capitalizar(escapeHtml(r.nombre))}</td>
-      <td>${crearBadge(r.puede_gestionar_usuarios ? 'Sí' : 'No', r.puede_gestionar_usuarios ? 'success' : 'neutral')}</td>
-      <td>${crearBadge(r.puede_editar_coberturas ? 'Sí' : 'No', r.puede_editar_coberturas ? 'success' : 'neutral')}</td>
-      <td>${crearBadge(r.puede_editar_tasas ? 'Sí' : 'No', r.puede_editar_tasas ? 'success' : 'neutral')}</td>
-      <td>${crearBadge(r.puede_editar_planes ? 'Sí' : 'No', r.puede_editar_planes ? 'success' : 'neutral')}</td>
-      <td>${crearBadge(r.puede_editar_descuento_plan ? 'Sí' : 'No', r.puede_editar_descuento_plan ? 'success' : 'neutral')}</td>
-      <td>${crearBadge(r.puede_ver_descuento_plan ? 'Sí' : 'No', r.puede_ver_descuento_plan ? 'success' : 'neutral')}</td>
-      <td>
+      <td data-label="Rol">${capitalizar(escapeHtml(r.nombre))}</td>
+      <td data-label="Gestiona usuarios">${crearBadge(r.puede_gestionar_usuarios ? 'Sí' : 'No', r.puede_gestionar_usuarios ? 'success' : 'neutral')}</td>
+      <td data-label="Edita coberturas">${crearBadge(r.puede_editar_coberturas ? 'Sí' : 'No', r.puede_editar_coberturas ? 'success' : 'neutral')}</td>
+      <td data-label="Edita tasas">${crearBadge(r.puede_editar_tasas ? 'Sí' : 'No', r.puede_editar_tasas ? 'success' : 'neutral')}</td>
+      <td data-label="Edita planes">${crearBadge(r.puede_editar_planes ? 'Sí' : 'No', r.puede_editar_planes ? 'success' : 'neutral')}</td>
+      <td data-label="Edita descuento del plan">${crearBadge(r.puede_editar_descuento_plan ? 'Sí' : 'No', r.puede_editar_descuento_plan ? 'success' : 'neutral')}</td>
+      <td data-label="Ve descuento del plan">${crearBadge(r.puede_ver_descuento_plan ? 'Sí' : 'No', r.puede_ver_descuento_plan ? 'success' : 'neutral')}</td>
+      <td data-label="Acciones">
         <div class="admin-table__actions">
           ${
             r.es_sistema
@@ -1477,11 +1489,11 @@ function renderTablaUsuarios() {
       const puedeEliminar = u.id !== usuarioActualId && puedeModificar
       return `
     <tr>
-      <td>${escapeHtml(u.nombre)}</td>
-      <td>${escapeHtml(u.email)}</td>
-      <td>${crearBadge(capitalizar(u.rol), varianteBadgeRol(u.rol))}</td>
-      <td>${crearBadge(u.activo ? 'Activo' : 'Inactivo', u.activo ? 'success' : 'neutral')}</td>
-      <td>
+      <td data-label="Nombre">${escapeHtml(u.nombre)}</td>
+      <td data-label="Email">${escapeHtml(u.email)}</td>
+      <td data-label="Rol">${crearBadge(capitalizar(u.rol), varianteBadgeRol(u.rol))}</td>
+      <td data-label="Estado">${crearBadge(u.activo ? 'Activo' : 'Inactivo', u.activo ? 'success' : 'neutral')}</td>
+      <td data-label="Acciones">
         <div class="admin-table__actions">
           ${puedeModificar ? `<button class="btn-outline" data-action="editar-usuario" data-id="${u.id}">Editar</button>` : ''}
           ${puedeModificar ? `<button class="btn-outline" data-action="password-usuario" data-id="${u.id}">Resetear password</button>` : ''}
@@ -1558,22 +1570,22 @@ function renderTablaPlanes() {
     .map(
       (p) => `
     <tr>
-      <td>${renderCampoNombrePlan(p)}</td>
-      <td>${escapeHtml(p.ramos?.nombre_display ?? '')}</td>
-      <td>
+      <td data-label="Plan">${renderCampoNombrePlan(p)}</td>
+      <td data-label="Ramo">${escapeHtml(p.ramos?.nombre_display ?? '')}</td>
+      <td data-label="Estado">
         <label class="admin-modal__checkbox">
           <input type="checkbox" data-action="toggle-plan-activo" data-id="${p.id}" ${p.activo ? 'checked' : ''} />
           ${p.activo ? 'Activo' : 'Inactivo'}
         </label>
       </td>
-      <td>${renderCampoPrimaTecnicaMinima(p)}</td>
-      <td>${renderCampoTopes(p)}</td>
-      <td>
+      <td data-label="Prima técnica mínima">${renderCampoPrimaTecnicaMinima(p)}</td>
+      <td data-label="Topes desc./recargo (%)">${renderCampoTopes(p)}</td>
+      <td data-label="Formas de pago">
         <button class="btn-outline" data-action="toggle-formas-pago" data-id="${p.id}">
           ${state.planExpandido === p.id ? 'Ocultar' : 'Formas de pago'}
         </button>
       </td>
-      <td>
+      <td data-label="Acciones">
         <button class="btn-outline" data-action="eliminar-plan" data-id="${p.id}">Eliminar</button>
       </td>
     </tr>
@@ -1618,9 +1630,9 @@ function renderFormasPagoDelPlan(planId) {
     .map(
       (f) => `
     <tr>
-      <td>${escapeHtml(f.formas_pago?.nombre_display ?? '')}</td>
-      <td>${renderCampoTasaRpf(f, planId)}</td>
-      <td>
+      <td data-label="Forma de pago">${escapeHtml(f.formas_pago?.nombre_display ?? '')}</td>
+      <td data-label="Tasa RPF (%)">${renderCampoTasaRpf(f, planId)}</td>
+      <td data-label="Estado">
         <label class="admin-modal__checkbox">
           <input type="checkbox" data-action="toggle-forma-pago-habilitada" data-id="${f.id}" data-plan-id="${planId}" ${f.habilitada ? 'checked' : ''} />
           ${f.habilitada ? 'Habilitada' : 'Deshabilitada'}
@@ -1794,8 +1806,8 @@ function renderTablaRubrosActividad() {
     .map(
       (r) => `
     <tr>
-      <td>${escapeHtml(r.nombre)}</td>
-      <td colspan="3">${renderCamposTasaEdificioContenido(r)}</td>
+      <td data-label="Tipo de Riesgo">${escapeHtml(r.nombre)}</td>
+      <td colspan="3" data-label="Categoría / Tasa Edificio-Contenido (‰)">${renderCamposTasaEdificioContenido(r)}</td>
     </tr>
   `
     )
@@ -1876,12 +1888,12 @@ function renderTablaTasas() {
       vistaPorCobertura.add(codigo)
       return `
       <tr>
-        <td>${escapeHtml(t.coberturas_catalogo?.nombre ?? '—')}</td>
-        <td>${escapeHtml(String(t.tasa_valor))}</td>
-        <td>${t.unidad === 'permil' ? '‰' : '%'}</td>
-        <td>${escapeHtml(t.vigente_desde)}</td>
-        <td>${crearBadge(esVigente ? 'Vigente' : 'Histórica', esVigente ? 'success' : 'neutral')}</td>
-        <td>${puedeEditar ? `<button class="btn-outline" data-action="eliminar-tasa" data-id="${t.id}">Eliminar</button>` : ''}</td>
+        <td data-label="Cobertura">${escapeHtml(t.coberturas_catalogo?.nombre ?? '—')}</td>
+        <td data-label="Tasa">${escapeHtml(String(t.tasa_valor))}</td>
+        <td data-label="Unidad">${t.unidad === 'permil' ? '‰' : '%'}</td>
+        <td data-label="Vigente desde">${escapeHtml(t.vigente_desde)}</td>
+        <td data-label="Estado">${crearBadge(esVigente ? 'Vigente' : 'Histórica', esVigente ? 'success' : 'neutral')}</td>
+        <td data-label="Acciones">${puedeEditar ? `<button class="btn-outline" data-action="eliminar-tasa" data-id="${t.id}">Eliminar</button>` : ''}</td>
       </tr>
     `
     })
@@ -1986,16 +1998,16 @@ function renderTablaCoberturasPlan() {
     .map(
       (c) => `
     <tr>
-      <td>${escapeHtml(c.coberturas_catalogo?.nombre ?? '—')}</td>
-      <td>${escapeHtml(c.coberturas_catalogo?.categoria ?? '—')}</td>
-      <td>
+      <td data-label="Cobertura">${escapeHtml(c.coberturas_catalogo?.nombre ?? '—')}</td>
+      <td data-label="Categoría">${escapeHtml(c.coberturas_catalogo?.categoria ?? '—')}</td>
+      <td data-label="Por defecto">
         <label class="admin-modal__checkbox">
           <input type="checkbox" data-action="toggle-cobertura-defecto" data-id="${c.id}" data-plan-id="${planId}" ${c.incluida_por_defecto ? 'checked' : ''} />
           ${c.incluida_por_defecto ? 'Por defecto' : 'Opcional'}
         </label>
       </td>
-      <td colspan="2">${renderCamposMontoFranquicia(c, planId)}</td>
-      <td>
+      <td colspan="2" data-label="Monto / Franquicia">${renderCamposMontoFranquicia(c, planId)}</td>
+      <td data-label="Acciones">
         <button class="btn-outline" data-action="eliminar-cobertura-plan" data-id="${c.id}" data-plan-id="${planId}">Quitar</button>
       </td>
     </tr>
@@ -2422,6 +2434,16 @@ function onActionClick(el) {
   }
   if (action === 'logout') {
     cerrarSesion()
+    return
+  }
+  if (action === 'toggle-sidebar') {
+    state.sidebarAbierta = !state.sidebarAbierta
+    renderApp()
+    return
+  }
+  if (action === 'close-sidebar') {
+    state.sidebarAbierta = false
+    renderApp()
     return
   }
   if (action === 'crear-usuario') {

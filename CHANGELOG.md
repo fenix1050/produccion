@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.13](https://github.com/fenix1050/produccion/compare/v0.1.12...v0.1.13) (2026-07-31)
+
+
+### Features
+
+* **frontend:** sistema responsive unificado en los 6 modulos ([4e4598e](https://github.com/fenix1050/produccion/commit/4e4598e52c1b6669e045f077a8d9237925fe91e0))
+* **frontend:** sistema responsive unificado en los 6 módulos ([9db70a6](https://github.com/fenix1050/produccion/commit/9db70a658f4b4ae67168ae2b602fa735a0ec5031))
+
 ## [0.1.12](https://github.com/fenix1050/produccion/compare/v0.1.11...v0.1.12) (2026-07-31)
 
 

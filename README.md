@@ -13,11 +13,11 @@ correlativo y numeración progresiva por rama.
 > Desarrollo por fases — ver el estado real de avance, decisiones tomadas y pendientes en
 > [`docs/ESTADO_PROYECTO.md`](docs/ESTADO_PROYECTO.md).
 
-## Ramos — estado actual (2026-07-30)
+## Ramos — estado actual (2026-07-31)
 
 | Rama                             | Estado                                       | Detalles                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | -------------------------------- | -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Multirriesgo Comercio** (MRC)  | 🟢 **Producción**                            | Plan Normal cotiza end-to-end con Carta Oferta en PDF. Coberturas adicionales repetibles (incluidos sublímites: murallas, granizo, agua, equipos electrónicos). Carta Oferta ajustada a tamaño Oficio real. `/frontend/cotizar` ya está rediseñado (Diseño 2) con stepper, panel en vivo y vista Detalle del plan reorganizada. RPF confirmado para plan Normal; `COMERCIO PROTECCION TOTAL` sigue desactivado (sin RPF).                                                    |
+| **Multirriesgo Comercio** (MRC)  | 🟢 **Producción**                            | Plan Normal cotiza end-to-end con Carta Oferta en PDF. Coberturas adicionales repetibles (incluidos sublímites: murallas, granizo, agua, equipos electrónicos), limitadas a 1 repetición por código (`robo_contenido` hasta 2, excepción de negocio). Carta Oferta ajustada a tamaño Oficio real. `/frontend/cotizar` ya está rediseñado (Diseño 2) con stepper, panel en vivo y vista Detalle del plan reorganizada. RPF confirmado para plan Normal; `COMERCIO PROTECCION TOTAL` sigue desactivado (sin RPF). Plan **"MULTIRRIESGO COMERCIO - SEGUCOOP"** con descuento comercial fijo del 10% (editable solo por roles con el permiso `puede_editar_descuento_plan`).                                                    |
 | **Incendio**                     | 🟢 **Producción**                            | 4 planes (Hipotecario, con/sin Inspección, Maquinaria Básico) cotizan end-to-end con Carta Oferta en PDF (texto legal por plan). Moneda USD/Gs. por cotización con tipo de cambio y fallback, umbral de inspección. Tasas por rubro de actividad (~209 rubros para Incendio) con pertenencia rubro↔ramo vía tabla `rubro_actividad_ramo` (migraciones 043/044 ya aplicadas contra Supabase real). RPF confirmado (plano: Contado 0%, Cobrador 1.6%, Boca 1.35%, Tarjeta 1%). |
 | **Vida y Accidentes Personales** | 🟡 **Calculador listo / template pendiente** | Catálogo completo (7 planes, 11 coberturas, 44 filas de tarifación por edad) y calculador `vida-ap.js` completos y testeados. RPF confirmado (igual a Incendio). Falta el template de Carta Oferta (pendiente texto oficial de Kevin).                                                                                                                                                                                                                                       |
 | Auto individual                  | ⏸ Pausado                                    | Schema y calculador completos (Fase 1). Pausado por prioridad del cliente — se retoma si se pide.                                                                                                                                                                                                                                                                                                                                                                            |
@@ -53,7 +53,7 @@ Antes de tocar código, leé en este orden:
 
 - **Autenticación JWT** independiente, tokens auto-renovables.
 - **Roles configurables** (`admin` y `agente` del sistema + custom roles):
-  - Crear/editar roles con 4 permisos: `puede_gestionar_usuarios`, `puede_editar_coberturas`, `puede_editar_planes`, `puede_editar_tasas`.
+  - Crear/editar roles con 5 permisos: `puede_gestionar_usuarios`, `puede_editar_coberturas`, `puede_editar_planes`, `puede_editar_tasas`, `puede_editar_descuento_plan` (permite editar el descuento en planes con descuento fijo, ej. MRC SEGUCOOP).
   - Usuarios se asignan a un rol (no booleanos sueltos).
   - Roles `admin`/`agente` del sistema no se pueden renombrar (inmutables).
 - **Secciones** (visibles solo si usuario tiene permiso):
@@ -62,7 +62,7 @@ Antes de tocar código, leé en este orden:
   - **Tasas:** fijas por cobertura (`tasas_cobertura_ramo`) + por Tipo de Riesgo (`rubros_actividad.tasa_edificio`/`tasa_contenido`, MRC/Incendio).
   - **Planes:** Prima Técnica Mínima, topología, responsabilidad máxima cotizable, eliminar plan (409 si tiene cotizaciones asociadas — desactivarlo en vez de borrarlo).
   - **Roles:** CRUD (custom roles solo; `admin`/`agente` protegidos).
-  - **Ramos:** habilitar/deshabilitar ramos del sidebar de `/cotizar` (gateado por rol `admin` literal, no permiso delegable).
+  - **Ramos:** habilitar/deshabilitar, editar nombre y eliminar (409 si tiene planes o cotizaciones asociadas) ramos del sidebar de `/cotizar` (gateado por rol `admin` literal, no permiso delegable). Sidebar ampliado de 5 a 8 ramos (suma Auto Flota, TRO y Transporte, sin calculador propio todavía — mismo placeholder que Auto/Hogar).
 - Tope de descuento/recargo: `MIN(tope_plan, tope_usuario)` (always el más restrictivo).
 - **Guard de seguridad real:** ningún rol no-admin puede editar/desactivar/resetear/eliminar a un usuario admin, aunque tenga permisos sobre usuarios.
 - Acceso al panel movido al menú de perfil/topbar; la card de acceso también aparece en bienvenida solo si el usuario tiene permiso real.
@@ -140,6 +140,10 @@ El estado actual está en `docs/ESTADO_PROYECTO.md` sección 4 (tabla de migraci
 - **041:** Ramos — desactiva `auto`/`hogar` (`activo=false`) para habilitar el toggle de ramos del panel admin sin cambiar el comportamiento visible previo.
 - **042:** Cotizaciones — corrige `cotizacion_variantes.numero_variante` de `UNIQUE` global a `UNIQUE (cotizacion_id, numero_variante)`.
 - **043–044:** Incendio — tabla `rubro_actividad_ramo` (pertenencia rubro↔ramo) + seed de tasas por rubro de actividad (~184 rubros nuevos, ~209 rubros de Incendio en total).
+- **045:** MRC — completa `texto_legal` de la cobertura "Cristales" (estaba `NULL` desde el seed original).
+- **046:** Seguridad — activa RLS (default-deny) en las 34 tablas de `public` marcadas CRITICAL por el advisor de Supabase; sin impacto funcional (backend usa `SUPABASE_SERVICE_KEY`, que bypasea RLS).
+- **047:** Ramos — desactiva `auto-flota`/`tro`/`transporte` (`activo=false`) al ampliar el sidebar de 5 a 8 ramos, mismo criterio que la 041.
+- **048:** MRC — plan "MULTIRRIESGO COMERCIO - SEGUCOOP" con descuento fijo del 10% + permiso de rol `puede_editar_descuento_plan` (renombrada de `046` por colisión de numeración con la migración de RLS al mergear a `main`).
 
 ### Reset de Supabase local
 
@@ -210,6 +214,7 @@ Cada usuario puede tener una combinación de estos permisos (se asignan en Supab
 - `puede_editar_coberturas` — editar qué coberturas vienen por defecto en cada plan.
 - `puede_editar_planes` — editar planes (Prima Técnica Mínima, RPF, topología).
 - `puede_gestionar_usuarios` — crear/editar otros usuarios y sus permisos.
+- `puede_editar_descuento_plan` — editar el descuento en planes con descuento fijo (ej. MRC "SEGUCOOP", 10%); sin este permiso el campo Descuento queda precargado y bloqueado en el valor del plan.
 
 Todos ellos pueden además establecer su propio tope de descuento/recargo más restrictivo que el del plan.
 
@@ -297,7 +302,7 @@ Usa Puppeteer (Chromium headless) para convertir HTML → PDF. Cada ramo puede t
 
 ## Estado actual
 
-**Última actualización:** 2026-07-30 — MRC e Incendio operativos end-to-end (calculador + Carta Oferta en PDF); Vida-AP tiene calculador completo pero sigue sin template (falta texto oficial). Incendio suma 3 planes nuevos, moneda USD/Gs. y tasas por rubro de actividad (~209 rubros, migraciones 043/044 ya aplicadas contra Supabase real). Panel admin con secciones de Usuarios/Coberturas/Tasas/Planes/Roles/Ramos (esta última para habilitar/deshabilitar ramos del sidebar) y opción de eliminar planes. Backend desplegado en VPS propia (Docker + Caddy, `api.cotizador.lat`, redeploy manual); frontend en Vercel (auto-deploy en `main`).
+**Última actualización:** 2026-07-31 — MRC e Incendio operativos end-to-end (calculador + Carta Oferta en PDF); Vida-AP tiene calculador completo pero sigue sin template (falta texto oficial). Incendio suma 3 planes nuevos, moneda USD/Gs. y tasas por rubro de actividad (~209 rubros, migraciones 043/044 ya aplicadas contra Supabase real). MRC suma el plan "SEGUCOOP" con descuento fijo del 10% (permiso de rol dedicado). Panel admin con secciones de Usuarios/Coberturas/Tasas/Planes/Roles/Ramos (esta última para habilitar/deshabilitar, editar nombre y eliminar ramos del sidebar, ahora con 8 ramos) y opción de eliminar planes. RLS activado (default-deny) en las 34 tablas CRITICAL de Supabase. Se removieron los imports de Vercel Analytics/Speed Insights del frontend (rompían con `Uncaught TypeError` fuera del build de Vercel). Backend desplegado en VPS propia (Docker + Caddy, `api.cotizador.lat`, redeploy manual); frontend en Vercel (auto-deploy en `main`).
 
 Ver `docs/ESTADO_PROYECTO.md` para el detalle completo de:
 

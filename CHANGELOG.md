@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.7](https://github.com/fenix1050/produccion/compare/v0.1.6...v0.1.7) (2026-07-31)
+
+
+### Bug Fixes
+
+* **security:** dejar de publicar el backup de Supabase como release pública ([a265549](https://github.com/fenix1050/produccion/commit/a26554975cc0a8083583dbfbfe87d08d8bcd2c8b))
+
 ## [0.1.6](https://github.com/fenix1050/produccion/compare/v0.1.5...v0.1.6) (2026-07-31)
 
 

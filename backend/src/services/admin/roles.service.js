@@ -11,6 +11,7 @@ const PERMISOS_ROL = [
   'puede_editar_coberturas',
   'puede_editar_planes',
   'puede_editar_descuento_plan',
+  'puede_ver_descuento_plan',
 ]
 
 // --- Roles (migración 031) ---

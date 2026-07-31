@@ -7,7 +7,7 @@ import { supabase } from '../config/supabase.js'
 // código downstream que lea `usuario.rol` / `usuario.puede_editar_tasas` etc. no necesiten
 // cambiar — ver docs/ESTADO_PROYECTO.md.
 const CAMPOS_ROL =
-  'roles(nombre, puede_editar_tasas, puede_gestionar_usuarios, puede_editar_coberturas, puede_editar_planes, puede_editar_descuento_plan)'
+  'roles(nombre, puede_editar_tasas, puede_gestionar_usuarios, puede_editar_coberturas, puede_editar_planes, puede_editar_descuento_plan, puede_ver_descuento_plan)'
 
 function aplanar(usuario) {
   if (!usuario) return usuario
@@ -20,6 +20,10 @@ function aplanar(usuario) {
     puede_editar_coberturas: roles?.puede_editar_coberturas ?? false,
     puede_editar_planes: roles?.puede_editar_planes ?? false,
     puede_editar_descuento_plan: roles?.puede_editar_descuento_plan ?? false,
+    // DEFAULT TRUE en la columna (migración 050) — a diferencia de los demás puede_*
+    // (DEFAULT FALSE), acá el fallback en ausencia de rol/columna debe ser `true` para
+    // no cambiar el comportamiento visual actual.
+    puede_ver_descuento_plan: roles?.puede_ver_descuento_plan ?? true,
   }
 }
 

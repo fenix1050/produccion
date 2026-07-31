@@ -1985,6 +1985,15 @@ function renderAjusteField(prefijo, label, plan) {
     plan?.descuento_default != null &&
     !usuario?.puede_editar_descuento_plan
 
+  // Permiso puramente cosmético (cambio "permiso-ver-descuento-plan"): si el campo ya está
+  // bloqueado (no editable) y el usuario tampoco tiene permiso de VERLO, no se renderiza. No
+  // amplía la condición de `bloqueado` (ver spec: alineación con cotizacion_combinada queda
+  // fuera de alcance) — el Recargo no se ve afectado porque `bloqueado` ya está gateado a
+  // `prefijo === 'descuento'`. `=== false` explícito: localStorage viejo (pre-migración) sin
+  // el campo cacheado se comporta como hoy (se muestra).
+  const oculto = bloqueado && usuario?.puede_ver_descuento_plan === false
+  if (oculto) return ''
+
   // Un solo <label> visual describe 2 inputs (monto/porcentaje, mutuamente excluyentes) —
   // for/id de a uno solo no alcanza acá, así que se asocian los dos con aria-labelledby
   // sobre el mismo id de label (técnica WCAG válida para "un label, varios controles").

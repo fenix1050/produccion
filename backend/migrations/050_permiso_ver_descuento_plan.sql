@@ -1,0 +1,31 @@
+-- Migración 050: permiso de rol para VER (ocultar/mostrar) el campo de descuento fijo
+-- de un plan en el cotizador (cambio SDD `permiso-ver-descuento-plan`).
+--
+-- Contexto (ver design.md del cambio):
+-- 1. Clona la plumbing de `roles.puede_editar_descuento_plan` (migración 048), agregando una
+--    columna hermana `roles.puede_ver_descuento_plan` con el mismo patrón de permisos de rol
+--    (columna en `roles`, establecido por la migración 031).
+-- 2. FLAG PURAMENTE COSMÉTICO: solo controla si el campo "Descuento" se renderiza o no en
+--    `frontend/cotizar/cotizar.js#renderAjusteField` cuando está bloqueado (no editable). NO
+--    influye en absoluto en el valor de descuento calculado server-side —
+--    `cotizacion.service.js#resolverDescuentos()` no lee ni referencia esta columna.
+-- 3. A diferencia de 048 (`puede_editar_descuento_plan`, DEFAULT FALSE + UPDATE selectivo), esta
+--    columna es `DEFAULT TRUE` SIN UPDATE posterior: el comportamiento debe quedar byte-idéntico
+--    al actual inmediatamente después de aplicar la migración (todos los roles siguen viendo el
+--    campo tal como hoy). Es la única divergencia intencional respecto al patrón de 048.
+
+ALTER TABLE roles ADD COLUMN puede_ver_descuento_plan BOOLEAN NOT NULL DEFAULT TRUE;
+
+-- ============================================================================
+-- ROLLBACK (comentado — no se ejecuta automáticamente)
+-- ============================================================================
+-- N1 (negocio): revocar visibilidad para roles puntuales sin tocar código ni schema.
+--   UPDATE roles SET puede_ver_descuento_plan = FALSE
+--   WHERE nombre IN ('...');
+--
+-- N2 (código): revertir el commit de esta migración. La columna `roles.puede_ver_descuento_plan`
+--   queda inerte (ningún código la vuelve a leer), sin dato huérfano — el campo de descuento
+--   simplemente vuelve a renderizarse siempre que esté bloqueado, como antes de este cambio.
+--
+-- N3 (schema): revertir también el schema.
+--   ALTER TABLE roles DROP COLUMN puede_ver_descuento_plan;

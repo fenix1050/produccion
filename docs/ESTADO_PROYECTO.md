@@ -1923,3 +1923,24 @@ Sincronización de rutina: los siguientes cambios ya están en `main` (verificad
 - **Releases automáticos de `release-please`**: `0.1.4` (`3afaf7a`, incluye el cambio de RLS y admin ramos) y `0.1.5` (`da67c39`, incluye MRC descuento fijo y el renombre de migración). Rutina de CI, sin cambios de código propios — el detalle línea por línea está en `CHANGELOG.md`, no se repite acá.
 
 Ningún hallazgo nuevo de bug en esta sincronización — es puesta al día de documentación, no una sesión de desarrollo. Los pendientes activos siguen siendo los de la sección 31 y el roadmap de la sección 30, salvo el ítem de RLS que queda cerrado por el primer punto de esta sección.
+
+## 41. Permiso de rol `puede_ver_descuento_plan` — ocultar el campo Descuento por rol, configurable desde el admin (2026-07-31, verificado en vivo, PR sin abrir todavía)
+
+Cambio SDD `permiso-ver-descuento-plan` (proposal → spec → design → tasks → apply, ciclo completo en modo automático). Sigue el mismo patrón exacto que `puede_editar_descuento_plan` (sección 39, migración 048), con una divergencia intencional: `DEFAULT TRUE` en vez de `FALSE`, para que ningún rol pierda visibilidad al migrar.
+
+**Diseño:** el campo Descuento en `renderAjusteField` (`frontend/cotizar/cotizar.js`) ya tenía 2 estados (editable / bloqueado-y-visible con hint "Descuento fijo del plan"). Este cambio agrega un tercer estado: bloqueado-y-oculto (`oculto = bloqueado && usuario?.puede_ver_descuento_plan === false` → la función devuelve `''`, no renderiza el `<div class="field">`). Puramente cosmético — `resolverDescuentos()` en `backend/src/services/cotizacion.service.js` no lee esta columna y sigue forzando `plan.descuento_default` exactamente igual que antes.
+
+**Migración `050_permiso_ver_descuento_plan.sql`** (`ALTER TABLE roles ADD COLUMN puede_ver_descuento_plan BOOLEAN NOT NULL DEFAULT TRUE`) aplicada contra Supabase real — confirmado que los 5 roles quedaron en `true` inmediatamente después. Plumbing de 6 archivos backend (roles.repository.js, usuarios.repository.js, auth.js, roles.service.js, admin.schema.js, auth.service.js) + admin.js (checkbox, badge "VE DESCUENTO DEL PLAN") + cotizar.js, siguiendo el patrón de la sección 39. Dos divergencias intencionales respecto al sibling (verificadas, no copiadas a ciegas): `crearRolSchema.puede_ver_descuento_plan` usa `.default(true)` (sibling: `false`) y `aplanar()` usa `?? true` (sibling: `?? false`), para que el default a nivel app coincida con el `DEFAULT TRUE` de la columna. 166/166 tests backend en verde (sin test nuevo dedicado — mismo precedente que el sibling: la cobertura genérica de `PERMISOS_ROL`/`asegurarPuedeOtorgarPermisos` en `roles.service.test.js` ya cubre el mecanismo).
+
+**Hallazgo real durante la verificación en vivo:** el rol `agente` es `es_sistema = true`, así que su botón "Editar" en el panel admin está deshabilitado (`title="Rol del sistema — no se puede editar"`) — **no es un bug de este cambio**, es el mismo gate que ya bloqueaba editar `puede_editar_descuento_plan` para `agente` desde la migración 048 (ese permiso se dejó en `false` para `agente` por SQL directo en su momento, no por UI). Por consistencia, `puede_ver_descuento_plan` para `agente` también se ajustó por SQL directo, no por el panel. La UI del checkbox sí se verificó de punta a punta contra un rol no-sistema (`Comercial`) sin guardar el cambio, para no tocar un rol en uso real solo para la prueba (mismo criterio que la sección 39).
+
+**Verificación en vivo con Playwright, ambos caminos confirmados:**
+
+- Usuario `test@test.com` (rol `agente`, `puede_ver_descuento_plan = false` en Supabase real desde este cambio): en Detalle del plan del MRC "SEGUCOOP" se ve la sección "Ajustes" con Recargo, pero el campo Descuento no se renderiza.
+- Usuario `qatest@test.com` (rol Admin, `puede_editar_descuento_plan = true`): mismo flujo, campo Descuento visible y editable con el 10% precargado.
+- Ambos usuarios obtuvieron el mismo "Costo total" (1.084.000 Gs.) para la misma cotización — confirma que ocultar el campo es puramente visual, el 10% se sigue aplicando igual en ambos casos.
+- Panel admin: checkbox "Puede ver el descuento fijo de un plan (si no puede editarlo)" presente en el modal de rol y reflejando el estado real de la base.
+
+**Decisión de Kevin (2026-07-31):** dejar `puede_ver_descuento_plan = false` para `agente` en Supabase real como estado final de producción (no revertir a `true`) — este era el objetivo original del pedido, no solo un dato de prueba.
+
+**Pendiente:** abrir PR desde la rama `sdd/permiso-ver-descuento-plan` (commit `36223f7`) hacia `main`.

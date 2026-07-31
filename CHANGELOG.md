@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.12](https://github.com/fenix1050/produccion/compare/v0.1.11...v0.1.12) (2026-07-31)
+
+
+### Bug Fixes
+
+* **admin:** centrar badges Sí/No en tabla de Roles ([8650b2b](https://github.com/fenix1050/produccion/commit/8650b2be39bd19250ec1a078cf44e173062a27b3))
+* **admin:** centrar badges Sí/No en tabla de Roles ([4161fa4](https://github.com/fenix1050/produccion/commit/4161fa45358eaaadf232828bbc747992d21c691f))
+
 ## [0.1.11](https://github.com/fenix1050/produccion/compare/v0.1.10...v0.1.11) (2026-07-31)
 
 

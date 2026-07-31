@@ -111,6 +111,16 @@
   border-bottom: none;
 }
 
+/* Tabla de Roles: los headers largos ("Edita descuento del plan") fuerzan columnas
+   anchas via white-space:nowrap (ver .admin-table th arriba), pero el contenido es un
+   badge chico Sí/No — sin centrar, el badge queda pegado a la izquierda con un montón
+   de espacio vacío a la derecha en cada celda. Centrar header y celda de esas columnas
+   (todas menos Rol y Acciones, primera y última) resuelve eso sin angostar la tabla. */
+.admin-table--roles th:not(:first-child):not(:last-child),
+.admin-table--roles td:not(:first-child):not(:last-child) {
+  text-align: center;
+}
+
 .admin-pill {
   display: inline-block;
   padding: 3px 10px;

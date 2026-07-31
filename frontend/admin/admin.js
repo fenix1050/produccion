@@ -1433,7 +1433,7 @@ function renderTablaRoles() {
 
   return `
     <div class="admin-table-scroll">
-      <table class="admin-table">
+      <table class="admin-table admin-table--roles">
         <thead>
           <tr>
             <th>Rol</th>

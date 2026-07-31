@@ -1246,14 +1246,10 @@ function renderEmptyState() {
 }
 
 function renderRamoNoDisponible(ramo) {
-  const mensaje =
-    ramo.nombre === 'auto'
-      ? 'Auto todavía no está disponible (Fase 2 pausada por prioridad de Kevin) — no se puede cotizar desde acá por ahora.'
-      : 'Multirriesgo Hogar todavía no fue solicitado por el cliente — próximamente.'
   return `
     <div class="empty-state">
       <div class="empty-state__title">${escapeHtml(ramo.label)}</div>
-      <div class="empty-state__subtitle">${escapeHtml(mensaje)}</div>
+      <div class="empty-state__subtitle">Próximamente.</div>
     </div>
   `
 }

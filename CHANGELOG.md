@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.6](https://github.com/fenix1050/produccion/compare/v0.1.5...v0.1.6) (2026-07-31)
+
+
+### Bug Fixes
+
+* remove Vercel Analytics and Speed Insights from frontend ([c837de8](https://github.com/fenix1050/produccion/commit/c837de810ebd85f1f371369c3f15a43abc9b2204))
+
 ## [0.1.5](https://github.com/fenix1050/produccion/compare/v0.1.4...v0.1.5) (2026-07-30)
 
 

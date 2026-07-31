@@ -29,7 +29,12 @@ jobs:
             cd /home/fenix/workspace/produccion
             git fetch origin main
             git checkout main
-            git merge --ff-only origin/main
+            # El checkout de la VPS es un artefacto de despliegue descartable, no un lugar
+            # de trabajo (confirmado con Kevin, 2026-07-31: sin commits propios de valor ahí).
+            # reset --hard en vez de merge --ff-only porque el historial local ya diverge de
+            # origin/main con "unrelated histories" — un merge normal no puede resolver eso.
+            git reset --hard origin/main
+            git clean -fd
             docker compose up --build -d backend
             docker image prune -f
 

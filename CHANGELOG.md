@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.11](https://github.com/fenix1050/produccion/compare/v0.1.10...v0.1.11) (2026-07-31)
+
+
+### Bug Fixes
+
+* **ci:** usar reset --hard en el deploy del backend ([d797051](https://github.com/fenix1050/produccion/commit/d79705181e846d90772f8362ada739d420ad8748))
+* **ci:** usar reset --hard en vez de merge --ff-only en el deploy ([d34ec3d](https://github.com/fenix1050/produccion/commit/d34ec3deb5ec69856529bdeac588c52a918e45e4))
+
 ## [0.1.10](https://github.com/fenix1050/produccion/compare/v0.1.9...v0.1.10) (2026-07-31)
 
 

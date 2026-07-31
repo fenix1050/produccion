@@ -90,6 +90,11 @@ export const editarPlanSchema = z.object({
   prima_tecnica_minima_usd: z.number().nullable().optional(),
 })
 
+export const editarPlanTopesSchema = z.object({
+  descuento_maximo: z.number().min(0).max(100).nullable().optional(),
+  recargo_maximo: z.number().min(0).max(100).nullable().optional(),
+})
+
 export const editarPlanFormaPagoSchema = z.object({
   tasa_rpf: z.number().optional(),
   habilitada: z.boolean().optional(),

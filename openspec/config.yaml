@@ -4,7 +4,8 @@ context: |
   Tech stack: Node.js + Express (backend), Vanilla JS (frontend), Supabase (PostgreSQL), Zod, Puppeteer (PDF).
   Architecture: routes -> controllers -> services -> repositories; un calculador por ramo en /calculators;
   validacion Zod en el borde de la API; frontend nunca habla directo con Supabase.
-  Testing: Vitest (backend), Strict TDD Mode activo.
+  Testing: Node.js native --test (backend), Playwright (E2E), Strict TDD Mode enabled.
+  Linting: ESLint (custom config), Prettier (formatter). Coverage: unconfigured.
   Style: ver CLAUDE.md del repo para convenciones completas.
 
 rules:

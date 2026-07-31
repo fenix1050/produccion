@@ -62,6 +62,12 @@ router.delete('/planes/:id', requirePlanesEdit, adminController.eliminarPlan)
 router.get('/planes/:id/formas-pago', requirePlanesEdit, adminController.listarFormasPagoDePlan)
 router.put('/plan-formas-pago/:id', requirePlanesEdit, adminController.editarPlanFormaPago)
 
+// Topes de descuento/recargo del plan (gate: rol admin literal, no un permiso booleano
+// delegable). Ver docs/ESTADO_PROYECTO.md: si esto fuera parte de puede_editar_planes, un
+// Jefe/Analista de Riesgo (que ya tiene ese permiso) podría subir el mismo tope que limita
+// su propio descuento vía puede_editar_descuento_plan. Mismo patrón que Ramos.
+router.put('/planes/:id/topes', requireRole('admin'), adminController.editarPlanTopes)
+
 // Ramos (gate: rol admin literal, no un permiso booleano delegable) — habilitar/deshabilitar
 // un ramo determina qué aparece "Próximamente" en el sidebar del cotizador y si se puede
 // cotizar por ese ramo vía API (ver findRamoById soloActivos), es una decisión a nivel de

@@ -9,6 +9,7 @@ import {
   crearTasaSchema,
   editarRubroActividadSchema,
   editarPlanSchema,
+  editarPlanTopesSchema,
   editarPlanFormaPagoSchema,
   editarRamoSchema,
 } from '../schemas/admin.schema.js'
@@ -219,6 +220,16 @@ export async function listarPlanes(req, res, next) {
 export async function editarPlan(req, res, next) {
   try {
     const cambios = editarPlanSchema.parse(req.body)
+    const plan = await planesService.editarPlan(req.params.id, cambios)
+    res.json(plan)
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function editarPlanTopes(req, res, next) {
+  try {
+    const cambios = editarPlanTopesSchema.parse(req.body)
     const plan = await planesService.editarPlan(req.params.id, cambios)
     res.json(plan)
   } catch (err) {

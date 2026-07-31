@@ -1944,3 +1944,23 @@ Cambio SDD `permiso-ver-descuento-plan` (proposal → spec → design → tasks 
 **Decisión de Kevin (2026-07-31):** dejar `puede_ver_descuento_plan = false` para `agente` en Supabase real como estado final de producción (no revertir a `true`) — este era el objetivo original del pedido, no solo un dato de prueba.
 
 **Pendiente:** abrir PR desde la rama `sdd/permiso-ver-descuento-plan` (commit `36223f7`) hacia `main`.
+
+## 42. Frontend responsive unificado — los 6 módulos, sidebar hamburguesa, PR #81 abierto (2026-07-31)
+
+Rama `feat/responsive-unificado`, creada desde `main` actualizado (post PR #79/#80). Trabajo pedido por Kevin: unificar los 5 breakpoints dispersos que tenía el CSS (720/900/980/1100/640px, desktop-first, sin sistema) en 3 estándar, y agregar un patrón de colapso al sidebar fijo (compartido por cotizar/admin/historial/configuración) que hasta ahora no existía en absoluto.
+
+**Sistema de breakpoints** (documentado como comentario debajo del `:root` en `frontend/shared/cotizador.css`): 1024px (2 columnas → 1, sidebar colapsa a hamburguesa), 768px (densidad: paddings/fuentes/tablas-scroll/modales fluidos), 480px (mobile puro). Remapeo aplicado en los 7 archivos CSS del frontend. Resuelve el pendiente de roadmap "Breakpoint intermedio responsive (900-1200px) en cotizador.css" (Sprint 3) — `.resultado-layout`/`.datos-view` pasaron de 900px a 1024px.
+
+**Sidebar hamburguesa + overlay**, creado desde cero (no había precedente) en `frontend/shared/cotizador.css` y reutilizado idéntico en los 4 módulos con sidebar: clases `.sidebar-toggle-btn`, `.sidebar-overlay`/`.sidebar-overlay--visible`, `.sidebar--abierta`, `data-action="toggle-sidebar"`/`"close-sidebar"`. JS nuevo mínimo por módulo (dos ramas de toggle en el dispatcher de clicks existente, o dos listeners puntuales donde no había dispatcher genérico) — sin lógica de negocio, autorizado explícitamente por Kevin como único HTML/JS nuevo permitido en este trabajo.
+
+**Tablas del admin** (Usuarios, Roles, Coberturas, Tasas, Planes, Ramos): en `@media (max-width: 768px)` cada fila de `.admin-table` pasa a renderizarse como card apilada (`td::before { content: attr(data-label) }`), reemplazando un primer intento de columna sticky que Kevin señaló como mal patrón ("no es una solución ni buena práctica") tras verlo en vivo.
+
+**Bugs reales encontrados y corregidos durante la verificación en dispositivo real de Kevin** (no se detectaron en las pasadas de Playwright headless anteriores — importante: la verificación headless no sustituye probar en un celular real):
+
+- El panel "Cotización en vivo" tapaba el formulario de datos en mobile. Causa raíz: `.datos-view__form` y `.live-summary` competían por la misma altura fija en flexbox (`flex:1` + `overflow:auto` en ambos); como el form tenía `overflow:auto`, su "automatic minimum size" en flexbox caía a 0 y se achicaba a ~16px de alto cediéndole el espacio al panel. Fix: en `@media (max-width: 1024px)`, `.datos-view` pasa a `overflow-y:auto` y ambos hijos a `flex:none; overflow:visible` — el contenedor scrollea como una sola columna larga.
+- El topbar compartido se superponía/cortaba en mobile (subtítulo largo "Sistema de Cotización de Pólizas", breadcrumb completo, texto del menú de usuario, todo compitiendo por el mismo ancho). Fix: en `@media (max-width: 768px)` se oculta `.topbar__brand-text`, el breadcrumb colapsa a solo la sección actual, se oculta `.topbar__user-text`/`.topbar__user-chevron` (queda avatar + campana), y el menú de usuario se reposiciona (`right: -12px`) para no clipear contra el borde de pantalla.
+- Las tablas anidadas dentro del modal de detalle de historial (`.admin-table--nested`, usadas para "Forma de pago" y "Coberturas") no tenían wrapper de scroll horizontal — en 375px las columnas de la derecha se recortaban en silencio sin ninguna scrollbar visible. Fix: envueltas en `.historial-detalle__tabla-scroll { overflow-x: auto }`.
+
+**Verificación:** 166/166 tests backend en verde. Verificado en vivo con Playwright en 375/480/768/1024/1280px (sidebar en los 4 módulos, `.resultado-layout` de 1 a 2 columnas en el corte de 1024px, formulario de coberturas, modal de admin con `qatest@test.com` — credenciales usadas solo en la sesión de prueba, nunca guardadas en archivos ni en memoria por pedido explícito de Kevin). Verificado también en dispositivo real por Kevin en dos rondas (primera ronda encontró los 3 bugs de arriba; segunda ronda confirmó todo arreglado).
+
+**PR #81 abierto** (`feat/responsive-unificado` → `main`), sin mergear todavía.

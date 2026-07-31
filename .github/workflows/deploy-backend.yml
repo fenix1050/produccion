@@ -1,0 +1,47 @@
+name: Deploy backend
+
+# Runs after CI succeeds on main (never deploys code that hasn't passed lint/format/tests).
+# Rebuilds and restarts only the backend service on the VPS via SSH + Docker Compose.
+on:
+  workflow_run:
+    workflows: ['CI']
+    types:
+      - completed
+    branches:
+      - main
+
+jobs:
+  deploy:
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_SSH_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_SSH_PORT }}
+          script: |
+            set -e
+            cd /home/fenix/workspace/produccion
+            git fetch origin main
+            git checkout main
+            git merge --ff-only origin/main
+            docker compose up --build -d backend
+            docker image prune -f
+
+      - name: Verify deploy (health check)
+        run: |
+          for i in $(seq 1 10); do
+            if curl -sf https://api.cotizador.lat/health; then
+              echo "Backend healthy"
+              exit 0
+            fi
+            echo "Waiting for backend to come up... ($i/10)"
+            sleep 3
+          done
+          echo "Backend did not report healthy after deploy"
+          exit 1

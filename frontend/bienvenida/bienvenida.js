@@ -9,6 +9,7 @@ import {
   ICON_RAMO_INCENDIO,
   ICON_RAMO_VIDA_AP,
   ICON_RAMO_HOGAR,
+  ICON_SUBLIMITE_GENERICO,
 } from '../shared/nav-icons.js'
 
 // Pantalla de bienvenida post-login (WU7) — recreación en Vanilla JS del handoff aprobado
@@ -20,22 +21,31 @@ const ICON_PROPUESTA = `<svg width="26" height="26" viewBox="0 0 24 24" fill="no
 const ICON_ADMIN = `<svg width="26" height="26" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.7"></circle><path d="M12 3.5v2.2M12 18.3v2.2M20.5 12h-2.2M5.7 12H3.5M17.7 6.3l-1.5 1.5M7.8 16.2l-1.5 1.5M17.7 17.7l-1.5-1.5M7.8 7.8L6.3 6.3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path></svg>`
 const ICON_ARROW_UP_RIGHT = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M7 17L17 7M8 7h9v9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>`
 
-// Mismos ramos/estado que muestra `frontend/cotizar/cotizar.js` (RAMOS_UI) — el código de
-// estado UI (disponible/pausa/proximamente) no viene de la base, es decisión de UI.
+// Mismos ramos que muestra el sidebar de `frontend/cotizar/cotizar.js` (RAMOS_UI) — acá
+// solo aporta metadata de label/ícono. El estado disponible/proximamente NO se hardcodea:
+// se deriva del flag `activo` de la tabla `ramos` (togglable desde el panel admin, sección
+// Ramos), igual que `ramoInfo()` en cotizar.js — así el toggle del admin también se refleja
+// acá, no solo en el sidebar del cotizador.
 const RAMOS_UI = [
-  { nombre: 'auto', label: 'Auto', estado: 'proximamente' },
-  { nombre: 'mrc', label: 'Multirriesgo Comercio', estado: 'disponible' },
-  { nombre: 'incendio', label: 'Incendio', estado: 'disponible' },
-  { nombre: 'vida-ap', label: 'Vida y Accidentes Personales', estado: 'disponible' },
-  { nombre: 'hogar', label: 'Multirriesgo Hogar', estado: 'proximamente' },
+  { nombre: 'auto', label: 'Auto' },
+  { nombre: 'auto-flota', label: 'Automóviles - Flota' },
+  { nombre: 'mrc', label: 'Multirriesgo Comercio' },
+  { nombre: 'incendio', label: 'Incendio' },
+  { nombre: 'vida-ap', label: 'Vida y Accidentes Personales' },
+  { nombre: 'hogar', label: 'Multirriesgo Hogar' },
+  { nombre: 'tro', label: 'Todo Riesgo Operativo' },
+  { nombre: 'transporte', label: 'Transporte de Mercadería' },
 ]
 
 const RAMO_ICONOS = {
   auto: ICON_RAMO_AUTO,
+  'auto-flota': ICON_SUBLIMITE_GENERICO,
   mrc: ICON_RAMO_MRC,
   incendio: ICON_RAMO_INCENDIO,
   'vida-ap': ICON_RAMO_VIDA_AP,
   hogar: ICON_RAMO_HOGAR,
+  tro: ICON_SUBLIMITE_GENERICO,
+  transporte: ICON_SUBLIMITE_GENERICO,
 }
 
 const ESTADO_LABEL = {
@@ -55,6 +65,13 @@ let destroyFx = null
 
 function ramoActivo(nombre) {
   return state.ramosActivos.find((r) => r.nombre === nombre) || null
+}
+
+function ramoInfo(nombre) {
+  const base = RAMOS_UI.find((r) => r.nombre === nombre)
+  if (!base) return null
+  const estado = ramoActivo(nombre) ? 'disponible' : 'proximamente'
+  return { ...base, estado }
 }
 
 function render() {
@@ -134,8 +151,9 @@ function renderWelcome() {
 
 function renderRamo() {
   const filas = RAMOS_UI.map((r) => {
-    const disponible = r.estado === 'disponible' && ramoActivo(r.nombre)
-    const estadoLabel = ESTADO_LABEL[r.estado] || ''
+    const info = ramoInfo(r.nombre)
+    const disponible = info.estado === 'disponible'
+    const estadoLabel = ESTADO_LABEL[info.estado] || ''
     const atributos = disponible
       ? `data-action="select-ramo" data-ramo="${r.nombre}"`
       : `aria-disabled="true" title="${escapeHtml(estadoLabel)}"`
@@ -143,7 +161,7 @@ function renderRamo() {
       <div class="bv-ramo-row ${disponible ? 'bv-ramo-row--disponible' : 'bv-ramo-row--deshabilitada'}" ${atributos}>
         <div class="bv-ramo-row__icon">${RAMO_ICONOS[r.nombre] || ''}</div>
         <div class="bv-ramo-row__label">${r.label}</div>
-        <div class="bv-ramo-row__badge bv-ramo-row__badge--${r.estado}">${estadoLabel}</div>
+        <div class="bv-ramo-row__badge bv-ramo-row__badge--${info.estado}">${estadoLabel}</div>
       </div>
     `
   }).join('')

@@ -1,5 +1,6 @@
 import { api, auth } from '../shared/api.js'
 import { crearBadge } from '../shared/badge.js'
+import { getRamos } from '../shared/catalogo.js'
 import { escapeHtml, enfocarPrimerElemento, atraparFoco, renderBanner } from '../shared/dom.js'
 import { renderSidebarFooter, renderTopbar as renderTopbarShell } from '../shared/sidebar.js'
 import { fmtMoneda } from '../shared/format.js'
@@ -63,7 +64,7 @@ let elementoDisparadorModal = null
 async function init() {
   renderApp()
   try {
-    state.ramos = await api.get('/ramos')
+    state.ramos = await getRamos()
   } catch {
     state.ramos = []
   }

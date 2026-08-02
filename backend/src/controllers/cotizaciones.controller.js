@@ -1,4 +1,6 @@
+import { listarCotizacionesQuerySchema } from '../schemas/cotizaciones.schema.js'
 import * as cotizacionService from '../services/cotizacion.service.js'
+import { httpError } from '../utils/http-error.js'
 
 export async function calcular(req, res, next) {
   try {
@@ -20,7 +22,11 @@ export async function crear(req, res, next) {
 
 export async function listar(req, res, next) {
   try {
-    const resultado = await cotizacionService.listarCotizaciones(req.query, req.usuario)
+    const parseo = listarCotizacionesQuerySchema.safeParse(req.query)
+    if (!parseo.success) {
+      throw httpError(400, parseo.error.issues.map((i) => i.message).join('; '))
+    }
+    const resultado = await cotizacionService.listarCotizaciones(parseo.data, req.usuario)
     res.json(resultado)
   } catch (err) {
     next(err)

@@ -87,8 +87,8 @@ export async function listarCotizaciones(query, usuario) {
     cliente: query.cliente,
     fechaDesde: query.fecha_desde,
     fechaHasta: query.fecha_hasta,
-    limit: query.limit ? Number(query.limit) : undefined,
-    offset: query.offset ? Number(query.offset) : undefined,
+    limit: query.limit,
+    offset: query.offset,
     agenteId: usuario.rol === 'admin' ? undefined : usuario.id,
   })
 }
@@ -104,21 +104,25 @@ export async function generarPdfOferta(id, usuario) {
   const cotizacion = await cotizacionesRepository.findCotizacionById(id)
   verificarPropiedad(cotizacion, usuario)
   const t1 = Date.now()
-  const plan = await ramosRepository.findPlanById(cotizacion.plan_id)
-  // Sin filtro de `activo`: la cotización ya existe (se creó cuando el ramo estaba activo),
-  // así que generar su PDF no debe fallar solo porque el ramo se dio de baja después.
-  const ramo = await ramosRepository.findRamoById(cotizacion.ramo_id)
-  // Catálogo VIGENTE del plan (montos/incluida_por_defecto actuales) — necesario para que los
-  // sub-límites fijos de la Carta Oferta (ej. MRC) reflejen cambios del admin, en vez de quedar
-  // hardcodeados con el valor de cuando se cargó la migración original.
-  const planCoberturas = await ramosRepository.findCoberturasByPlanId(cotizacion.plan_id)
+  // Las 3 queries siguientes solo dependen de `cotizacion` (ya resuelta arriba), no entre sí —
+  // se piden en paralelo en vez de 3 awaits secuenciales.
+  const [plan, ramo, planCoberturas] = await Promise.all([
+    ramosRepository.findPlanById(cotizacion.plan_id),
+    // Sin filtro de `activo`: la cotización ya existe (se creó cuando el ramo estaba activo),
+    // así que generar su PDF no debe fallar solo porque el ramo se dio de baja después.
+    ramosRepository.findRamoById(cotizacion.ramo_id),
+    // Catálogo VIGENTE del plan (montos/incluida_por_defecto actuales) — necesario para que los
+    // sub-límites fijos de la Carta Oferta (ej. MRC) reflejen cambios del admin, en vez de quedar
+    // hardcodeados con el valor de cuando se cargó la migración original.
+    ramosRepository.findCoberturasByPlanId(cotizacion.plan_id),
+  ])
   const t2 = Date.now()
 
   const pdf = await renderOfertaPdf({ cotizacion, plan, ramo, planCoberturas })
   const t3 = Date.now()
 
   console.log(
-    `[perf-oferta] findCotizacionById=${t1 - t0}ms plan+ramo+coberturas=${t2 - t1}ms renderOfertaPdf=${t3 - t2}ms total=${t3 - t0}ms`
+    `[perf-oferta] findCotizacionById=${t1 - t0}ms plan+ramo+coberturas(paralelo)=${t2 - t1}ms renderOfertaPdf=${t3 - t2}ms total=${t3 - t0}ms`
   )
 
   return pdf

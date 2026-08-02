@@ -2521,201 +2521,97 @@ function registrarEventos() {
   document.addEventListener('keydown', onKeydown)
 }
 
-function onActionClick(el) {
-  const action = el.dataset.action
+function handleSeleccionarSeccion(el) {
+  state.seccion = el.dataset.seccion
+  state.banner = null
+  renderApp()
+  if (state.seccion === 'usuarios') {
+    if (!state.usuarios.length && !state.loadingUsuarios) cargarUsuarios()
+    if (!state.roles.length && !state.loadingRoles) cargarRoles()
+  }
+  if (state.seccion === 'planes' && !state.planes.length && !state.loadingPlanes) {
+    cargarPlanes()
+  }
+  if ((state.seccion === 'tasas' || state.seccion === 'coberturas') && !state.ramos.length) {
+    getRamos().then((ramos) => {
+      state.ramos = ramos
+      renderApp()
+    })
+  }
+  if (state.seccion === 'ramos' && !state.ramosGestion.length && !state.loadingRamosGestion) {
+    cargarRamosGestion()
+  }
+}
 
-  if (action === 'select-seccion') {
-    state.seccion = el.dataset.seccion
-    state.banner = null
-    renderApp()
-    if (state.seccion === 'usuarios') {
-      if (!state.usuarios.length && !state.loadingUsuarios) cargarUsuarios()
-      if (!state.roles.length && !state.loadingRoles) cargarRoles()
-    }
-    if (state.seccion === 'planes' && !state.planes.length && !state.loadingPlanes) {
-      cargarPlanes()
-    }
-    if ((state.seccion === 'tasas' || state.seccion === 'coberturas') && !state.ramos.length) {
-      getRamos().then((ramos) => {
-        state.ramos = ramos
-        renderApp()
-      })
-    }
-    if (state.seccion === 'ramos' && !state.ramosGestion.length && !state.loadingRamosGestion) {
-      cargarRamosGestion()
-    }
-    return
-  }
-  if (action === 'logout') {
-    cerrarSesion()
-    return
-  }
-  if (action === 'toggle-sidebar') {
+// Un handler por data-action, en vez del if/else en cascada original (~195 líneas, ~40 ramas,
+// issue #84). Cada handler recibe el elemento clickeado; varias claves comparten el mismo
+// handler cuando la acción original cubría el backdrop y el botón de cierre del modal.
+const ACTION_HANDLERS = {
+  'select-seccion': handleSeleccionarSeccion,
+  logout: cerrarSesion,
+  'toggle-sidebar': () => {
     state.sidebarAbierta = !state.sidebarAbierta
     renderApp()
-    return
-  }
-  if (action === 'close-sidebar') {
+  },
+  'close-sidebar': () => {
     state.sidebarAbierta = false
     renderApp()
-    return
-  }
-  if (action === 'crear-usuario') {
-    abrirModalCrear()
-    return
-  }
-  if (action === 'editar-usuario') {
-    abrirModalEditar(Number(el.dataset.id))
-    return
-  }
-  if (action === 'password-usuario') {
-    abrirModalPassword(Number(el.dataset.id))
-    return
-  }
-  if (action === 'desactivar-usuario') {
-    desactivarUsuario(Number(el.dataset.id))
-    return
-  }
-  if (action === 'eliminar-usuario') {
-    eliminarUsuario(Number(el.dataset.id))
-    return
-  }
-  if (action === 'cerrar-modal' || action === 'cerrar-modal-backdrop') {
-    cerrarModal()
-    return
-  }
-  if (action === 'crear-rol') {
-    abrirModalRolCrear()
-    return
-  }
-  if (action === 'editar-rol') {
-    abrirModalRolEditar(Number(el.dataset.id))
-    return
-  }
-  if (action === 'eliminar-rol') {
-    eliminarRol(Number(el.dataset.id))
-    return
-  }
-  if (action === 'cerrar-modal-rol' || action === 'cerrar-modal-rol-backdrop') {
-    cerrarModalRol()
-    return
-  }
-  if (action === 'filtrar-ramo') {
+  },
+  'crear-usuario': abrirModalCrear,
+  'editar-usuario': (el) => abrirModalEditar(Number(el.dataset.id)),
+  'password-usuario': (el) => abrirModalPassword(Number(el.dataset.id)),
+  'desactivar-usuario': (el) => desactivarUsuario(Number(el.dataset.id)),
+  'eliminar-usuario': (el) => eliminarUsuario(Number(el.dataset.id)),
+  'cerrar-modal': cerrarModal,
+  'cerrar-modal-backdrop': cerrarModal,
+  'crear-rol': abrirModalRolCrear,
+  'editar-rol': (el) => abrirModalRolEditar(Number(el.dataset.id)),
+  'eliminar-rol': (el) => eliminarRol(Number(el.dataset.id)),
+  'cerrar-modal-rol': cerrarModalRol,
+  'cerrar-modal-rol-backdrop': cerrarModalRol,
+  'filtrar-ramo': (el) => {
     state.ramoFiltro = el.value
     renderApp()
-    return
-  }
-  if (action === 'toggle-plan-activo') {
-    togglePlanActivo(el.dataset.id, el.checked)
-    return
-  }
-  if (action === 'toggle-ramo-activo') {
-    toggleRamoActivo(el.dataset.id, el.checked)
-    return
-  }
-  if (action === 'editar-nombre-ramo') {
-    habilitarEdicionNombreRamo(Number(el.dataset.id))
-    return
-  }
-  if (action === 'cancelar-nombre-ramo') {
-    cancelarEdicionNombreRamo(Number(el.dataset.id))
-    return
-  }
-  if (action === 'eliminar-ramo') {
-    eliminarRamo(Number(el.dataset.id))
-    return
-  }
-  if (action === 'toggle-formas-pago') {
-    toggleFormasPago(Number(el.dataset.id))
-    return
-  }
-  if (action === 'toggle-forma-pago-habilitada') {
-    toggleFormaPagoHabilitada(el.dataset.id, Number(el.dataset.planId), el.checked)
-    return
-  }
-  if (action === 'editar-prima-tecnica-minima') {
-    habilitarEdicionPrima(Number(el.dataset.id))
-    return
-  }
-  if (action === 'cancelar-prima-tecnica-minima') {
-    cancelarEdicionPrima(Number(el.dataset.id))
-    return
-  }
-  if (action === 'editar-plan-topes') {
-    habilitarEdicionTopes(Number(el.dataset.id))
-    return
-  }
-  if (action === 'cancelar-plan-topes') {
-    cancelarEdicionTopes(Number(el.dataset.id))
-    return
-  }
-  if (action === 'editar-tasa-rpf') {
-    habilitarEdicionTasaRpf(Number(el.dataset.id))
-    return
-  }
-  if (action === 'cancelar-tasa-rpf') {
-    cancelarEdicionTasaRpf(Number(el.dataset.id))
-    return
-  }
-  if (action === 'seleccionar-ramo-tasas') {
-    seleccionarRamoTasas(el.value)
-    return
-  }
-  if (action === 'crear-tasa') {
-    abrirModalTasa()
-    return
-  }
-  if (action === 'eliminar-tasa') {
-    eliminarTasa(Number(el.dataset.id))
-    return
-  }
-  if (action === 'eliminar-plan') {
-    eliminarPlan(Number(el.dataset.id))
-    return
-  }
-  if (action === 'cerrar-modal-tasa' || action === 'cerrar-modal-tasa-backdrop') {
-    cerrarModalTasa()
-    return
-  }
-  if (action === 'editar-tasa-edificio-contenido') {
-    habilitarEdicionRubroActividad(Number(el.dataset.id))
-    return
-  }
-  if (action === 'cancelar-tasa-edificio-contenido') {
-    cancelarEdicionRubroActividad(Number(el.dataset.id))
-    return
-  }
-  if (action === 'seleccionar-ramo-coberturas') {
-    seleccionarRamoCoberturas(el.value)
-    return
-  }
-  if (action === 'seleccionar-plan-coberturas') {
-    seleccionarPlanCoberturas(el.value)
-    return
-  }
-  if (action === 'toggle-cobertura-defecto') {
-    toggleCoberturaDefecto(el.dataset.id, Number(el.dataset.planId), el.checked)
-    return
-  }
-  if (action === 'editar-cobertura-plan') {
-    habilitarEdicionCobertura(Number(el.dataset.id))
-    return
-  }
-  if (action === 'cancelar-cobertura-plan') {
-    cancelarEdicionCobertura(Number(el.dataset.id))
-    return
-  }
-  if (action === 'eliminar-cobertura-plan') {
-    eliminarCoberturaDelPlan(el.dataset.id, Number(el.dataset.planId))
-    return
-  }
-  if (action === 'agregar-cobertura') {
-    abrirModalCobertura()
-    return
-  }
-  if (action === 'cerrar-modal-cobertura' || action === 'cerrar-modal-cobertura-backdrop') {
-    cerrarModalCobertura()
-  }
+  },
+  'toggle-plan-activo': (el) => togglePlanActivo(el.dataset.id, el.checked),
+  'toggle-ramo-activo': (el) => toggleRamoActivo(el.dataset.id, el.checked),
+  'editar-nombre-ramo': (el) => habilitarEdicionNombreRamo(Number(el.dataset.id)),
+  'cancelar-nombre-ramo': (el) => cancelarEdicionNombreRamo(Number(el.dataset.id)),
+  'eliminar-ramo': (el) => eliminarRamo(Number(el.dataset.id)),
+  'toggle-formas-pago': (el) => toggleFormasPago(Number(el.dataset.id)),
+  'toggle-forma-pago-habilitada': (el) =>
+    toggleFormaPagoHabilitada(el.dataset.id, Number(el.dataset.planId), el.checked),
+  'editar-prima-tecnica-minima': (el) => habilitarEdicionPrima(Number(el.dataset.id)),
+  'cancelar-prima-tecnica-minima': (el) => cancelarEdicionPrima(Number(el.dataset.id)),
+  'editar-plan-topes': (el) => habilitarEdicionTopes(Number(el.dataset.id)),
+  'cancelar-plan-topes': (el) => cancelarEdicionTopes(Number(el.dataset.id)),
+  'editar-tasa-rpf': (el) => habilitarEdicionTasaRpf(Number(el.dataset.id)),
+  'cancelar-tasa-rpf': (el) => cancelarEdicionTasaRpf(Number(el.dataset.id)),
+  'seleccionar-ramo-tasas': (el) => seleccionarRamoTasas(el.value),
+  'crear-tasa': abrirModalTasa,
+  'eliminar-tasa': (el) => eliminarTasa(Number(el.dataset.id)),
+  'eliminar-plan': (el) => eliminarPlan(Number(el.dataset.id)),
+  'cerrar-modal-tasa': cerrarModalTasa,
+  'cerrar-modal-tasa-backdrop': cerrarModalTasa,
+  'editar-tasa-edificio-contenido': (el) => habilitarEdicionRubroActividad(Number(el.dataset.id)),
+  'cancelar-tasa-edificio-contenido': (el) =>
+    cancelarEdicionRubroActividad(Number(el.dataset.id)),
+  'seleccionar-ramo-coberturas': (el) => seleccionarRamoCoberturas(el.value),
+  'seleccionar-plan-coberturas': (el) => seleccionarPlanCoberturas(el.value),
+  'toggle-cobertura-defecto': (el) =>
+    toggleCoberturaDefecto(el.dataset.id, Number(el.dataset.planId), el.checked),
+  'editar-cobertura-plan': (el) => habilitarEdicionCobertura(Number(el.dataset.id)),
+  'cancelar-cobertura-plan': (el) => cancelarEdicionCobertura(Number(el.dataset.id)),
+  'eliminar-cobertura-plan': (el) =>
+    eliminarCoberturaDelPlan(el.dataset.id, Number(el.dataset.planId)),
+  'agregar-cobertura': abrirModalCobertura,
+  'cerrar-modal-cobertura': cerrarModalCobertura,
+  'cerrar-modal-cobertura-backdrop': cerrarModalCobertura,
+}
+
+function onActionClick(el) {
+  const handler = ACTION_HANDLERS[el.dataset.action]
+  if (handler) handler(el)
 }
 
 function onInlineFormSubmit(form) {

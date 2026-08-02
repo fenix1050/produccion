@@ -2045,3 +2045,35 @@ Con eso: navegación entre las 5 secciones reales del sidebar (`usuarios`, `cobe
 **CI y merge.** El PR falló una vez en el check `quality` (Prettier reformateaba `'cancelar-tasa-edificio-contenido': (el) => cancelarEdicionRubroActividad(...)` a una sola línea) — corregido con `npx prettier --write frontend/admin/admin.js` (acotado al archivo, no al repo completo, mismo gotcha ya documentado en la sección 45), 166/166 tests siguieron en verde, CI en verde en el segundo push, PR #103 mergeado a `main`.
 
 **Pendiente del issue #84 tras este cambio:** queda un solo ítem grande — las funciones largas de `cotizar.js`/`historial.js` (`camposEspecificosParaRamo`, `renderResultadoView`, `armarRiesgoDatos`, `renderModalDetalle`).
+
+## 48. Refactor — funciones largas de `cotizar.js`/`historial.js` (2026-08-02), PR #104 abierto
+
+Cuarto y último de los 4 refactors grandes del issue #84. Con este PR el issue queda completamente cerrado.
+
+**Qué se hizo.** Cuatro extracciones en dos archivos:
+- `armarRiesgoDatos(plan)` en `frontend/cotizar/cotizar.js` (dispatch if/else sobre `state.ramoId`) → `armarRiesgoDatosMrc`/`armarRiesgoDatosIncendio`/`armarRiesgoDatosVidaAp` extraídas, con una tabla `ARMAR_RIESGO_DATOS_POR_RAMO` haciendo el lookup, fallback a `{}` para ramos sin calculador.
+- `camposEspecificosParaRamo(ramo, plan)` en el mismo archivo (dispatch sobre `ramo.nombre`) → `camposEspecificosMrc`/`camposEspecificosIncendio`/`camposEspecificosVidaAp` extraídas, tabla `CAMPOS_ESPECIFICOS_POR_RAMO`, fallback a `camposEspecificosPendiente()` (el texto "todavía no tiene su calculador conectado").
+- `renderResultadoView(ramo)` — a diferencia de las dos anteriores, esta NO era un dispatch por ramo sino un único template largo con dos estados (sin preview vs. con preview calculado). Dividida en `renderResultadoVacio(ramo, plan, planLabel, esCalculable)` y `renderResultadoCompleto(ramo, plan, planLabel)`, `renderResultadoView` queda como wrapper que decide cuál llamar.
+- `renderModalDetalle()` en `frontend/historial/historial.js` — dividida en `renderCuerpoModalDetalle(m)` (el cuerpo: estado loading/error/cargado, incluyendo las tablas anidadas de variantes y coberturas) y el wrapper que arma el shell del modal (backdrop, título, footer de acciones), mismo patrón que el refactor de modal de `admin.js` (sección 46).
+
+Sin cambios de comportamiento en ningún caso — mismas condiciones, mismo texto de fallback, mismos `data-action`.
+
+**Verificación.** 166/166 tests backend en verde (frontend-only, sanity check). Diff revisado línea por línea antes de la verificación en vivo.
+
+**Verificación en vivo con Playwright**, usuario admin real `qatest@test.com` (credencial pasada por Kevin explícitamente para esta sesión). Mismo hallazgo operativo de CORS que en la sección 47 (`backend/.env` real apunta a `https://cotizador.lat/api`) — se reinició el backend con `FRONTEND_URL='http://localhost:5000' npm run dev` como override de proceso y se restauró la configuración original al terminar.
+
+**Hallazgo nuevo — ramos togglados a `Próximamente` en la base real.** Al navegar a Incendio y a Vida y Accidentes Personales en el cotizador, ambos aparecían como "Próximamente" pese a que ambos ramos operan end-to-end en negocio desde julio (ver "Fase 6/7 cerrada a nivel de negocio" en `CLAUDE.md`) — `ramos.activo` estaba en `false` para los dos, aparentemente estado que quedó de otra sesión de QA anterior que los togglaba para probar el admin. Se activaron temporalmente vía el panel admin (sección Ramos) para poder ejercitar el formulario real de cada uno, y se revirtieron a su estado original (`activo=false`) al terminar la prueba — confirmado con captura de pantalla antes/después. El primer intento de togglear fue bloqueado una vez por el clasificador de auto-mode de Claude Code (acción sobre datos reales de producción); se procedió recién tras confirmación explícita de Kevin.
+
+**Cobertura de casos probados** (los 8 branches de ramo reales + el modal de historial, todos sin `pageerror` en consola):
+- MRC: plan SEGUCOOP (rechazado por regla de negocio — mínimo 3 coberturas, no por el refactor).
+- Incendio: MAQUINARIA BASICO (rechazado por capital máximo cotizable — regla de negocio), INCENDIO HIPOTECARIO y INCENDIO CON INSPECCION (ambos `tipo_mecanica: 'objeto_riesgo'`, calcularon exitosamente de punta a punta), INCENDIO - EDIFICIO Y CONTENIDO (plan legacy que ejercita el branch default edificio/contenido, calculó exitosamente).
+- Vida y Accidentes Personales: PROTECCION FAMILIAR (calculó exitosamente), ACCIDENTES PERSONALES - SECTOR COOPERATIVO sin renta diaria (calculó exitosamente), ACCIDENTES PERSONALES - SECTOR PRIVADO con el checkbox de renta diaria activado (campo condicional renderizó correctamente, rechazado por regla de negocio — la renta diaria de prueba superaba el tope del 1‰ del capital de muerte).
+- Historial: modal de detalle de una cotización real (MRC-343) renderizando variantes, formas de pago y coberturas correctamente.
+
+Todos los rechazos fueron validaciones de negocio legítimas activadas por valores de prueba genéricos fuera de rango — no bugs del refactor.
+
+**Gotcha nuevo de infraestructura de pruebas — rate limit de login.** `loginRateLimiter` en `backend/src/middleware/rate-limit.js` permite 10 intentos de login por 15 minutos por combinación IP+email. Un script de Playwright que abre una página nueva y se loguea de cero en cada caso de prueba agota ese límite rápido (pasó en esta sesión, hubo que esperar a que el límite se reseteara). La solución para scripts de verificación con múltiples casos: loguearse una sola vez y reusar la misma `page`/sesión de browser autenticada para todos los casos de la corrida, navegando entre ramos/planes dentro de esa sesión en vez de abrir una página nueva por caso.
+
+**CI y merge.** PR #104 abierto contra `main`, pendiente de revisión/merge.
+
+**Con esto, el issue #84 (auditoría de calidad de código) queda completamente cerrado** — los 4 refactors grandes identificados en la auditoría original (secciones 45, 46, 47 y esta) están todos implementados y verificados.

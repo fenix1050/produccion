@@ -2,8 +2,7 @@ import * as coberturasRepository from '../../repositories/coberturas.repository.
 import * as ramosRepository from '../../repositories/ramos.repository.js'
 import * as tasasRepository from '../../repositories/tasas.repository.js'
 import { httpError } from '../../utils/http-error.js'
-
-const CODIGO_FOREIGN_KEY_VIOLATION = '23503' // Postgres: foreign_key_violation
+import { CODIGO_FOREIGN_KEY_VIOLATION } from '../../utils/postgres-errors.js'
 
 // --- Plan coberturas ---
 

@@ -886,7 +886,9 @@ const ARMAR_RIESGO_DATOS_POR_RAMO = {
 // Arma el `riesgo_datos` esperado por el calculador del ramo/plan actual (ver
 // incendio.calculator.js / vida-ap.calculator.js para el shape exacto).
 function armarRiesgoDatos(plan) {
-  const armar = ARMAR_RIESGO_DATOS_POR_RAMO[state.ramoId]
+  const armar = Object.prototype.hasOwnProperty.call(ARMAR_RIESGO_DATOS_POR_RAMO, state.ramoId)
+    ? ARMAR_RIESGO_DATOS_POR_RAMO[state.ramoId]
+    : null
   return armar ? armar(plan) : {}
 }
 
@@ -1468,7 +1470,9 @@ const CAMPOS_ESPECIFICOS_POR_RAMO = {
 }
 
 function camposEspecificosParaRamo(ramo, plan) {
-  const renderer = CAMPOS_ESPECIFICOS_POR_RAMO[ramo.nombre]
+  const renderer = Object.prototype.hasOwnProperty.call(CAMPOS_ESPECIFICOS_POR_RAMO, ramo.nombre)
+    ? CAMPOS_ESPECIFICOS_POR_RAMO[ramo.nombre]
+    : null
   return renderer ? renderer(plan) : camposEspecificosPendiente()
 }
 

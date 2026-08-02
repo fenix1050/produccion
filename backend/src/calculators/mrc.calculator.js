@@ -2,6 +2,7 @@ export { calcularPlanPago } from './utils/plan-pago.js'
 import { httpError } from '../utils/http-error.js'
 
 import { sumarAjustes, topeEfectivo } from './utils/ajustes.js'
+import { calcularCostoEdificioYContenido } from './utils/edificio-contenido.js'
 
 // Códigos del catálogo (migración 012_seed_mrc.sql) cuya suma asegurada viene directo
 // del formulario (Capital Edificio / Capital Contenido).
@@ -90,41 +91,14 @@ export async function calcularPrima({
     )
   }
 
-  const capitalEdificio = riesgoDatos.capital_edificio ?? 0
-  const capitalContenido = riesgoDatos.capital_contenido ?? 0
-
-  if (
-    plan.responsabilidad_maxima_cotizable != null &&
-    capitalEdificio + capitalContenido > plan.responsabilidad_maxima_cotizable
-  ) {
-    throw httpError(
-      422,
-      `La suma de Capital Edificio + Capital Contenido supera la Responsabilidad Máx. Cotizable del plan "${plan.nombre}" (Gs. ${plan.responsabilidad_maxima_cotizable}).`,
-      `El capital declarado supera el máximo cotizable para este plan (Gs. ${plan.responsabilidad_maxima_cotizable.toLocaleString('es-PY')}).`
-    )
-  }
-
-  if (!rubro) {
-    throw httpError(
-      422,
-      `Tipo de Riesgo "${riesgoDatos.rubro_actividad}" no encontrado en rubros_actividad.`,
-      `El Tipo de Riesgo seleccionado no es válido.`
-    )
-  }
-
-  const tasaEdificio = rubro.tasa_edificio
-  const tasaContenido = rubro.tasa_contenido
-
-  if (tasaEdificio == null || tasaContenido == null) {
-    throw httpError(
-      422,
-      `Faltan tasa_edificio/tasa_contenido para el Tipo de Riesgo "${rubro.nombre}".`,
-      `El Tipo de Riesgo "${rubro.nombre}" todavía no tiene tasas confirmadas.`
-    )
-  }
-
-  const costoEdificio = capitalEdificio * (tasaEdificio / 1000)
-  const costoContenido = capitalContenido * (tasaContenido / 1000)
+  const {
+    capitalEdificio,
+    capitalContenido,
+    tasaEdificio,
+    tasaContenido,
+    costoEdificio,
+    costoContenido,
+  } = calcularCostoEdificioYContenido({ plan, riesgoDatos, rubro })
 
   // Coberturas adicionales: a partir de 2026-07-13, ninguna cobertura fuera de Incendio
   // Edificio/Contenido se incluye por defecto — el agente las agrega explícitamente como

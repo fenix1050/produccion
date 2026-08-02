@@ -12,10 +12,9 @@ import {
   ICON_SUBLIMITE_MURALLAS,
   ICON_SUBLIMITE_GENERICO,
   ICON_ARROW_LEFT as ICON_ARROW_LEFT_ROUND,
-  ICON_MENU,
 } from '../shared/nav-icons.js'
 import { escapeHtml, renderBanner } from '../shared/dom.js'
-import { renderSidebarFooter, renderTopbarUser } from '../shared/sidebar.js'
+import { renderSidebarFooter, renderTopbar as renderTopbarShell } from '../shared/sidebar.js'
 import { fmtGs, fmtGsInput, fmtMonto, unidadMoneda } from '../shared/format.js'
 
 // Cotizador Tajy — App Shell + Datos + Resultado (Fase 6, alcance MRC plan Normal).
@@ -1082,37 +1081,18 @@ function renderApp() {
 const COTIZADOR_VERSION = '1.0.1'
 
 function renderTopbar(ramo) {
-  return `
-    <div class="topbar">
-      <div class="topbar__red-block">
-        <button
-          type="button"
-          class="sidebar-toggle-btn"
-          data-action="toggle-sidebar"
-          aria-label="Abrir menú"
-          aria-expanded="${state.sidebarAbierta}"
-        >${ICON_MENU}</button>
-        <img class="topbar__logo" src="../login/assets/logo-rojo-con-negro.svg" alt="Aseguradora Tajy" />
-        <div class="topbar__brand-text">
-          <div class="topbar__brand-sub">Sistema de Cotización de Pólizas</div>
-        </div>
+  return renderTopbarShell({
+    sidebarAbierta: state.sidebarAbierta,
+    breadcrumb: ramo
+      ? `
+      <div class="topbar__breadcrumb">
+        <span class="topbar__crumb-item">Cotizaciones</span>
+        <span class="topbar__crumb-sep">›</span>
+        <span class="topbar__crumb-item topbar__crumb-item--current">Nueva cotización</span>
       </div>
-      <div class="topbar__crumb-area">
-        ${
-          ramo
-            ? `
-          <div class="topbar__breadcrumb">
-            <span class="topbar__crumb-item">Cotizaciones</span>
-            <span class="topbar__crumb-sep">›</span>
-            <span class="topbar__crumb-item topbar__crumb-item--current">Nueva cotización</span>
-          </div>
-        `
-            : '<div></div>'
-        }
-        ${renderTopbarUser()}
-      </div>
-    </div>
-  `
+    `
+      : '<div></div>',
+  })
 }
 
 function renderSidebar() {

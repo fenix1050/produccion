@@ -1,7 +1,7 @@
 import { api, auth } from '../shared/api.js'
 import { crearBadge } from '../shared/badge.js'
 import { escapeHtml, enfocarPrimerElemento, atraparFoco, renderBanner } from '../shared/dom.js'
-import { renderSidebarFooter, renderTopbarUser } from '../shared/sidebar.js'
+import { renderSidebarFooter, renderTopbar as renderTopbarShell } from '../shared/sidebar.js'
 import {
   ICON_ADMIN_USUARIOS,
   ICON_ADMIN_COBERTURAS,
@@ -9,7 +9,6 @@ import {
   ICON_ADMIN_PLANES,
   ICON_WRENCH,
   ICON_GEAR,
-  ICON_MENU,
 } from '../shared/nav-icons.js'
 import {
   fmtGsConPrefijo as fmtGs,
@@ -1281,29 +1280,15 @@ function renderApp() {
 }
 
 function renderTopbar() {
-  return `
-    <div class="topbar">
-      <div class="topbar__red-block">
-        <button
-          type="button"
-          class="sidebar-toggle-btn"
-          data-action="toggle-sidebar"
-          aria-label="Abrir menú"
-          aria-expanded="${state.sidebarAbierta}"
-        >${ICON_MENU}</button>
-        <img class="topbar__logo" src="../login/assets/logo-rojo-con-negro.svg" alt="Aseguradora Tajy" />
-        <div class="topbar__brand-text">
-          <div class="topbar__brand-sub">Sistema de Cotización de Pólizas</div>
-        </div>
+  return renderTopbarShell({
+    sidebarAbierta: state.sidebarAbierta,
+    breadcrumb: `
+      <div class="topbar__breadcrumb">
+        <span class="topbar__crumb-item topbar__crumb-item--current">Panel de Administración</span>
       </div>
-      <div class="topbar__crumb-area">
-        <div class="topbar__breadcrumb">
-          <span class="topbar__crumb-item topbar__crumb-item--current">Panel de Administración</span>
-        </div>
-        ${renderTopbarUser('admin')}
-      </div>
-    </div>
-  `
+    `,
+    active: 'admin',
+  })
 }
 
 function renderSidebar() {

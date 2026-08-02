@@ -1990,6 +1990,7 @@ Issue #83 (auditoría de performance de Claude Routines) había quedado parcialm
 **Verificación transversal:** 166/166 tests backend en verde en cada uno de los 4 PRs. `eslint`+`prettier --check` limpios sobre los archivos frontend tocados. #8 verificado en vivo con Playwright (usuario QA `qatest@test.com`, credencial no guardada en memoria ni en archivos por pedido explícito de Kevin): `/cotizar` cotizando MRC con sublímites correctos, `/historial` con filtro de ramo poblado, `/admin` → Tasas/Coberturas/Planes cargando bien (dropdown "Todos los ramos" + tabla con 20 filas), sin errores de consola ni requests fallidos de `/ramos`.
 
 **Hallazgos operativos de la sesión, no relacionados al código en sí:**
+
 - El `backend/.env` local de la máquina Windows de Kevin tiene `FRONTEND_URL` apuntando a producción (`https://cotizador.lat/api`), no a `http://localhost:5000` — rompe CORS para cualquier verificación local con Playwright si se arranca el backend sin overridear la variable (`dotenv` no pisa variables ya seteadas en el proceso, así que `FRONTEND_URL='http://localhost:5000' npm run dev` funciona sin tocar el `.env`, que además está protegido por permisos de la sesión). Relevante para cualquier sesión futura que use el skill `run-cotizador` en esta máquina.
 - Confirmado un proceso `node.exe` suelto en el puerto 3000 entre sesiones de QA en esta máquina Windows — mismo patrón que CLAUDE.md ya documenta para la VPS, ahora también observado localmente. Se mató con confirmación explícita de Kevin antes de actuar.
 

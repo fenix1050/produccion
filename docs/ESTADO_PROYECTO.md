@@ -2018,7 +2018,7 @@ Más `habilitarEdicionInline(set, id)` / `cancelarEdicionInline(set, id)`, a los
 - Ese bug del script hizo que dos corridas mutaran temporalmente datos reales de Supabase (plan "PLAN TAJY PREMIUM", id=1: nombre y `prima_tecnica_minima`). Se detectó, se restauró al valor de seed original (`3190000`, migración `008_seed_planes_auto.sql`) y se confirmó por SQL que el resto de los registros tocados (ramo, tasa RPF, topes, coberturas, tasa edificio/contenido) habían quedado exactamente como estaban antes de la prueba — el resto de las variantes sí revertían correctamente dentro del propio script.
 - CI falló una vez por formato (`quality` / Prettier) sobre una única línea larga en `admin.js`. **Gotcha a evitar:** correr `npx prettier . --write` sin acotar a un archivo reformatea el repo entero (cientos de archivos sin relación, aparentemente porque gran parte del repo nunca pasó por un `format:check` masivo, solo por el lint-staged de pre-commit sobre archivos tocados) — se descartó ese cambio con `git checkout -- .` y se corrigió solo con `npx prettier --write frontend/admin/admin.js`.
 
-## 46. Refactor — dividir `renderModal` en un renderer por tipo de usuario (2026-08-02), PR #102 abierto
+## 46. Refactor — dividir `renderModal` en un renderer por tipo de usuario (2026-08-02), PR #102 mergeado a `main`
 
 Segundo de los 4 refactors grandes que quedaban pendientes del issue #84 (el primero fue la unificación de "editar inline", sección 45). Rama `refactor/admin-render-modal`.
 

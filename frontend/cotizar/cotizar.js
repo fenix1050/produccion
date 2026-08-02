@@ -1,4 +1,5 @@
 import { api, auth } from '../shared/api.js'
+import { getRamos } from '../shared/catalogo.js'
 import {
   ICON_RAMO_AUTO,
   ICON_RAMO_MRC,
@@ -374,7 +375,7 @@ async function init() {
     return
   }
   try {
-    state.ramosActivos = await api.get('/ramos')
+    state.ramosActivos = await getRamos()
   } catch (err) {
     console.error('No se pudo cargar la lista de ramos', err)
     state.ramosActivos = []

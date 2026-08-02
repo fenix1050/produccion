@@ -1,5 +1,6 @@
 import { api, auth } from '../shared/api.js'
 import { crearBadge } from '../shared/badge.js'
+import { getRamos } from '../shared/catalogo.js'
 import { escapeHtml, enfocarPrimerElemento, atraparFoco, renderBanner } from '../shared/dom.js'
 import { renderSidebarFooter, renderTopbar as renderTopbarShell } from '../shared/sidebar.js'
 import {
@@ -161,7 +162,7 @@ async function init() {
   } else if (state.seccion === 'planes') {
     await cargarPlanes()
   } else if (state.seccion === 'tasas' || state.seccion === 'coberturas') {
-    const ramos = await api.get('/ramos')
+    const ramos = await getRamos()
     state.ramos = ramos
     renderApp()
   } else if (state.seccion === 'ramos') {
@@ -695,10 +696,7 @@ async function cargarPlanes() {
   state.planesError = ''
   renderApp()
   try {
-    const [ramos, planes] = await Promise.all([
-      state.ramos.length ? Promise.resolve(state.ramos) : api.get('/ramos'),
-      api.get('/admin/planes'),
-    ])
+    const [ramos, planes] = await Promise.all([getRamos(), api.get('/admin/planes')])
     state.ramos = ramos
     state.planes = planes
   } catch (err) {
@@ -2402,7 +2400,7 @@ function onActionClick(el) {
       cargarPlanes()
     }
     if ((state.seccion === 'tasas' || state.seccion === 'coberturas') && !state.ramos.length) {
-      api.get('/ramos').then((ramos) => {
+      getRamos().then((ramos) => {
         state.ramos = ramos
         renderApp()
       })

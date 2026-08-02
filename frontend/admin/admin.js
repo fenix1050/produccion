@@ -555,6 +555,22 @@ async function toggleRamoActivo(ramoId, activo) {
   }
 }
 
+// Helpers compartidos por las variantes "editar inline" del panel admin (nombre de ramo,
+// prima técnica mínima, topes de plan, tasa RPF, tasa edificio/contenido, monto/franquicia):
+// todas comparten el mismo mecanismo de estado (un Set de ids en edición) para habilitar y
+// cancelar la edición — la única diferencia entre variantes es qué Set usan, así que las
+// funciones nombradas de cada variante (habilitarEdicionTasaRpf, etc.) quedan como wrappers
+// finos que delegan acá, sin cambiar la firma que ya usan los switches de onActionClick.
+function habilitarEdicionInline(set, id) {
+  set.add(id)
+  renderApp()
+}
+
+function cancelarEdicionInline(set, id) {
+  set.delete(id)
+  renderApp()
+}
+
 function habilitarEdicionNombreRamo(ramoId) {
   state.ramoNombreEnEdicion.add(ramoId)
   renderApp()
@@ -828,13 +844,11 @@ async function toggleFormaPagoHabilitada(planFormaPagoId, planId, habilitada) {
 }
 
 function habilitarEdicionTasaRpf(planFormaPagoId) {
-  state.tasaRpfEnEdicion.add(planFormaPagoId)
-  renderApp()
+  habilitarEdicionInline(state.tasaRpfEnEdicion, planFormaPagoId)
 }
 
 function cancelarEdicionTasaRpf(planFormaPagoId) {
-  state.tasaRpfEnEdicion.delete(planFormaPagoId)
-  renderApp()
+  cancelarEdicionInline(state.tasaRpfEnEdicion, planFormaPagoId)
 }
 
 async function guardarTasaRpf(planFormaPagoId, planId, form) {
@@ -1645,6 +1659,78 @@ function esPlanSoloUsd(plan) {
   )
 }
 
+// Helpers compartidos de las 6 variantes "editar inline" del panel admin (issue #84,
+// item #6). `campoInlineInput` renderiza un único <input>/<select> a partir de una
+// descripción declarativa; `renderCampoInline` arma el wrapper de lectura (admin-valor-fijo
+// + botón Editar) o el <form> de edición (admin-inline-form + Guardar/Cancelar), según
+// `editando`. Lo que NO se unifica a propósito es `guardar*` de cada variante — ahí vive el
+// comportamiento real distinto por variante (nullable o no, endpoints, trims, NaN) y unificarlo
+// sería el riesgo real de esta refactorización, no el beneficio.
+function campoInlineInput(campo) {
+  const attrs = [`name="${campo.name}"`]
+  if (campo.step != null) attrs.push(`step="${campo.step}"`)
+  if (campo.min != null) attrs.push(`min="${campo.min}"`)
+  if (campo.max != null) attrs.push(`max="${campo.max}"`)
+  if (campo.placeholder) attrs.push(`placeholder="${escapeHtml(campo.placeholder)}"`)
+  if (campo.form) attrs.push(`form="${campo.form}"`)
+  if (campo.autofocus) attrs.push('autofocus')
+  if (campo.ariaLabel) attrs.push(`aria-label="${escapeHtml(campo.ariaLabel)}"`)
+
+  if (campo.tipo === 'select') {
+    const opciones = (campo.opciones ?? [])
+      .map(
+        (op) =>
+          `<option value="${escapeHtml(op.value)}" ${String(op.value) === String(campo.value) ? 'selected' : ''}>${escapeHtml(op.label ?? op.value)}</option>`
+      )
+      .join('')
+    return `<select class="field-input field-input--sm" ${attrs.join(' ')}>${opciones}</select>`
+  }
+
+  const valor = campo.value ?? ''
+  return `<input class="field-input field-input--sm" type="${campo.tipo ?? 'text'}" value="${escapeHtml(String(valor))}" ${attrs.join(' ')} />`
+}
+
+function renderCampoInline({
+  editando,
+  id,
+  planId,
+  formAction,
+  formId,
+  accionEditar,
+  accionCancelar,
+  puedeEditar = true,
+  wrapperClase = 'admin-valor-fijo',
+  accionWrapperClase,
+  lectura,
+  campos = [],
+}) {
+  const dataPlanId = planId != null ? ` data-plan-id="${planId}"` : ''
+
+  if (!editando) {
+    const boton = puedeEditar
+      ? `<button class="btn-outline" data-action="${accionEditar}" data-id="${id}"${dataPlanId}>Editar</button>`
+      : ''
+    const botonEnvuelto =
+      boton && accionWrapperClase ? `<span class="${accionWrapperClase}">${boton}</span>` : boton
+    return `
+      <div class="${wrapperClase}">
+        ${lectura}
+        ${botonEnvuelto}
+      </div>
+    `
+  }
+
+  const formIdAttr = formId ? ` id="${formId}"` : ''
+  const camposHtml = campos.map(campoInlineInput).join('\n      ')
+  return `
+    <form class="admin-inline-form"${formIdAttr} data-form-action="${formAction}" data-id="${id}"${dataPlanId}>
+      ${camposHtml}
+      <button class="btn-outline" type="submit">Guardar</button>
+      <button class="btn-outline" type="button" data-action="${accionCancelar}" data-id="${id}">Cancelar</button>
+    </form>
+  `
+}
+
 // El input de nombre (columna PLAN) vive en <td> aparte de este form, así que se
 // asocia via el atributo `form` en vez de anidarlo — un <input> puede pertenecer a un
 // <form> ubicado en cualquier parte del documento mientras comparta el mismo id.
@@ -1709,21 +1795,18 @@ function renderCampoTopes(plan) {
 }
 
 function renderCampoTasaRpf(formaPagoPlan, planId) {
-  if (!state.tasaRpfEnEdicion.has(formaPagoPlan.id)) {
-    return `
-      <div class="admin-valor-fijo">
-        <span>${escapeHtml(String(formaPagoPlan.tasa_rpf))}</span>
-        <button class="btn-outline" data-action="editar-tasa-rpf" data-id="${formaPagoPlan.id}" data-plan-id="${planId}">Editar</button>
-      </div>
-    `
-  }
-  return `
-    <form class="admin-inline-form" data-form-action="tasa-rpf" data-id="${formaPagoPlan.id}" data-plan-id="${planId}">
-      <input class="field-input field-input--sm" type="number" step="0.001" name="tasa_rpf" value="${formaPagoPlan.tasa_rpf}" autofocus />
-      <button class="btn-outline" type="submit">Guardar</button>
-      <button class="btn-outline" type="button" data-action="cancelar-tasa-rpf" data-id="${formaPagoPlan.id}">Cancelar</button>
-    </form>
-  `
+  return renderCampoInline({
+    editando: state.tasaRpfEnEdicion.has(formaPagoPlan.id),
+    id: formaPagoPlan.id,
+    planId,
+    formAction: 'tasa-rpf',
+    accionEditar: 'editar-tasa-rpf',
+    accionCancelar: 'cancelar-tasa-rpf',
+    lectura: `<span>${escapeHtml(String(formaPagoPlan.tasa_rpf))}</span>`,
+    campos: [
+      { tipo: 'number', name: 'tasa_rpf', step: '0.001', value: formaPagoPlan.tasa_rpf, autofocus: true },
+    ],
+  })
 }
 
 function renderTasas() {

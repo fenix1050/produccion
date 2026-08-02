@@ -24,6 +24,16 @@ export function getBrowser() {
   return browserPromise
 }
 
+// Node corre como PID 1 dentro del contenedor (sin tini/dumb-init), así que un shutdown de
+// Docker (deploy automático vía deploy-backend.yml) manda SIGTERM directo a este proceso sin
+// que nada cierre el Chromium hijo de forma ordenada. server.js llama a esto antes de salir.
+export async function closeBrowser() {
+  if (!browserPromise) return
+  const browser = await browserPromise.catch(() => null)
+  browserPromise = null
+  await browser?.close()
+}
+
 const PX_POR_MM = 96 / 25.4
 
 /**

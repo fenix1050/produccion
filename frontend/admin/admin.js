@@ -1,6 +1,6 @@
 import { api, auth } from '../shared/api.js'
 import { crearBadge } from '../shared/badge.js'
-import { escapeHtml, enfocarPrimerElemento, atraparFoco } from '../shared/dom.js'
+import { escapeHtml, enfocarPrimerElemento, atraparFoco, renderBanner } from '../shared/dom.js'
 import { renderSidebarFooter, renderTopbarUser } from '../shared/sidebar.js'
 import {
   ICON_ADMIN_USUARIOS,
@@ -1265,7 +1265,7 @@ function renderApp() {
           </div>
         </div>
         <div class="admin-content">
-          ${renderBanner()}
+          ${renderBanner(state.banner)}
           ${renderSeccion()}
         </div>
       </main>
@@ -1335,11 +1335,6 @@ function renderSidebar() {
       </div>
     </div>
   `
-}
-
-function renderBanner() {
-  if (!state.banner) return ''
-  return `<div class="admin-banner admin-banner--${state.banner.tipo}">${escapeHtml(state.banner.texto)}</div>`
 }
 
 function renderSeccion() {

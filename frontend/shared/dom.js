@@ -14,6 +14,14 @@ export function escapeHtml(value) {
   )
 }
 
+// Banner de feedback (éxito/error) tras una acción — mismo markup en cotizar/historial/admin.
+// `banner` es `{ tipo, texto } | null` (estado propio de cada módulo, se pasa explícito porque
+// cada uno tiene su propio `state` de módulo).
+export function renderBanner(banner) {
+  if (!banner) return ''
+  return `<div class="admin-banner admin-banner--${banner.tipo}">${escapeHtml(banner.texto)}</div>`
+}
+
 // ---------------------------------------------------------------------------
 // Focus trap para modales (role="dialog") — admin.js e historial.js reconstruyen
 // el modal entero en cada renderApp(), así que el trap se resuelve consultando el

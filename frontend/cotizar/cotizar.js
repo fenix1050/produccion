@@ -14,7 +14,7 @@ import {
   ICON_ARROW_LEFT as ICON_ARROW_LEFT_ROUND,
   ICON_MENU,
 } from '../shared/nav-icons.js'
-import { escapeHtml } from '../shared/dom.js'
+import { escapeHtml, renderBanner } from '../shared/dom.js'
 import { renderSidebarFooter, renderTopbarUser } from '../shared/sidebar.js'
 import { fmtGs, fmtGsInput, fmtMonto, unidadMoneda } from '../shared/format.js'
 
@@ -1069,16 +1069,11 @@ function renderApp() {
       ${renderSidebar()}
       <main class="main">
         ${renderHeader(ramo)}
-        ${renderBanner()}
+        ${renderBanner(state.banner)}
         ${contenido}
       </main>
     </div>
   `
-}
-
-function renderBanner() {
-  if (!state.banner) return ''
-  return `<div class="admin-banner admin-banner--${state.banner.tipo}">${escapeHtml(state.banner.texto)}</div>`
 }
 
 // Versión del cotizador mostrada en el topbar y en el pie de página del sidebar (chrome de

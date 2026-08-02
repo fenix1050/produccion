@@ -764,13 +764,11 @@ async function guardarPrimaTecnicaMinima(planId, form) {
 }
 
 function habilitarEdicionTopes(planId) {
-  state.topesEnEdicion.add(planId)
-  renderApp()
+  habilitarEdicionInline(state.topesEnEdicion, planId)
 }
 
 function cancelarEdicionTopes(planId) {
-  state.topesEnEdicion.delete(planId)
-  renderApp()
+  cancelarEdicionInline(state.topesEnEdicion, planId)
 }
 
 // Separado de guardarPrimaTecnicaMinima/PUT /admin/planes/:id a propósito: descuento_maximo
@@ -1763,25 +1761,44 @@ function renderCampoTopes(plan) {
   const descuento = plan.descuento_maximo
   const recargo = plan.recargo_maximo
 
-  if (!state.topesEnEdicion.has(plan.id)) {
-    return `
-      <div class="admin-valor-fijo">
+  return renderCampoInline({
+    editando: state.topesEnEdicion.has(plan.id),
+    id: plan.id,
+    formId: `plan-topes-form-${plan.id}`,
+    formAction: 'plan-topes',
+    accionEditar: 'editar-plan-topes',
+    accionCancelar: 'cancelar-plan-topes',
+    // Rol admin literal, no permiso delegable puede_editar_planes — ver comentario arriba
+    // de esta función y guardarPlanTopes.
+    puedeEditar: esAdmin,
+    lectura: `
         <span class="admin-valor-fijo__lineas">
           <span>Desc.: ${descuento != null ? escapeHtml(String(descuento)) + '%' : '—'}</span>
           <span>Rec.: ${recargo != null ? escapeHtml(String(recargo)) + '%' : '—'}</span>
         </span>
-        ${esAdmin ? `<button class="btn-outline" data-action="editar-plan-topes" data-id="${plan.id}">Editar</button>` : ''}
-      </div>
-    `
-  }
-  return `
-    <form class="admin-inline-form" id="plan-topes-form-${plan.id}" data-form-action="plan-topes" data-id="${plan.id}">
-      <input class="field-input field-input--sm" type="number" step="0.01" min="0" max="100" name="descuento_maximo" value="${descuento ?? ''}" placeholder="Desc. %" autofocus />
-      <input class="field-input field-input--sm" type="number" step="0.01" min="0" max="100" name="recargo_maximo" value="${recargo ?? ''}" placeholder="Rec. %" />
-      <button class="btn-outline" type="submit">Guardar</button>
-      <button class="btn-outline" type="button" data-action="cancelar-plan-topes" data-id="${plan.id}">Cancelar</button>
-    </form>
-  `
+      `,
+    campos: [
+      {
+        tipo: 'number',
+        name: 'descuento_maximo',
+        step: '0.01',
+        min: '0',
+        max: '100',
+        value: descuento,
+        placeholder: 'Desc. %',
+        autofocus: true,
+      },
+      {
+        tipo: 'number',
+        name: 'recargo_maximo',
+        step: '0.01',
+        min: '0',
+        max: '100',
+        value: recargo,
+        placeholder: 'Rec. %',
+      },
+    ],
+  })
 }
 
 function renderCampoTasaRpf(formaPagoPlan, planId) {

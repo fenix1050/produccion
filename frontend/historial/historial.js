@@ -1,6 +1,6 @@
 import { api, auth } from '../shared/api.js'
 import { crearBadge } from '../shared/badge.js'
-import { escapeHtml, enfocarPrimerElemento, atraparFoco } from '../shared/dom.js'
+import { escapeHtml, enfocarPrimerElemento, atraparFoco, renderBanner } from '../shared/dom.js'
 import { renderSidebarFooter, renderTopbarUser } from '../shared/sidebar.js'
 import { fmtMoneda } from '../shared/format.js'
 import { ICON_MENU } from '../shared/nav-icons.js'
@@ -275,7 +275,7 @@ function renderApp() {
           </div>
         </div>
         <div class="admin-content">
-          ${renderBanner()}
+          ${renderBanner(state.banner)}
           ${renderFiltros()}
           <div class="panel card">
             <div class="card__title">Cotizaciones</div>
@@ -327,11 +327,6 @@ function renderSidebar() {
       </div>
     </div>
   `
-}
-
-function renderBanner() {
-  if (!state.banner) return ''
-  return `<div class="admin-banner admin-banner--${state.banner.tipo}">${escapeHtml(state.banner.texto)}</div>`
 }
 
 function renderFiltros() {

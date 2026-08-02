@@ -2046,14 +2046,14 @@ Con eso: navegación entre las 5 secciones reales del sidebar (`usuarios`, `cobe
 
 **Pendiente del issue #84 tras este cambio:** queda un solo ítem grande — las funciones largas de `cotizar.js`/`historial.js` (`camposEspecificosParaRamo`, `renderResultadoView`, `armarRiesgoDatos`, `renderModalDetalle`).
 
-## 48. Refactor — funciones largas de `cotizar.js`/`historial.js` (2026-08-02), PR #104 abierto
+## 48. Refactor — funciones largas de `cotizar.js`/`historial.js` (2026-08-02), PR #104 mergeado a `main`
 
 Cuarto y último de los 4 refactors grandes del issue #84. Con este PR el issue queda completamente cerrado.
 
 **Qué se hizo.** Cuatro extracciones en dos archivos:
 
-- `armarRiesgoDatos(plan)` en `frontend/cotizar/cotizar.js` (dispatch if/else sobre `state.ramoId`) → `armarRiesgoDatosMrc`/`armarRiesgoDatosIncendio`/`armarRiesgoDatosVidaAp` extraídas, con una tabla `ARMAR_RIESGO_DATOS_POR_RAMO` haciendo el lookup, fallback a `{}` para ramos sin calculador.
-- `camposEspecificosParaRamo(ramo, plan)` en el mismo archivo (dispatch sobre `ramo.nombre`) → `camposEspecificosMrc`/`camposEspecificosIncendio`/`camposEspecificosVidaAp` extraídas, tabla `CAMPOS_ESPECIFICOS_POR_RAMO`, fallback a `camposEspecificosPendiente()` (el texto "todavía no tiene su calculador conectado").
+- `armarRiesgoDatos(plan)` en `frontend/cotizar/cotizar.js` (dispatch if/else sobre `state.ramoId`) → `armarRiesgoDatosMrc`/`armarRiesgoDatosIncendio`/`armarRiesgoDatosVidaAp` extraídas, invocadas desde un `switch` con `case` literales (`'mrc'`/`'incendio'`/`'vida-ap'`), fallback a `{}` para ramos sin calculador. El primer intento usó una tabla de lookup por objeto (`ARMAR_RIESGO_DATOS_POR_RAMO`) — CodeQL lo rechazó, ver el gotcha más abajo.
+- `camposEspecificosParaRamo(ramo, plan)` en el mismo archivo (dispatch sobre `ramo.nombre`) → `camposEspecificosMrc`/`camposEspecificosIncendio`/`camposEspecificosVidaAp` extraídas, mismo `switch`, fallback a `camposEspecificosPendiente()` (el texto "todavía no tiene su calculador conectado").
 - `renderResultadoView(ramo)` — a diferencia de las dos anteriores, esta NO era un dispatch por ramo sino un único template largo con dos estados (sin preview vs. con preview calculado). Dividida en `renderResultadoVacio(ramo, plan, planLabel, esCalculable)` y `renderResultadoCompleto(ramo, plan, planLabel)`, `renderResultadoView` queda como wrapper que decide cuál llamar.
 - `renderModalDetalle()` en `frontend/historial/historial.js` — dividida en `renderCuerpoModalDetalle(m)` (el cuerpo: estado loading/error/cargado, incluyendo las tablas anidadas de variantes y coberturas) y el wrapper que arma el shell del modal (backdrop, título, footer de acciones), mismo patrón que el refactor de modal de `admin.js` (sección 46).
 
@@ -2076,6 +2076,14 @@ Todos los rechazos fueron validaciones de negocio legítimas activadas por valor
 
 **Gotcha nuevo de infraestructura de pruebas — rate limit de login.** `loginRateLimiter` en `backend/src/middleware/rate-limit.js` permite 10 intentos de login por 15 minutos por combinación IP+email. Un script de Playwright que abre una página nueva y se loguea de cero en cada caso de prueba agota ese límite rápido (pasó en esta sesión, hubo que esperar a que el límite se reseteara). La solución para scripts de verificación con múltiples casos: loguearse una sola vez y reusar la misma `page`/sesión de browser autenticada para todos los casos de la corrida, navegando entre ramos/planes dentro de esa sesión en vez de abrir una página nueva por caso.
 
-**CI y merge.** PR #104 abierto contra `main`, pendiente de revisión/merge.
+**Gotcha nuevo de CI — CodeQL rechaza dispatch tables por objeto para dispatch por ramo.** El primer push de este PR usó dispatch tables (`ARMAR_RIESGO_DATOS_POR_RAMO`/`CAMPOS_ESPECIFICOS_POR_RAMO`), mismo patrón que los refactors de `admin.js`. El check `CodeQL` (regla `js/unvalidated-dynamic-method-call`) lo marcó como alerta de severidad alta: `state.ramoId`/`ramo.nombre` cuentan como "user-controlled" para su análisis de taint, aunque en la práctica solo pueden tomar los valores fijos hardcodeados en `RAMOS_UI` (nunca texto libre de usuario). Se probaron 3 mitigaciones sucesivas, cada una fallando el mismo check hasta la última:
+
+1. `Object.prototype.hasOwnProperty.call(tabla, key)` antes del lookup — ignorado por CodeQL.
+2. Tabla con `Object.create(null)` (sin prototype chain) + `typeof fn === 'function'` antes de invocar — tampoco reconocido como saneamiento.
+3. **Reemplazar el dispatch table por un `switch` con `case` literales que llama directo a la función nombrada** (sin `obj[key]()` en ningún punto del código) — esto sí pasó el check, porque ya no hay invocación dinámica por clave que analizar.
+
+Conclusión práctica para futuros refactors: para dispatch por un valor con origen en `dataset`/DOM en este repo, preferir `switch`/if-else con comparaciones literales por sobre un dispatch table por objeto — no por riesgo real de seguridad (acá el dominio de valores es fijo), sino porque CodeQL es un gate obligatorio de CI que no reconoce las mitigaciones estándar como saneamiento para esta regla específica.
+
+**CI y merge.** 3 commits de fix adicionales tras el push inicial (uno por cada intento de mitigación de CodeQL descrito arriba) hasta que los 3 checks obligatorios (`quality`, `Analyze JavaScript`, `CodeQL`) quedaron en verde. PR #104 mergeado a `main`, rama borrada (local y remota).
 
 **Con esto, el issue #84 (auditoría de calidad de código) queda completamente cerrado** — los 4 refactors grandes identificados en la auditoría original (secciones 45, 46, 47 y esta) están todos implementados y verificados.

@@ -15,13 +15,13 @@ Existe una auditoría completa de 3 días antes (`docs/auditorias/AUDITORIA_SEGU
 2. Revisar en detalle todo lo que cambió entre `5e60309` y `HEAD` (42 archivos, incluye 3 workflows de CI/CD nuevos y varios endpoints de admin nuevos).
 3. Repetir `npm audit` y el barrido de secretos sobre el estado actual.
 
-| Categoría                                 | Resultado                                                      |
-| ------------------------------------------ | --------------------------------------------------------------- |
-| Secretos expuestos (repo + historial git) | Sin hallazgos.                                                  |
-| Dependencias (`npm audit`)                | 0 vulnerabilidades (`--omit=dev` y completo).                   |
-| CI/CD nuevo (`deploy-backend.yml`, `supabase-backup.yml`) | Sin hallazgos. Secretos vía GitHub Secrets, backup no público. |
-| Endpoints admin nuevos (topes de plan, eliminar ramo, permiso ver descuento) | Sin hallazgos. Gates de rol correctos, validación Zod, enforcement server-side. |
-| Hallazgos abiertos de la auditoría anterior | Sin cambios (medio: JWT en localStorage; bajos: sin fail-fast de `JWT_SECRET`, sin CSP, nota de Fase 4 sin implementar). |
+| Categoría                                                                    | Resultado                                                                                                                |
+| ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Secretos expuestos (repo + historial git)                                    | Sin hallazgos.                                                                                                           |
+| Dependencias (`npm audit`)                                                   | 0 vulnerabilidades (`--omit=dev` y completo).                                                                            |
+| CI/CD nuevo (`deploy-backend.yml`, `supabase-backup.yml`)                    | Sin hallazgos. Secretos vía GitHub Secrets, backup no público.                                                           |
+| Endpoints admin nuevos (topes de plan, eliminar ramo, permiso ver descuento) | Sin hallazgos. Gates de rol correctos, validación Zod, enforcement server-side.                                          |
+| Hallazgos abiertos de la auditoría anterior                                  | Sin cambios (medio: JWT en localStorage; bajos: sin fail-fast de `JWT_SECRET`, sin CSP, nota de Fase 4 sin implementar). |
 
 No se creó Issue en GitHub porque no se encontró ningún hallazgo nuevo de severidad crítica o alta.
 
@@ -37,7 +37,7 @@ No se creó Issue en GitHub porque no se encontró ningún hallazgo nuevo de sev
 - `.mcp.json` y `.codex/config.toml` (nuevos desde la última auditoría) solo declaran la URL del servidor MCP de Supabase (`https://mcp.supabase.com/mcp?project_ref=...`) — el `project_ref` no es un secreto, es un identificador público de proyecto; la autenticación real ocurre vía OAuth interactivo, no hay token en el archivo.
 - Los 2 workflows de CI/CD nuevos desde la auditoría anterior manejan secretos correctamente:
   - `.github/workflows/deploy-backend.yml`: `VPS_HOST`/`VPS_SSH_USER`/`VPS_SSH_KEY`/`VPS_SSH_PORT` vía `secrets.*` de GitHub, nunca en texto plano.
-  - `.github/workflows/supabase-backup.yml`: `DATABASE_URL` vía `secrets.SUPABASE_DB_URL`, el dump se sube como *artifact* privado de Actions (`actions/upload-artifact`, requiere login + acceso de lectura al repo), no como release pública — este workflow ya había tenido y corregido ese problema exacto (commit `2a83a28`, "dejar de publicar el backup de Supabase como release pública"), confirmado que sigue corregido.
+  - `.github/workflows/supabase-backup.yml`: `DATABASE_URL` vía `secrets.SUPABASE_DB_URL`, el dump se sube como _artifact_ privado de Actions (`actions/upload-artifact`, requiere login + acceso de lectura al repo), no como release pública — este workflow ya había tenido y corregido ese problema exacto (commit `2a83a28`, "dejar de publicar el backup de Supabase como release pública"), confirmado que sigue corregido.
 
 **Acción:** ninguna.
 

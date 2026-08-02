@@ -1943,9 +1943,9 @@ Cambio SDD `permiso-ver-descuento-plan` (proposal → spec → design → tasks 
 
 **Decisión de Kevin (2026-07-31):** dejar `puede_ver_descuento_plan = false` para `agente` en Supabase real como estado final de producción (no revertir a `true`) — este era el objetivo original del pedido, no solo un dato de prueba.
 
-**Pendiente:** abrir PR desde la rama `sdd/permiso-ver-descuento-plan` (commit `36223f7`) hacia `main`.
+**Corrección de estado (2026-08-02):** mergeado a `main` como PR #74 (commit `0563420`), incluido en el release `0.1.10` de `release-please`. Nada queda pendiente de abrir/pushear.
 
-## 42. Frontend responsive unificado — los 6 módulos, sidebar hamburguesa, PR #81 abierto (2026-07-31)
+## 42. Frontend responsive unificado — los 6 módulos, sidebar hamburguesa (2026-07-31, mergeado a `main`)
 
 Rama `feat/responsive-unificado`, creada desde `main` actualizado (post PR #79/#80). Trabajo pedido por Kevin: unificar los 5 breakpoints dispersos que tenía el CSS (720/900/980/1100/640px, desktop-first, sin sistema) en 3 estándar, y agregar un patrón de colapso al sidebar fijo (compartido por cotizar/admin/historial/configuración) que hasta ahora no existía en absoluto.
 
@@ -1963,4 +1963,12 @@ Rama `feat/responsive-unificado`, creada desde `main` actualizado (post PR #79/#
 
 **Verificación:** 166/166 tests backend en verde. Verificado en vivo con Playwright en 375/480/768/1024/1280px (sidebar en los 4 módulos, `.resultado-layout` de 1 a 2 columnas en el corte de 1024px, formulario de coberturas, modal de admin con `qatest@test.com` — credenciales usadas solo en la sesión de prueba, nunca guardadas en archivos ni en memoria por pedido explícito de Kevin). Verificado también en dispositivo real por Kevin en dos rondas (primera ronda encontró los 3 bugs de arriba; segunda ronda confirmó todo arreglado).
 
-**PR #81 abierto** (`feat/responsive-unificado` → `main`), sin mergear todavía.
+**Corrección de estado (2026-08-02):** PR #81 (`feat/responsive-unificado` → `main`) ya mergeado (commit `4e4598e`), incluido en el release `0.1.13` de `release-please`.
+
+## 43. Sincronización de main tras force-push externo + adopción de `release-please` (2026-08-02)
+
+`main` local estaba desactualizado respecto a `origin/main` — el remoto tuvo un force-push (historia sin ancestro común con la rama local previa, confirmada por Kevin como intencional y ya respaldada). Se hizo `git reset --hard origin/main`; `main` local ahora coincide con la punta `b1035fc` (PR #82, release `0.1.13`).
+
+De paso se detectó que el repo adoptó `release-please` (`release-please-config.json`, `CHANGELOG.md`, tags `v0.1.7`–`v0.1.13`, workflow `.github/workflows/release-please.yml`) y un workflow de CD para el backend (`.github/workflows/deploy-backend.yml`) — ninguno de los dos estaba documentado en `CLAUDE.md`. Se agrega sección nueva ahí. Nota suelta: `backend/package.json` sigue en `"version": "0.1.0"`, desincronizado del tag `v0.1.13` — `release-please` con `release-type: simple` no toca ese archivo, solo `CHANGELOG.md`; no se corrige acá porque no se confirmó con Kevin si conviene mantenerlo sincronizado a mano o dejarlo así.
+
+No se detectaron hallazgos de bug nuevos en esta sincronización — es puesta al día de documentación, no una sesión de desarrollo.

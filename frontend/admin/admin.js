@@ -555,14 +555,28 @@ async function toggleRamoActivo(ramoId, activo) {
   }
 }
 
-function habilitarEdicionNombreRamo(ramoId) {
-  state.ramoNombreEnEdicion.add(ramoId)
+// Helpers compartidos por las variantes "editar inline" del panel admin (nombre de ramo,
+// prima técnica mínima, topes de plan, tasa RPF, tasa edificio/contenido, monto/franquicia):
+// todas comparten el mismo mecanismo de estado (un Set de ids en edición) para habilitar y
+// cancelar la edición — la única diferencia entre variantes es qué Set usan, así que las
+// funciones nombradas de cada variante (habilitarEdicionTasaRpf, etc.) quedan como wrappers
+// finos que delegan acá, sin cambiar la firma que ya usan los switches de onActionClick.
+function habilitarEdicionInline(set, id) {
+  set.add(id)
   renderApp()
 }
 
-function cancelarEdicionNombreRamo(ramoId) {
-  state.ramoNombreEnEdicion.delete(ramoId)
+function cancelarEdicionInline(set, id) {
+  set.delete(id)
   renderApp()
+}
+
+function habilitarEdicionNombreRamo(ramoId) {
+  habilitarEdicionInline(state.ramoNombreEnEdicion, ramoId)
+}
+
+function cancelarEdicionNombreRamo(ramoId) {
+  cancelarEdicionInline(state.ramoNombreEnEdicion, ramoId)
 }
 
 async function guardarNombreRamo(ramoId, form) {
@@ -668,23 +682,20 @@ function renderTablaRamosGestion() {
 // Comercio"), así que compartir un solo <td> con flex dejaba el botón a distinta distancia
 // en cada fila en vez de alineado en columna.
 function renderCampoNombreRamo(ramo) {
-  if (!state.ramoNombreEnEdicion.has(ramo.id)) {
-    return `
-      <div class="admin-ramo-nombre">
-        <span class="admin-ramo-nombre__texto">${escapeHtml(ramo.nombre_display)}</span>
-        <span class="admin-ramo-nombre__accion">
-          <button class="btn-outline" data-action="editar-nombre-ramo" data-id="${ramo.id}">Editar</button>
-        </span>
-      </div>
-    `
-  }
-  return `
-    <form class="admin-inline-form" data-form-action="nombre-ramo" data-id="${ramo.id}">
-      <input class="field-input field-input--sm" type="text" name="nombre_display" value="${escapeHtml(ramo.nombre_display)}" autofocus />
-      <button class="btn-outline" type="submit">Guardar</button>
-      <button class="btn-outline" type="button" data-action="cancelar-nombre-ramo" data-id="${ramo.id}">Cancelar</button>
-    </form>
-  `
+  return renderCampoInline({
+    editando: state.ramoNombreEnEdicion.has(ramo.id),
+    id: ramo.id,
+    formAction: 'nombre-ramo',
+    accionEditar: 'editar-nombre-ramo',
+    accionCancelar: 'cancelar-nombre-ramo',
+    // Layout propio (ver admin.css .admin-ramo-nombre): mismo DOM que antes de la
+    // unificación (botón envuelto en su propia <span> de ancho fijo), no el genérico
+    // admin-valor-fijo — ver comentario arriba de renderTablaRamosGestion.
+    wrapperClase: 'admin-ramo-nombre',
+    accionWrapperClase: 'admin-ramo-nombre__accion',
+    lectura: `<span class="admin-ramo-nombre__texto">${escapeHtml(ramo.nombre_display)}</span>`,
+    campos: [{ tipo: 'text', name: 'nombre_display', value: ramo.nombre_display, autofocus: true }],
+  })
 }
 
 // ---------------------------------------------------------------------------
@@ -721,13 +732,11 @@ async function togglePlanActivo(planId, activo) {
 }
 
 function habilitarEdicionPrima(planId) {
-  state.primaEnEdicion.add(planId)
-  renderApp()
+  habilitarEdicionInline(state.primaEnEdicion, planId)
 }
 
 function cancelarEdicionPrima(planId) {
-  state.primaEnEdicion.delete(planId)
-  renderApp()
+  cancelarEdicionInline(state.primaEnEdicion, planId)
 }
 
 async function guardarPrimaTecnicaMinima(planId, form) {
@@ -755,13 +764,11 @@ async function guardarPrimaTecnicaMinima(planId, form) {
 }
 
 function habilitarEdicionTopes(planId) {
-  state.topesEnEdicion.add(planId)
-  renderApp()
+  habilitarEdicionInline(state.topesEnEdicion, planId)
 }
 
 function cancelarEdicionTopes(planId) {
-  state.topesEnEdicion.delete(planId)
-  renderApp()
+  cancelarEdicionInline(state.topesEnEdicion, planId)
 }
 
 // Separado de guardarPrimaTecnicaMinima/PUT /admin/planes/:id a propósito: descuento_maximo
@@ -828,13 +835,11 @@ async function toggleFormaPagoHabilitada(planFormaPagoId, planId, habilitada) {
 }
 
 function habilitarEdicionTasaRpf(planFormaPagoId) {
-  state.tasaRpfEnEdicion.add(planFormaPagoId)
-  renderApp()
+  habilitarEdicionInline(state.tasaRpfEnEdicion, planFormaPagoId)
 }
 
 function cancelarEdicionTasaRpf(planFormaPagoId) {
-  state.tasaRpfEnEdicion.delete(planFormaPagoId)
-  renderApp()
+  cancelarEdicionInline(state.tasaRpfEnEdicion, planFormaPagoId)
 }
 
 async function guardarTasaRpf(planFormaPagoId, planId, form) {
@@ -902,13 +907,11 @@ async function cargarRubrosActividad(ramoId) {
 }
 
 function habilitarEdicionRubroActividad(id) {
-  state.rubroActividadEnEdicion.add(id)
-  renderApp()
+  habilitarEdicionInline(state.rubroActividadEnEdicion, id)
 }
 
 function cancelarEdicionRubroActividad(id) {
-  state.rubroActividadEnEdicion.delete(id)
-  renderApp()
+  cancelarEdicionInline(state.rubroActividadEnEdicion, id)
 }
 
 async function guardarRubroActividadTasas(id, form) {
@@ -1143,13 +1146,11 @@ async function toggleCoberturaDefecto(planCoberturaId, planId, incluidaPorDefect
 }
 
 function habilitarEdicionCobertura(planCoberturaId) {
-  state.coberturaEnEdicion.add(planCoberturaId)
-  renderApp()
+  habilitarEdicionInline(state.coberturaEnEdicion, planCoberturaId)
 }
 
 function cancelarEdicionCobertura(planCoberturaId) {
-  state.coberturaEnEdicion.delete(planCoberturaId)
-  renderApp()
+  cancelarEdicionInline(state.coberturaEnEdicion, planCoberturaId)
 }
 
 async function guardarMontoFranquicia(planCoberturaId, planId, form) {
@@ -1645,6 +1646,78 @@ function esPlanSoloUsd(plan) {
   )
 }
 
+// Helpers compartidos de las 6 variantes "editar inline" del panel admin (issue #84,
+// item #6). `campoInlineInput` renderiza un único <input>/<select> a partir de una
+// descripción declarativa; `renderCampoInline` arma el wrapper de lectura (admin-valor-fijo
+// + botón Editar) o el <form> de edición (admin-inline-form + Guardar/Cancelar), según
+// `editando`. Lo que NO se unifica a propósito es `guardar*` de cada variante — ahí vive el
+// comportamiento real distinto por variante (nullable o no, endpoints, trims, NaN) y unificarlo
+// sería el riesgo real de esta refactorización, no el beneficio.
+function campoInlineInput(campo) {
+  const attrs = [`name="${campo.name}"`]
+  if (campo.step != null) attrs.push(`step="${campo.step}"`)
+  if (campo.min != null) attrs.push(`min="${campo.min}"`)
+  if (campo.max != null) attrs.push(`max="${campo.max}"`)
+  if (campo.placeholder) attrs.push(`placeholder="${escapeHtml(campo.placeholder)}"`)
+  if (campo.form) attrs.push(`form="${campo.form}"`)
+  if (campo.autofocus) attrs.push('autofocus')
+  if (campo.ariaLabel) attrs.push(`aria-label="${escapeHtml(campo.ariaLabel)}"`)
+
+  if (campo.tipo === 'select') {
+    const opciones = (campo.opciones ?? [])
+      .map(
+        (op) =>
+          `<option value="${escapeHtml(op.value)}" ${String(op.value) === String(campo.value) ? 'selected' : ''}>${escapeHtml(op.label ?? op.value)}</option>`
+      )
+      .join('')
+    return `<select class="field-input field-input--sm" ${attrs.join(' ')}>${opciones}</select>`
+  }
+
+  const valor = campo.value ?? ''
+  return `<input class="field-input field-input--sm" type="${campo.tipo ?? 'text'}" value="${escapeHtml(String(valor))}" ${attrs.join(' ')} />`
+}
+
+function renderCampoInline({
+  editando,
+  id,
+  planId,
+  formAction,
+  formId,
+  accionEditar,
+  accionCancelar,
+  puedeEditar = true,
+  wrapperClase = 'admin-valor-fijo',
+  accionWrapperClase,
+  lectura,
+  campos = [],
+}) {
+  const dataPlanId = planId != null ? ` data-plan-id="${planId}"` : ''
+
+  if (!editando) {
+    const boton = puedeEditar
+      ? `<button class="btn-outline" data-action="${accionEditar}" data-id="${id}"${dataPlanId}>Editar</button>`
+      : ''
+    const botonEnvuelto =
+      boton && accionWrapperClase ? `<span class="${accionWrapperClase}">${boton}</span>` : boton
+    return `
+      <div class="${wrapperClase}">
+        ${lectura}
+        ${botonEnvuelto}
+      </div>
+    `
+  }
+
+  const formIdAttr = formId ? ` id="${formId}"` : ''
+  const camposHtml = campos.map(campoInlineInput).join('\n      ')
+  return `
+    <form class="admin-inline-form"${formIdAttr} data-form-action="${formAction}" data-id="${id}"${dataPlanId}>
+      ${camposHtml}
+      <button class="btn-outline" type="submit">Guardar</button>
+      <button class="btn-outline" type="button" data-action="${accionCancelar}" data-id="${id}">Cancelar</button>
+    </form>
+  `
+}
+
 // El input de nombre (columna PLAN) vive en <td> aparte de este form, así que se
 // asocia via el atributo `form` en vez de anidarlo — un <input> puede pertenecer a un
 // <form> ubicado en cualquier parte del documento mientras comparta el mismo id.
@@ -1661,21 +1734,18 @@ function renderCampoPrimaTecnicaMinima(plan) {
   const valor = plan[campo]
   const fmt = soloUsd ? fmtUsd : fmtGs
 
-  if (!state.primaEnEdicion.has(plan.id)) {
-    return `
-      <div class="admin-valor-fijo">
-        <span>${valor != null ? escapeHtml(fmt(valor)) : '—'}</span>
-        <button class="btn-outline" data-action="editar-prima-tecnica-minima" data-id="${plan.id}">Editar</button>
-      </div>
-    `
-  }
-  return `
-    <form class="admin-inline-form" id="plan-form-${plan.id}" data-form-action="prima-tecnica-minima" data-id="${plan.id}">
-      <input class="field-input field-input--sm" type="number" step="0.01" name="${campo}" value="${valor ?? ''}" autofocus />
-      <button class="btn-outline" type="submit">Guardar</button>
-      <button class="btn-outline" type="button" data-action="cancelar-prima-tecnica-minima" data-id="${plan.id}">Cancelar</button>
-    </form>
-  `
+  return renderCampoInline({
+    editando: state.primaEnEdicion.has(plan.id),
+    id: plan.id,
+    // formId: compartido con renderCampoNombrePlan (input `form="plan-form-${plan.id}"`
+    // en otro <td>) — no cambiar sin revisar ese acoplamiento entre columnas.
+    formId: `plan-form-${plan.id}`,
+    formAction: 'prima-tecnica-minima',
+    accionEditar: 'editar-prima-tecnica-minima',
+    accionCancelar: 'cancelar-prima-tecnica-minima',
+    lectura: `<span>${valor != null ? escapeHtml(fmt(valor)) : '—'}</span>`,
+    campos: [{ tipo: 'number', name: campo, step: '0.01', value: valor, autofocus: true }],
+  })
 }
 
 // Solo el rol admin literal puede editar estos dos campos (ver guardarPlanTopes /
@@ -1687,43 +1757,65 @@ function renderCampoTopes(plan) {
   const descuento = plan.descuento_maximo
   const recargo = plan.recargo_maximo
 
-  if (!state.topesEnEdicion.has(plan.id)) {
-    return `
-      <div class="admin-valor-fijo">
+  return renderCampoInline({
+    editando: state.topesEnEdicion.has(plan.id),
+    id: plan.id,
+    formId: `plan-topes-form-${plan.id}`,
+    formAction: 'plan-topes',
+    accionEditar: 'editar-plan-topes',
+    accionCancelar: 'cancelar-plan-topes',
+    // Rol admin literal, no permiso delegable puede_editar_planes — ver comentario arriba
+    // de esta función y guardarPlanTopes.
+    puedeEditar: esAdmin,
+    lectura: `
         <span class="admin-valor-fijo__lineas">
           <span>Desc.: ${descuento != null ? escapeHtml(String(descuento)) + '%' : '—'}</span>
           <span>Rec.: ${recargo != null ? escapeHtml(String(recargo)) + '%' : '—'}</span>
         </span>
-        ${esAdmin ? `<button class="btn-outline" data-action="editar-plan-topes" data-id="${plan.id}">Editar</button>` : ''}
-      </div>
-    `
-  }
-  return `
-    <form class="admin-inline-form" id="plan-topes-form-${plan.id}" data-form-action="plan-topes" data-id="${plan.id}">
-      <input class="field-input field-input--sm" type="number" step="0.01" min="0" max="100" name="descuento_maximo" value="${descuento ?? ''}" placeholder="Desc. %" autofocus />
-      <input class="field-input field-input--sm" type="number" step="0.01" min="0" max="100" name="recargo_maximo" value="${recargo ?? ''}" placeholder="Rec. %" />
-      <button class="btn-outline" type="submit">Guardar</button>
-      <button class="btn-outline" type="button" data-action="cancelar-plan-topes" data-id="${plan.id}">Cancelar</button>
-    </form>
-  `
+      `,
+    campos: [
+      {
+        tipo: 'number',
+        name: 'descuento_maximo',
+        step: '0.01',
+        min: '0',
+        max: '100',
+        value: descuento,
+        placeholder: 'Desc. %',
+        autofocus: true,
+      },
+      {
+        tipo: 'number',
+        name: 'recargo_maximo',
+        step: '0.01',
+        min: '0',
+        max: '100',
+        value: recargo,
+        placeholder: 'Rec. %',
+      },
+    ],
+  })
 }
 
 function renderCampoTasaRpf(formaPagoPlan, planId) {
-  if (!state.tasaRpfEnEdicion.has(formaPagoPlan.id)) {
-    return `
-      <div class="admin-valor-fijo">
-        <span>${escapeHtml(String(formaPagoPlan.tasa_rpf))}</span>
-        <button class="btn-outline" data-action="editar-tasa-rpf" data-id="${formaPagoPlan.id}" data-plan-id="${planId}">Editar</button>
-      </div>
-    `
-  }
-  return `
-    <form class="admin-inline-form" data-form-action="tasa-rpf" data-id="${formaPagoPlan.id}" data-plan-id="${planId}">
-      <input class="field-input field-input--sm" type="number" step="0.001" name="tasa_rpf" value="${formaPagoPlan.tasa_rpf}" autofocus />
-      <button class="btn-outline" type="submit">Guardar</button>
-      <button class="btn-outline" type="button" data-action="cancelar-tasa-rpf" data-id="${formaPagoPlan.id}">Cancelar</button>
-    </form>
-  `
+  return renderCampoInline({
+    editando: state.tasaRpfEnEdicion.has(formaPagoPlan.id),
+    id: formaPagoPlan.id,
+    planId,
+    formAction: 'tasa-rpf',
+    accionEditar: 'editar-tasa-rpf',
+    accionCancelar: 'cancelar-tasa-rpf',
+    lectura: `<span>${escapeHtml(String(formaPagoPlan.tasa_rpf))}</span>`,
+    campos: [
+      {
+        tipo: 'number',
+        name: 'tasa_rpf',
+        step: '0.001',
+        value: formaPagoPlan.tasa_rpf,
+        autofocus: true,
+      },
+    ],
+  })
 }
 
 function renderTasas() {
@@ -1813,29 +1905,43 @@ const CATEGORIAS_RUBRO_ACTIVIDAD = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I']
 
 function renderCamposTasaEdificioContenido(rubro) {
   const puedeEditar = Boolean(auth.getUsuario()?.puede_editar_tasas)
-  if (!state.rubroActividadEnEdicion.has(rubro.id)) {
-    return `
-      <div class="admin-valor-fijo">
+
+  return renderCampoInline({
+    editando: state.rubroActividadEnEdicion.has(rubro.id),
+    id: rubro.id,
+    formAction: 'rubro-actividad-tasas',
+    accionEditar: 'editar-tasa-edificio-contenido',
+    accionCancelar: 'cancelar-tasa-edificio-contenido',
+    puedeEditar,
+    lectura: `
         <span>${escapeHtml(rubro.categoria ?? '—')}</span>
         <span>${rubro.tasa_edificio != null ? escapeHtml(String(rubro.tasa_edificio)) : '—'} / ${rubro.tasa_contenido != null ? escapeHtml(String(rubro.tasa_contenido)) : '—'}</span>
-        ${puedeEditar ? `<button class="btn-outline" data-action="editar-tasa-edificio-contenido" data-id="${rubro.id}">Editar</button>` : ''}
-      </div>
-    `
-  }
-  const opcionesCategoria = CATEGORIAS_RUBRO_ACTIVIDAD.map(
-    (cat) => `
-    <option value="${cat}" ${rubro.categoria === cat ? 'selected' : ''}>${cat}</option>
-  `
-  ).join('')
-  return `
-    <form class="admin-inline-form" data-form-action="rubro-actividad-tasas" data-id="${rubro.id}">
-      <select class="field-input field-input--sm" name="categoria" autofocus aria-label="Categoría">${opcionesCategoria}</select>
-      <input class="field-input field-input--sm" type="number" step="0.001" name="tasa_edificio" placeholder="Edificio" value="${rubro.tasa_edificio ?? ''}" />
-      <input class="field-input field-input--sm" type="number" step="0.001" name="tasa_contenido" placeholder="Contenido" value="${rubro.tasa_contenido ?? ''}" />
-      <button class="btn-outline" type="submit">Guardar</button>
-      <button class="btn-outline" type="button" data-action="cancelar-tasa-edificio-contenido" data-id="${rubro.id}">Cancelar</button>
-    </form>
-  `
+      `,
+    campos: [
+      {
+        tipo: 'select',
+        name: 'categoria',
+        value: rubro.categoria,
+        autofocus: true,
+        ariaLabel: 'Categoría',
+        opciones: CATEGORIAS_RUBRO_ACTIVIDAD.map((cat) => ({ value: cat, label: cat })),
+      },
+      {
+        tipo: 'number',
+        name: 'tasa_edificio',
+        step: '0.001',
+        placeholder: 'Edificio',
+        value: rubro.tasa_edificio,
+      },
+      {
+        tipo: 'number',
+        name: 'tasa_contenido',
+        step: '0.001',
+        placeholder: 'Contenido',
+        value: rubro.tasa_contenido,
+      },
+    ],
+  })
 }
 
 function renderTablaTasas() {
@@ -2012,22 +2118,32 @@ function renderTablaCoberturasPlan() {
 }
 
 function renderCamposMontoFranquicia(planCobertura, planId) {
-  if (!state.coberturaEnEdicion.has(planCobertura.id)) {
-    return `
-      <div class="admin-valor-fijo">
-        <span>${planCobertura.monto != null ? escapeHtml(fmtGs(planCobertura.monto)) : '—'} / ${planCobertura.franquicia != null ? escapeHtml(fmtGs(planCobertura.franquicia)) : '—'}</span>
-        <button class="btn-outline" data-action="editar-cobertura-plan" data-id="${planCobertura.id}" data-plan-id="${planId}">Editar</button>
-      </div>
-    `
-  }
-  return `
-    <form class="admin-inline-form" data-form-action="monto-franquicia" data-id="${planCobertura.id}" data-plan-id="${planId}">
-      <input class="field-input field-input--sm" type="number" step="0.01" name="monto" placeholder="Monto" value="${planCobertura.monto ?? ''}" autofocus />
-      <input class="field-input field-input--sm" type="number" step="0.01" name="franquicia" placeholder="Franquicia" value="${planCobertura.franquicia ?? ''}" />
-      <button class="btn-outline" type="submit">Guardar</button>
-      <button class="btn-outline" type="button" data-action="cancelar-cobertura-plan" data-id="${planCobertura.id}">Cancelar</button>
-    </form>
-  `
+  return renderCampoInline({
+    editando: state.coberturaEnEdicion.has(planCobertura.id),
+    id: planCobertura.id,
+    planId,
+    formAction: 'monto-franquicia',
+    accionEditar: 'editar-cobertura-plan',
+    accionCancelar: 'cancelar-cobertura-plan',
+    lectura: `<span>${planCobertura.monto != null ? escapeHtml(fmtGs(planCobertura.monto)) : '—'} / ${planCobertura.franquicia != null ? escapeHtml(fmtGs(planCobertura.franquicia)) : '—'}</span>`,
+    campos: [
+      {
+        tipo: 'number',
+        name: 'monto',
+        step: '0.01',
+        placeholder: 'Monto',
+        value: planCobertura.monto,
+        autofocus: true,
+      },
+      {
+        tipo: 'number',
+        name: 'franquicia',
+        step: '0.01',
+        placeholder: 'Franquicia',
+        value: planCobertura.franquicia,
+      },
+    ],
+  })
 }
 
 function renderModalCobertura() {

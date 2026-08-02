@@ -7,7 +7,7 @@ const SOLICITANTE_NO_ADMIN = { id: 9, rol: 'agente', puede_gestionar_usuarios: t
 
 function mockearRepositorios(t, { usuario = USUARIO_OBJETIVO, rolDestino = ROL_ADMIN } = {}) {
   t.mock.module('../../repositories/usuarios.repository.js', {
-    exports: {
+    namedExports: {
       findById: async () => usuario,
       findByEmail: async () => null,
       actualizar: async (id, cambios) => ({ ...usuario, ...cambios }),
@@ -15,7 +15,7 @@ function mockearRepositorios(t, { usuario = USUARIO_OBJETIVO, rolDestino = ROL_A
     },
   })
   t.mock.module('../../repositories/roles.repository.js', {
-    exports: {
+    namedExports: {
       findById: async () => rolDestino,
     },
   })

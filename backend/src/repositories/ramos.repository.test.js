@@ -8,7 +8,7 @@ import { test } from 'node:test'
 // (builder mínimo, thenable) que coberturas.repository.test.js.
 function mockearSupabase(t, respuesta) {
   t.mock.module('../config/supabase.js', {
-    exports: {
+    namedExports: {
       supabase: {
         from() {
           const builder = {

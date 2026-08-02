@@ -20,13 +20,13 @@ describe('resolverDescuentos', () => {
   const PLAN_AUTO_COMBINADO = { descuento_default: 20, cotizacion_combinada: true }
 
   function mockRepositoriosYObtenerResolverDescuentos(t, caso) {
-    t.mock.module('../repositories/ramos.repository.js', { exports: {} })
-    t.mock.module('../repositories/coberturas.repository.js', { exports: {} })
-    t.mock.module('../repositories/cotizaciones.repository.js', { exports: {} })
+    t.mock.module('../repositories/ramos.repository.js', { namedExports: {} })
+    t.mock.module('../repositories/coberturas.repository.js', { namedExports: {} })
+    t.mock.module('../repositories/cotizaciones.repository.js', { namedExports: {} })
     // cotizacion.service.js también importa tipo-cambio.service.js, que a su vez importa
     // tipos-cambio.repository.js -> config/supabase.js — sin este mock, el import dinámico de
     // más abajo sigue reventando en CI (sin .env) aunque los 3 repos de arriba estén mockeados.
-    t.mock.module('./tipo-cambio.service.js', { exports: {} })
+    t.mock.module('./tipo-cambio.service.js', { namedExports: {} })
     return import(`./cotizacion.service.js?case=resolver-descuentos-${caso}`)
   }
 
@@ -185,7 +185,7 @@ function mockearRepositorios(
   const cotizacionesActualizadas = []
 
   t.mock.module('../repositories/ramos.repository.js', {
-    exports: {
+    namedExports: {
       findPlanById: async () => plan,
       findRamoById: async () => ramo,
       findFormasPagoDelPlan: async () => FORMAS_PAGO_CONTADO,
@@ -194,7 +194,7 @@ function mockearRepositorios(
   })
 
   t.mock.module('../repositories/coberturas.repository.js', {
-    exports: {
+    namedExports: {
       findRubroPorNombre: async () => null,
       findCoberturasCatalogoByRamoId: async () => [
         { codigo: 'incendio_edificio', nombre: 'Incendio de Edificio', franquicia_default: null },
@@ -205,7 +205,7 @@ function mockearRepositorios(
   })
 
   t.mock.module('../repositories/cotizaciones.repository.js', {
-    exports: {
+    namedExports: {
       nextNumeroCorrelativo: async () => 1,
       insertCotizacion: async (cotizacion) => {
         const fila = { id: 99, ...cotizacion }
@@ -228,7 +228,7 @@ function mockearRepositorios(
   })
 
   t.mock.module('./tipo-cambio.service.js', {
-    exports: {
+    namedExports: {
       obtenerTipoCambioVigente: async () => tipoCambio,
       registrarTipoCambioManual: async () => {},
     },
@@ -286,7 +286,7 @@ describe('construirVariantes (vía calcularPreview) — enforcement del descuent
 
   function mockearRepositoriosMrc(t) {
     t.mock.module('../repositories/ramos.repository.js', {
-      exports: {
+      namedExports: {
         findPlanById: async () => PLAN_MRC_DESCUENTO_FIJO,
         findRamoById: async () => RAMO_MRC,
         findFormasPagoDelPlan: async () => FORMAS_PAGO_CONTADO_MRC,
@@ -294,7 +294,7 @@ describe('construirVariantes (vía calcularPreview) — enforcement del descuent
       },
     })
     t.mock.module('../repositories/coberturas.repository.js', {
-      exports: {
+      namedExports: {
         findRubroPorNombre: async () => ({
           nombre: 'Bazar',
           tasa_edificio: 2,
@@ -309,8 +309,8 @@ describe('construirVariantes (vía calcularPreview) — enforcement del descuent
     // (este último con una cadena propia hasta config/supabase.js) — sin mockearlos acá el import
     // dinámico de más abajo revienta en CI (sin .env), aunque calcularPreview nunca los invoque
     // en el camino de preview que testean estos casos.
-    t.mock.module('../repositories/cotizaciones.repository.js', { exports: {} })
-    t.mock.module('./tipo-cambio.service.js', { exports: {} })
+    t.mock.module('../repositories/cotizaciones.repository.js', { namedExports: {} })
+    t.mock.module('./tipo-cambio.service.js', { namedExports: {} })
   }
 
   function bodyMrc(descuentoPorcentaje) {
@@ -388,7 +388,7 @@ describe('construirVariantes (vía calcularPreview) — Auto cotizacion_combinad
   test('primaAjustada de la variante con_franquicia refleja UN solo 20%, no un 40% doble-aplicado', async (t) => {
     invalidarCacheCatalogos()
     t.mock.module('../repositories/ramos.repository.js', {
-      exports: {
+      namedExports: {
         findPlanById: async () => PLAN_AUTO_PREMIUM,
         findRamoById: async () => RAMO_AUTO,
         findFormasPagoDelPlan: async () => FORMAS_PAGO_AUTO,
@@ -396,9 +396,9 @@ describe('construirVariantes (vía calcularPreview) — Auto cotizacion_combinad
         findTasaCapital: async () => ({ tasa_porcentaje: 5 }),
       },
     })
-    t.mock.module('../repositories/coberturas.repository.js', { exports: {} })
-    t.mock.module('../repositories/cotizaciones.repository.js', { exports: {} })
-    t.mock.module('./tipo-cambio.service.js', { exports: {} })
+    t.mock.module('../repositories/coberturas.repository.js', { namedExports: {} })
+    t.mock.module('../repositories/cotizaciones.repository.js', { namedExports: {} })
+    t.mock.module('./tipo-cambio.service.js', { namedExports: {} })
     const { calcularPreview } =
       await import('./cotizacion.service.js?case=regresion-auto-combinado')
 
@@ -510,7 +510,7 @@ test('crearCotizacion borra la cabecera recién creada y re-lanza el error origi
   let llamadasCorrelativo = 0
 
   t.mock.module('../repositories/ramos.repository.js', {
-    exports: {
+    namedExports: {
       findPlanById: async () => PLAN_OBJETO_RIESGO,
       findRamoById: async () => RAMO_INCENDIO,
       findFormasPagoDelPlan: async () => FORMAS_PAGO_CONTADO,
@@ -519,7 +519,7 @@ test('crearCotizacion borra la cabecera recién creada y re-lanza el error origi
   })
 
   t.mock.module('../repositories/coberturas.repository.js', {
-    exports: {
+    namedExports: {
       findRubroPorNombre: async () => null,
       findCoberturasCatalogoByRamoId: async () => [
         { codigo: 'incendio_edificio', nombre: 'Incendio de Edificio', franquicia_default: null },
@@ -530,7 +530,7 @@ test('crearCotizacion borra la cabecera recién creada y re-lanza el error origi
   })
 
   t.mock.module('./tipo-cambio.service.js', {
-    exports: {
+    namedExports: {
       obtenerTipoCambioVigente: async () => ({
         venta: 7300.75,
         compra: 7250.5,
@@ -544,7 +544,7 @@ test('crearCotizacion borra la cabecera recién creada y re-lanza el error origi
   })
 
   t.mock.module('../repositories/cotizaciones.repository.js', {
-    exports: {
+    namedExports: {
       // 1ra llamada: numero_cotizacion del header (crearCotizacion, línea ~40) — debe resolver OK.
       // 2da llamada: numero_variante dentro de insertarCoberturasYVariantes — acá reproducimos el
       // duplicate-key del Bug 1 (mismo valor de correlativo colisionando entre ramos).
@@ -597,7 +597,7 @@ test('actualizarCotizacion con nueva moneda:USD persiste moneda + snapshot en el
   }
 
   t.mock.module('../repositories/ramos.repository.js', {
-    exports: {
+    namedExports: {
       findPlanById: async () => PLAN_OBJETO_RIESGO,
       findRamoById: async () => RAMO_INCENDIO,
       findFormasPagoDelPlan: async () => FORMAS_PAGO_CONTADO,
@@ -606,7 +606,7 @@ test('actualizarCotizacion con nueva moneda:USD persiste moneda + snapshot en el
   })
 
   t.mock.module('../repositories/coberturas.repository.js', {
-    exports: {
+    namedExports: {
       findRubroPorNombre: async () => null,
       findCoberturasCatalogoByRamoId: async () => [
         { codigo: 'incendio_edificio', nombre: 'Incendio de Edificio', franquicia_default: null },
@@ -617,7 +617,7 @@ test('actualizarCotizacion con nueva moneda:USD persiste moneda + snapshot en el
   })
 
   t.mock.module('./tipo-cambio.service.js', {
-    exports: {
+    namedExports: {
       obtenerTipoCambioVigente: async () => ({
         venta: 7300.75,
         compra: 7250.5,
@@ -632,7 +632,7 @@ test('actualizarCotizacion con nueva moneda:USD persiste moneda + snapshot en el
 
   const cotizacionesActualizadas = []
   t.mock.module('../repositories/cotizaciones.repository.js', {
-    exports: {
+    namedExports: {
       nextNumeroCorrelativo: async () => 1,
       findCotizacionById: async () => cotizacionExistente,
       updateCotizacion: async (id, cambios) => {

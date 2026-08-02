@@ -17,7 +17,7 @@ const RESPUESTA_DOLARPY_OK = {
 
 function mockearRepositorio(t, { ultimoVigente = null, insertados = [] } = {}) {
   t.mock.module('../repositories/tipos-cambio.repository.js', {
-    exports: {
+    namedExports: {
       findUltimoVigente: async () => ultimoVigente,
       insertTipoCambio: async (datos) => {
         const fila = { id: insertados.length + 1, obtenido_en: new Date().toISOString(), ...datos }

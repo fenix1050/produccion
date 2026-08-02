@@ -6,7 +6,7 @@ const ROL_SISTEMA = { id: 1, nombre: 'admin', es_sistema: true }
 
 function mockearRepositorio(t, { rol = ROL_CUSTOM } = {}) {
   t.mock.module('../../repositories/roles.repository.js', {
-    exports: {
+    namedExports: {
       findById: async () => rol,
       crear: async (datos) => ({ id: 30, es_sistema: false, ...datos }),
       actualizar: async (id, cambios) => ({ ...rol, ...cambios }),

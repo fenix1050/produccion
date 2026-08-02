@@ -737,13 +737,11 @@ async function togglePlanActivo(planId, activo) {
 }
 
 function habilitarEdicionPrima(planId) {
-  state.primaEnEdicion.add(planId)
-  renderApp()
+  habilitarEdicionInline(state.primaEnEdicion, planId)
 }
 
 function cancelarEdicionPrima(planId) {
-  state.primaEnEdicion.delete(planId)
-  renderApp()
+  cancelarEdicionInline(state.primaEnEdicion, planId)
 }
 
 async function guardarPrimaTecnicaMinima(planId, form) {
@@ -1747,21 +1745,18 @@ function renderCampoPrimaTecnicaMinima(plan) {
   const valor = plan[campo]
   const fmt = soloUsd ? fmtUsd : fmtGs
 
-  if (!state.primaEnEdicion.has(plan.id)) {
-    return `
-      <div class="admin-valor-fijo">
-        <span>${valor != null ? escapeHtml(fmt(valor)) : '—'}</span>
-        <button class="btn-outline" data-action="editar-prima-tecnica-minima" data-id="${plan.id}">Editar</button>
-      </div>
-    `
-  }
-  return `
-    <form class="admin-inline-form" id="plan-form-${plan.id}" data-form-action="prima-tecnica-minima" data-id="${plan.id}">
-      <input class="field-input field-input--sm" type="number" step="0.01" name="${campo}" value="${valor ?? ''}" autofocus />
-      <button class="btn-outline" type="submit">Guardar</button>
-      <button class="btn-outline" type="button" data-action="cancelar-prima-tecnica-minima" data-id="${plan.id}">Cancelar</button>
-    </form>
-  `
+  return renderCampoInline({
+    editando: state.primaEnEdicion.has(plan.id),
+    id: plan.id,
+    // formId: compartido con renderCampoNombrePlan (input `form="plan-form-${plan.id}"`
+    // en otro <td>) — no cambiar sin revisar ese acoplamiento entre columnas.
+    formId: `plan-form-${plan.id}`,
+    formAction: 'prima-tecnica-minima',
+    accionEditar: 'editar-prima-tecnica-minima',
+    accionCancelar: 'cancelar-prima-tecnica-minima',
+    lectura: `<span>${valor != null ? escapeHtml(fmt(valor)) : '—'}</span>`,
+    campos: [{ tipo: 'number', name: campo, step: '0.01', value: valor, autofocus: true }],
+  })
 }
 
 // Solo el rol admin literal puede editar estos dos campos (ver guardarPlanTopes /

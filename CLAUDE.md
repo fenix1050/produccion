@@ -114,6 +114,11 @@ Este proyecto se construye **fase por fase**, en este orden fijo (detalle comple
 
 **Fase 1 de Auto (schema base, importador de tasas) sigue como estaba** — pausado, no se retoma hasta que el cliente lo pida.
 
+## Versionado y despliegue automáticos (agregado 2026-08-02)
+
+- **`release-please`** (`.github/workflows/release-please.yml`, `release-please-config.json`, `release-type: simple`) corre en cada push a `main`: abre/actualiza un PR de release, y al mergearlo genera tag (`vX.Y.Z`), entrada en `CHANGELOG.md` y release de GitHub. Es rutina de CI — no requiere acción manual salvo mergear ese PR. `backend/package.json` no se actualiza por este mecanismo (queda en `0.1.0`); no confundir esa versión con el tag real del repo.
+- **`.github/workflows/deploy-backend.yml`** despliega el backend automáticamente a la VPS en cada push a `main` (`reset --hard`, no `merge --ff-only` — decisión tomada tras un fix de CI, ver `docs/ESTADO_PROYECTO.md`). Esto reemplaza el flujo anterior de redeploy manual — verificar este workflow antes de asumir que un cambio de backend no llegó a producción.
+
 ## Reglas de negocio clave para Auto (resumen — detalle completo en sección 5 de PLAN_DESARROLLO.md)
 
 ```

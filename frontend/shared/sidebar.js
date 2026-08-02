@@ -12,6 +12,7 @@ import {
   ICON_LOGOUT,
   ICON_BELL,
   ICON_CHEVRON_DOWN,
+  ICON_MENU,
   renderTrustFooter,
 } from './nav-icons.js'
 import { auth } from './api.js'
@@ -95,6 +96,34 @@ export function renderTopbarUser(active) {
         `
             : ''
         }
+      </div>
+    </div>
+  `
+}
+
+// Topbar (bloque rojo con toggle de sidebar + logo + marca, idéntico en las 4 páginas de
+// nivel superior) — solo el breadcrumb del medio difiere por página, así que se recibe ya
+// armado en vez de intentar generalizar su contenido acá.
+// active: mismo valor que se le pasa a renderTopbarUser ('admin' | 'historial' | ... | undefined)
+export function renderTopbar({ sidebarAbierta, breadcrumb, active }) {
+  return `
+    <div class="topbar">
+      <div class="topbar__red-block">
+        <button
+          type="button"
+          class="sidebar-toggle-btn"
+          data-action="toggle-sidebar"
+          aria-label="Abrir menú"
+          aria-expanded="${sidebarAbierta}"
+        >${ICON_MENU}</button>
+        <img class="topbar__logo" src="../login/assets/logo-rojo-con-negro.svg" alt="Aseguradora Tajy" />
+        <div class="topbar__brand-text">
+          <div class="topbar__brand-sub">Sistema de Cotización de Pólizas</div>
+        </div>
+      </div>
+      <div class="topbar__crumb-area">
+        ${breadcrumb}
+        ${renderTopbarUser(active)}
       </div>
     </div>
   `

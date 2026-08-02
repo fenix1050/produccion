@@ -2594,8 +2594,7 @@ const ACTION_HANDLERS = {
   'cerrar-modal-tasa': cerrarModalTasa,
   'cerrar-modal-tasa-backdrop': cerrarModalTasa,
   'editar-tasa-edificio-contenido': (el) => habilitarEdicionRubroActividad(Number(el.dataset.id)),
-  'cancelar-tasa-edificio-contenido': (el) =>
-    cancelarEdicionRubroActividad(Number(el.dataset.id)),
+  'cancelar-tasa-edificio-contenido': (el) => cancelarEdicionRubroActividad(Number(el.dataset.id)),
   'seleccionar-ramo-coberturas': (el) => seleccionarRamoCoberturas(el.value),
   'seleccionar-plan-coberturas': (el) => seleccionarPlanCoberturas(el.value),
   'toggle-cobertura-defecto': (el) =>

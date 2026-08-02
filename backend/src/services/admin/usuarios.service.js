@@ -3,10 +3,9 @@ import bcrypt from 'bcryptjs'
 import * as rolesRepository from '../../repositories/roles.repository.js'
 import * as usuariosRepository from '../../repositories/usuarios.repository.js'
 import { httpError } from '../../utils/http-error.js'
+import { CODIGO_FOREIGN_KEY_VIOLATION } from '../../utils/postgres-errors.js'
 import { BCRYPT_ROUNDS } from '../../utils/security.js'
 import { logSeguridad } from '../../utils/seguridad-logger.js'
-
-const CODIGO_FOREIGN_KEY_VIOLATION = '23503' // Postgres: foreign_key_violation
 
 // --- Usuarios ---
 

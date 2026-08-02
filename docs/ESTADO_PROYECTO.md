@@ -2028,7 +2028,7 @@ Segundo de los 4 refactors grandes que quedaban pendientes del issue #84 (el pri
 
 **Pendiente del issue #84 tras este PR:** quedan `onActionClick` (~195 líneas, ~40 ramas) y las funciones largas de `cotizar.js`/`historial.js` (`camposEspecificosParaRamo`, `renderResultadoView`, `armarRiesgoDatos`, `renderModalDetalle`).
 
-## 47. Refactor — `onActionClick` de `admin.js` a dispatch table (2026-08-02), sin commitear todavía
+## 47. Refactor — `onActionClick` de `admin.js` a dispatch table (2026-08-02), PR #103 mergeado a `main`
 
 Tercero de los 4 refactors grandes del issue #84. `onActionClick` en `frontend/admin/admin.js:2524-2719` era un if/else en cascada de ~195 líneas sobre `el.dataset.action` (~40 ramas), el más grande de los 4 pendientes.
 
@@ -2042,4 +2042,6 @@ Con eso: navegación entre las 5 secciones reales del sidebar (`usuarios`, `cobe
 
 **De paso, sin corregir (fuera de alcance):** un 404 preexistente de `frontend/shared/config.js` (falta el archivo, solo existe `config.example.js` versionado) — mismo hallazgo ya registrado en la sección 46, confirmado otra vez que no tiene relación con este refactor.
 
-**Pendiente del issue #84 tras este cambio:** queda un solo ítem grande — las funciones largas de `cotizar.js`/`historial.js` (`camposEspecificosParaRamo`, `renderResultadoView`, `armarRiesgoDatos`, `renderModalDetalle`). Pendiente también decidir con Kevin si este cambio se commitea/PR ahora o junto con ese último.
+**CI y merge.** El PR falló una vez en el check `quality` (Prettier reformateaba `'cancelar-tasa-edificio-contenido': (el) => cancelarEdicionRubroActividad(...)` a una sola línea) — corregido con `npx prettier --write frontend/admin/admin.js` (acotado al archivo, no al repo completo, mismo gotcha ya documentado en la sección 45), 166/166 tests siguieron en verde, CI en verde en el segundo push, PR #103 mergeado a `main`.
+
+**Pendiente del issue #84 tras este cambio:** queda un solo ítem grande — las funciones largas de `cotizar.js`/`historial.js` (`camposEspecificosParaRamo`, `renderResultadoView`, `armarRiesgoDatos`, `renderModalDetalle`).

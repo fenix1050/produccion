@@ -1807,7 +1807,13 @@ function renderCampoTasaRpf(formaPagoPlan, planId) {
     accionCancelar: 'cancelar-tasa-rpf',
     lectura: `<span>${escapeHtml(String(formaPagoPlan.tasa_rpf))}</span>`,
     campos: [
-      { tipo: 'number', name: 'tasa_rpf', step: '0.001', value: formaPagoPlan.tasa_rpf, autofocus: true },
+      {
+        tipo: 'number',
+        name: 'tasa_rpf',
+        step: '0.001',
+        value: formaPagoPlan.tasa_rpf,
+        autofocus: true,
+      },
     ],
   })
 }

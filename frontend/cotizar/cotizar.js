@@ -877,19 +877,19 @@ function armarRiesgoDatosVidaAp(plan) {
   return base
 }
 
-const ARMAR_RIESGO_DATOS_POR_RAMO = {
+// Object.create(null): sin prototype chain, un ramoId como 'constructor' o 'toString'
+// nunca puede resolver a un método heredado (CodeQL js/unvalidated-dynamic-method-call).
+const ARMAR_RIESGO_DATOS_POR_RAMO = Object.assign(Object.create(null), {
   mrc: armarRiesgoDatosMrc,
   incendio: armarRiesgoDatosIncendio,
   'vida-ap': armarRiesgoDatosVidaAp,
-}
+})
 
 // Arma el `riesgo_datos` esperado por el calculador del ramo/plan actual (ver
 // incendio.calculator.js / vida-ap.calculator.js para el shape exacto).
 function armarRiesgoDatos(plan) {
-  const armar = Object.prototype.hasOwnProperty.call(ARMAR_RIESGO_DATOS_POR_RAMO, state.ramoId)
-    ? ARMAR_RIESGO_DATOS_POR_RAMO[state.ramoId]
-    : null
-  return armar ? armar(plan) : {}
+  const armar = ARMAR_RIESGO_DATOS_POR_RAMO[state.ramoId]
+  return typeof armar === 'function' ? armar(plan) : {}
 }
 
 async function calcularPreview() {
@@ -1463,17 +1463,15 @@ function camposEspecificosPendiente() {
   `
 }
 
-const CAMPOS_ESPECIFICOS_POR_RAMO = {
+const CAMPOS_ESPECIFICOS_POR_RAMO = Object.assign(Object.create(null), {
   mrc: camposEspecificosMrc,
   incendio: camposEspecificosIncendio,
   'vida-ap': camposEspecificosVidaAp,
-}
+})
 
 function camposEspecificosParaRamo(ramo, plan) {
-  const renderer = Object.prototype.hasOwnProperty.call(CAMPOS_ESPECIFICOS_POR_RAMO, ramo.nombre)
-    ? CAMPOS_ESPECIFICOS_POR_RAMO[ramo.nombre]
-    : null
-  return renderer ? renderer(plan) : camposEspecificosPendiente()
+  const renderer = CAMPOS_ESPECIFICOS_POR_RAMO[ramo.nombre]
+  return typeof renderer === 'function' ? renderer(plan) : camposEspecificosPendiente()
 }
 
 function renderDatosView(ramo) {

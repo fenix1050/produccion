@@ -572,13 +572,11 @@ function cancelarEdicionInline(set, id) {
 }
 
 function habilitarEdicionNombreRamo(ramoId) {
-  state.ramoNombreEnEdicion.add(ramoId)
-  renderApp()
+  habilitarEdicionInline(state.ramoNombreEnEdicion, ramoId)
 }
 
 function cancelarEdicionNombreRamo(ramoId) {
-  state.ramoNombreEnEdicion.delete(ramoId)
-  renderApp()
+  cancelarEdicionInline(state.ramoNombreEnEdicion, ramoId)
 }
 
 async function guardarNombreRamo(ramoId, form) {
@@ -684,23 +682,20 @@ function renderTablaRamosGestion() {
 // Comercio"), así que compartir un solo <td> con flex dejaba el botón a distinta distancia
 // en cada fila en vez de alineado en columna.
 function renderCampoNombreRamo(ramo) {
-  if (!state.ramoNombreEnEdicion.has(ramo.id)) {
-    return `
-      <div class="admin-ramo-nombre">
-        <span class="admin-ramo-nombre__texto">${escapeHtml(ramo.nombre_display)}</span>
-        <span class="admin-ramo-nombre__accion">
-          <button class="btn-outline" data-action="editar-nombre-ramo" data-id="${ramo.id}">Editar</button>
-        </span>
-      </div>
-    `
-  }
-  return `
-    <form class="admin-inline-form" data-form-action="nombre-ramo" data-id="${ramo.id}">
-      <input class="field-input field-input--sm" type="text" name="nombre_display" value="${escapeHtml(ramo.nombre_display)}" autofocus />
-      <button class="btn-outline" type="submit">Guardar</button>
-      <button class="btn-outline" type="button" data-action="cancelar-nombre-ramo" data-id="${ramo.id}">Cancelar</button>
-    </form>
-  `
+  return renderCampoInline({
+    editando: state.ramoNombreEnEdicion.has(ramo.id),
+    id: ramo.id,
+    formAction: 'nombre-ramo',
+    accionEditar: 'editar-nombre-ramo',
+    accionCancelar: 'cancelar-nombre-ramo',
+    // Layout propio (ver admin.css .admin-ramo-nombre): mismo DOM que antes de la
+    // unificación (botón envuelto en su propia <span> de ancho fijo), no el genérico
+    // admin-valor-fijo — ver comentario arriba de renderTablaRamosGestion.
+    wrapperClase: 'admin-ramo-nombre',
+    accionWrapperClase: 'admin-ramo-nombre__accion',
+    lectura: `<span class="admin-ramo-nombre__texto">${escapeHtml(ramo.nombre_display)}</span>`,
+    campos: [{ tipo: 'text', name: 'nombre_display', value: ramo.nombre_display, autofocus: true }],
+  })
 }
 
 // ---------------------------------------------------------------------------

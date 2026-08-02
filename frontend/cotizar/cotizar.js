@@ -804,84 +804,96 @@ function capitalAseguradoParaBody(plan) {
   return 0
 }
 
-// Arma el `riesgo_datos` esperado por el calculador del ramo/plan actual (ver
-// incendio.calculator.js / vida-ap.calculator.js para el shape exacto).
-function armarRiesgoDatos(plan) {
+function armarRiesgoDatosMrc(plan) {
   const d = state.data
-
-  if (state.ramoId === 'mrc') {
-    return {
-      cedula: d.cedula || '',
-      direccion: d.direccion || '',
-      rubro_actividad: d.rubroActividad || '',
-      ciudad: d.ciudad || '',
-      capital_edificio: Number(d.capitalEdificio) || 0,
-      capital_contenido: Number(d.capitalContenido) || 0,
-      coberturas_adicionales: [
-        ...sublimitesFijosMrc().map((s) => ({ codigo: s.codigo, suma_asegurada: s.monto })),
-        ...state.coberturasAdicionales
-          .filter((l) => l.codigo && Number(l.sumaAsegurada) > 0)
-          .map((l) => ({ codigo: l.codigo, suma_asegurada: Number(l.sumaAsegurada) })),
-      ],
-      franquicias_por_cobertura: franquiciasPorCoberturaParaBody(),
-    }
+  return {
+    cedula: d.cedula || '',
+    direccion: d.direccion || '',
+    rubro_actividad: d.rubroActividad || '',
+    ciudad: d.ciudad || '',
+    capital_edificio: Number(d.capitalEdificio) || 0,
+    capital_contenido: Number(d.capitalContenido) || 0,
+    coberturas_adicionales: [
+      ...sublimitesFijosMrc().map((s) => ({ codigo: s.codigo, suma_asegurada: s.monto })),
+      ...state.coberturasAdicionales
+        .filter((l) => l.codigo && Number(l.sumaAsegurada) > 0)
+        .map((l) => ({ codigo: l.codigo, suma_asegurada: Number(l.sumaAsegurada) })),
+    ],
+    franquicias_por_cobertura: franquiciasPorCoberturaParaBody(),
   }
+}
 
-  if (state.ramoId === 'incendio') {
-    if (plan.nombre === 'MAQUINARIA BASICO') {
-      return {
-        capital_maquinaria: Number(d.capitalMaquinaria) || 0,
-        ...(d.sublimiteVandalismoPorcentaje !== undefined && d.sublimiteVandalismoPorcentaje !== ''
-          ? { sublimite_vandalismo_porcentaje: Number(d.sublimiteVandalismoPorcentaje) }
-          : {}),
-      }
-    }
-    if (plan.tipo_mecanica === 'objeto_riesgo') {
-      // Los 4 objetos de riesgo son opcionales (ver incendio-planes-objeto-riesgo#Optional risk
-      // objects) — se manda el número declarado (0 si no se cargó), el backend solo suma los
-      // que tengan capital > 0 (ver calcularPorObjetoRiesgo en incendio.calculator.js).
-      const objetosDeclarados = {}
-      for (const { stateKey, riesgoKey } of OBJETOS_RIESGO_CAMPOS) {
-        objetosDeclarados[riesgoKey] = Number(d[stateKey]) || 0
-      }
-      return {
-        rubro_actividad: d.rubroActividad || '',
-        ...objetosDeclarados,
-      }
-    }
+function armarRiesgoDatosIncendio(plan) {
+  const d = state.data
+  if (plan.nombre === 'MAQUINARIA BASICO') {
     return {
-      rubro_actividad: d.rubroActividad || '',
-      capital_edificio: Number(d.capitalEdificio) || 0,
-      capital_contenido: Number(d.capitalContenido) || 0,
-      ...(d.sublimiteFenomenosNaturalesPorcentaje !== undefined &&
-      d.sublimiteFenomenosNaturalesPorcentaje !== ''
-        ? {
-            sublimite_fenomenos_naturales_porcentaje: Number(
-              d.sublimiteFenomenosNaturalesPorcentaje
-            ),
-          }
+      capital_maquinaria: Number(d.capitalMaquinaria) || 0,
+      ...(d.sublimiteVandalismoPorcentaje !== undefined && d.sublimiteVandalismoPorcentaje !== ''
+        ? { sublimite_vandalismo_porcentaje: Number(d.sublimiteVandalismoPorcentaje) }
         : {}),
     }
   }
-
-  if (state.ramoId === 'vida-ap') {
-    const base = { capital_asegurado: Number(d.capitalAsegurado) || 0 }
-    if (plan.nombre === 'PROTECCION FAMILIAR') return base
-
-    base.edad = Number(d.edad) || null
-    if (
-      plan.nombre === 'ACCIDENTES PERSONALES - SECTOR COOPERATIVO' ||
-      plan.nombre === 'ACCIDENTES PERSONALES - SECTOR PRIVADO'
-    ) {
-      if (d.incluyeRentaDiaria) {
-        base.incluye_renta_diaria = true
-        base.suma_renta_diaria = Number(d.sumaRentaDiaria) || 0
-      }
+  if (plan.tipo_mecanica === 'objeto_riesgo') {
+    // Los 4 objetos de riesgo son opcionales (ver incendio-planes-objeto-riesgo#Optional risk
+    // objects) — se manda el número declarado (0 si no se cargó), el backend solo suma los
+    // que tengan capital > 0 (ver calcularPorObjetoRiesgo en incendio.calculator.js).
+    const objetosDeclarados = {}
+    for (const { stateKey, riesgoKey } of OBJETOS_RIESGO_CAMPOS) {
+      objetosDeclarados[riesgoKey] = Number(d[stateKey]) || 0
     }
-    return base
+    return {
+      rubro_actividad: d.rubroActividad || '',
+      ...objetosDeclarados,
+    }
   }
+  return {
+    rubro_actividad: d.rubroActividad || '',
+    capital_edificio: Number(d.capitalEdificio) || 0,
+    capital_contenido: Number(d.capitalContenido) || 0,
+    ...(d.sublimiteFenomenosNaturalesPorcentaje !== undefined &&
+    d.sublimiteFenomenosNaturalesPorcentaje !== ''
+      ? {
+          sublimite_fenomenos_naturales_porcentaje: Number(d.sublimiteFenomenosNaturalesPorcentaje),
+        }
+      : {}),
+  }
+}
 
-  return {}
+function armarRiesgoDatosVidaAp(plan) {
+  const d = state.data
+  const base = { capital_asegurado: Number(d.capitalAsegurado) || 0 }
+  if (plan.nombre === 'PROTECCION FAMILIAR') return base
+
+  base.edad = Number(d.edad) || null
+  if (
+    plan.nombre === 'ACCIDENTES PERSONALES - SECTOR COOPERATIVO' ||
+    plan.nombre === 'ACCIDENTES PERSONALES - SECTOR PRIVADO'
+  ) {
+    if (d.incluyeRentaDiaria) {
+      base.incluye_renta_diaria = true
+      base.suma_renta_diaria = Number(d.sumaRentaDiaria) || 0
+    }
+  }
+  return base
+}
+
+// switch en vez de un dispatch table por objeto: CodeQL (js/unvalidated-dynamic-method-call)
+// marca cualquier invocación dinámica `obj[key]()` con key derivada de state.ramoId, sin
+// reconocer Object.create(null)/hasOwnProperty/typeof como saneamiento. Un switch con case
+// literales llama directo a la función nombrada, sin invocación dinámica por clave.
+// Arma el `riesgo_datos` esperado por el calculador del ramo/plan actual (ver
+// incendio.calculator.js / vida-ap.calculator.js para el shape exacto).
+function armarRiesgoDatos(plan) {
+  switch (state.ramoId) {
+    case 'mrc':
+      return armarRiesgoDatosMrc(plan)
+    case 'incendio':
+      return armarRiesgoDatosIncendio(plan)
+    case 'vida-ap':
+      return armarRiesgoDatosVidaAp(plan)
+    default:
+      return {}
+  }
 }
 
 async function calcularPreview() {
@@ -1358,93 +1370,93 @@ function camposObjetoRiesgo(plan) {
   `
 }
 
-function camposEspecificosParaRamo(ramo, plan) {
-  if (ramo.nombre === 'mrc') {
+function camposEspecificosMrc() {
+  return `
+    ${camposEdificioContenido()}
+    <div class="field field--span2">
+      ${renderCoberturasAdicionales(coberturasDisponibles())}
+    </div>
+  `
+}
+
+function camposEspecificosIncendio(plan) {
+  if (!plan) {
+    return `<div class="field field--span2"><div class="live-summary__pending">Seleccioná un plan para ver el formulario.</div></div>`
+  }
+  if (plan.nombre === 'MAQUINARIA BASICO') {
     return `
-      ${camposEdificioContenido()}
-      <div class="field field--span2">
-        ${renderCoberturasAdicionales(coberturasDisponibles())}
+      <div class="field">
+        <label for="${idParaCampo('capitalMaquinaria')}">Capital Maquinaria (USD)</label>
+        <input class="field-input" id="${idParaCampo('capitalMaquinaria')}" type="text" inputmode="numeric" data-field="capitalMaquinaria" data-money="true" placeholder="50.000" value="${fmtGsInput(state.data.capitalMaquinaria)}" />
       </div>
+      ${campoSublimitePorcentaje('sublimiteVandalismoPorcentaje', 'Sublímite Vandalismo (%)')}
     `
   }
-
-  if (ramo.nombre === 'incendio') {
-    if (!plan) {
-      return `<div class="field field--span2"><div class="live-summary__pending">Seleccioná un plan para ver el formulario.</div></div>`
-    }
-    if (plan.nombre === 'MAQUINARIA BASICO') {
-      return `
-        <div class="field">
-          <label for="${idParaCampo('capitalMaquinaria')}">Capital Maquinaria (USD)</label>
-          <input class="field-input" id="${idParaCampo('capitalMaquinaria')}" type="text" inputmode="numeric" data-field="capitalMaquinaria" data-money="true" placeholder="50.000" value="${fmtGsInput(state.data.capitalMaquinaria)}" />
-        </div>
-        ${campoSublimitePorcentaje('sublimiteVandalismoPorcentaje', 'Sublímite Vandalismo (%)')}
-      `
-    }
-    if (plan.tipo_mecanica === 'objeto_riesgo') {
-      return camposObjetoRiesgo(plan)
-    }
-    return camposEdificioContenido(
-      campoSublimitePorcentaje(
-        'sublimiteFenomenosNaturalesPorcentaje',
-        'Sublímite Fenómenos Naturales (%)'
-      )
+  if (plan.tipo_mecanica === 'objeto_riesgo') {
+    return camposObjetoRiesgo(plan)
+  }
+  return camposEdificioContenido(
+    campoSublimitePorcentaje(
+      'sublimiteFenomenosNaturalesPorcentaje',
+      'Sublímite Fenómenos Naturales (%)'
     )
+  )
+}
+
+function camposEspecificosVidaAp(plan) {
+  if (!plan) {
+    return `<div class="field field--span2"><div class="live-summary__pending">Seleccioná un plan para ver el formulario.</div></div>`
+  }
+  const campoCapital = `
+    <div class="field">
+      <label for="${idParaCampo('capitalAsegurado')}">Capital Asegurado (Gs.)</label>
+      <input class="field-input" id="${idParaCampo('capitalAsegurado')}" type="text" inputmode="numeric" data-field="capitalAsegurado" data-money="true" placeholder="100.000.000" value="${fmtGsInput(state.data.capitalAsegurado)}" />
+    </div>
+  `
+
+  if (plan.nombre === 'PROTECCION FAMILIAR') {
+    return campoCapital
   }
 
-  if (ramo.nombre === 'vida-ap') {
-    if (!plan) {
-      return `<div class="field field--span2"><div class="live-summary__pending">Seleccioná un plan para ver el formulario.</div></div>`
-    }
-    const campoCapital = `
-      <div class="field">
-        <label for="${idParaCampo('capitalAsegurado')}">Capital Asegurado (Gs.)</label>
-        <input class="field-input" id="${idParaCampo('capitalAsegurado')}" type="text" inputmode="numeric" data-field="capitalAsegurado" data-money="true" placeholder="100.000.000" value="${fmtGsInput(state.data.capitalAsegurado)}" />
+  const campoEdad = `
+    <div class="field">
+      <label for="${idParaCampo('edad')}">Edad</label>
+      <input class="field-input" id="${idParaCampo('edad')}" type="number" min="0" max="99" data-field="edad" placeholder="35" value="${escapeHtml(state.data.edad ?? '')}" />
+    </div>
+  `
+
+  if (
+    plan.nombre === 'ACCIDENTES PERSONALES - SECTOR COOPERATIVO' ||
+    plan.nombre === 'ACCIDENTES PERSONALES - SECTOR PRIVADO'
+  ) {
+    const incluyeRenta = Boolean(state.data.incluyeRentaDiaria)
+    return `
+      ${campoCapital}
+      ${campoEdad}
+      <div class="field field--span2">
+        <label class="field-checkbox-label">
+          <input type="checkbox" data-field="incluyeRentaDiaria" ${incluyeRenta ? 'checked' : ''} />
+          Incluir Renta Diaria
+        </label>
       </div>
-    `
-
-    if (plan.nombre === 'PROTECCION FAMILIAR') {
-      return campoCapital
-    }
-
-    const campoEdad = `
-      <div class="field">
-        <label for="${idParaCampo('edad')}">Edad</label>
-        <input class="field-input" id="${idParaCampo('edad')}" type="number" min="0" max="99" data-field="edad" placeholder="35" value="${escapeHtml(state.data.edad ?? '')}" />
-      </div>
-    `
-
-    if (
-      plan.nombre === 'ACCIDENTES PERSONALES - SECTOR COOPERATIVO' ||
-      plan.nombre === 'ACCIDENTES PERSONALES - SECTOR PRIVADO'
-    ) {
-      const incluyeRenta = Boolean(state.data.incluyeRentaDiaria)
-      return `
-        ${campoCapital}
-        ${campoEdad}
-        <div class="field field--span2">
-          <label class="field-checkbox-label">
-            <input type="checkbox" data-field="incluyeRentaDiaria" ${incluyeRenta ? 'checked' : ''} />
-            Incluir Renta Diaria
-          </label>
+      ${
+        incluyeRenta
+          ? `
+        <div class="field">
+          <label for="${idParaCampo('sumaRentaDiaria')}">Suma Renta Diaria (Gs.)</label>
+          <input class="field-input" id="${idParaCampo('sumaRentaDiaria')}" type="text" inputmode="numeric" data-field="sumaRentaDiaria" data-money="true" placeholder="50.000" value="${fmtGsInput(state.data.sumaRentaDiaria)}" />
         </div>
-        ${
-          incluyeRenta
-            ? `
-          <div class="field">
-            <label for="${idParaCampo('sumaRentaDiaria')}">Suma Renta Diaria (Gs.)</label>
-            <input class="field-input" id="${idParaCampo('sumaRentaDiaria')}" type="text" inputmode="numeric" data-field="sumaRentaDiaria" data-money="true" placeholder="50.000" value="${fmtGsInput(state.data.sumaRentaDiaria)}" />
-          </div>
-        `
-            : ''
-        }
       `
-    }
-
-    // VIDA DIRECTIVOS Y EMPLEADOS
-    return `${campoCapital}${campoEdad}`
+          : ''
+      }
+    `
   }
 
+  // VIDA DIRECTIVOS Y EMPLEADOS
+  return `${campoCapital}${campoEdad}`
+}
+
+function camposEspecificosPendiente() {
   return `
     <div class="field field--span2">
       <div class="live-summary__pending live-summary__pending--gap">
@@ -1453,6 +1465,19 @@ function camposEspecificosParaRamo(ramo, plan) {
       </div>
     </div>
   `
+}
+
+function camposEspecificosParaRamo(ramo, plan) {
+  switch (ramo.nombre) {
+    case 'mrc':
+      return camposEspecificosMrc()
+    case 'incendio':
+      return camposEspecificosIncendio(plan)
+    case 'vida-ap':
+      return camposEspecificosVidaAp(plan)
+    default:
+      return camposEspecificosPendiente()
+  }
 }
 
 function renderDatosView(ramo) {
@@ -1747,33 +1772,29 @@ function renderLivePanel() {
   }
 }
 
-function renderResultadoView(ramo) {
-  const esCalculable = RAMOS_CON_CALCULO.includes(state.ramoId)
-  const plan = state.planes.find((p) => p.id === state.planId)
-  const planLabel = plan ? plan.nombre : '—'
-
-  if (!esCalculable || !state.preview) {
-    return `
-      <div class="resultado-view panel">
-        <div class="resultado-view__inner">
-          ${esCalculable ? `<div class="stepper-wrap">${renderStepper()}</div>` : ''}
-          <div class="resultado-hero">
-            <div>
-              <div class="resultado-hero__label">Plan ${escapeHtml(planLabel)} · ${escapeHtml(ramo.label)}</div>
-              <div class="resultado-hero__price">— <span>Gs. / mes</span></div>
-            </div>
-            <button class="btn-primary" data-action="emitir-carta" disabled title="Requiere una cotización calculada">Emitir carta oferta</button>
+function renderResultadoVacio(ramo, plan, planLabel, esCalculable) {
+  return `
+    <div class="resultado-view panel">
+      <div class="resultado-view__inner">
+        ${esCalculable ? `<div class="stepper-wrap">${renderStepper()}</div>` : ''}
+        <div class="resultado-hero">
+          <div>
+            <div class="resultado-hero__label">Plan ${escapeHtml(planLabel)} · ${escapeHtml(ramo.label)}</div>
+            <div class="resultado-hero__price">— <span>Gs. / mes</span></div>
           </div>
-          <div class="empty-state empty-state--compact">
-            <div class="empty-state__subtitle">
-              ${esCalculable ? 'Completá los datos del riesgo en la pestaña "Datos" para ver el detalle del plan.' : 'Cálculo pendiente de confirmación de tasas para este ramo.'}
-            </div>
+          <button class="btn-primary" data-action="emitir-carta" disabled title="Requiere una cotización calculada">Emitir carta oferta</button>
+        </div>
+        <div class="empty-state empty-state--compact">
+          <div class="empty-state__subtitle">
+            ${esCalculable ? 'Completá los datos del riesgo en la pestaña "Datos" para ver el detalle del plan.' : 'Cálculo pendiente de confirmación de tasas para este ramo.'}
           </div>
         </div>
       </div>
-    `
-  }
+    </div>
+  `
+}
 
+function renderResultadoCompleto(ramo, plan, planLabel) {
   const fp = formaPagoSeleccionada()
   const coberturas = state.preview.coberturas || []
 
@@ -1834,6 +1855,18 @@ function renderResultadoView(ramo) {
       </div>
     </div>
   `
+}
+
+function renderResultadoView(ramo) {
+  const esCalculable = RAMOS_CON_CALCULO.includes(state.ramoId)
+  const plan = state.planes.find((p) => p.id === state.planId)
+  const planLabel = plan ? plan.nombre : '—'
+
+  if (!esCalculable || !state.preview) {
+    return renderResultadoVacio(ramo, plan, planLabel, esCalculable)
+  }
+
+  return renderResultadoCompleto(ramo, plan, planLabel)
 }
 
 // Bloque "Suma Asegurada / Costo Contado / Costo Financiado" — mismo formato que la pantalla

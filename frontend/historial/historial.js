@@ -461,10 +461,7 @@ function renderPaginacion() {
   `
 }
 
-function renderModalDetalle() {
-  const m = state.modal
-  const row = m.row
-
+function renderCuerpoModalDetalle(m) {
   let cuerpo =
     '<div class="empty-state__subtitle"><span class="spinner" aria-hidden="true"></span> Cargando detalle…</div>'
   if (m.error) {
@@ -548,11 +545,18 @@ function renderModalDetalle() {
     `
   }
 
+  return cuerpo
+}
+
+function renderModalDetalle() {
+  const m = state.modal
+  const row = m.row
+
   return `
     <div class="admin-modal-backdrop" data-action="cerrar-modal-backdrop">
       <div class="admin-modal historial-modal-detalle" data-stop-propagation="true" role="dialog" aria-modal="true" aria-labelledby="historial-modal-title">
         <div class="admin-modal__title" id="historial-modal-title">Cotización ${escapeHtml(row?.numero_cotizacion ?? '')}</div>
-        ${cuerpo}
+        ${renderCuerpoModalDetalle(m)}
         <div class="admin-modal__actions">
           ${
             row && puedeEditar(row)

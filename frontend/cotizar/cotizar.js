@@ -877,19 +877,23 @@ function armarRiesgoDatosVidaAp(plan) {
   return base
 }
 
-// Object.create(null): sin prototype chain, un ramoId como 'constructor' o 'toString'
-// nunca puede resolver a un método heredado (CodeQL js/unvalidated-dynamic-method-call).
-const ARMAR_RIESGO_DATOS_POR_RAMO = Object.assign(Object.create(null), {
-  mrc: armarRiesgoDatosMrc,
-  incendio: armarRiesgoDatosIncendio,
-  'vida-ap': armarRiesgoDatosVidaAp,
-})
-
+// switch en vez de un dispatch table por objeto: CodeQL (js/unvalidated-dynamic-method-call)
+// marca cualquier invocación dinámica `obj[key]()` con key derivada de state.ramoId, sin
+// reconocer Object.create(null)/hasOwnProperty/typeof como saneamiento. Un switch con case
+// literales llama directo a la función nombrada, sin invocación dinámica por clave.
 // Arma el `riesgo_datos` esperado por el calculador del ramo/plan actual (ver
 // incendio.calculator.js / vida-ap.calculator.js para el shape exacto).
 function armarRiesgoDatos(plan) {
-  const armar = ARMAR_RIESGO_DATOS_POR_RAMO[state.ramoId]
-  return typeof armar === 'function' ? armar(plan) : {}
+  switch (state.ramoId) {
+    case 'mrc':
+      return armarRiesgoDatosMrc(plan)
+    case 'incendio':
+      return armarRiesgoDatosIncendio(plan)
+    case 'vida-ap':
+      return armarRiesgoDatosVidaAp(plan)
+    default:
+      return {}
+  }
 }
 
 async function calcularPreview() {
@@ -1463,15 +1467,17 @@ function camposEspecificosPendiente() {
   `
 }
 
-const CAMPOS_ESPECIFICOS_POR_RAMO = Object.assign(Object.create(null), {
-  mrc: camposEspecificosMrc,
-  incendio: camposEspecificosIncendio,
-  'vida-ap': camposEspecificosVidaAp,
-})
-
 function camposEspecificosParaRamo(ramo, plan) {
-  const renderer = CAMPOS_ESPECIFICOS_POR_RAMO[ramo.nombre]
-  return typeof renderer === 'function' ? renderer(plan) : camposEspecificosPendiente()
+  switch (ramo.nombre) {
+    case 'mrc':
+      return camposEspecificosMrc()
+    case 'incendio':
+      return camposEspecificosIncendio(plan)
+    case 'vida-ap':
+      return camposEspecificosVidaAp(plan)
+    default:
+      return camposEspecificosPendiente()
+  }
 }
 
 function renderDatosView(ramo) {

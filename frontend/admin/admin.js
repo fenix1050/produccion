@@ -2200,74 +2200,94 @@ function renderModalCobertura() {
   `
 }
 
+function renderCuerpoModalCrear(m) {
+  return `
+    <div class="admin-modal__field">
+      <label for="admin-modal-nombre">Nombre</label>
+      <input class="field-input" id="admin-modal-nombre" type="text" name="nombre" value="${escapeHtml(m.nombre)}" />
+    </div>
+    <div class="admin-modal__field">
+      <label for="admin-modal-email">Email</label>
+      <input class="field-input" id="admin-modal-email" type="email" name="email" value="${escapeHtml(m.email)}" />
+    </div>
+    <div class="admin-modal__field">
+      <label for="admin-modal-rol">Rol</label>
+      <select class="field-input" id="admin-modal-rol" name="rol_id">
+        ${renderOpcionesRoles(m.rol_id)}
+      </select>
+    </div>
+    <div class="admin-modal__field">
+      <label for="admin-modal-password">Contraseña (mín. 8 caracteres)</label>
+      <input class="field-input" id="admin-modal-password" type="password" name="password" autocomplete="new-password" />
+    </div>
+  `
+}
+
+function renderCuerpoModalEditar(m) {
+  return `
+    <div class="admin-modal__field">
+      <label for="admin-modal-nombre">Nombre</label>
+      <input class="field-input" id="admin-modal-nombre" type="text" name="nombre" value="${escapeHtml(m.nombre)}" />
+    </div>
+    <div class="admin-modal__field">
+      <label for="admin-modal-email">Email</label>
+      <input class="field-input" id="admin-modal-email" type="email" name="email" value="${escapeHtml(m.email)}" />
+    </div>
+    <div class="admin-modal__field">
+      <label for="admin-modal-rol">Rol</label>
+      <select class="field-input" id="admin-modal-rol" name="rol_id">
+        ${renderOpcionesRoles(m.rol_id)}
+      </select>
+    </div>
+    <div class="admin-modal__field">
+      <label class="admin-modal__checkbox">
+        <input type="checkbox" name="activo" ${m.activo ? 'checked' : ''} />
+        Activo
+      </label>
+    </div>
+    <div class="admin-modal__field">
+      <label for="admin-modal-descuento">Descuento máx. propio (%) — vacío = usa el tope del plan</label>
+      <input class="field-input" id="admin-modal-descuento" type="number" step="0.01" min="0" max="100" name="descuento_maximo_pct" value="${m.descuento_maximo_pct ?? ''}" />
+    </div>
+    <div class="admin-modal__field">
+      <label for="admin-modal-recargo">Recargo máx. propio (%) — vacío = usa el tope del plan</label>
+      <input class="field-input" id="admin-modal-recargo" type="number" step="0.01" min="0" max="100" name="recargo_maximo_pct" value="${m.recargo_maximo_pct ?? ''}" />
+    </div>
+  `
+}
+
+function renderCuerpoModalPassword() {
+  return `
+    <div class="admin-modal__field">
+      <label for="admin-modal-password">Nueva contraseña (mín. 8 caracteres)</label>
+      <input class="field-input" id="admin-modal-password" type="password" name="password" autocomplete="new-password" />
+    </div>
+  `
+}
+
+// Un renderer por tipo de modal de usuario (crear/editar/password) — cada uno
+// resuelve su propio título y cuerpo, evitando el if/else único que antes
+// mezclaba los 3 casos en la misma función.
+const RENDERERS_MODAL_USUARIO = {
+  crear: {
+    titulo: () => 'Nuevo usuario',
+    cuerpo: renderCuerpoModalCrear,
+  },
+  editar: {
+    titulo: (m) => `Editar ${escapeHtml(m.usuario.nombre)}`,
+    cuerpo: renderCuerpoModalEditar,
+  },
+  password: {
+    titulo: (m) => `Resetear contraseña de ${escapeHtml(m.usuario.nombre)}`,
+    cuerpo: renderCuerpoModalPassword,
+  },
+}
+
 function renderModal() {
   const m = state.modal
-  let titulo = ''
-  let cuerpo = ''
-
-  if (m.tipo === 'crear') {
-    titulo = 'Nuevo usuario'
-    cuerpo = `
-      <div class="admin-modal__field">
-        <label for="admin-modal-nombre">Nombre</label>
-        <input class="field-input" id="admin-modal-nombre" type="text" name="nombre" value="${escapeHtml(m.nombre)}" />
-      </div>
-      <div class="admin-modal__field">
-        <label for="admin-modal-email">Email</label>
-        <input class="field-input" id="admin-modal-email" type="email" name="email" value="${escapeHtml(m.email)}" />
-      </div>
-      <div class="admin-modal__field">
-        <label for="admin-modal-rol">Rol</label>
-        <select class="field-input" id="admin-modal-rol" name="rol_id">
-          ${renderOpcionesRoles(m.rol_id)}
-        </select>
-      </div>
-      <div class="admin-modal__field">
-        <label for="admin-modal-password">Contraseña (mín. 8 caracteres)</label>
-        <input class="field-input" id="admin-modal-password" type="password" name="password" autocomplete="new-password" />
-      </div>
-    `
-  } else if (m.tipo === 'editar') {
-    titulo = `Editar ${escapeHtml(m.usuario.nombre)}`
-    cuerpo = `
-      <div class="admin-modal__field">
-        <label for="admin-modal-nombre">Nombre</label>
-        <input class="field-input" id="admin-modal-nombre" type="text" name="nombre" value="${escapeHtml(m.nombre)}" />
-      </div>
-      <div class="admin-modal__field">
-        <label for="admin-modal-email">Email</label>
-        <input class="field-input" id="admin-modal-email" type="email" name="email" value="${escapeHtml(m.email)}" />
-      </div>
-      <div class="admin-modal__field">
-        <label for="admin-modal-rol">Rol</label>
-        <select class="field-input" id="admin-modal-rol" name="rol_id">
-          ${renderOpcionesRoles(m.rol_id)}
-        </select>
-      </div>
-      <div class="admin-modal__field">
-        <label class="admin-modal__checkbox">
-          <input type="checkbox" name="activo" ${m.activo ? 'checked' : ''} />
-          Activo
-        </label>
-      </div>
-      <div class="admin-modal__field">
-        <label for="admin-modal-descuento">Descuento máx. propio (%) — vacío = usa el tope del plan</label>
-        <input class="field-input" id="admin-modal-descuento" type="number" step="0.01" min="0" max="100" name="descuento_maximo_pct" value="${m.descuento_maximo_pct ?? ''}" />
-      </div>
-      <div class="admin-modal__field">
-        <label for="admin-modal-recargo">Recargo máx. propio (%) — vacío = usa el tope del plan</label>
-        <input class="field-input" id="admin-modal-recargo" type="number" step="0.01" min="0" max="100" name="recargo_maximo_pct" value="${m.recargo_maximo_pct ?? ''}" />
-      </div>
-    `
-  } else if (m.tipo === 'password') {
-    titulo = `Resetear contraseña de ${escapeHtml(m.usuario.nombre)}`
-    cuerpo = `
-      <div class="admin-modal__field">
-        <label for="admin-modal-password">Nueva contraseña (mín. 8 caracteres)</label>
-        <input class="field-input" id="admin-modal-password" type="password" name="password" autocomplete="new-password" />
-      </div>
-    `
-  }
+  const renderer = RENDERERS_MODAL_USUARIO[m.tipo]
+  const titulo = renderer ? renderer.titulo(m) : ''
+  const cuerpo = renderer ? renderer.cuerpo(m) : ''
 
   return `
     <div class="admin-modal-backdrop" data-action="cerrar-modal-backdrop">

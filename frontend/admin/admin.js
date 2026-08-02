@@ -907,13 +907,11 @@ async function cargarRubrosActividad(ramoId) {
 }
 
 function habilitarEdicionRubroActividad(id) {
-  state.rubroActividadEnEdicion.add(id)
-  renderApp()
+  habilitarEdicionInline(state.rubroActividadEnEdicion, id)
 }
 
 function cancelarEdicionRubroActividad(id) {
-  state.rubroActividadEnEdicion.delete(id)
-  renderApp()
+  cancelarEdicionInline(state.rubroActividadEnEdicion, id)
 }
 
 async function guardarRubroActividadTasas(id, form) {
@@ -1901,29 +1899,43 @@ const CATEGORIAS_RUBRO_ACTIVIDAD = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I']
 
 function renderCamposTasaEdificioContenido(rubro) {
   const puedeEditar = Boolean(auth.getUsuario()?.puede_editar_tasas)
-  if (!state.rubroActividadEnEdicion.has(rubro.id)) {
-    return `
-      <div class="admin-valor-fijo">
+
+  return renderCampoInline({
+    editando: state.rubroActividadEnEdicion.has(rubro.id),
+    id: rubro.id,
+    formAction: 'rubro-actividad-tasas',
+    accionEditar: 'editar-tasa-edificio-contenido',
+    accionCancelar: 'cancelar-tasa-edificio-contenido',
+    puedeEditar,
+    lectura: `
         <span>${escapeHtml(rubro.categoria ?? '—')}</span>
         <span>${rubro.tasa_edificio != null ? escapeHtml(String(rubro.tasa_edificio)) : '—'} / ${rubro.tasa_contenido != null ? escapeHtml(String(rubro.tasa_contenido)) : '—'}</span>
-        ${puedeEditar ? `<button class="btn-outline" data-action="editar-tasa-edificio-contenido" data-id="${rubro.id}">Editar</button>` : ''}
-      </div>
-    `
-  }
-  const opcionesCategoria = CATEGORIAS_RUBRO_ACTIVIDAD.map(
-    (cat) => `
-    <option value="${cat}" ${rubro.categoria === cat ? 'selected' : ''}>${cat}</option>
-  `
-  ).join('')
-  return `
-    <form class="admin-inline-form" data-form-action="rubro-actividad-tasas" data-id="${rubro.id}">
-      <select class="field-input field-input--sm" name="categoria" autofocus aria-label="Categoría">${opcionesCategoria}</select>
-      <input class="field-input field-input--sm" type="number" step="0.001" name="tasa_edificio" placeholder="Edificio" value="${rubro.tasa_edificio ?? ''}" />
-      <input class="field-input field-input--sm" type="number" step="0.001" name="tasa_contenido" placeholder="Contenido" value="${rubro.tasa_contenido ?? ''}" />
-      <button class="btn-outline" type="submit">Guardar</button>
-      <button class="btn-outline" type="button" data-action="cancelar-tasa-edificio-contenido" data-id="${rubro.id}">Cancelar</button>
-    </form>
-  `
+      `,
+    campos: [
+      {
+        tipo: 'select',
+        name: 'categoria',
+        value: rubro.categoria,
+        autofocus: true,
+        ariaLabel: 'Categoría',
+        opciones: CATEGORIAS_RUBRO_ACTIVIDAD.map((cat) => ({ value: cat, label: cat })),
+      },
+      {
+        tipo: 'number',
+        name: 'tasa_edificio',
+        step: '0.001',
+        placeholder: 'Edificio',
+        value: rubro.tasa_edificio,
+      },
+      {
+        tipo: 'number',
+        name: 'tasa_contenido',
+        step: '0.001',
+        placeholder: 'Contenido',
+        value: rubro.tasa_contenido,
+      },
+    ],
+  })
 }
 
 function renderTablaTasas() {

@@ -1148,13 +1148,11 @@ async function toggleCoberturaDefecto(planCoberturaId, planId, incluidaPorDefect
 }
 
 function habilitarEdicionCobertura(planCoberturaId) {
-  state.coberturaEnEdicion.add(planCoberturaId)
-  renderApp()
+  habilitarEdicionInline(state.coberturaEnEdicion, planCoberturaId)
 }
 
 function cancelarEdicionCobertura(planCoberturaId) {
-  state.coberturaEnEdicion.delete(planCoberturaId)
-  renderApp()
+  cancelarEdicionInline(state.coberturaEnEdicion, planCoberturaId)
 }
 
 async function guardarMontoFranquicia(planCoberturaId, planId, form) {
@@ -2102,22 +2100,32 @@ function renderTablaCoberturasPlan() {
 }
 
 function renderCamposMontoFranquicia(planCobertura, planId) {
-  if (!state.coberturaEnEdicion.has(planCobertura.id)) {
-    return `
-      <div class="admin-valor-fijo">
-        <span>${planCobertura.monto != null ? escapeHtml(fmtGs(planCobertura.monto)) : '—'} / ${planCobertura.franquicia != null ? escapeHtml(fmtGs(planCobertura.franquicia)) : '—'}</span>
-        <button class="btn-outline" data-action="editar-cobertura-plan" data-id="${planCobertura.id}" data-plan-id="${planId}">Editar</button>
-      </div>
-    `
-  }
-  return `
-    <form class="admin-inline-form" data-form-action="monto-franquicia" data-id="${planCobertura.id}" data-plan-id="${planId}">
-      <input class="field-input field-input--sm" type="number" step="0.01" name="monto" placeholder="Monto" value="${planCobertura.monto ?? ''}" autofocus />
-      <input class="field-input field-input--sm" type="number" step="0.01" name="franquicia" placeholder="Franquicia" value="${planCobertura.franquicia ?? ''}" />
-      <button class="btn-outline" type="submit">Guardar</button>
-      <button class="btn-outline" type="button" data-action="cancelar-cobertura-plan" data-id="${planCobertura.id}">Cancelar</button>
-    </form>
-  `
+  return renderCampoInline({
+    editando: state.coberturaEnEdicion.has(planCobertura.id),
+    id: planCobertura.id,
+    planId,
+    formAction: 'monto-franquicia',
+    accionEditar: 'editar-cobertura-plan',
+    accionCancelar: 'cancelar-cobertura-plan',
+    lectura: `<span>${planCobertura.monto != null ? escapeHtml(fmtGs(planCobertura.monto)) : '—'} / ${planCobertura.franquicia != null ? escapeHtml(fmtGs(planCobertura.franquicia)) : '—'}</span>`,
+    campos: [
+      {
+        tipo: 'number',
+        name: 'monto',
+        step: '0.01',
+        placeholder: 'Monto',
+        value: planCobertura.monto,
+        autofocus: true,
+      },
+      {
+        tipo: 'number',
+        name: 'franquicia',
+        step: '0.01',
+        placeholder: 'Franquicia',
+        value: planCobertura.franquicia,
+      },
+    ],
+  })
 }
 
 function renderModalCobertura() {

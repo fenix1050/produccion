@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.1.14](https://github.com/fenix1050/produccion/compare/v0.1.13...v0.1.14) (2026-08-02)
+
+
+### Bug Fixes
+
+* **cotizaciones:** topar limit de historial y paralelizar generarPdfOferta ([2f9ef7e](https://github.com/fenix1050/produccion/commit/2f9ef7e59f51c90cfd1e5b0bc96ea09849712993))
+* **cotizaciones:** topar limit de historial y paralelizar generarPdfOferta ([a671009](https://github.com/fenix1050/produccion/commit/a6710094e7f0e173ec8c45fdc0be0027c05aecb9))
+* **db:** agregar índices en FKs de alto tráfico sin cubrir por la 033 ([8234f0d](https://github.com/fenix1050/produccion/commit/8234f0d525d76c0a8846a3d1987139005026e9a2))
+* **frontend:** cachear el catálogo de /ramos entre admin, cotizar e historial ([d5b963c](https://github.com/fenix1050/produccion/commit/d5b963c93a208fc44959c4d3207e2cc92ceb7c87))
+* **frontend:** cachear el catálogo de /ramos entre admin, cotizar e historial ([3bd8648](https://github.com/fenix1050/produccion/commit/3bd86480e63da8b16330ad326ee913d3c073c30b))
+* índices faltantes (issue [#83](https://github.com/fenix1050/produccion/issues/83)) + fix de mock.module en Node 24 ([ee09291](https://github.com/fenix1050/produccion/commit/ee092916215a47ae49874d4caca7873cedc260b6))
+* **ramos:** cachear rubros de actividad y catálogo de coberturas por ramo ([6525135](https://github.com/fenix1050/produccion/commit/65251357e0f3aa78baaa1ac07325a29b960db10c))
+* **ramos:** cachear rubros de actividad y catálogo de coberturas por ramo ([84cc6e4](https://github.com/fenix1050/produccion/commit/84cc6e405b0bec548552e23031df6953f344ff21))
+* **server:** cerrar Puppeteer limpiamente en SIGTERM/SIGINT ([23ec7a9](https://github.com/fenix1050/produccion/commit/23ec7a9a179a57e47c3450e27bcc7e6f59551df2))
+* **server:** cerrar Puppeteer limpiamente en SIGTERM/SIGINT ([5104e2c](https://github.com/fenix1050/produccion/commit/5104e2c219c169b9f70a211dd7ec33001a864700))
+* **tests:** usar namedExports en t.mock.module (compat Node 24) ([13a9656](https://github.com/fenix1050/produccion/commit/13a96569c062aa7516770e89c307a432ddb2fd4b))
+
 ## [0.1.13](https://github.com/fenix1050/produccion/compare/v0.1.12...v0.1.13) (2026-07-31)
 
 

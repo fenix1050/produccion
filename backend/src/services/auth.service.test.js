@@ -39,7 +39,7 @@ function crearUsuarioMock(overrides = {}) {
 // usuarios.service.test.js pero con estado en vez de solo funciones fijas.
 function mockearRepositorio(t, usuario) {
   t.mock.module('../repositories/usuarios.repository.js', {
-    exports: {
+    namedExports: {
       findByEmail: async () => usuario,
       findById: async (id) => (String(id) === String(usuario.id) ? usuario : null),
       actualizarUltimaSesion: async () => {},

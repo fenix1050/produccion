@@ -1,7 +1,6 @@
 import { api, auth } from '../shared/api.js'
 import { escapeHtml } from '../shared/dom.js'
-import { renderSidebarFooter, renderTopbarUser } from '../shared/sidebar.js'
-import { ICON_MENU } from '../shared/nav-icons.js'
+import { renderSidebarFooter, renderTopbar as renderTopbarShell } from '../shared/sidebar.js'
 
 // Configuración (self-service) — cualquier usuario logueado (admin o agente) ve su propio
 // perfil y cambia su propia contraseña. Distinto del panel /admin/ (gestión de OTROS
@@ -186,29 +185,14 @@ function renderPerfilHeader() {
 }
 
 function renderTopbar() {
-  return `
-    <div class="topbar">
-      <div class="topbar__red-block">
-        <button
-          type="button"
-          class="sidebar-toggle-btn"
-          data-action="toggle-sidebar"
-          aria-label="Abrir menú"
-          aria-expanded="${state.sidebarAbierta}"
-        >${ICON_MENU}</button>
-        <img class="topbar__logo" src="../login/assets/logo-rojo-con-negro.svg" alt="Aseguradora Tajy" />
-        <div class="topbar__brand-text">
-          <div class="topbar__brand-sub">Sistema de Cotización de Pólizas</div>
-        </div>
+  return renderTopbarShell({
+    sidebarAbierta: state.sidebarAbierta,
+    breadcrumb: `
+      <div class="topbar__breadcrumb">
+        <span class="topbar__crumb-item topbar__crumb-item--current">Configuración</span>
       </div>
-      <div class="topbar__crumb-area">
-        <div class="topbar__breadcrumb">
-          <span class="topbar__crumb-item topbar__crumb-item--current">Configuración</span>
-        </div>
-        ${renderTopbarUser()}
-      </div>
-    </div>
-  `
+    `,
+  })
 }
 
 function renderApp() {

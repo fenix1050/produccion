@@ -1,6 +1,8 @@
 import * as coberturasRepository from '../repositories/coberturas.repository.js'
 import * as ramosRepository from '../repositories/ramos.repository.js'
 
+import { withCache } from './cache.js'
+
 export async function listarRamosActivos() {
   return ramosRepository.findRamosActivos()
 }
@@ -18,9 +20,13 @@ export async function listarClausulasObligatoriasDePlan(planId) {
 }
 
 export async function listarRubrosActividad(ramoId) {
-  return coberturasRepository.findRubrosActividad(ramoId)
+  return withCache(`rubrosActividad:${ramoId}`, () =>
+    coberturasRepository.findRubrosActividad(ramoId)
+  )
 }
 
 export async function listarCoberturasCatalogoDeRamo(ramoId) {
-  return coberturasRepository.findCoberturasCatalogoByRamoId(ramoId)
+  return withCache(`catalogoRamo:${ramoId}`, () =>
+    coberturasRepository.findCoberturasCatalogoByRamoId(ramoId)
+  )
 }

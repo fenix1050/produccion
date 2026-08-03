@@ -1943,9 +1943,9 @@ Cambio SDD `permiso-ver-descuento-plan` (proposal → spec → design → tasks 
 
 **Decisión de Kevin (2026-07-31):** dejar `puede_ver_descuento_plan = false` para `agente` en Supabase real como estado final de producción (no revertir a `true`) — este era el objetivo original del pedido, no solo un dato de prueba.
 
-**Pendiente:** abrir PR desde la rama `sdd/permiso-ver-descuento-plan` (commit `36223f7`) hacia `main`.
+**Corrección de estado (2026-08-02):** mergeado a `main` como PR #74 (commit `0563420`), incluido en el release `0.1.10` de `release-please`. Nada queda pendiente de abrir/pushear.
 
-## 42. Frontend responsive unificado — los 6 módulos, sidebar hamburguesa, PR #81 abierto (2026-07-31)
+## 42. Frontend responsive unificado — los 6 módulos, sidebar hamburguesa (2026-07-31, mergeado a `main`)
 
 Rama `feat/responsive-unificado`, creada desde `main` actualizado (post PR #79/#80). Trabajo pedido por Kevin: unificar los 5 breakpoints dispersos que tenía el CSS (720/900/980/1100/640px, desktop-first, sin sistema) en 3 estándar, y agregar un patrón de colapso al sidebar fijo (compartido por cotizar/admin/historial/configuración) que hasta ahora no existía en absoluto.
 
@@ -1963,4 +1963,147 @@ Rama `feat/responsive-unificado`, creada desde `main` actualizado (post PR #79/#
 
 **Verificación:** 166/166 tests backend en verde. Verificado en vivo con Playwright en 375/480/768/1024/1280px (sidebar en los 4 módulos, `.resultado-layout` de 1 a 2 columnas en el corte de 1024px, formulario de coberturas, modal de admin con `qatest@test.com` — credenciales usadas solo en la sesión de prueba, nunca guardadas en archivos ni en memoria por pedido explícito de Kevin). Verificado también en dispositivo real por Kevin en dos rondas (primera ronda encontró los 3 bugs de arriba; segunda ronda confirmó todo arreglado).
 
-**PR #81 abierto** (`feat/responsive-unificado` → `main`), sin mergear todavía.
+**Corrección de estado (2026-08-02):** PR #81 (`feat/responsive-unificado` → `main`) ya mergeado (commit `4e4598e`), incluido en el release `0.1.13` de `release-please`.
+
+## 43. Sincronización de main tras force-push externo + adopción de `release-please` (2026-08-02)
+
+`main` local estaba desactualizado respecto a `origin/main` — el remoto tuvo un force-push (historia sin ancestro común con la rama local previa, confirmada por Kevin como intencional y ya respaldada). Se hizo `git reset --hard origin/main`; `main` local ahora coincide con la punta `b1035fc` (PR #82, release `0.1.13`).
+
+De paso se detectó que el repo adoptó `release-please` (`release-please-config.json`, `CHANGELOG.md`, tags `v0.1.7`–`v0.1.13`, workflow `.github/workflows/release-please.yml`) y un workflow de CD para el backend (`.github/workflows/deploy-backend.yml`) — ninguno de los dos estaba documentado en `CLAUDE.md`. Se agrega sección nueva ahí. Nota suelta: `backend/package.json` sigue en `"version": "0.1.0"`, desincronizado del tag `v0.1.13` — `release-please` con `release-type: simple` no toca ese archivo, solo `CHANGELOG.md`; no se corrige acá porque no se confirmó con Kevin si conviene mantenerlo sincronizado a mano o dejarlo así.
+
+No se detectaron hallazgos de bug nuevos en esta sincronización — es puesta al día de documentación, no una sesión de desarrollo.
+
+## 44. Retoma de pendientes del issue #83 — los 4 hallazgos mecánicos, uno por PR (2026-08-02)
+
+Issue #83 (auditoría de performance de Claude Routines) había quedado parcialmente resuelto en PR #88 (bug crítico ya corregido, índices FK, fix de mocks — ver CLAUDE.md). En esa sesión se decidió con Kevin dejar 5 hallazgos menores para una sesión dedicada. Esta sección cierra 4 de esos 5 (el quinto, #9, sigue deliberadamente fuera de alcance — mismo criterio que los pendientes de refactor grande del issue #84).
+
+**Orden acordado con Kevin:** una rama y un PR por hallazgo, de menor a mayor riesgo, esperando confirmación de merge antes de arrancar el siguiente.
+
+**#3 — Cache inconsistente en `ramos.service.js` (PR #96, mergeado).** `listarRubrosActividad`/`listarCoberturasCatalogoDeRamo` llamaban al repository directo, sin `withCache`, aunque `cotizacion.service.js` ya cachea las mismas queries. Fix: `listarCoberturasCatalogoDeRamo` reusa la clave `catalogoRamo:${ramoId}` ya existente (hit cruzado con el flujo de cotización); `listarRubrosActividad` usa clave nueva `rubrosActividad:${ramoId}`. Se confirmó que `invalidarCacheCatalogos()` ya cubre las mutaciones de `rubros_actividad`/tasas desde el admin; no hay endpoint de mutación de `coberturas_catalogo`, no aplica.
+
+**#5 — Puppeteer sin cierre limpio (PR #97, mergeado).** `getBrowser()` (`backend/src/templates/oferta/pdf-utils.js`) solo limpiaba su referencia vía el listener `disconnected` (crash o cierre espontáneo) — no había ningún `process.on('SIGTERM'|'SIGINT')` en todo el repo. Como Node corre como PID 1 del contenedor (`Dockerfile`, sin `tini`/`dumb-init`), un shutdown de Docker (deploy automático) mandaba `SIGTERM` sin handler, dejando el Chromium hijo sin cerrar ordenado. Fix: `closeBrowser()` nuevo en `pdf-utils.js`, handlers de `SIGTERM`/`SIGINT` en `server.js` que lo llaman antes de `process.exit(0)`. **Verificación:** la prueba local en Windows fue inconclusa — Node no recibe señales POSIX reales en ese SO, ni `kill -TERM` ni `kill -INT` vía Git Bash llegan al handler registrado. Se verificó en su lugar contra la VPS real (`contabo`, acceso SSH ya configurado): se lanzó un contenedor descartable con la MISMA imagen Docker de producción (`produccion-backend`, nunca se tocó `cotizador-tajy-backend` que sirve tráfico), se copiaron los 2 archivos del fix, se lanzó el browser real y se mandó `kill -TERM` al proceso Node dentro del namespace Linux del contenedor. Resultado: el handler se disparó, `closeBrowser()` resolvió, y los ~8 procesos Chromium (padre + zygote/renderer/crashpad) terminaron limpio sin huérfanos.
+
+**#4 — límite de `/cotizaciones` + `Promise.all` en `generarPdfOferta` (PR #98, mergeado).** `GET /cotizaciones` (historial) no validaba `limit` con ningún schema antes de `.range()` — un cliente podía pedir un límite arbitrario. Nuevo `backend/src/schemas/cotizaciones.schema.js` (`listarCotizacionesQuerySchema`, mismo patrón `safeParse`+`httpError(400,...)` que `rubrosActividadQuerySchema` de `ramos.schema.js`), `limit` acotado 1-100, default 20. Además, `generarPdfOferta` traía `plan`/`ramo`/`planCoberturas` con 3 `await` secuenciales aunque son independientes entre sí (solo dependen de `cotizacion`, ya resuelta) — se paralelizaron con `Promise.all`, mismo patrón que ya usa `resolverContextoRepositorios` en el mismo archivo. Se ajustó el log de instrumentación `[perf-oferta]` (agregado en la sesión original del issue) al nuevo desglose.
+
+**#8 — Catálogo `/ramos` sin cache compartido en frontend (PR #99, mergeado).** `admin.js` reimplementaba un guard de fetch de `/ramos` 3 veces con criterios distintos (uno sin guard, dos con variantes de `state.ramos.length`); `cotizar.js`/`historial.js` cada uno pedía el mismo catálogo por su cuenta. Nuevo `frontend/shared/catalogo.js` con `getRamos()`: memoiza la promesa a nivel de módulo (mismo patrón singleton que `getBrowser()`/`closeBrowser()` del backend, agregado en el fix del #5). Deduplica fetches dentro de la misma carga de página — no persiste entre `/admin`/`/cotizar`/`/historial` porque cada uno es una recarga completa de página, mismo límite que ya existía, documentado explícitamente para no prometer más de lo que da. Los 3 puntos de `admin.js` y los `init()` de `cotizar.js`/`historial.js` reemplazados por `getRamos()`.
+
+**Verificación transversal:** 166/166 tests backend en verde en cada uno de los 4 PRs. `eslint`+`prettier --check` limpios sobre los archivos frontend tocados. #8 verificado en vivo con Playwright (usuario QA `qatest@test.com`, credencial no guardada en memoria ni en archivos por pedido explícito de Kevin): `/cotizar` cotizando MRC con sublímites correctos, `/historial` con filtro de ramo poblado, `/admin` → Tasas/Coberturas/Planes cargando bien (dropdown "Todos los ramos" + tabla con 20 filas), sin errores de consola ni requests fallidos de `/ramos`.
+
+**Hallazgos operativos de la sesión, no relacionados al código en sí:**
+
+- El `backend/.env` local de la máquina Windows de Kevin tiene `FRONTEND_URL` apuntando a producción (`https://cotizador.lat/api`), no a `http://localhost:5000` — rompe CORS para cualquier verificación local con Playwright si se arranca el backend sin overridear la variable (`dotenv` no pisa variables ya seteadas en el proceso, así que `FRONTEND_URL='http://localhost:5000' npm run dev` funciona sin tocar el `.env`, que además está protegido por permisos de la sesión). Relevante para cualquier sesión futura que use el skill `run-cotizador` en esta máquina.
+- Confirmado un proceso `node.exe` suelto en el puerto 3000 entre sesiones de QA en esta máquina Windows — mismo patrón que CLAUDE.md ya documenta para la VPS, ahora también observado localmente. Se mató con confirmación explícita de Kevin antes de actuar.
+
+**Pendiente, deliberadamente fuera de esta sesión:** #9 (JS duplicado/módulos grandes de `admin.js`/`cotizar.js`) — mismo criterio que los pendientes grandes del issue #84 (ver sección correspondiente), requiere sesión dedicada.
+
+## 45. Refactor — unificar "editar inline" en `admin.js` (2026-08-02), PR #101 mergeado a `main`
+
+Cierra el ítem #6 del issue #84 (auditoría de calidad de código), el más grande de los 5 refactors que Kevin había decidido dejar para una sesión dedicada por tocar lógica de permisos por rol y requerir verificación en vivo sección por sección. De los 5, este era el más acotado (comportamiento observable idéntico, sin decisiones de negocio nuevas); los otros 4 (`onActionClick`, `renderModal`, funciones largas de `cotizar.js`/`historial.js`) siguen pendientes.
+
+**Qué se hizo.** Las 6 variantes duplicadas de "editar inline" en `frontend/admin/admin.js` — nombre de ramo, prima técnica mínima, topes desc./recargo, tasa RPF, monto/franquicia, tasa edificio/contenido — comparten el mismo patrón (un `Set` de ids en edición; modo lectura = `admin-valor-fijo` + botón Editar; modo edición = `admin-inline-form` con Guardar/Cancelar). Se agregaron dos funciones antes de `renderCampoNombrePlan`:
+
+- `campoInlineInput(campo)` — renderiza un único `<input>`/`<select>` a partir de `{tipo, name, value, step, min, max, placeholder, form, autofocus, ariaLabel, opciones}`.
+- `renderCampoInline({editando, id, planId, formAction, formId, accionEditar, accionCancelar, puedeEditar, wrapperClase, accionWrapperClase, lectura, campos})` — arma el wrapper de lectura o el `<form>` de edición según `editando`.
+
+Más `habilitarEdicionInline(set, id)` / `cancelarEdicionInline(set, id)`, a los que delegan las 6 funciones nombradas `habilitar*`/`cancelar*` que ya usaban los switches de `onActionClick`/`onInlineFormSubmit` (esos switches no se tocaron). Las funciones `guardar*` (validación, payload, endpoint) quedaron sin tocar a propósito, una por variante — ahí vive el comportamiento real distinto entre variantes (nullable o no, endpoints, `.trim()` en nombre de ramo, manejo de NaN en tasa edificio/contenido) y unificarlas hubiera sido el riesgo real del cambio, no el beneficio.
+
+6 commits, uno por variante, en orden de menor a mayor riesgo: Tasa RPF (caso base, sin gate) → Prima técnica mínima (campo dinámico Gs./USD, acoplado al `form` compartido con el nombre de plan) → Nombre de ramo (layout propio `admin-ramo-nombre`, resuelto con el parámetro nuevo `accionWrapperClase` sin tocar CSS) → Topes (gate de rol admin literal) → Monto/franquicia (dos campos independientes nullable, `data-plan-id` de fila anidada) → Tasa edificio/contenido (select + gate de permiso `puede_editar_tasas`, el más complejo). Sin cambios de comportamiento observable: mismos permisos, mismo manejo de null, mismo formato de valores, mismos endpoints. 166/166 tests backend en verde (cambio frontend-only, no-op esperado).
+
+**Verificación en vivo con Playwright**, contra 3 roles temporales creados y borrados en Supabase al terminar (admin literal; un rol con `puede_editar_planes`/`puede_editar_tasas` pero sin rol admin — usando el rol real "Analista de Riesgo"; un rol nuevo de solo esta sesión sin `puede_editar_tasas`): 19/19 aserciones en verde, incluyendo el caso de mayor riesgo (dos filas de monto/franquicia de MRC editadas simultáneamente sin cruce de `data-id`/`data-plan-id`) y la confirmación de que sin `puede_editar_tasas` la sección "Tasas" completa desaparece del sidebar (gate preexistente a nivel de `seccionesVisibles()`, no solo el botón — se confirmó que sigue intacto).
+
+**Incidente de proceso durante la verificación (documentado para no repetirlo):**
+
+- Un primer intento de delegar la implementación a un sub-agente en background devolvió un resumen que parecía completo pero no había hecho ningún cambio real (0 commits, 0 archivos tocados) — se detectó comparando contra `git log`/`git status` antes de confiar en el reporte, y se relanzó. El relanzamiento sí generó trabajo real, pero en paralelo con un segundo intento (lanzado por error, creyendo que el primero había fallado del todo) que también completó los 6 commits de forma independiente — se compararon ambos diffs (funcionalmente equivalentes, 166/166 en los dos) y se descartó el duplicado.
+- El script de Playwright de verificación tenía un bug propio (no del código de `admin.js`): locators que filtraban filas por `[data-action="editar-*"]` dejaban de matchear la fila correcta en cuanto esta entraba en modo edición (el botón se reemplaza por el `<form>`), haciendo que `.first()`/`.nth()` reapuntara a otra fila tras cada click. Se resolvió capturando el `data-id` antes de clickear y usando selectores por id fijo para el resto de la interacción — patrón a reusar en futuras verificaciones de Playwright sobre este mismo módulo.
+- Ese bug del script hizo que dos corridas mutaran temporalmente datos reales de Supabase (plan "PLAN TAJY PREMIUM", id=1: nombre y `prima_tecnica_minima`). Se detectó, se restauró al valor de seed original (`3190000`, migración `008_seed_planes_auto.sql`) y se confirmó por SQL que el resto de los registros tocados (ramo, tasa RPF, topes, coberturas, tasa edificio/contenido) habían quedado exactamente como estaban antes de la prueba — el resto de las variantes sí revertían correctamente dentro del propio script.
+- CI falló una vez por formato (`quality` / Prettier) sobre una única línea larga en `admin.js`. **Gotcha a evitar:** correr `npx prettier . --write` sin acotar a un archivo reformatea el repo entero (cientos de archivos sin relación, aparentemente porque gran parte del repo nunca pasó por un `format:check` masivo, solo por el lint-staged de pre-commit sobre archivos tocados) — se descartó ese cambio con `git checkout -- .` y se corrigió solo con `npx prettier --write frontend/admin/admin.js`.
+
+## 46. Refactor — dividir `renderModal` en un renderer por tipo de usuario (2026-08-02), PR #102 mergeado a `main`
+
+Segundo de los 4 refactors grandes que quedaban pendientes del issue #84 (el primero fue la unificación de "editar inline", sección 45). Rama `refactor/admin-render-modal`.
+
+**Qué se hizo.** `renderModal` en `frontend/admin/admin.js` (~85 líneas) armaba los 3 cuerpos del modal de usuario (crear/editar/password) en un único if/else. Se extrajeron `renderCuerpoModalCrear`, `renderCuerpoModalEditar`, `renderCuerpoModalPassword` (cada uno devuelve solo el cuerpo HTML), y un mapa `RENDERERS_MODAL_USUARIO` que asocia cada `tipo` a su `titulo(m)`/`cuerpo(m)`. `renderModal` queda como wrapper delgado que resuelve `titulo`/`cuerpo` desde el mapa y arma el markup del backdrop/form, sin tocar `renderModalRol`/`renderModalTasa` (funciones separadas, fuera de alcance de este refactor — no forman parte del mismo `if/else`). Sin cambios de comportamiento: mismos campos, mismo título, mismo markup.
+
+**Verificación en vivo con Playwright**, usuario admin real (`qatest@test.com`, credenciales no persistidas en memoria a pedido explícito de Kevin): los 3 modales (Crear/Editar/Resetear contraseña) renderizan título y cantidad de campos idénticos al comportamiento previo — Crear 4 campos (incluye password), Editar 6 campos (incluye descuento/recargo/checkbox activo), Password 1 campo. Único 404 detectado (`frontend/shared/config.js`) es preexistente y no relacionado — archivo local gitignoreado (hay `config.example.js` versionado), no un efecto del refactor. 166/166 tests backend en verde (cambio frontend-only).
+
+**Pendiente del issue #84 tras este PR:** quedan `onActionClick` (~195 líneas, ~40 ramas) y las funciones largas de `cotizar.js`/`historial.js` (`camposEspecificosParaRamo`, `renderResultadoView`, `armarRiesgoDatos`, `renderModalDetalle`).
+
+## 47. Refactor — `onActionClick` de `admin.js` a dispatch table (2026-08-02), PR #103 mergeado a `main`
+
+Tercero de los 4 refactors grandes del issue #84. `onActionClick` en `frontend/admin/admin.js:2524-2719` era un if/else en cascada de ~195 líneas sobre `el.dataset.action` (~40 ramas), el más grande de los 4 pendientes.
+
+**Qué se hizo.** Se extrajo `handleSeleccionarSeccion(el)` (la rama más grande, con efectos secundarios de carga de datos por sección — usuarios/roles, planes, tasas/coberturas, ramos). El resto se volcó a un objeto `ACTION_HANDLERS` (clave = `data-action`, valor = handler que recibe el elemento clickeado); varias claves (p. ej. `cerrar-modal`/`cerrar-modal-backdrop`) apuntan al mismo handler, igual que el `||` original. `onActionClick` queda como `ACTION_HANDLERS[el.dataset.action]?.(el)`. Sin cambios de comportamiento: mismos `data-action`, mismos efectos, mismo orden de evaluación (irrelevante ahora — es lookup directo, no cascada).
+
+**Verificación en vivo con Playwright**, usuario admin real `qatest@test.com` (credencial pasada por Kevin explícitamente para esta sesión, no persistida en memoria ni en archivos — el script de Playwright se borró de disco al terminar). Antes de poder loguear localmente hubo que resolver un bloqueo de CORS: el `backend/.env` real de la máquina de Kevin tiene `FRONTEND_URL=https://cotizador.lat/api` (producción) — el mismo hallazgo operativo ya documentado en la sección 44. Se reinició el backend local con `FRONTEND_URL='http://localhost:5000' npm run dev` (override de proceso, `dotenv` no pisa variables ya seteadas — no se tocó el archivo `.env`, que además está protegido por permisos de la sesión y no se pudo leer directamente) y se restauró la configuración original al terminar la prueba (confirmado con un segundo `curl -X OPTIONS` que el `Access-Control-Allow-Origin` volvió a `https://cotizador.lat/api`).
+
+Con eso: navegación entre las 5 secciones reales del sidebar (`usuarios`, `coberturas`, `tasas`, `planes`, `ramos` — nota: `roles` NO es una sección propia de `SECCIONES`, vive como tabla/modal dentro de "usuarios", un primer intento de navegar a ella como sección aparte falló como se esperaba), apertura y cierre de modales (`crear-usuario`, `crear-rol`) vía tecla Escape, `toggle-plan-activo` (con reversión al valor original), `toggle-ramo-activo`, `editar-nombre-ramo`/`cancelar-nombre-ramo` inline, y `seleccionar-ramo-coberturas` (select) — todas las acciones probadas se comportaron igual que antes del refactor. 166/166 tests backend en verde (cambio frontend-only, no-op esperado).
+
+**Hallazgo de proceso (script de verificación, no del código):** el primer intento de cerrar un modal hizo click "forzado" directo sobre el backdrop, que quedó interceptando eventos y bloqueó el resto del recorrido (timeout esperando el siguiente botón). Se resolvió usando `Escape` (ya soportado por `onKeydown` en `admin.js`) en vez de clickear el backdrop — más robusto para este patrón de modal.
+
+**De paso, sin corregir (fuera de alcance):** un 404 preexistente de `frontend/shared/config.js` (falta el archivo, solo existe `config.example.js` versionado) — mismo hallazgo ya registrado en la sección 46, confirmado otra vez que no tiene relación con este refactor.
+
+**CI y merge.** El PR falló una vez en el check `quality` (Prettier reformateaba `'cancelar-tasa-edificio-contenido': (el) => cancelarEdicionRubroActividad(...)` a una sola línea) — corregido con `npx prettier --write frontend/admin/admin.js` (acotado al archivo, no al repo completo, mismo gotcha ya documentado en la sección 45), 166/166 tests siguieron en verde, CI en verde en el segundo push, PR #103 mergeado a `main`.
+
+**Pendiente del issue #84 tras este cambio:** queda un solo ítem grande — las funciones largas de `cotizar.js`/`historial.js` (`camposEspecificosParaRamo`, `renderResultadoView`, `armarRiesgoDatos`, `renderModalDetalle`).
+
+## 48. Refactor — funciones largas de `cotizar.js`/`historial.js` (2026-08-02), PR #104 mergeado a `main`
+
+Cuarto y último de los 4 refactors grandes del issue #84. Con este PR el issue queda completamente cerrado.
+
+**Qué se hizo.** Cuatro extracciones en dos archivos:
+
+- `armarRiesgoDatos(plan)` en `frontend/cotizar/cotizar.js` (dispatch if/else sobre `state.ramoId`) → `armarRiesgoDatosMrc`/`armarRiesgoDatosIncendio`/`armarRiesgoDatosVidaAp` extraídas, invocadas desde un `switch` con `case` literales (`'mrc'`/`'incendio'`/`'vida-ap'`), fallback a `{}` para ramos sin calculador. El primer intento usó una tabla de lookup por objeto (`ARMAR_RIESGO_DATOS_POR_RAMO`) — CodeQL lo rechazó, ver el gotcha más abajo.
+- `camposEspecificosParaRamo(ramo, plan)` en el mismo archivo (dispatch sobre `ramo.nombre`) → `camposEspecificosMrc`/`camposEspecificosIncendio`/`camposEspecificosVidaAp` extraídas, mismo `switch`, fallback a `camposEspecificosPendiente()` (el texto "todavía no tiene su calculador conectado").
+- `renderResultadoView(ramo)` — a diferencia de las dos anteriores, esta NO era un dispatch por ramo sino un único template largo con dos estados (sin preview vs. con preview calculado). Dividida en `renderResultadoVacio(ramo, plan, planLabel, esCalculable)` y `renderResultadoCompleto(ramo, plan, planLabel)`, `renderResultadoView` queda como wrapper que decide cuál llamar.
+- `renderModalDetalle()` en `frontend/historial/historial.js` — dividida en `renderCuerpoModalDetalle(m)` (el cuerpo: estado loading/error/cargado, incluyendo las tablas anidadas de variantes y coberturas) y el wrapper que arma el shell del modal (backdrop, título, footer de acciones), mismo patrón que el refactor de modal de `admin.js` (sección 46).
+
+Sin cambios de comportamiento en ningún caso — mismas condiciones, mismo texto de fallback, mismos `data-action`.
+
+**Verificación.** 166/166 tests backend en verde (frontend-only, sanity check). Diff revisado línea por línea antes de la verificación en vivo.
+
+**Verificación en vivo con Playwright**, usuario admin real `qatest@test.com` (credencial pasada por Kevin explícitamente para esta sesión). Mismo hallazgo operativo de CORS que en la sección 47 (`backend/.env` real apunta a `https://cotizador.lat/api`) — se reinició el backend con `FRONTEND_URL='http://localhost:5000' npm run dev` como override de proceso y se restauró la configuración original al terminar.
+
+**Hallazgo nuevo — ramos togglados a `Próximamente` en la base real.** Al navegar a Incendio y a Vida y Accidentes Personales en el cotizador, ambos aparecían como "Próximamente" pese a que ambos ramos operan end-to-end en negocio desde julio (ver "Fase 6/7 cerrada a nivel de negocio" en `CLAUDE.md`) — `ramos.activo` estaba en `false` para los dos, aparentemente estado que quedó de otra sesión de QA anterior que los togglaba para probar el admin. Se activaron temporalmente vía el panel admin (sección Ramos) para poder ejercitar el formulario real de cada uno, y se revirtieron a su estado original (`activo=false`) al terminar la prueba — confirmado con captura de pantalla antes/después. El primer intento de togglear fue bloqueado una vez por el clasificador de auto-mode de Claude Code (acción sobre datos reales de producción); se procedió recién tras confirmación explícita de Kevin.
+
+**Cobertura de casos probados** (los 8 branches de ramo reales + el modal de historial, todos sin `pageerror` en consola):
+
+- MRC: plan SEGUCOOP (rechazado por regla de negocio — mínimo 3 coberturas, no por el refactor).
+- Incendio: MAQUINARIA BASICO (rechazado por capital máximo cotizable — regla de negocio), INCENDIO HIPOTECARIO y INCENDIO CON INSPECCION (ambos `tipo_mecanica: 'objeto_riesgo'`, calcularon exitosamente de punta a punta), INCENDIO - EDIFICIO Y CONTENIDO (plan legacy que ejercita el branch default edificio/contenido, calculó exitosamente).
+- Vida y Accidentes Personales: PROTECCION FAMILIAR (calculó exitosamente), ACCIDENTES PERSONALES - SECTOR COOPERATIVO sin renta diaria (calculó exitosamente), ACCIDENTES PERSONALES - SECTOR PRIVADO con el checkbox de renta diaria activado (campo condicional renderizó correctamente, rechazado por regla de negocio — la renta diaria de prueba superaba el tope del 1‰ del capital de muerte).
+- Historial: modal de detalle de una cotización real (MRC-343) renderizando variantes, formas de pago y coberturas correctamente.
+
+Todos los rechazos fueron validaciones de negocio legítimas activadas por valores de prueba genéricos fuera de rango — no bugs del refactor.
+
+**Gotcha nuevo de infraestructura de pruebas — rate limit de login.** `loginRateLimiter` en `backend/src/middleware/rate-limit.js` permite 10 intentos de login por 15 minutos por combinación IP+email. Un script de Playwright que abre una página nueva y se loguea de cero en cada caso de prueba agota ese límite rápido (pasó en esta sesión, hubo que esperar a que el límite se reseteara). La solución para scripts de verificación con múltiples casos: loguearse una sola vez y reusar la misma `page`/sesión de browser autenticada para todos los casos de la corrida, navegando entre ramos/planes dentro de esa sesión en vez de abrir una página nueva por caso.
+
+**Gotcha nuevo de CI — CodeQL rechaza dispatch tables por objeto para dispatch por ramo.** El primer push de este PR usó dispatch tables (`ARMAR_RIESGO_DATOS_POR_RAMO`/`CAMPOS_ESPECIFICOS_POR_RAMO`), mismo patrón que los refactors de `admin.js`. El check `CodeQL` (regla `js/unvalidated-dynamic-method-call`) lo marcó como alerta de severidad alta: `state.ramoId`/`ramo.nombre` cuentan como "user-controlled" para su análisis de taint, aunque en la práctica solo pueden tomar los valores fijos hardcodeados en `RAMOS_UI` (nunca texto libre de usuario). Se probaron 3 mitigaciones sucesivas, cada una fallando el mismo check hasta la última:
+
+1. `Object.prototype.hasOwnProperty.call(tabla, key)` antes del lookup — ignorado por CodeQL.
+2. Tabla con `Object.create(null)` (sin prototype chain) + `typeof fn === 'function'` antes de invocar — tampoco reconocido como saneamiento.
+3. **Reemplazar el dispatch table por un `switch` con `case` literales que llama directo a la función nombrada** (sin `obj[key]()` en ningún punto del código) — esto sí pasó el check, porque ya no hay invocación dinámica por clave que analizar.
+
+Conclusión práctica para futuros refactors: para dispatch por un valor con origen en `dataset`/DOM en este repo, preferir `switch`/if-else con comparaciones literales por sobre un dispatch table por objeto — no por riesgo real de seguridad (acá el dominio de valores es fijo), sino porque CodeQL es un gate obligatorio de CI que no reconoce las mitigaciones estándar como saneamiento para esta regla específica.
+
+**CI y merge.** 3 commits de fix adicionales tras el push inicial (uno por cada intento de mitigación de CodeQL descrito arriba) hasta que los 3 checks obligatorios (`quality`, `Analyze JavaScript`, `CodeQL`) quedaron en verde. PR #104 mergeado a `main`, rama borrada (local y remota).
+
+**Con esto, el issue #84 (auditoría de calidad de código) queda completamente cerrado** — los 4 refactors grandes identificados en la auditoría original (secciones 45, 46, 47 y esta) están todos implementados y verificados.
+
+## 49. `admin-module-split` PR5 — `render/planes.js` extraído (2026-08-02), PR #110 mergeado a `main`
+
+Quinto de los 10 PRs del plan `admin-module-split` (issue #83/#84 finding #9, división de `frontend/admin/admin.js` en módulos ES nativos). PR1-4 (foundation, `render/campos-inline.js`, `render/usuarios.js`, `render/modales-usuario.js`) ya mergeados a `main`.
+
+**Qué se hizo.** Pure move de 8 funciones a `frontend/admin/render/planes.js`: `renderPlanes` (exportada), `renderTablaPlanes`, `renderFormasPagoDelPlan`, `esPlanSoloUsd`, `renderCampoNombrePlan`, `renderCampoPrimaTecnicaMinima`, `renderCampoTopes`, `renderCampoTasaRpf` (privadas, solo usadas internamente). Mismo patrón que `render/usuarios.js`/`render/modales-usuario.js`: importa `state.js` + `render/campos-inline.js` + módulos compartidos (`shared/api.js` para `auth`, `shared/dom.js` para `escapeHtml`, `shared/format.js` para `fmtGs`/`fmtUsd`), sin depender de otros dominios. `admin.js` importa `renderPlanes` y sigue invocándola desde el dispatcher de sección. De paso se sacó el import de `fmtUsdConPrefijo as fmtUsd` en `admin.js`, que quedó sin uso tras el move (solo se usaba dentro del bloque extraído). Sin cambios de comportamiento.
+
+**Verificación.** 166/166 tests backend en verde (frontend-only, sanity check). `npx prettier --write` acotado a los 2 archivos tocados.
+
+**Verificación en vivo con Playwright**, usuario admin real `kevinruiz@tajy.com.py` (credencial pasada por Kevin explícitamente para esta sesión, no persistida). Mismo hallazgo operativo de CORS que en secciones 47/48: el backend local que ya estaba corriendo (de otra sesión) tenía `FRONTEND_URL=https://cotizador.lat` (config real de `.env`) en vez de `localhost:5000`, así que el browser bloqueaba la respuesta de login por CORS aunque `curl` directo confirmaba 401/200 normales. Se reinició el proceso del backend con `FRONTEND_URL='http://localhost:5000' npm run dev` como override, y se restauró a su configuración original (sin override, leyendo el `.env` real) al terminar — confirmado con `curl` que el header `Access-Control-Allow-Origin` volvió a `https://cotizador.lat/api`.
+
+**Cobertura de casos probados**, capturas de pantalla antes/después de cada acción, cero errores de consola reales (los únicos 4 "errores" reportados por el listener eran el 404 preexistente y conocido de `frontend/shared/config.js`, que el mensaje de consola no incluye en su texto — confirmado con un segundo script que sí loguea la URL de cada 404):
+
+- Tabla de Planes carga sus 20 filas reales con nombre, ramo, estado, prima técnica mínima y topes.
+- Filtro "Todos los ramos" / por ramo puntual reacciona sin error.
+- "Formas de pago" expande la subtabla anidada (Tarjeta de Crédito, Contado, Crédito Cobrador, Boca de Cobranza) con sus tasas RPF y estado habilitada/deshabilitada.
+- Edición inline de Prima técnica mínima abre el `<input>` con Guardar/Cancelar (no se guardó el cambio, solo se verificó apertura/cierre).
+- Edición inline de Topes desc./recargo abre los dos `<input>` (Desc. %/Rec. %) — botón "Editar" visible porque el usuario logueado es admin literal, tal como espera `renderCampoTopes`.
+
+**Mergeado.** PR #110 mergeado a `main` (commit `f26e36b`), rama `refactor/admin-module-split-pr5` borrada (local y remota). Sigue PR6 (`render/tasas.js` + `render/ramos.js`) del plan de 10.

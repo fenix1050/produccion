@@ -21,7 +21,7 @@ function crearResFake() {
 test('listarRubrosActividad: sin ramo_id responde 400 y no llama al service', async (t) => {
   let llamado = false
   t.mock.module('../services/ramos.service.js', {
-    exports: {
+    namedExports: {
       listarRubrosActividad: () => {
         llamado = true
         return []
@@ -44,7 +44,7 @@ test('listarRubrosActividad: sin ramo_id responde 400 y no llama al service', as
 
 test('listarRubrosActividad: ramo_id no numérico responde 400', async (t) => {
   t.mock.module('../services/ramos.service.js', {
-    exports: { listarRubrosActividad: () => [] },
+    namedExports: { listarRubrosActividad: () => [] },
   })
   const { listarRubrosActividad } = await import('./ramos.controller.js?case=ramo-id-no-numerico')
 
@@ -61,7 +61,7 @@ test('listarRubrosActividad: ramo_id no numérico responde 400', async (t) => {
 
 test('listarRubrosActividad: ramo_id <= 0 responde 400', async (t) => {
   t.mock.module('../services/ramos.service.js', {
-    exports: { listarRubrosActividad: () => [] },
+    namedExports: { listarRubrosActividad: () => [] },
   })
   const { listarRubrosActividad } = await import('./ramos.controller.js?case=ramo-id-negativo')
 
@@ -79,7 +79,7 @@ test('listarRubrosActividad: ramo_id <= 0 responde 400', async (t) => {
 test('listarRubrosActividad: ramo_id válido llama al service con el número parseado', async (t) => {
   let ramoIdRecibido
   t.mock.module('../services/ramos.service.js', {
-    exports: {
+    namedExports: {
       listarRubrosActividad: (ramoId) => {
         ramoIdRecibido = ramoId
         return [{ id: 1, nombre: 'VIVIENDA' }]

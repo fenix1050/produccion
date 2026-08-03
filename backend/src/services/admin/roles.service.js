@@ -1,9 +1,10 @@
 import * as rolesRepository from '../../repositories/roles.repository.js'
 import { httpError } from '../../utils/http-error.js'
+import {
+  CODIGO_FOREIGN_KEY_VIOLATION,
+  CODIGO_UNIQUE_VIOLATION,
+} from '../../utils/postgres-errors.js'
 import { logSeguridad } from '../../utils/seguridad-logger.js'
-
-const CODIGO_UNIQUE_VIOLATION = '23505' // Postgres: unique_violation
-const CODIGO_FOREIGN_KEY_VIOLATION = '23503' // Postgres: foreign_key_violation
 
 const PERMISOS_ROL = [
   'puede_editar_tasas',

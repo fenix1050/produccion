@@ -290,19 +290,16 @@ Usa Puppeteer (Chromium headless) para convertir HTML → PDF. Cada ramo puede t
 
 - **Backend:** Docker Compose (`docker-compose.yml` + `Dockerfile` en `/backend`) con Caddy como
   reverse proxy TLS (`Caddyfile`, dominio `api.cotizador.lat`) en una VPS propia. `render.yaml`
-  queda como alternativa de despliegue en Render (no es el destino activo). **El redeploy del
-  backend en la VPS es manual** (`git pull` + `docker compose up --build`) — no hay GitHub Action
-  ni pipeline de CD para esto.
+  queda como alternativa de despliegue en Render (no es el destino activo). **Redeploy automático
+  vía CD** (`.github/workflows/deploy-backend.yml`): al terminar CI en verde sobre `main`, un
+  workflow separado se conecta por SSH a la VPS y corre `git reset --hard origin/main` +
+  `docker compose up --build -d backend`, con health check contra `/health` al final.
 - **Frontend:** Vercel (`frontend/vercel.json`), con despliegue automático al hacer push a `main`
   vía la integración nativa de Vercel con GitHub.
-- **Importante:** como el frontend se despliega automático y el backend no, un cambio que
-  modifique el contrato entre ambos (p. ej. un parámetro de query nuevo obligatorio) puede quedar
-  roto en producción hasta que alguien redespliegue el backend a mano. Verificar esto después de
-  mergear cualquier cambio de API a `main`.
 
 ## Estado actual
 
-**Última actualización:** 2026-07-31 — MRC e Incendio operativos end-to-end (calculador + Carta Oferta en PDF); Vida-AP tiene calculador completo pero sigue sin template (falta texto oficial). Incendio suma 3 planes nuevos, moneda USD/Gs. y tasas por rubro de actividad (~209 rubros, migraciones 043/044 ya aplicadas contra Supabase real). MRC suma el plan "SEGUCOOP" con descuento fijo del 10% (permiso de rol dedicado). Panel admin con secciones de Usuarios/Coberturas/Tasas/Planes/Roles/Ramos (esta última para habilitar/deshabilitar, editar nombre y eliminar ramos del sidebar, ahora con 8 ramos) y opción de eliminar planes. RLS activado (default-deny) en las 34 tablas CRITICAL de Supabase. Se removieron los imports de Vercel Analytics/Speed Insights del frontend (rompían con `Uncaught TypeError` fuera del build de Vercel). Backend desplegado en VPS propia (Docker + Caddy, `api.cotizador.lat`, redeploy manual); frontend en Vercel (auto-deploy en `main`).
+**Última actualización:** 2026-07-31 — MRC e Incendio operativos end-to-end (calculador + Carta Oferta en PDF); Vida-AP tiene calculador completo pero sigue sin template (falta texto oficial). Incendio suma 3 planes nuevos, moneda USD/Gs. y tasas por rubro de actividad (~209 rubros, migraciones 043/044 ya aplicadas contra Supabase real). MRC suma el plan "SEGUCOOP" con descuento fijo del 10% (permiso de rol dedicado). Panel admin con secciones de Usuarios/Coberturas/Tasas/Planes/Roles/Ramos (esta última para habilitar/deshabilitar, editar nombre y eliminar ramos del sidebar, ahora con 8 ramos) y opción de eliminar planes. RLS activado (default-deny) en las 34 tablas CRITICAL de Supabase. Se removieron los imports de Vercel Analytics/Speed Insights del frontend (rompían con `Uncaught TypeError` fuera del build de Vercel). Backend desplegado en VPS propia (Docker + Caddy, `api.cotizador.lat`, redeploy automático vía CD tras CI en verde); frontend en Vercel (auto-deploy en `main`).
 
 Ver `docs/ESTADO_PROYECTO.md` para el detalle completo de:
 

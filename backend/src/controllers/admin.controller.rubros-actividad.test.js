@@ -14,7 +14,7 @@ import { test } from 'node:test'
 // lanza si faltan SUPABASE_URL/SUPABASE_SERVICE_KEY. Mockear el cliente acá evita que
 // cualquiera de esos módulos toque Supabase de verdad con solo importarse.
 function mockearSupabase(t) {
-  t.mock.module('../config/supabase.js', { exports: { supabase: {} } })
+  t.mock.module('../config/supabase.js', { namedExports: { supabase: {} } })
 }
 
 function crearResFake() {
@@ -34,7 +34,7 @@ test('admin listarRubrosActividad: sin ramo_id responde 400 y no llama al servic
   mockearSupabase(t)
   let llamado = false
   t.mock.module('../services/admin/rubros-actividad.service.js', {
-    exports: {
+    namedExports: {
       listarRubrosActividad: () => {
         llamado = true
         return []
@@ -59,7 +59,7 @@ test('admin listarRubrosActividad: sin ramo_id responde 400 y no llama al servic
 test('admin listarRubrosActividad: ramo_id=abc responde 400', async (t) => {
   mockearSupabase(t)
   t.mock.module('../services/admin/rubros-actividad.service.js', {
-    exports: { listarRubrosActividad: () => [], editarRubroActividad: () => null },
+    namedExports: { listarRubrosActividad: () => [], editarRubroActividad: () => null },
   })
   const { listarRubrosActividad } = await import('./admin.controller.js?case=admin-ramo-id-abc')
 
@@ -77,7 +77,7 @@ test('admin listarRubrosActividad: ramo_id=abc responde 400', async (t) => {
 test('admin listarRubrosActividad: ramo_id<=0 responde 400', async (t) => {
   mockearSupabase(t)
   t.mock.module('../services/admin/rubros-actividad.service.js', {
-    exports: { listarRubrosActividad: () => [], editarRubroActividad: () => null },
+    namedExports: { listarRubrosActividad: () => [], editarRubroActividad: () => null },
   })
   const { listarRubrosActividad } =
     await import('./admin.controller.js?case=admin-ramo-id-negativo')
@@ -97,7 +97,7 @@ test('admin listarRubrosActividad: ramo_id válido llama al service con el núme
   mockearSupabase(t)
   let ramoIdRecibido
   t.mock.module('../services/admin/rubros-actividad.service.js', {
-    exports: {
+    namedExports: {
       listarRubrosActividad: (ramoId) => {
         ramoIdRecibido = ramoId
         return [{ id: 1, nombre: 'VIVIENDA' }]

@@ -9,7 +9,7 @@ import { test } from 'node:test'
 // lógica de merge que vive en el repository, no la query en sí.
 function mockearSupabase(t, respuestasPorTabla) {
   t.mock.module('../config/supabase.js', {
-    exports: {
+    namedExports: {
       supabase: {
         from(tabla) {
           const respuesta = respuestasPorTabla[tabla] ?? { data: null, error: null }
@@ -126,7 +126,7 @@ test('findTasasRiesgoObjeto: tipo de riesgo existe pero sin ninguna tasa confirm
 function mockearSupabaseRubros(t, { data, error = null }) {
   const llamadas = { select: [], eq: [], order: [] }
   t.mock.module('../config/supabase.js', {
-    exports: {
+    namedExports: {
       supabase: {
         from(tabla) {
           assert.equal(tabla, 'rubros_actividad')

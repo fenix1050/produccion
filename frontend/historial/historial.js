@@ -1,9 +1,9 @@
 import { api, auth } from '../shared/api.js'
 import { crearBadge } from '../shared/badge.js'
-import { escapeHtml, enfocarPrimerElemento, atraparFoco } from '../shared/dom.js'
-import { renderSidebarFooter, renderTopbarUser } from '../shared/sidebar.js'
+import { getRamos } from '../shared/catalogo.js'
+import { escapeHtml, enfocarPrimerElemento, atraparFoco, renderBanner } from '../shared/dom.js'
+import { renderSidebarFooter, renderTopbar as renderTopbarShell } from '../shared/sidebar.js'
 import { fmtMoneda } from '../shared/format.js'
-import { ICON_MENU } from '../shared/nav-icons.js'
 
 // Historial de cotizaciones (Fase 5/WU5) — mismo patrón Vanilla JS que admin.js: state +
 // renderApp() que reconstruye innerHTML + bindEvents() post-render + modal vía state.modal.
@@ -64,7 +64,7 @@ let elementoDisparadorModal = null
 async function init() {
   renderApp()
   try {
-    state.ramos = await api.get('/ramos')
+    state.ramos = await getRamos()
   } catch {
     state.ramos = []
   }
@@ -275,7 +275,7 @@ function renderApp() {
           </div>
         </div>
         <div class="admin-content">
-          ${renderBanner()}
+          ${renderBanner(state.banner)}
           ${renderFiltros()}
           <div class="panel card">
             <div class="card__title">Cotizaciones</div>
@@ -293,29 +293,14 @@ function renderApp() {
 }
 
 function renderTopbar() {
-  return `
-    <div class="topbar">
-      <div class="topbar__red-block">
-        <button
-          type="button"
-          class="sidebar-toggle-btn"
-          data-action="toggle-sidebar"
-          aria-label="Abrir menú"
-          aria-expanded="${state.sidebarAbierta}"
-        >${ICON_MENU}</button>
-        <img class="topbar__logo" src="../login/assets/logo-rojo-con-negro.svg" alt="Aseguradora Tajy" />
-        <div class="topbar__brand-text">
-          <div class="topbar__brand-sub">Sistema de Cotización de Pólizas</div>
-        </div>
+  return renderTopbarShell({
+    sidebarAbierta: state.sidebarAbierta,
+    breadcrumb: `
+      <div class="topbar__breadcrumb">
+        <span class="topbar__crumb-item topbar__crumb-item--current">Historial de cotizaciones</span>
       </div>
-      <div class="topbar__crumb-area">
-        <div class="topbar__breadcrumb">
-          <span class="topbar__crumb-item topbar__crumb-item--current">Historial de cotizaciones</span>
-        </div>
-        ${renderTopbarUser()}
-      </div>
-    </div>
-  `
+    `,
+  })
 }
 
 function renderSidebar() {
@@ -327,11 +312,6 @@ function renderSidebar() {
       </div>
     </div>
   `
-}
-
-function renderBanner() {
-  if (!state.banner) return ''
-  return `<div class="admin-banner admin-banner--${state.banner.tipo}">${escapeHtml(state.banner.texto)}</div>`
 }
 
 function renderFiltros() {
@@ -481,10 +461,7 @@ function renderPaginacion() {
   `
 }
 
-function renderModalDetalle() {
-  const m = state.modal
-  const row = m.row
-
+function renderCuerpoModalDetalle(m) {
   let cuerpo =
     '<div class="empty-state__subtitle"><span class="spinner" aria-hidden="true"></span> Cargando detalle…</div>'
   if (m.error) {
@@ -568,11 +545,18 @@ function renderModalDetalle() {
     `
   }
 
+  return cuerpo
+}
+
+function renderModalDetalle() {
+  const m = state.modal
+  const row = m.row
+
   return `
     <div class="admin-modal-backdrop" data-action="cerrar-modal-backdrop">
       <div class="admin-modal historial-modal-detalle" data-stop-propagation="true" role="dialog" aria-modal="true" aria-labelledby="historial-modal-title">
         <div class="admin-modal__title" id="historial-modal-title">Cotización ${escapeHtml(row?.numero_cotizacion ?? '')}</div>
-        ${cuerpo}
+        ${renderCuerpoModalDetalle(m)}
         <div class="admin-modal__actions">
           ${
             row && puedeEditar(row)

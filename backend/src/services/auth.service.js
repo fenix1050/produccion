@@ -6,6 +6,12 @@ import { httpError } from '../utils/http-error.js'
 import { BCRYPT_ROUNDS } from '../utils/security.js'
 import { logSeguridad } from '../utils/seguridad-logger.js'
 
+// Hash dummy (costo BCRYPT_ROUNDS, sin correlación con ninguna contraseña real) contra el
+// que comparar cuando el usuario no existe o está inactivo — sin esto, bcrypt.compare()
+// solo se ejecuta cuando el email es válido, y la diferencia de tiempo (~80-150ms) permite
+// enumerar cuentas existentes aunque el mensaje de error sea idéntico.
+const HASH_DUMMY_TIMING = bcrypt.hashSync('dummy-timing-constante', BCRYPT_ROUNDS)
+
 // Acortado de 8h a 45m (2026-07-23, hardening de sesión): con token_version como
 // mecanismo de revocación server-side, ya no hace falta un TTL largo para tolerar la
 // falta de invalidación — un token robado ahora expira solo en minutos, no en horas.
@@ -22,12 +28,15 @@ function credencialesInvalidas(email, motivo) {
 
 export async function login(email, password) {
   const usuario = await usuariosRepository.findByEmail(email)
-  if (!usuario || !usuario.password_hash) {
-    throw credencialesInvalidas(email, 'credenciales_invalidas')
-  }
 
-  if (!usuario.activo) {
-    throw credencialesInvalidas(email, 'usuario_inactivo')
+  if (!usuario || !usuario.password_hash || !usuario.activo) {
+    // bcrypt.compare contra un hash dummy aunque no haya usuario/hash real: sin esto el
+    // tiempo de respuesta delata si el email existe (ver HASH_DUMMY_TIMING arriba).
+    await bcrypt.compare(password, HASH_DUMMY_TIMING)
+    throw credencialesInvalidas(
+      email,
+      !usuario || !usuario.password_hash ? 'credenciales_invalidas' : 'usuario_inactivo'
+    )
   }
 
   const passwordOk = await bcrypt.compare(password, usuario.password_hash)

@@ -21,6 +21,11 @@ export function createApp() {
 
   const app = express()
 
+  // Un solo salto de proxy inverso en producción (Caddy, mismo docker-compose): sin esto,
+  // req.ip siempre resuelve a la IP de Caddy y los rate limiters (keyGenerator basado en
+  // req.ip) comparten un único balde entre todos los agentes reales.
+  app.set('trust proxy', 1)
+
   app.use(helmet())
   app.use(compression())
   app.use(cors({ origin: FRONTEND_URL }))

@@ -4,10 +4,14 @@
   "private": true,
   "type": "module",
   "main": "src/server.js",
+  "engines": {
+    "node": ">=24.0.0"
+  },
   "scripts": {
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
-    "test": "node --experimental-test-module-mocks --test src/**/*.test.js"
+    "test": "node --experimental-test-module-mocks --test src/**/*.test.js",
+    "verify:migrations": "node scripts/verificar-numeracion-migraciones.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.111.0",

@@ -3,6 +3,7 @@ import multer from 'multer'
 
 import * as tasasController from '../controllers/tasas.controller.js'
 import { requireRole, requireTasasEdit } from '../middleware/auth.js'
+import { httpError } from '../utils/http-error.js'
 
 const MIMETYPE_XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 
@@ -13,6 +14,7 @@ const MIMETYPE_XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheet
 // de lanzar un error crudo; el controller ya valida `!req.file` con un 400 explicativo.
 const upload = multer({
   dest: 'uploads/',
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB: ninguna planilla real de tasas se acerca a este tamaño
   fileFilter(_req, file, cb) {
     const esXlsx =
       file.originalname.toLowerCase().endsWith('.xlsx') && file.mimetype === MIMETYPE_XLSX
@@ -28,6 +30,13 @@ router.post(
   '/importar',
   requireRole('admin'),
   requireTasasEdit,
-  upload.single('archivo'),
+  (req, res, next) => {
+    upload.single('archivo')(req, res, (err) => {
+      if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+        return next(httpError(400, 'El archivo supera el tamaño máximo permitido (10MB)'))
+      }
+      next(err)
+    })
+  },
   tasasController.importar
 )

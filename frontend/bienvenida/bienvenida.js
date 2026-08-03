@@ -211,7 +211,12 @@ function bindEvents() {
 }
 
 async function init() {
-  if (!auth.isLoggedIn()) {
+  // Cambio session-httponly-cookie: ya no hay token en localStorage para chequear de
+  // forma síncrona — hay que esperar auth.cargarSesion() (GET /auth/me) antes del gate.
+  // Se cachea en memoria (shared/api.js), así que render() más abajo (que lee
+  // auth.getUsuario()/auth.tieneAccesoAdmin() de forma síncrona) ya la encuentra resuelta.
+  const usuario = await auth.cargarSesion()
+  if (!usuario) {
     window.location.href = '../login/'
     return
   }

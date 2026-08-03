@@ -1,3 +1,5 @@
+import { randomBytes } from 'node:crypto'
+
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 
@@ -58,8 +60,14 @@ export async function login(email, password) {
     { expiresIn: JWT_EXPIRES_IN }
   )
 
+  // Un token CSRF por sesión (no rotado por request, decisión de negocio confirmada en
+  // la propuesta) — se emite junto al JWT y vive en su propia cookie legible por JS
+  // (ver D3/design.md), para el patrón double-submit.
+  const csrfToken = randomBytes(32).toString('hex')
+
   return {
     token,
+    csrfToken,
     usuario: {
       id: usuario.id,
       nombre: usuario.nombre,

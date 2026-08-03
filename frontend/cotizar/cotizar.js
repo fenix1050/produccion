@@ -371,7 +371,12 @@ let debounceTimer = null
 const app = document.getElementById('app')
 
 async function init() {
-  if (!auth.isLoggedIn()) {
+  // Cambio session-httponly-cookie: ya no hay token en localStorage para chequear de
+  // forma síncrona — hay que esperar auth.cargarSesion() (GET /auth/me) antes del gate.
+  // Se cachea en memoria (shared/api.js), así que renderAjusteField() más abajo (que lee
+  // auth.getUsuario() de forma síncrona durante el render) ya la encuentra resuelta.
+  const usuario = await auth.cargarSesion()
+  if (!usuario) {
     window.location.href = '../login/'
     return
   }

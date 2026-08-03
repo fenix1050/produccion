@@ -62,6 +62,13 @@ const app = document.getElementById('app')
 let elementoDisparadorModal = null
 
 async function init() {
+  // Cambio session-httponly-cookie: historial-guard.js (cargado antes en index.html) ya
+  // dispara auth.cargarSesion(), pero es fire-and-forget desde ese módulo — sin esperarla
+  // acá también, el primer renderApp() de abajo (que arma el sidebar vía
+  // auth.getUsuario(), síncrono) se ejecutaría antes de que GET /auth/me resuelva.
+  // cargarSesion() dedupea llamadas concurrentes, así que esto no dispara una segunda
+  // request de red.
+  await auth.cargarSesion()
   renderApp()
   try {
     state.ramos = await getRamos()

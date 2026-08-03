@@ -25,7 +25,11 @@ const REQUISITOS_PASSWORD = [
 ]
 
 const state = {
-  usuario: auth.getUsuario(),
+  // Cambio session-httponly-cookie (D4 caveat de design.md): auth.getUsuario() ya no es
+  // síncrono-con-dato-disponible en la carga del módulo — hay que esperar
+  // auth.cargarSesion() (GET /auth/me) primero. Se hidrata en init(), al final del
+  // archivo; null acá es solo el estado inicial antes del bootstrap.
+  usuario: null,
   // Sidebar hamburguesa (Fase 3 responsive, ≤1024px) — puramente visual, mismo patrón
   // que admin.js. Ver .sidebar/.sidebar-overlay en frontend/shared/cotizador.css.
   sidebarAbierta: false,
@@ -385,4 +389,13 @@ async function onSubmit(e) {
   }
 }
 
-renderApp()
+// configuracion-guard.js (cargado antes en index.html) ya dispara auth.cargarSesion() y
+// redirige si no hay sesión — acá se espera esa misma resolución (memoizada en
+// shared/api.js, no dispara una segunda llamada de red) para hidratar state.usuario
+// antes del primer render.
+async function init() {
+  state.usuario = await auth.cargarSesion()
+  renderApp()
+}
+
+init()

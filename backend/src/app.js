@@ -1,8 +1,10 @@
 import compression from 'compression'
+import cookieParser from 'cookie-parser'
 import cors from 'cors'
 import express from 'express'
 import helmet from 'helmet'
 
+import { csrfProtection } from './middleware/csrf.js'
 import { apiRateLimiter } from './middleware/rate-limit.js'
 import { router as apiRouter } from './routes/index.js'
 
@@ -28,12 +30,22 @@ export function createApp() {
 
   app.use(helmet())
   app.use(compression())
-  app.use(cors({ origin: FRONTEND_URL }))
+  // credentials: true habilita que el navegador envíe/reciba la cookie de sesión
+  // httpOnly (fetch con credentials:'include') — requiere un origin explícito, nunca
+  // wildcard: el propio spec de CORS prohíbe combinar '*' con credenciales.
+  app.use(
+    cors({
+      origin: FRONTEND_URL,
+      credentials: true,
+      allowedHeaders: ['Content-Type', 'X-CSRF-Token'],
+    })
+  )
+  app.use(cookieParser())
   app.use(express.json({ limit: '2mb' }))
 
   app.get('/health', (_req, res) => res.json({ status: 'ok' }))
 
-  app.use('/api', apiRateLimiter, apiRouter)
+  app.use('/api', apiRateLimiter, csrfProtection, apiRouter)
 
   // Manejador de errores centralizado — todo controller que haga next(err) cae acá.
   // Loguear err.stack (no el objeto err crudo): errores de Zod hacen que

@@ -143,6 +143,55 @@ function renderCamposTasaEdificioContenido(rubro) {
   })
 }
 
+export function renderModalTasa() {
+  const m = state.modalTasa
+  const catalogo = state.catalogoPorRamo[state.ramoTasasSeleccionado] ?? []
+  const opcionesCobertura = catalogo
+    .map(
+      (c) => `
+    <option value="${c.id}" ${String(m.cobertura_id) === String(c.id) ? 'selected' : ''}>${escapeHtml(c.nombre)}</option>
+  `
+    )
+    .join('')
+
+  return `
+    <div class="admin-modal-backdrop" data-action="cerrar-modal-tasa-backdrop">
+      <div class="admin-modal" data-stop-propagation="true" role="dialog" aria-modal="true" aria-labelledby="admin-modal-tasa-title">
+        <div class="admin-modal__title" id="admin-modal-tasa-title">Nueva versión de tasa</div>
+        ${m.error ? `<div class="admin-modal__error">${escapeHtml(m.error)}</div>` : ''}
+        <form id="admin-modal-tasa-form">
+          <div class="admin-modal__field">
+            <label for="admin-modal-tasa-cobertura">Cobertura</label>
+            <select class="field-input" id="admin-modal-tasa-cobertura" name="cobertura_id">
+              <option value="">Elegí una cobertura…</option>
+              ${opcionesCobertura}
+            </select>
+          </div>
+          <div class="admin-modal__field">
+            <label for="admin-modal-tasa-valor">Valor de la tasa</label>
+            <input class="field-input" id="admin-modal-tasa-valor" type="number" step="0.001" name="tasa_valor" value="${escapeHtml(m.tasa_valor)}" />
+          </div>
+          <div class="admin-modal__field">
+            <label for="admin-modal-tasa-unidad">Unidad</label>
+            <select class="field-input" id="admin-modal-tasa-unidad" name="unidad">
+              <option value="permil" ${m.unidad === 'permil' ? 'selected' : ''}>‰ (por mil)</option>
+              <option value="porcentaje" ${m.unidad === 'porcentaje' ? 'selected' : ''}>% (porcentaje)</option>
+            </select>
+          </div>
+          <div class="admin-modal__field">
+            <label for="admin-modal-tasa-vigente">Vigente desde</label>
+            <input class="field-input" id="admin-modal-tasa-vigente" type="date" name="vigente_desde" value="${escapeHtml(m.vigente_desde)}" />
+          </div>
+          <div class="admin-modal__actions">
+            <button type="button" class="btn-outline" data-action="cerrar-modal-tasa">Cancelar</button>
+            <button type="submit" class="btn-primary" ${m.guardando ? 'disabled' : ''}>${m.guardando ? 'Guardando…' : 'Guardar'}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `
+}
+
 function renderTablaTasas() {
   if (!state.ramoTasasSeleccionado) {
     return '<div class="empty-state__subtitle">Elegí un ramo para ver su historial de tasas.</div>'

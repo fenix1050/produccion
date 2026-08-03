@@ -66,20 +66,20 @@ Ya incrementa `token_version`, así que la cookie propia queda inválida. El con
 
 ## File Changes
 
-| File | Action | Description |
-|------|--------|-------------|
-| `backend/package.json` | Modify | Dep `cookie-parser` |
-| `backend/src/utils/cookies.js` | Create | Nombres, opciones, set/clear (D2) |
-| `backend/src/middleware/csrf.js` | Create | Double-submit global por método (D3) |
-| `backend/src/app.js` | Modify | `cookieParser()`; `cors({ origin: FRONTEND_URL, credentials: true })`; montar `csrfProtection` |
-| `backend/src/services/auth.service.js` | Modify | Genera y devuelve `csrfToken` junto al JWT |
-| `backend/src/controllers/auth.controller.js` | Modify | login setea cookies y omite `token` del body; logout y password limpian ambas |
-| `backend/src/middleware/auth.js` | Modify | Lee `req.cookies.tajy_session`; `algorithms:['HS256']`; agrega `ultima_sesion` |
-| `frontend/shared/api.js` | Modify | Quita token/usuario de `localStorage` y `authHeaders()`; `credentials:'include'` en `request` y `requestBlob`; header CSRF en mutantes; `cargarSesion()` + caché |
-| `frontend/login/login.js` | Modify | No persiste token/usuario; pre-check vía `cargarSesion()` |
-| `frontend/configuracion/configuracion.js` | Modify | Mover lectura de usuario (línea 28) al bootstrap (D4 caveat) |
-| `historial-guard.js`, `configuracion-guard.js`, `cotizar.js:374`, `admin.js:80`, `bienvenida.js:214` | Modify | `await auth.cargarSesion()` antes del gate |
-| `CLAUDE.md`, `docs/ESTADO_PROYECTO.md` | Modify | Documentar el corte |
+| File                                                                                                 | Action | Description                                                                                                                                                      |
+| ---------------------------------------------------------------------------------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `backend/package.json`                                                                               | Modify | Dep `cookie-parser`                                                                                                                                              |
+| `backend/src/utils/cookies.js`                                                                       | Create | Nombres, opciones, set/clear (D2)                                                                                                                                |
+| `backend/src/middleware/csrf.js`                                                                     | Create | Double-submit global por método (D3)                                                                                                                             |
+| `backend/src/app.js`                                                                                 | Modify | `cookieParser()`; `cors({ origin: FRONTEND_URL, credentials: true })`; montar `csrfProtection`                                                                   |
+| `backend/src/services/auth.service.js`                                                               | Modify | Genera y devuelve `csrfToken` junto al JWT                                                                                                                       |
+| `backend/src/controllers/auth.controller.js`                                                         | Modify | login setea cookies y omite `token` del body; logout y password limpian ambas                                                                                    |
+| `backend/src/middleware/auth.js`                                                                     | Modify | Lee `req.cookies.tajy_session`; `algorithms:['HS256']`; agrega `ultima_sesion`                                                                                   |
+| `frontend/shared/api.js`                                                                             | Modify | Quita token/usuario de `localStorage` y `authHeaders()`; `credentials:'include'` en `request` y `requestBlob`; header CSRF en mutantes; `cargarSesion()` + caché |
+| `frontend/login/login.js`                                                                            | Modify | No persiste token/usuario; pre-check vía `cargarSesion()`                                                                                                        |
+| `frontend/configuracion/configuracion.js`                                                            | Modify | Mover lectura de usuario (línea 28) al bootstrap (D4 caveat)                                                                                                     |
+| `historial-guard.js`, `configuracion-guard.js`, `cotizar.js:374`, `admin.js:80`, `bienvenida.js:214` | Modify | `await auth.cargarSesion()` antes del gate                                                                                                                       |
+| `CLAUDE.md`, `docs/ESTADO_PROYECTO.md`                                                               | Modify | Documentar el corte                                                                                                                                              |
 
 ## Interfaces / Contracts
 
@@ -87,9 +87,15 @@ Ya incrementa `token_version`, así que la cookie propia queda inválida. El con
 // backend/src/utils/cookies.js
 export const COOKIE_SESION = 'tajy_session'
 export const COOKIE_CSRF = 'tajy_csrf'
-const BASE = { secure: true, sameSite: 'lax', domain: '.cotizador.lat', path: '/', maxAge: 45*60*1000 }
+const BASE = {
+  secure: true,
+  sameSite: 'lax',
+  domain: '.cotizador.lat',
+  path: '/',
+  maxAge: 45 * 60 * 1000,
+}
 export const opcionesSesion = () => ({ ...BASE, httpOnly: true })
-export const opcionesCsrf   = () => ({ ...BASE, httpOnly: false })
+export const opcionesCsrf = () => ({ ...BASE, httpOnly: false })
 // clear usa las MISMAS opciones sin maxAge — cualquier divergencia deja la cookie viva
 ```
 
@@ -99,12 +105,12 @@ export const opcionesCsrf   = () => ({ ...BASE, httpOnly: false })
 
 Precedente: `node:test` + `t.mock.module({ namedExports })` + `req`/`res`/`next` fabricados (`auth.service.test.js:40-60`, `ramos.controller.test.js:8-19`). **No hay `middleware/auth.test.js`**: `requireAuth` se testea desde `auth.service.test.js` con el helper `correrRequireAuth` (línea 56) — ese helper es el punto RED del cambio de transporte.
 
-| Layer | What to Test | Approach |
-|-------|-------------|----------|
-| Unit | `cookies.js`: paridad set/clear, `httpOnly` true/false, `maxAge` 45m | Assert sobre los objetos de opciones |
-| Unit | `csrf.js`: GET pasa; POST sin header → 403; header ≠ cookie → 403; header = cookie → `next()`; `/auth/login` exento | Middleware puro, sin mocks |
-| Unit | `requireAuth`: cookie válida OK; sin cookie → 401; `Authorization: Bearer` válido **sin** cookie → 401; token no-HS256 → 401; `token_version` desfasado → 401 | Adaptar `correrRequireAuth` a `{ cookies: {...} }` |
-| Integration | `authController.login` setea 2 cookies y NO expone `token`; `logout` limpia ambas + incrementa `token_version`; `/auth/me` trae `ultima_sesion` | `res` fake con captura de `cookie`/`clearCookie` |
+| Layer        | What to Test                                                                                                                                                                     | Approach                                                          |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| Unit         | `cookies.js`: paridad set/clear, `httpOnly` true/false, `maxAge` 45m                                                                                                             | Assert sobre los objetos de opciones                              |
+| Unit         | `csrf.js`: GET pasa; POST sin header → 403; header ≠ cookie → 403; header = cookie → `next()`; `/auth/login` exento                                                              | Middleware puro, sin mocks                                        |
+| Unit         | `requireAuth`: cookie válida OK; sin cookie → 401; `Authorization: Bearer` válido **sin** cookie → 401; token no-HS256 → 401; `token_version` desfasado → 401                    | Adaptar `correrRequireAuth` a `{ cookies: {...} }`                |
+| Integration  | `authController.login` setea 2 cookies y NO expone `token`; `logout` limpia ambas + incrementa `token_version`; `/auth/me` trae `ultima_sesion`                                  | `res` fake con captura de `cookie`/`clearCookie`                  |
 | E2E (manual) | Login, cotizar MRC end-to-end, panel admin, historial, PDF (`getBlob`) contra `api.cotizador.lat` + `cotizador.lat`; `document.cookie` no expone la sesión; `localStorage` vacío | Playwright — actualizar scripts QA que asumen Bearer/localStorage |
 
 ## Threat Matrix
@@ -115,10 +121,10 @@ N/A — el cambio no toca shell, subprocesos, selección de repositorio git, est
 
 Sin migración SQL. **Tensión central**: "corte directo en el código" ≠ deploy atómico. Backend (VPS, `deploy-backend.yml`) y frontend (Vercel) se disparan del **mismo** push a `main` pero terminan en momentos distintos, y **ningún orden es seguro**: backend nuevo + front viejo → el front manda Bearer y no recibe `token` en el body; front nuevo + backend viejo → 401 en todo.
 
-| Opción | Tradeoff | Decisión |
-|---|---|---|
-| Dual-read transitorio (cookie **o** Bearer) | Ventana cero, pero reintroduce el vector que el cambio elimina y exige un 3er deploy para removerlo | Rechazada |
-| Dos merges ordenados (backend → frontend) | Ventana = tiempo humano entre merges (minutos–horas); además ambos deploys ya salen del mismo push | Rechazada |
+| Opción                                                    | Tradeoff                                                                                                                                                                                            | Decisión    |
+| --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| Dual-read transitorio (cookie **o** Bearer)               | Ventana cero, pero reintroduce el vector que el cambio elimina y exige un 3er deploy para removerlo                                                                                                 | Rechazada   |
+| Dos merges ordenados (backend → frontend)                 | Ventana = tiempo humano entre merges (minutos–horas); además ambos deploys ya salen del mismo push                                                                                                  | Rechazada   |
 | **Merge único de la feature branch, ventana de bajo uso** | Ventana = delta de deploys (VPS ~2-4 min vs Vercel ~1-2 min); rollback = 1 solo revert (coincide con N1 de la propuesta); falla durante la ventana = "no se puede loguear", sin corrupción de datos | **Elegida** |
 
 Procedimiento: avisar a los agentes → mergear la feature branch → esperar `deploy-backend.yml` verde + `GET api.cotizador.lat/health` → verificar login real en `cotizador.lat`. Si el backend falla, revert inmediato (Vercel revierte solo con el commit de revert). Todas las sesiones activas se cortan: esperado, no defecto.
@@ -127,14 +133,14 @@ Procedimiento: avisar a los agentes → mergear la feature branch → esperar `d
 
 Apilados sobre `feat/session-httponly-cookie`; PR1 apunta a esa rama, cada PR siguiente al anterior. Un solo merge final a `main`.
 
-| PR | Alcance | Líneas est. |
-|---|---|---|
-| 1 | `cookie-parser`, `utils/cookies.js` + test, `app.js` (cookieParser, CORS credentials) | ~90 |
-| 2 | `middleware/auth.js` (cookie + HS256 + `ultima_sesion`), `auth.service.js` (`csrfToken`), `auth.controller.js` (set/clear), tests adaptados | ~220 |
-| 3 | `middleware/csrf.js` + test + montaje | ~160 |
-| 4 | `frontend/shared/api.js` + `login/login.js` | ~130 |
-| 5 | 5 guards async + fix `configuracion.js:28` + scripts QA Playwright | ~150 |
-| 6 | Docs (`CLAUDE.md`, `ESTADO_PROYECTO.md`) | ~40 |
+| PR  | Alcance                                                                                                                                     | Líneas est. |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| 1   | `cookie-parser`, `utils/cookies.js` + test, `app.js` (cookieParser, CORS credentials)                                                       | ~90         |
+| 2   | `middleware/auth.js` (cookie + HS256 + `ultima_sesion`), `auth.service.js` (`csrfToken`), `auth.controller.js` (set/clear), tests adaptados | ~220        |
+| 3   | `middleware/csrf.js` + test + montaje                                                                                                       | ~160        |
+| 4   | `frontend/shared/api.js` + `login/login.js`                                                                                                 | ~130        |
+| 5   | 5 guards async + fix `configuracion.js:28` + scripts QA Playwright                                                                          | ~150        |
+| 6   | Docs (`CLAUDE.md`, `ESTADO_PROYECTO.md`)                                                                                                    | ~40         |
 
 ## Open Questions
 

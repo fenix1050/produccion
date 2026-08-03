@@ -65,7 +65,8 @@ test('cambiarPassword: limpia ambas cookies tras invalidar la sesión (token_ver
   t.mock.module('../services/auth.service.js', {
     namedExports: { cambiarPassword: async () => {} },
   })
-  const { cambiarPassword } = await import('./auth.controller.js?case=cambiar-password-limpia-cookies')
+  const { cambiarPassword } =
+    await import('./auth.controller.js?case=cambiar-password-limpia-cookies')
 
   const req = {
     usuario: { id: 1 },

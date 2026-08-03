@@ -60,7 +60,9 @@ function mockearRepositorio(t, usuario) {
 // deliberadamente un req SIN cookie (con o sin el header Bearer legacy) para los casos que
 // prueban que el corte de transporte es real.
 async function correrRequireAuth(requireAuth, token, { comoCookie = true } = {}) {
-  const req = comoCookie ? { cookies: { [COOKIE_SESION]: token }, headers: {} } : { cookies: {}, headers: {} }
+  const req = comoCookie
+    ? { cookies: { [COOKIE_SESION]: token }, headers: {} }
+    : { cookies: {}, headers: {} }
   let error
   await requireAuth(req, {}, (err) => {
     error = err

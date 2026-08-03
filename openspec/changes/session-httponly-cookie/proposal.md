@@ -50,32 +50,32 @@ Corte directo, sin período de doble soporte (decisión de Kevin): backend y fro
 
 ## Affected Areas
 
-| Área                                       | Impacto  | Descripción                                          |
-| ------------------------------------------ | -------- | ---------------------------------------------------- |
-| `backend/package.json`                     | Modified | Dependencia `cookie-parser`                          |
-| `backend/src/app.js`                       | Modified | `cookieParser()`, CORS con `credentials: true`       |
-| `backend/src/services/auth.service.js`     | Modified | Emisión de cookie en `login`, limpieza en `logout`   |
-| `backend/src/middleware/auth.js`           | Modified | Lectura desde cookie; posible `algorithms:['HS256']` |
-| `backend/src/middleware/csrf.js`           | New      | Validación double-submit                             |
-| `backend/src/routes/auth.routes.js`        | Modified | `GET /auth/me`                                       |
-| `backend/src/controllers/auth.*`           | Modified | Handler de `/auth/me`, respuesta de login sin token  |
-| `frontend/shared/api.js`                   | Modified | `credentials: 'include'`, CSRF, sin token en storage |
-| `frontend/login/login.js`                  | Modified | No persiste token                                    |
-| ~8 módulos frontend que leen `auth.*`      | Modified | Resolución de usuario vía `GET /auth/me`             |
-| `docs/ESTADO_PROYECTO.md`, `CLAUDE.md`     | Modified | Registro de estado                                   |
+| Área                                   | Impacto  | Descripción                                          |
+| -------------------------------------- | -------- | ---------------------------------------------------- |
+| `backend/package.json`                 | Modified | Dependencia `cookie-parser`                          |
+| `backend/src/app.js`                   | Modified | `cookieParser()`, CORS con `credentials: true`       |
+| `backend/src/services/auth.service.js` | Modified | Emisión de cookie en `login`, limpieza en `logout`   |
+| `backend/src/middleware/auth.js`       | Modified | Lectura desde cookie; posible `algorithms:['HS256']` |
+| `backend/src/middleware/csrf.js`       | New      | Validación double-submit                             |
+| `backend/src/routes/auth.routes.js`    | Modified | `GET /auth/me`                                       |
+| `backend/src/controllers/auth.*`       | Modified | Handler de `/auth/me`, respuesta de login sin token  |
+| `frontend/shared/api.js`               | Modified | `credentials: 'include'`, CSRF, sin token en storage |
+| `frontend/login/login.js`              | Modified | No persiste token                                    |
+| ~8 módulos frontend que leen `auth.*`  | Modified | Resolución de usuario vía `GET /auth/me`             |
+| `docs/ESTADO_PROYECTO.md`, `CLAUDE.md` | Modified | Registro de estado                                   |
 
 ## Risks
 
-| Riesgo                                                                                                                                                 | Prob. | Mitigación                                                                                                                        |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------ | ----- | --------------------------------------------------------------------------------------------------------------------------------- |
-| **Logout forzado global**: al desplegar, toda sesión activa se corta. Es esperado y aceptado, no un defecto                                             | Alta  | Declararlo explícito; desplegar en ventana de bajo uso y avisar a los agentes                                                       |
+| Riesgo                                                                                                                                                                                | Prob. | Mitigación                                                                                                                               |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| **Logout forzado global**: al desplegar, toda sesión activa se corta. Es esperado y aceptado, no un defecto                                                                           | Alta  | Declararlo explícito; desplegar en ventana de bajo uso y avisar a los agentes                                                            |
 | **Desincronización de deploy**: Vercel auto-despliega el frontend en push a `main`; el backend va por workflow a la VPS. Protocolos incompatibles entre ambos ⇒ nadie puede loguearse | Alta  | Orden obligatorio backend→frontend y ventana acotada; verificar `api.cotizador.lat` antes de mergear. Definir el procedimiento en design |
-| Cookie no seteada por dominio/atributos mal configurados (`Domain`, `Secure`, proxy)                                                                    | Media | Verificar en vivo contra la VPS real, no solo en localhost (donde `Secure` se comporta distinto)                                    |
-| CSRF double-submit mal implementado deja endpoints mutantes sin cubrir                                                                                  | Media | Middleware global por método HTTP, no opt-in por ruta; test que enumere rutas mutantes                                             |
-| `GET /auth/me` por vista agrega latencia/parpadeo de UI                                                                                                 | Media | Cachear en memoria por carga de página; render diferido de elementos gateados por permiso                                          |
-| **Auto (Fase 1/2)** usa el mismo `frontend/shared/api.js` aunque esté pausado                                                                           | Media | No se toca su código, pero se verifica que sus vistas siguen resolviendo sesión; verificación explícita en la fase de verify        |
-| Herramientas/scripts de QA (Playwright) que asumen Bearer o `localStorage`                                                                              | Media | Actualizar los scripts de verificación en el mismo cambio                                                                          |
-| XSS sigue pudiendo actuar dentro de la sesión activa (la cookie viaja sola)                                                                             | Media | Reconocido: el objetivo es impedir **exfiltración**, no toda acción; CSP y sanitización quedan como roadmap aparte                  |
+| Cookie no seteada por dominio/atributos mal configurados (`Domain`, `Secure`, proxy)                                                                                                  | Media | Verificar en vivo contra la VPS real, no solo en localhost (donde `Secure` se comporta distinto)                                         |
+| CSRF double-submit mal implementado deja endpoints mutantes sin cubrir                                                                                                                | Media | Middleware global por método HTTP, no opt-in por ruta; test que enumere rutas mutantes                                                   |
+| `GET /auth/me` por vista agrega latencia/parpadeo de UI                                                                                                                               | Media | Cachear en memoria por carga de página; render diferido de elementos gateados por permiso                                                |
+| **Auto (Fase 1/2)** usa el mismo `frontend/shared/api.js` aunque esté pausado                                                                                                         | Media | No se toca su código, pero se verifica que sus vistas siguen resolviendo sesión; verificación explícita en la fase de verify             |
+| Herramientas/scripts de QA (Playwright) que asumen Bearer o `localStorage`                                                                                                            | Media | Actualizar los scripts de verificación en el mismo cambio                                                                                |
+| XSS sigue pudiendo actuar dentro de la sesión activa (la cookie viaja sola)                                                                                                           | Media | Reconocido: el objetivo es impedir **exfiltración**, no toda acción; CSP y sanitización quedan como roadmap aparte                       |
 
 ## Rollback Plan
 

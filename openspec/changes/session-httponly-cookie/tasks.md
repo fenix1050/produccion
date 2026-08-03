@@ -2,14 +2,14 @@
 
 ## Review Workload Forecast
 
-| Field | Value |
-|-------|-------|
+| Field                   | Value                                                                 |
+| ----------------------- | --------------------------------------------------------------------- |
 | Estimated changed lines | ~790 total (PR1 ~90, PR2 ~220, PR3 ~160, PR4 ~130, PR5 ~150, PR6 ~40) |
-| 400-line budget risk | High (total) / Low-Medium (per PR) |
-| Chained PRs recommended | Yes |
-| Suggested split | PR1 → PR2 → PR3 → PR4 → PR5 → PR6 |
-| Delivery strategy | auto-forecast |
-| Chain strategy | feature-branch-chain |
+| 400-line budget risk    | High (total) / Low-Medium (per PR)                                    |
+| Chained PRs recommended | Yes                                                                   |
+| Suggested split         | PR1 → PR2 → PR3 → PR4 → PR5 → PR6                                     |
+| Delivery strategy       | auto-forecast                                                         |
+| Chain strategy          | feature-branch-chain                                                  |
 
 Decision needed before apply: No
 Chained PRs recommended: Yes
@@ -18,14 +18,14 @@ Chain strategy: feature-branch-chain
 
 ### Suggested Work Units
 
-| Unit | Goal | Likely PR | Focused test command | Runtime harness | Rollback boundary |
-|------|------|-----------|----------------------|-----------------|-------------------|
-| 1 | Cookie helper + CORS/parser wiring | PR 1 | `node --test backend/src/utils/cookies.test.js` | N/A — pure util, no live server needed | `backend/src/utils/cookies.js` + `app.js` cors/cookieParser block |
-| 2 | Auth transporte: cookie-based, HS256, `/auth/me` | PR 2 | `node --test backend/src/services/auth.service.test.js` | Manual `curl`/Playwright login against local backend | `middleware/auth.js`, `auth.service.js`, `auth.controller.js` |
-| 3 | CSRF double-submit middleware | PR 3 | `node --test backend/src/middleware/csrf.test.js` | Manual mutating request with/without header | `middleware/csrf.js` + its `app.js` mount line |
-| 4 | Frontend transport cut (`api.js`, login) | PR 4 | Manual login smoke via Playwright | Playwright: login sets cookies, `/auth/me` populates cache | `frontend/shared/api.js`, `frontend/login/login.js` |
-| 5 | Async guards + QA scripts | PR 5 | Playwright guard-navigation smoke | Playwright: 5 guarded pages + Fase 2 Auto smoke | 5 guard files + QA scripts |
-| 6 | Docs | PR 6 | N/A | N/A — docs only | `CLAUDE.md`, `docs/ESTADO_PROYECTO.md` |
+| Unit | Goal                                             | Likely PR | Focused test command                                    | Runtime harness                                            | Rollback boundary                                                 |
+| ---- | ------------------------------------------------ | --------- | ------------------------------------------------------- | ---------------------------------------------------------- | ----------------------------------------------------------------- |
+| 1    | Cookie helper + CORS/parser wiring               | PR 1      | `node --test backend/src/utils/cookies.test.js`         | N/A — pure util, no live server needed                     | `backend/src/utils/cookies.js` + `app.js` cors/cookieParser block |
+| 2    | Auth transporte: cookie-based, HS256, `/auth/me` | PR 2      | `node --test backend/src/services/auth.service.test.js` | Manual `curl`/Playwright login against local backend       | `middleware/auth.js`, `auth.service.js`, `auth.controller.js`     |
+| 3    | CSRF double-submit middleware                    | PR 3      | `node --test backend/src/middleware/csrf.test.js`       | Manual mutating request with/without header                | `middleware/csrf.js` + its `app.js` mount line                    |
+| 4    | Frontend transport cut (`api.js`, login)         | PR 4      | Manual login smoke via Playwright                       | Playwright: login sets cookies, `/auth/me` populates cache | `frontend/shared/api.js`, `frontend/login/login.js`               |
+| 5    | Async guards + QA scripts                        | PR 5      | Playwright guard-navigation smoke                       | Playwright: 5 guarded pages + Fase 2 Auto smoke            | 5 guard files + QA scripts                                        |
+| 6    | Docs                                             | PR 6      | N/A                                                     | N/A — docs only                                            | `CLAUDE.md`, `docs/ESTADO_PROYECTO.md`                            |
 
 ## Phase 0: Prerequisitos
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.17](https://github.com/fenix1050/produccion/compare/v0.1.16...v0.1.17) (2026-08-03)
+
+
+### Bug Fixes
+
+* **frontend:** silenciar errores de consola en producción ([8bfffc5](https://github.com/fenix1050/produccion/commit/8bfffc572524b9de8df74a05cf6bee21fbae1f69))
+* **frontend:** silenciar errores de consola en producción ([29864c2](https://github.com/fenix1050/produccion/commit/29864c2a641791818572351c3885b0d1e6f3ee23))
+
 ## [0.1.16](https://github.com/fenix1050/produccion/compare/v0.1.15...v0.1.16) (2026-08-03)
 
 

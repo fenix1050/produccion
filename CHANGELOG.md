@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.15](https://github.com/fenix1050/produccion/compare/v0.1.14...v0.1.15) (2026-08-02)
+
+
+### Bug Fixes
+
+* **cotizar:** evitar dispatch por prototype chain en dispatch tables por ramo ([4fd5aa1](https://github.com/fenix1050/produccion/commit/4fd5aa1e7b2a12a0ee3f444c3668f0f304b6f07f))
+* **cotizar:** reemplazar dispatch table por switch en armarRiesgoDatos/camposEspecificosParaRamo ([0c9ad9d](https://github.com/fenix1050/produccion/commit/0c9ad9d1053125a8b10b6332cc749497fc6c7b00))
+* **cotizar:** usar Object.create(null) + typeof en dispatch tables por ramo ([4facdb5](https://github.com/fenix1050/produccion/commit/4facdb548684ee6c906b6ffecf00e0d9b5d71e78))
+
 ## [0.1.14](https://github.com/fenix1050/produccion/compare/v0.1.13...v0.1.14) (2026-08-02)
 
 

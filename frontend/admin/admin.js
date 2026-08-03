@@ -3,41 +3,19 @@ import { crearBadge } from '../shared/badge.js'
 import { getRamos } from '../shared/catalogo.js'
 import { escapeHtml, enfocarPrimerElemento, atraparFoco, renderBanner } from '../shared/dom.js'
 import { renderSidebarFooter, renderTopbar as renderTopbarShell } from '../shared/sidebar.js'
-import {
-  ICON_ADMIN_USUARIOS,
-  ICON_ADMIN_COBERTURAS,
-  ICON_ADMIN_TASAS,
-  ICON_ADMIN_PLANES,
-  ICON_WRENCH,
-  ICON_GEAR,
-} from '../shared/nav-icons.js'
+import { ICON_WRENCH } from '../shared/nav-icons.js'
 import {
   fmtGsConPrefijo as fmtGs,
   fmtUsdConPrefijo as fmtUsd,
   capitalizar,
 } from '../shared/format.js'
+import { state, app } from './state.js'
+import { SECCIONES, SECCION_ICONOS, seccionesVisibles } from './secciones.js'
 
 // Panel de Administración del Cotizador Tajy — WU5, primera porción (Usuarios).
 // Mismo patrón Vanilla JS que cotizar.js: state + render + delegación de eventos por
 // data-action. Coberturas por plan / Tasas / Planes quedan como stub "Próximamente" —
 // se implementan en próximas porciones de WU5.
-
-const SECCIONES = [
-  { id: 'usuarios', label: 'Usuarios', disponible: true, permiso: 'puede_gestionar_usuarios' },
-  {
-    id: 'coberturas',
-    label: 'Coberturas por plan',
-    disponible: true,
-    permiso: 'puede_editar_coberturas',
-  },
-  { id: 'tasas', label: 'Tasas', disponible: true, permiso: 'puede_editar_tasas' },
-  { id: 'planes', label: 'Planes', disponible: true, permiso: 'puede_editar_planes' },
-  // Sin `permiso`: a diferencia del resto de las secciones (permisos delegables por rol
-  // custom), habilitar/deshabilitar un ramo en el sidebar del cotizador es una decisión de
-  // sistema reservada al rol admin literal — ver seccionesVisibles() y el gate del backend
-  // (requireRole('admin') en admin.routes.js).
-  { id: 'ramos', label: 'Ramos', disponible: true, soloAdmin: true },
-]
 
 // Colores de badge para roles no-admin (admin usa 'primary' fijo). Se asigna por hash
 // del nombre de rol en vez de por índice/orden de carga, así el color de un rol no
@@ -53,82 +31,6 @@ function varianteBadgeRol(nombreRol) {
   const indice = Math.abs(hash) % PALETA_BADGE_ROLES.length
   return PALETA_BADGE_ROLES[indice]
 }
-
-// Íconos SVG por sección — mismo estilo de línea (18x18) que el resto de la nav del
-// sidebar (ramos en cotizar.js, links de shared/sidebar.js), separado del array de
-// arriba para no mezclar datos de negocio con presentación.
-const SECCION_ICONOS = {
-  usuarios: ICON_ADMIN_USUARIOS,
-  coberturas: ICON_ADMIN_COBERTURAS,
-  tasas: ICON_ADMIN_TASAS,
-  planes: ICON_ADMIN_PLANES,
-  ramos: ICON_GEAR,
-}
-
-// Secciones visibles para el usuario logueado según sus permisos parciales
-// (mismo patrón que puede_editar_tasas, ver docs/ESTADO_PROYECTO.md sección 20a2).
-function seccionesVisibles() {
-  const usuario = auth.getUsuario()
-  return SECCIONES.filter((s) =>
-    s.soloAdmin ? usuario?.rol === 'admin' : Boolean(usuario?.[s.permiso])
-  )
-}
-
-const state = {
-  seccion: 'usuarios',
-  // Sidebar hamburguesa (Fase 2 responsive, ≤1024px) — puramente visual, ver
-  // patrón .sidebar/.sidebar-overlay en frontend/shared/cotizador.css.
-  sidebarAbierta: false,
-  usuarios: [],
-  loadingUsuarios: false,
-  usuariosError: '',
-  banner: null, // { tipo: 'error'|'success', texto }
-  modal: null, // { tipo: 'crear'|'editar'|'password', usuario?, error, guardando }
-
-  // Roles configurables (migración 031) — cacheados en memoria al entrar a Usuarios.
-  roles: [],
-  loadingRoles: false,
-  rolesError: '',
-  modalRol: null, // { tipo: 'crear'|'editar', rolId?, nombre, puede_*, error, guardando }
-
-  ramos: [],
-  ramosGestion: [],
-  loadingRamosGestion: false,
-  ramosGestionError: '',
-  ramoNombreEnEdicion: new Set(), // ids de ramo con el campo de nombre_display en edición
-  planes: [],
-  loadingPlanes: false,
-  planesError: '',
-  ramoFiltro: 'todos',
-  planExpandido: null, // id del plan con la fila de formas de pago abierta
-  formasPagoPorPlan: {}, // planId -> { loading, error, datos: [] }
-  primaEnEdicion: new Set(), // ids de plan con el campo prima_tecnica_minima habilitado para editar
-  topesEnEdicion: new Set(), // ids de plan con descuento_maximo/recargo_maximo habilitados para editar (solo admin literal)
-  tasaRpfEnEdicion: new Set(), // ids de plan_formas_pago con la tasa habilitada para editar
-
-  ramoTasasSeleccionado: null,
-  tasasPorRamo: {}, // ramoId -> { loading, error, historial: [] }
-  catalogoPorRamo: {}, // ramoId -> coberturas_catalogo[] (para el selector del modal de alta)
-  modalTasa: null, // { error, guardando, cobertura_id, tasa_valor, unidad, vigente_desde }
-
-  // rubros_actividad: compartida entre MRC e Incendio (no tiene ramo_id propio), se carga
-  // una sola vez (no por ramo) — ver seleccionarRamoTasas.
-  rubrosActividad: { loading: false, error: '', datos: null },
-  rubroActividadEnEdicion: new Set(), // ids de rubros_actividad con tasa_edificio/tasa_contenido habilitados para editar
-
-  ramoCoberturasSeleccionado: null,
-  planCoberturasSeleccionado: null,
-  planesPorRamoCob: {}, // ramoId -> { loading, error, datos: [] }
-  coberturasDelPlan: {}, // planId -> { loading, error, datos: [] }
-  coberturaEnEdicion: new Set(), // ids de plan_coberturas con monto/franquicia habilitados para editar
-  modalCobertura: null, // { error, guardando, cobertura_id, incluida_por_defecto }
-}
-
-const app = document.getElementById('app')
-
-// Elemento que disparó la apertura del modal actualmente abierto (botón "Editar",
-// "Nuevo usuario", etc.) — se restaura el foco ahí al cerrar (focus trap, WU accesibilidad).
-let elementoDisparadorModal = null
 
 async function init() {
   if (!auth.isLoggedIn()) {
@@ -200,7 +102,7 @@ async function cargarUsuarios() {
 }
 
 function abrirModalCrear() {
-  elementoDisparadorModal = document.activeElement
+  state.elementoDisparadorModal = document.activeElement
   const rolDefault = state.roles.find((r) => r.nombre === 'agente') ?? state.roles[0]
   state.modal = {
     tipo: 'crear',
@@ -218,7 +120,7 @@ function abrirModalCrear() {
 function abrirModalEditar(usuarioId) {
   const usuario = state.usuarios.find((u) => u.id === usuarioId)
   if (!usuario) return
-  elementoDisparadorModal = document.activeElement
+  state.elementoDisparadorModal = document.activeElement
   const rolActual = state.roles.find((r) => r.nombre === usuario.rol)
   state.modal = {
     tipo: 'editar',
@@ -239,7 +141,7 @@ function abrirModalEditar(usuarioId) {
 function abrirModalPassword(usuarioId) {
   const usuario = state.usuarios.find((u) => u.id === usuarioId)
   if (!usuario) return
-  elementoDisparadorModal = document.activeElement
+  state.elementoDisparadorModal = document.activeElement
   state.modal = { tipo: 'password', usuario, error: '', guardando: false, password: '' }
   renderApp()
   enfocarPrimerElemento(app.querySelector('.admin-modal'))
@@ -248,9 +150,9 @@ function abrirModalPassword(usuarioId) {
 function cerrarModal() {
   state.modal = null
   renderApp()
-  if (elementoDisparadorModal) {
-    elementoDisparadorModal.focus()
-    elementoDisparadorModal = null
+  if (state.elementoDisparadorModal) {
+    state.elementoDisparadorModal.focus()
+    state.elementoDisparadorModal = null
   }
 }
 
@@ -431,7 +333,7 @@ async function eliminarRol(rolId) {
 }
 
 function abrirModalRolCrear() {
-  elementoDisparadorModal = document.activeElement
+  state.elementoDisparadorModal = document.activeElement
   state.modalRol = {
     tipo: 'crear',
     error: '',
@@ -451,7 +353,7 @@ function abrirModalRolCrear() {
 function abrirModalRolEditar(rolId) {
   const rol = state.roles.find((r) => r.id === rolId)
   if (!rol || rol.es_sistema) return // roles del sistema no son editables desde el panel
-  elementoDisparadorModal = document.activeElement
+  state.elementoDisparadorModal = document.activeElement
   state.modalRol = {
     tipo: 'editar',
     rolId: rol.id,
@@ -472,9 +374,9 @@ function abrirModalRolEditar(rolId) {
 function cerrarModalRol() {
   state.modalRol = null
   renderApp()
-  if (elementoDisparadorModal) {
-    elementoDisparadorModal.focus()
-    elementoDisparadorModal = null
+  if (state.elementoDisparadorModal) {
+    state.elementoDisparadorModal.focus()
+    state.elementoDisparadorModal = null
   }
 }
 
@@ -1009,7 +911,7 @@ async function cargarCatalogoDeRamo(ramoId) {
 }
 
 function abrirModalTasa() {
-  elementoDisparadorModal = document.activeElement
+  state.elementoDisparadorModal = document.activeElement
   state.modalTasa = {
     error: '',
     guardando: false,
@@ -1025,9 +927,9 @@ function abrirModalTasa() {
 function cerrarModalTasa() {
   state.modalTasa = null
   renderApp()
-  if (elementoDisparadorModal) {
-    elementoDisparadorModal.focus()
-    elementoDisparadorModal = null
+  if (state.elementoDisparadorModal) {
+    state.elementoDisparadorModal.focus()
+    state.elementoDisparadorModal = null
   }
 }
 
@@ -1184,7 +1086,7 @@ async function eliminarCoberturaDelPlan(planCoberturaId, planId) {
 }
 
 function abrirModalCobertura() {
-  elementoDisparadorModal = document.activeElement
+  state.elementoDisparadorModal = document.activeElement
   state.modalCobertura = {
     error: '',
     guardando: false,
@@ -1200,9 +1102,9 @@ function abrirModalCobertura() {
 function cerrarModalCobertura() {
   state.modalCobertura = null
   renderApp()
-  if (elementoDisparadorModal) {
-    elementoDisparadorModal.focus()
-    elementoDisparadorModal = null
+  if (state.elementoDisparadorModal) {
+    state.elementoDisparadorModal.focus()
+    state.elementoDisparadorModal = null
   }
 }
 

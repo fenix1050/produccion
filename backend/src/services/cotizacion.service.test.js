@@ -181,7 +181,16 @@ function mockearRepositorios(
     insertados = {},
   } = {}
 ) {
-  const cotizacionesInsertadas = []
+  // Cambio SDD `cotizacion-transaccional` (PR2, Phase 2 RED): `insertCotizacion` /
+  // `nextNumeroCorrelativo` / `insertVariante` / `insertPlanesPago` / `insertCoberturas` /
+  // `insertAjustes` / `updateCotizacion` / `deleteVariantesByIds` / `deleteCoberturasByIds` dejan
+  // de existir como exports del repository — el servicio pasa a llamar UNA sola vez a
+  // `crearCotizacionAtomica(payload)` / `actualizarCotizacionAtomica(payload)`, cada una un thin
+  // wrapper de `supabase.rpc('crear_cotizacion_atomica'|'actualizar_cotizacion_atomica', payload)`
+  // (ver design.md — Interfaces/Contracts). El payload capturado acá es exactamente el argumento
+  // que el servicio le pasa al repository — mismas keys `p_*` que el RPC de Postgres espera, para
+  // que el servicio no tenga que traducir dos veces la misma forma.
+  const cotizacionesCreadas = []
   const cotizacionesActualizadas = []
 
   t.mock.module('../repositories/ramos.repository.js', {
@@ -206,24 +215,15 @@ function mockearRepositorios(
 
   t.mock.module('../repositories/cotizaciones.repository.js', {
     namedExports: {
-      nextNumeroCorrelativo: async () => 1,
-      insertCotizacion: async (cotizacion) => {
-        const fila = { id: 99, ...cotizacion }
-        cotizacionesInsertadas.push(fila)
-        return fila
+      crearCotizacionAtomica: async (payload) => {
+        cotizacionesCreadas.push(payload)
+        return 99
       },
-      updateCotizacion: async (id, cambios) => {
-        const fila = { id, ...cambios }
-        cotizacionesActualizadas.push(fila)
-        return fila
+      actualizarCotizacionAtomica: async (payload) => {
+        cotizacionesActualizadas.push(payload)
+        return payload.p_cotizacion_id
       },
       findCotizacionById: async (id) => ({ id, ...insertados }),
-      insertCoberturas: async () => [],
-      insertVariante: async () => ({ id: 1 }),
-      insertPlanesPago: async () => [],
-      insertAjustes: async () => [],
-      deleteVariantesByIds: async () => {},
-      deleteCoberturasByIds: async () => {},
     },
   })
 
@@ -234,7 +234,7 @@ function mockearRepositorios(
     },
   })
 
-  return { cotizacionesInsertadas, cotizacionesActualizadas }
+  return { cotizacionesCreadas, cotizacionesActualizadas }
 }
 
 const USUARIO = { id: 1, rol: 'agente' }
@@ -432,45 +432,53 @@ describe('construirVariantes (vía calcularPreview) — Auto cotizacion_combinad
   })
 })
 
-test('crearCotizacion con moneda:USD persiste moneda + snapshot de tipo de cambio', async (t) => {
+test('crearCotizacion con moneda:USD persiste moneda + snapshot de tipo de cambio vía un único RPC atómico', async (t) => {
   invalidarCacheCatalogos()
-  const { cotizacionesInsertadas } = mockearRepositorios(t)
+  const { cotizacionesCreadas } = mockearRepositorios(t)
   const { crearCotizacion } = await import('./cotizacion.service.js?case=crear-usd-snapshot')
 
   await crearCotizacion(bodyBase({ moneda: 'USD' }), USUARIO)
 
-  assert.equal(cotizacionesInsertadas.length, 1)
-  const fila = cotizacionesInsertadas[0]
-  assert.equal(fila.moneda, 'USD')
-  assert.equal(fila.tipo_cambio_snapshot, 7300.75)
-  assert.equal(fila.tipo_cambio_fuente, 'dolarpy:set')
-  assert.equal(fila.tipo_cambio_fecha, '2026-07-27T00:00:00Z')
+  assert.equal(
+    cotizacionesCreadas.length,
+    1,
+    'crearCotizacionAtomica debe llamarse exactamente una vez (un solo RPC, no inserts secuenciales)'
+  )
+  const payload = cotizacionesCreadas[0]
+  assert.equal(payload.p_cotizacion.moneda, 'USD')
+  assert.equal(payload.p_cotizacion.tipo_cambio_snapshot, 7300.75)
+  assert.equal(payload.p_cotizacion.tipo_cambio_fuente, 'dolarpy:set')
+  assert.equal(payload.p_cotizacion.tipo_cambio_fecha, '2026-07-27T00:00:00Z')
 })
 
 test('crearCotizacion en la misma moneda del umbral no invoca tipo de cambio ni persiste snapshot', async (t) => {
   invalidarCacheCatalogos()
-  const { cotizacionesInsertadas } = mockearRepositorios(t)
+  const { cotizacionesCreadas } = mockearRepositorios(t)
   const { crearCotizacion } = await import('./cotizacion.service.js?case=crear-misma-moneda')
 
   await crearCotizacion(bodyBase({ moneda: 'PYG' }), USUARIO)
 
-  assert.equal(cotizacionesInsertadas.length, 1)
-  const fila = cotizacionesInsertadas[0]
-  assert.equal(fila.moneda, 'PYG')
-  assert.equal(fila.tipo_cambio_snapshot, undefined)
-  assert.equal(fila.tipo_cambio_fuente, undefined)
-  assert.equal(fila.tipo_cambio_fecha, undefined)
+  assert.equal(cotizacionesCreadas.length, 1)
+  const payload = cotizacionesCreadas[0]
+  assert.equal(payload.p_cotizacion.moneda, 'PYG')
+  assert.equal(payload.p_cotizacion.tipo_cambio_snapshot, undefined)
+  assert.equal(payload.p_cotizacion.tipo_cambio_fuente, undefined)
+  assert.equal(payload.p_cotizacion.tipo_cambio_fecha, undefined)
 })
 
-test('calcularPreview no persiste nada (nunca invoca insertCotizacion)', async (t) => {
+test('calcularPreview no persiste nada (nunca invoca crearCotizacionAtomica)', async (t) => {
   invalidarCacheCatalogos()
-  const { cotizacionesInsertadas } = mockearRepositorios(t)
+  const { cotizacionesCreadas } = mockearRepositorios(t)
   const { calcularPreview } = await import('./cotizacion.service.js?case=preview-no-persiste')
 
   const resultado = await calcularPreview(bodyBase({ moneda: 'USD' }), USUARIO)
 
   assert.ok(resultado.prima > 0)
-  assert.equal(cotizacionesInsertadas.length, 0, 'el preview nunca debe llegar a insertCotizacion')
+  assert.equal(
+    cotizacionesCreadas.length,
+    0,
+    'el preview nunca debe llegar a crearCotizacionAtomica'
+  )
 })
 
 test('resolución de tasa por objeto de riesgo con override de plan gana sobre la tasa genérica', async (t) => {
@@ -501,13 +509,22 @@ test('resolución de tasa por objeto de riesgo con override de plan gana sobre l
   assert.equal(resultado.detalle.costo_edificio, 5_000)
 })
 
-test('crearCotizacion borra la cabecera recién creada y re-lanza el error original si insertarCoberturasYVariantes falla', async (t) => {
+// Cambio SDD `cotizacion-transaccional` (PR2, Phase 2 RED) — reemplaza el test anterior
+// ("crearCotizacion borra la cabecera recién creada y re-lanza el error original..."), que
+// asumía la compensación manual `deleteCotizacion` de la implementación pre-RPC. Con
+// `crear_cotizacion_atomica` corriendo en una única transacción de Postgres (migración 052,
+// ya mergeada a `main` en PR1), un fallo a mitad de camino nunca deja una cabecera huérfana
+// para compensar — la transacción entera se revierte del lado de la base. El servicio, del
+// lado de JS, solo debe re-lanzar el error tal cual, sin ningún intento de compensación ni
+// reintento. Este test debe fallar (RED) contra la implementación actual: `crearCotizacion`
+// todavía llama a `insertCotizacion`/`nextNumeroCorrelativo`/`deleteCotizacion` (funciones que
+// ESTE mock ya no exporta), así que el error observado hoy no es `errorOriginal` sino un
+// `TypeError` por invocar un export inexistente.
+test('crearCotizacion re-lanza el error original del RPC atómico, sin ninguna compensación manual', async (t) => {
   invalidarCacheCatalogos()
 
   const errorOriginal = new Error('duplicate key value violates unique constraint')
-  const cotizacionesInsertadas = []
-  const idsBorrados = []
-  let llamadasCorrelativo = 0
+  let llamadasRpc = 0
 
   t.mock.module('../repositories/ramos.repository.js', {
     namedExports: {
@@ -543,31 +560,17 @@ test('crearCotizacion borra la cabecera recién creada y re-lanza el error origi
     },
   })
 
+  // Único export relevante: `crearCotizacionAtomica` rechaza directamente con el error de
+  // Postgres (ej. un FK/constraint violado a mitad de la función plpgsql) — no hay
+  // `deleteCotizacion`/`insertCotizacion`/`nextNumeroCorrelativo` en este mock: si el servicio
+  // todavía los invoca, la llamada revienta contra `undefined`, no contra `errorOriginal`.
   t.mock.module('../repositories/cotizaciones.repository.js', {
     namedExports: {
-      // 1ra llamada: numero_cotizacion del header (crearCotizacion, línea ~40) — debe resolver OK.
-      // 2da llamada: numero_variante dentro de insertarCoberturasYVariantes — acá reproducimos el
-      // duplicate-key del Bug 1 (mismo valor de correlativo colisionando entre ramos).
-      nextNumeroCorrelativo: async () => {
-        llamadasCorrelativo += 1
-        if (llamadasCorrelativo === 1) return 1
+      crearCotizacionAtomica: async () => {
+        llamadasRpc += 1
         throw errorOriginal
       },
-      insertCotizacion: async (cotizacion) => {
-        const fila = { id: 99, ...cotizacion }
-        cotizacionesInsertadas.push(fila)
-        return fila
-      },
-      deleteCotizacion: async (id) => {
-        idsBorrados.push(id)
-      },
       findCotizacionById: async (id) => ({ id }),
-      insertCoberturas: async () => [],
-      insertVariante: async () => ({ id: 1 }),
-      insertPlanesPago: async () => [],
-      insertAjustes: async () => [],
-      deleteVariantesByIds: async () => {},
-      deleteCoberturasByIds: async () => {},
     },
   })
 
@@ -581,11 +584,10 @@ test('crearCotizacion borra la cabecera recién creada y re-lanza el error origi
     }
   )
 
-  assert.equal(cotizacionesInsertadas.length, 1)
-  assert.deepEqual(idsBorrados, [99], 'debe borrar la cabecera recién creada exactamente una vez')
+  assert.equal(llamadasRpc, 1, 'un único intento de RPC — sin reintento y sin compensación')
 })
 
-test('actualizarCotizacion con nueva moneda:USD persiste moneda + snapshot en el UPDATE', async (t) => {
+test('actualizarCotizacion con nueva moneda:USD persiste moneda + snapshot vía un único RPC atómico', async (t) => {
   invalidarCacheCatalogos()
   const cotizacionExistente = {
     id: 5,
@@ -630,24 +632,18 @@ test('actualizarCotizacion con nueva moneda:USD persiste moneda + snapshot en el
     },
   })
 
+  // Sin `insertCotizacion`/`nextNumeroCorrelativo`/`insertVariante`/`insertCoberturas`/etc: ya no
+  // existen como exports del repository (ver design.md — la actualización deja de ser un
+  // insertar-nuevo-antes-de-borrar-viejo hecho desde JS, todo vive dentro de
+  // `actualizar_cotizacion_atomica`). Si `actualizarCotizacion` todavía los invoca, revienta
+  // contra `undefined` en vez de resolver limpio — eso es lo que prueba el RED de este test.
   const cotizacionesActualizadas = []
   t.mock.module('../repositories/cotizaciones.repository.js', {
     namedExports: {
-      nextNumeroCorrelativo: async () => 1,
       findCotizacionById: async () => cotizacionExistente,
-      updateCotizacion: async (id, cambios) => {
-        const fila = { id, ...cambios }
-        cotizacionesActualizadas.push(fila)
-        return fila
-      },
-      insertCoberturas: async () => [],
-      insertVariante: async () => ({ id: 1 }),
-      insertPlanesPago: async () => [],
-      insertAjustes: async () => [],
-      deleteVariantesByIds: async () => {},
-      deleteCoberturasByIds: async () => {},
-      insertCotizacion: async () => {
-        throw new Error('actualizarCotizacion no debe llamar a insertCotizacion')
+      actualizarCotizacionAtomica: async (payload) => {
+        cotizacionesActualizadas.push(payload)
+        return payload.p_cotizacion_id
       },
     },
   })
@@ -656,7 +652,13 @@ test('actualizarCotizacion con nueva moneda:USD persiste moneda + snapshot en el
 
   await actualizarCotizacion(5, bodyBase({ moneda: 'USD' }), USUARIO)
 
-  assert.equal(cotizacionesActualizadas.length, 1)
-  assert.equal(cotizacionesActualizadas[0].moneda, 'USD')
-  assert.equal(cotizacionesActualizadas[0].tipo_cambio_snapshot, 7300.75)
+  assert.equal(
+    cotizacionesActualizadas.length,
+    1,
+    'actualizarCotizacionAtomica debe llamarse exactamente una vez'
+  )
+  const payload = cotizacionesActualizadas[0]
+  assert.equal(payload.p_cotizacion_id, 5)
+  assert.equal(payload.p_cotizacion.moneda, 'USD')
+  assert.equal(payload.p_cotizacion.tipo_cambio_snapshot, 7300.75)
 })

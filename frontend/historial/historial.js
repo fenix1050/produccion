@@ -403,15 +403,15 @@ function renderTabla() {
       const puedeOferta = ofertaDisponible(c)
       return `
       <tr>
-        <td><span class="historial-tabla__numero">${escapeHtml(c.numero_cotizacion)}</span></td>
-        <td>${escapeHtml(c.cliente_nombre ?? '—')}</td>
-        <td>${escapeHtml(c.ramos?.nombre_display ?? '—')}</td>
-        <td>${escapeHtml(c.planes?.nombre ?? '—')}</td>
-        <td>${fmtFecha(c.created_at)}</td>
-        <td>${crearBadge(c.estado ?? '—', ESTADO_BADGE[c.estado] ?? 'neutral')}</td>
-        <td>${escapeHtml(moneda)}</td>
-        <td class="historial-tabla__prima">${prima != null ? escapeHtml(fmtMoneda(prima, moneda)) : '—'}</td>
-        <td>
+        <td data-label="Número"><span class="historial-tabla__numero">${escapeHtml(c.numero_cotizacion)}</span></td>
+        <td data-label="Cliente">${escapeHtml(c.cliente_nombre ?? '—')}</td>
+        <td data-label="Ramo">${escapeHtml(c.ramos?.nombre_display ?? '—')}</td>
+        <td data-label="Plan">${escapeHtml(c.planes?.nombre ?? '—')}</td>
+        <td data-label="Fecha">${fmtFecha(c.created_at)}</td>
+        <td data-label="Estado">${crearBadge(c.estado ?? '—', ESTADO_BADGE[c.estado] ?? 'neutral')}</td>
+        <td data-label="Moneda">${escapeHtml(moneda)}</td>
+        <td class="historial-tabla__prima" data-label="Prima">${prima != null ? escapeHtml(fmtMoneda(prima, moneda)) : '—'}</td>
+        <td data-label="Acciones">
           <div class="historial-tabla__actions">
             <button class="historial-tabla__btn-ghost" data-action="ver-detalle" data-id="${c.id}">Ver detalle</button>
             ${

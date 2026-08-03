@@ -449,6 +449,7 @@
 
   .admin-valor-fijo {
     flex-wrap: wrap;
+    justify-content: flex-end;
   }
 
   .admin-valor-fijo span {

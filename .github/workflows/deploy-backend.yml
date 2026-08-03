@@ -17,7 +17,7 @@ jobs:
       github.event.workflow_run.event == 'push'
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy over SSH
+      - name: Deploy over SSH (with automatic rollback on failed health check)
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -27,6 +27,8 @@ jobs:
           script: |
             set -e
             cd /home/fenix/workspace/produccion
+            PREV_SHA=$(git rev-parse HEAD)
+
             git fetch origin main
             git checkout main
             # El checkout de la VPS es un artefacto de despliegue descartable, no un lugar
@@ -38,15 +40,41 @@ jobs:
             docker compose up --build -d backend
             docker image prune -f
 
-      - name: Verify deploy (health check)
-        run: |
-          for i in $(seq 1 10); do
-            if curl -sf https://api.cotizador.lat/health; then
-              echo "Backend healthy"
+            set +e
+            HEALTHY=1
+            for i in $(seq 1 10); do
+              if curl -sf https://api.cotizador.lat/health; then
+                echo "Backend healthy"
+                HEALTHY=0
+                break
+              fi
+              echo "Waiting for backend to come up... ($i/10)"
+              sleep 3
+            done
+
+            if [ "$HEALTHY" -eq 0 ]; then
               exit 0
             fi
-            echo "Waiting for backend to come up... ($i/10)"
-            sleep 3
-          done
-          echo "Backend did not report healthy after deploy"
-          exit 1
+
+            if [ "$PREV_SHA" = "$(git rev-parse origin/main)" ]; then
+              echo "Backend did not report healthy after deploy, and there is no previous commit to roll back to"
+              exit 1
+            fi
+
+            echo "Backend did not report healthy after deploy — rolling back to $PREV_SHA"
+            git reset --hard "$PREV_SHA"
+            git clean -fd
+            docker compose up --build -d backend
+            docker image prune -f
+
+            for i in $(seq 1 10); do
+              if curl -sf https://api.cotizador.lat/health; then
+                echo "Rollback successful — backend healthy on previous commit $PREV_SHA"
+                exit 1
+              fi
+              echo "Waiting for rollback backend to come up... ($i/10)"
+              sleep 3
+            done
+
+            echo "Rollback also failed to report healthy — backend is down"
+            exit 1

@@ -203,7 +203,12 @@
     overflow-y: auto;
   }
 
+  /* .historial-tabla-scroll .admin-table { min-width: 860px } (arriba) tiene más
+     especificidad que el reset ".admin-table { min-width: 0 }" del layout de cards en
+     admin.css — sin este override, la tabla de resultados queda forzada a 860px y nunca
+     colapsa a cards en mobile, aunque el resto del admin sí lo hace. */
   .historial-tabla-scroll .admin-table {
+    min-width: 0;
     font-size: 12px;
   }
 

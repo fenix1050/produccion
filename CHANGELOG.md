@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.20](https://github.com/fenix1050/produccion/compare/v0.1.19...v0.1.20) (2026-08-03)
+
+
+### Bug Fixes
+
+* **ci:** rollback automatico del backend si el health-check post-deploy falla ([#133](https://github.com/fenix1050/produccion/issues/133)) ([da60628](https://github.com/fenix1050/produccion/commit/da60628145b65e0a9fd4cf9b0bbf7bd5777a9872))
+
 ## [0.1.19](https://github.com/fenix1050/produccion/compare/v0.1.18...v0.1.19) (2026-08-03)
 
 

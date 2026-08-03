@@ -1,5 +1,4 @@
 import { api, auth } from '../shared/api.js'
-import { crearBadge } from '../shared/badge.js'
 import { getRamos } from '../shared/catalogo.js'
 import { escapeHtml, enfocarPrimerElemento, atraparFoco, renderBanner } from '../shared/dom.js'
 import { renderSidebarFooter, renderTopbar as renderTopbarShell } from '../shared/sidebar.js'
@@ -11,6 +10,8 @@ import { renderCampoInline } from './render/campos-inline.js'
 import { renderUsuarios } from './render/usuarios.js'
 import { renderModal, renderModalRol } from './render/modales-usuario.js'
 import { renderPlanes } from './render/planes.js'
+import { renderTasas, ramoUsaRubrosActividad } from './render/tasas.js'
+import { renderRamosGestion } from './render/ramos.js'
 
 // Panel de Administración del Cotizador Tajy — WU5, primera porción (Usuarios).
 // Mismo patrón Vanilla JS que cotizar.js: state + render + delegación de eventos por
@@ -505,86 +506,6 @@ async function eliminarRamo(ramoId) {
   }
 }
 
-function renderRamosGestion() {
-  return `
-    <div class="panel card">
-      <div class="card__title">Ramos</div>
-      <div class="card__body">
-        ${renderTablaRamosGestion()}
-      </div>
-    </div>
-  `
-}
-
-function renderTablaRamosGestion() {
-  if (state.loadingRamosGestion) {
-    return '<div class="empty-state__subtitle"><span class="spinner" aria-hidden="true"></span> Cargando ramos…</div>'
-  }
-  if (state.ramosGestionError) {
-    return `<div class="admin-banner admin-banner--error">${escapeHtml(state.ramosGestionError)}</div>`
-  }
-  if (!state.ramosGestion.length) {
-    return '<div class="empty-state__subtitle">No hay ramos para mostrar.</div>'
-  }
-
-  const filas = state.ramosGestion
-    .map(
-      (r) => `
-    <tr>
-      <td data-label="Ramo">${renderCampoNombreRamo(r)}</td>
-      <td data-label="Estado en el sidebar">
-        <label class="admin-modal__checkbox">
-          <input type="checkbox" data-action="toggle-ramo-activo" data-id="${r.id}" ${r.activo ? 'checked' : ''} />
-          ${r.activo ? 'Activo' : 'Próximamente (oculto para cotizar)'}
-        </label>
-      </td>
-      <td data-label="Acciones">
-        <button class="btn-outline" data-action="eliminar-ramo" data-id="${r.id}">Eliminar</button>
-      </td>
-    </tr>
-  `
-    )
-    .join('')
-
-  return `
-    <div class="admin-table-scroll">
-      <table class="admin-table">
-        <thead>
-          <tr>
-            <th>Ramo</th>
-            <th>Estado en el sidebar</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>${filas}</tbody>
-      </table>
-    </div>
-  `
-}
-
-// El nombre de un ramo (nombre_display) rara vez cambia, así que se edita inline en la
-// misma fila — mismo patrón que renderCampoPrimaTecnicaMinima/renderCampoTasaRpf. El botón
-// "Editar" va en una columna de ancho fijo (`admin-ramo-nombre__accion`), separada del texto
-// del nombre: los nombres de ramo varían mucho de largo ("Automóviles" vs "Multirriesgo
-// Comercio"), así que compartir un solo <td> con flex dejaba el botón a distinta distancia
-// en cada fila en vez de alineado en columna.
-function renderCampoNombreRamo(ramo) {
-  return renderCampoInline({
-    editando: state.ramoNombreEnEdicion.has(ramo.id),
-    id: ramo.id,
-    formAction: 'nombre-ramo',
-    accionEditar: 'editar-nombre-ramo',
-    accionCancelar: 'cancelar-nombre-ramo',
-    // Layout propio (ver admin.css .admin-ramo-nombre): mismo DOM que antes de la
-    // unificación (botón envuelto en su propia <span> de ancho fijo), no el genérico
-    // admin-valor-fijo — ver comentario arriba de renderTablaRamosGestion.
-    wrapperClase: 'admin-ramo-nombre',
-    accionWrapperClase: 'admin-ramo-nombre__accion',
-    lectura: `<span class="admin-ramo-nombre__texto">${escapeHtml(ramo.nombre_display)}</span>`,
-    campos: [{ tipo: 'text', name: 'nombre_display', value: ramo.nombre_display, autofocus: true }],
-  })
-}
-
 // ---------------------------------------------------------------------------
 // Planes: carga y acciones
 // ---------------------------------------------------------------------------
@@ -767,14 +688,6 @@ async function seleccionarRamoTasas(ramoId) {
     tareas.push(cargarRubrosActividad(state.ramoTasasSeleccionado))
   }
   await Promise.all(tareas)
-}
-
-// rubros_actividad se muestra solo cuando el ramo seleccionado es uno de los que la
-// usan (nombre = slug, no nombre_display); evita mostrarla para Vida/AP u otros ramos
-// que no la usan.
-function ramoUsaRubrosActividad(ramoId) {
-  const ramo = state.ramos.find((r) => String(r.id) === String(ramoId))
-  return ramo?.nombre === 'mrc' || ramo?.nombre === 'incendio'
 }
 
 async function cargarRubrosActividad(ramoId) {
@@ -1241,190 +1154,6 @@ function renderProximamente(seccion) {
         <span class="admin-badge-proximamente">Próximamente</span>
       </div>
       <div class="empty-state__subtitle">Esta funcionalidad todavía no está disponible en el panel — no es un problema de datos ni de conexión, es una sección en desarrollo.</div>
-    </div>
-  `
-}
-
-function renderTasas() {
-  const puedeEditar = Boolean(auth.getUsuario()?.puede_editar_tasas)
-  const opcionesRamo = state.ramos
-    .map(
-      (r) => `
-    <option value="${r.id}" ${String(state.ramoTasasSeleccionado) === String(r.id) ? 'selected' : ''}>${escapeHtml(r.nombre_display)}</option>
-  `
-    )
-    .join('')
-
-  return `
-    ${!puedeEditar ? '<div class="admin-banner admin-banner--error">Tu usuario no tiene permiso para editar tasas — podés ver el historial, pero no cargar versiones nuevas.</div>' : ''}
-    <div class="panel card">
-      <div class="card__title card__title--toolbar">
-        <span>Tasas</span>
-        <div class="card__title__actions">
-          <select class="field-input" style="width: auto;" data-action="seleccionar-ramo-tasas" aria-label="Elegí un ramo">
-            <option value="">Elegí un ramo…</option>
-            ${opcionesRamo}
-          </select>
-          ${puedeEditar && state.ramoTasasSeleccionado ? '<button class="btn-primary btn-primary--sm" data-action="crear-tasa">+ Nueva versión de tasa</button>' : ''}
-        </div>
-      </div>
-      <div class="card__body">
-        ${renderTablaTasas()}
-      </div>
-    </div>
-    ${
-      ramoUsaRubrosActividad(state.ramoTasasSeleccionado)
-        ? `
-      <div class="panel card">
-        <div class="card__title">Tasas por Tipo de Riesgo</div>
-        <div class="card__body">
-          ${renderTablaRubrosActividad()}
-        </div>
-      </div>
-    `
-        : ''
-    }
-  `
-}
-
-function renderTablaRubrosActividad() {
-  const entry = state.rubrosActividad
-  if (entry.loading) {
-    return '<div class="empty-state__subtitle"><span class="spinner" aria-hidden="true"></span> Cargando tipos de riesgo…</div>'
-  }
-  if (entry.error) {
-    return `<div class="admin-banner admin-banner--error">${escapeHtml(entry.error)}</div>`
-  }
-  if (!entry.datos?.length) {
-    return '<div class="empty-state__subtitle">Todavía no hay tipos de riesgo cargados.</div>'
-  }
-
-  const filas = entry.datos
-    .map(
-      (r) => `
-    <tr>
-      <td data-label="Tipo de Riesgo">${escapeHtml(r.nombre)}</td>
-      <td colspan="3" data-label="Categoría / Tasa Edificio-Contenido (‰)">${renderCamposTasaEdificioContenido(r)}</td>
-    </tr>
-  `
-    )
-    .join('')
-
-  return `
-    <div class="admin-table-scroll">
-      <table class="admin-table admin-table--nested">
-        <thead>
-          <tr>
-            <th>Tipo de Riesgo</th>
-            <th>Categoría</th>
-            <th colspan="2">Tasa Edificio / Contenido (‰)</th>
-          </tr>
-        </thead>
-        <tbody>${filas}</tbody>
-      </table>
-    </div>
-  `
-}
-
-const CATEGORIAS_RUBRO_ACTIVIDAD = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'].map(
-  (letra) => `CATEGORIA ${letra}`
-)
-
-function renderCamposTasaEdificioContenido(rubro) {
-  const puedeEditar = Boolean(auth.getUsuario()?.puede_editar_tasas)
-
-  return renderCampoInline({
-    editando: state.rubroActividadEnEdicion.has(rubro.id),
-    id: rubro.id,
-    formAction: 'rubro-actividad-tasas',
-    accionEditar: 'editar-tasa-edificio-contenido',
-    accionCancelar: 'cancelar-tasa-edificio-contenido',
-    puedeEditar,
-    lectura: `
-        <span>${escapeHtml(rubro.categoria ?? '—')}</span>
-        <span>${rubro.tasa_edificio != null ? escapeHtml(String(rubro.tasa_edificio)) : '—'} / ${rubro.tasa_contenido != null ? escapeHtml(String(rubro.tasa_contenido)) : '—'}</span>
-      `,
-    campos: [
-      {
-        tipo: 'select',
-        name: 'categoria',
-        value: rubro.categoria,
-        autofocus: true,
-        ariaLabel: 'Categoría',
-        opciones: CATEGORIAS_RUBRO_ACTIVIDAD.map((cat) => ({ value: cat, label: cat })),
-      },
-      {
-        tipo: 'number',
-        name: 'tasa_edificio',
-        step: '0.001',
-        placeholder: 'Edificio',
-        value: rubro.tasa_edificio,
-      },
-      {
-        tipo: 'number',
-        name: 'tasa_contenido',
-        step: '0.001',
-        placeholder: 'Contenido',
-        value: rubro.tasa_contenido,
-      },
-    ],
-  })
-}
-
-function renderTablaTasas() {
-  if (!state.ramoTasasSeleccionado) {
-    return '<div class="empty-state__subtitle">Elegí un ramo para ver su historial de tasas.</div>'
-  }
-
-  const entry = state.tasasPorRamo[state.ramoTasasSeleccionado]
-  if (!entry || entry.loading) {
-    return '<div class="empty-state__subtitle"><span class="spinner" aria-hidden="true"></span> Cargando tasas…</div>'
-  }
-  if (entry.error) {
-    return `<div class="admin-banner admin-banner--error">${escapeHtml(entry.error)}</div>`
-  }
-  if (!entry.historial.length) {
-    return '<div class="empty-state__subtitle">Este ramo todavía no tiene tasas cargadas.</div>'
-  }
-
-  const puedeEditar = Boolean(auth.getUsuario()?.puede_editar_tasas)
-
-  // El historial ya viene ordenado por vigente_desde descendente — la primera fila de
-  // cada cobertura es la vigente, el resto queda como versión anterior.
-  const vistaPorCobertura = new Set()
-  const filas = entry.historial
-    .map((t) => {
-      const codigo = t.coberturas_catalogo?.codigo ?? String(t.cobertura_id)
-      const esVigente = !vistaPorCobertura.has(codigo)
-      vistaPorCobertura.add(codigo)
-      return `
-      <tr>
-        <td data-label="Cobertura">${escapeHtml(t.coberturas_catalogo?.nombre ?? '—')}</td>
-        <td data-label="Tasa">${escapeHtml(String(t.tasa_valor))}</td>
-        <td data-label="Unidad">${t.unidad === 'permil' ? '‰' : '%'}</td>
-        <td data-label="Vigente desde">${escapeHtml(t.vigente_desde)}</td>
-        <td data-label="Estado">${crearBadge(esVigente ? 'Vigente' : 'Histórica', esVigente ? 'success' : 'neutral')}</td>
-        <td data-label="Acciones">${puedeEditar ? `<button class="btn-outline" data-action="eliminar-tasa" data-id="${t.id}">Eliminar</button>` : ''}</td>
-      </tr>
-    `
-    })
-    .join('')
-
-  return `
-    <div class="admin-table-scroll">
-      <table class="admin-table">
-        <thead>
-          <tr>
-            <th>Cobertura</th>
-            <th>Tasa</th>
-            <th>Unidad</th>
-            <th>Vigente desde</th>
-            <th>Estado</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>${filas}</tbody>
-      </table>
     </div>
   `
 }

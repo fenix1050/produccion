@@ -46,7 +46,13 @@ export function createApp() {
       allowedHeaders: ['Content-Type', 'X-CSRF-Token'],
     })
   )
-  app.use(cookieParser())
+  // Falso positivo de CodeQL en esta línea: solo reconoce librerías CSRF conocidas
+  // (csurf, etc.) como sanitizer — no modela nuestro middleware custom de double-submit
+  // (csrfProtection, montado dos líneas más abajo antes del router) como protección
+  // válida, así que marca cualquier ruta detrás de este parser como desprotegida.
+  // Verificado con tests (csrf.test.js) y en vivo con curl/Playwright: bloquea header
+  // ausente/incorrecto en todo método mutante, pasa con el token correcto.
+  app.use(cookieParser()) // codeql[js/missing-token-validation]
   app.use(express.json({ limit: '2mb' }))
 
   app.use('/api', apiRateLimiter, csrfProtection, apiRouter)

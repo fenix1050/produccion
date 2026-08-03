@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.21](https://github.com/fenix1050/produccion/compare/v0.1.20...v0.1.21) (2026-08-03)
+
+
+### Bug Fixes
+
+* **auth:** trust proxy detrás de Caddy y timing constante en login ([#135](https://github.com/fenix1050/produccion/issues/135)) ([950eab2](https://github.com/fenix1050/produccion/commit/950eab229ef66dc730e938b83758f6dd873d26be))
+
 ## [0.1.20](https://github.com/fenix1050/produccion/compare/v0.1.19...v0.1.20) (2026-08-03)
 
 

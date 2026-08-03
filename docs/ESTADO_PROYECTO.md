@@ -2087,3 +2087,23 @@ Conclusión práctica para futuros refactors: para dispatch por un valor con ori
 **CI y merge.** 3 commits de fix adicionales tras el push inicial (uno por cada intento de mitigación de CodeQL descrito arriba) hasta que los 3 checks obligatorios (`quality`, `Analyze JavaScript`, `CodeQL`) quedaron en verde. PR #104 mergeado a `main`, rama borrada (local y remota).
 
 **Con esto, el issue #84 (auditoría de calidad de código) queda completamente cerrado** — los 4 refactors grandes identificados en la auditoría original (secciones 45, 46, 47 y esta) están todos implementados y verificados.
+
+## 49. `admin-module-split` PR5 — `render/planes.js` extraído (2026-08-02), rama `refactor/admin-module-split-pr5`, sin mergear todavía
+
+Quinto de los 10 PRs del plan `admin-module-split` (issue #83/#84 finding #9, división de `frontend/admin/admin.js` en módulos ES nativos). PR1-4 (foundation, `render/campos-inline.js`, `render/usuarios.js`, `render/modales-usuario.js`) ya mergeados a `main`.
+
+**Qué se hizo.** Pure move de 8 funciones a `frontend/admin/render/planes.js`: `renderPlanes` (exportada), `renderTablaPlanes`, `renderFormasPagoDelPlan`, `esPlanSoloUsd`, `renderCampoNombrePlan`, `renderCampoPrimaTecnicaMinima`, `renderCampoTopes`, `renderCampoTasaRpf` (privadas, solo usadas internamente). Mismo patrón que `render/usuarios.js`/`render/modales-usuario.js`: importa `state.js` + `render/campos-inline.js` + módulos compartidos (`shared/api.js` para `auth`, `shared/dom.js` para `escapeHtml`, `shared/format.js` para `fmtGs`/`fmtUsd`), sin depender de otros dominios. `admin.js` importa `renderPlanes` y sigue invocándola desde el dispatcher de sección. De paso se sacó el import de `fmtUsdConPrefijo as fmtUsd` en `admin.js`, que quedó sin uso tras el move (solo se usaba dentro del bloque extraído). Sin cambios de comportamiento.
+
+**Verificación.** 166/166 tests backend en verde (frontend-only, sanity check). `npx prettier --write` acotado a los 2 archivos tocados.
+
+**Verificación en vivo con Playwright**, usuario admin real `kevinruiz@tajy.com.py` (credencial pasada por Kevin explícitamente para esta sesión, no persistida). Mismo hallazgo operativo de CORS que en secciones 47/48: el backend local que ya estaba corriendo (de otra sesión) tenía `FRONTEND_URL=https://cotizador.lat` (config real de `.env`) en vez de `localhost:5000`, así que el browser bloqueaba la respuesta de login por CORS aunque `curl` directo confirmaba 401/200 normales. Se reinició el proceso del backend con `FRONTEND_URL='http://localhost:5000' npm run dev` como override, y se restauró a su configuración original (sin override, leyendo el `.env` real) al terminar — confirmado con `curl` que el header `Access-Control-Allow-Origin` volvió a `https://cotizador.lat/api`.
+
+**Cobertura de casos probados**, capturas de pantalla antes/después de cada acción, cero errores de consola reales (los únicos 4 "errores" reportados por el listener eran el 404 preexistente y conocido de `frontend/shared/config.js`, que el mensaje de consola no incluye en su texto — confirmado con un segundo script que sí loguea la URL de cada 404):
+
+- Tabla de Planes carga sus 20 filas reales con nombre, ramo, estado, prima técnica mínima y topes.
+- Filtro "Todos los ramos" / por ramo puntual reacciona sin error.
+- "Formas de pago" expande la subtabla anidada (Tarjeta de Crédito, Contado, Crédito Cobrador, Boca de Cobranza) con sus tasas RPF y estado habilitada/deshabilitada.
+- Edición inline de Prima técnica mínima abre el `<input>` con Guardar/Cancelar (no se guardó el cambio, solo se verificó apertura/cierre).
+- Edición inline de Topes desc./recargo abre los dos `<input>` (Desc. %/Rec. %) — botón "Editar" visible porque el usuario logueado es admin literal, tal como espera `renderCampoTopes`.
+
+**Pendiente:** abrir PR desde `refactor/admin-module-split-pr5` hacia `main` (base: PR4 ya mergeado, así que este PR apunta directo a `main`). Sigue PR6 (`render/tasas.js` + `render/ramos.js`) del plan de 10.

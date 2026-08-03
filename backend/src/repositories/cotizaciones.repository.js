@@ -1,6 +1,26 @@
 import { supabase } from '../config/supabase.js'
 import { httpError } from '../utils/http-error.js'
 
+// Cambio SDD `cotizacion-transaccional`: thin wrappers de UN solo `supabase.rpc()` contra las
+// funciones plpgsql `crear_cotizacion_atomica`/`actualizar_cotizacion_atomica` (migración
+// 052_cotizacion_atomica_rpc.sql, ya aplicada contra Supabase real). El `payload` ya viene armado
+// por `cotizacion.service.js` con las keys `p_*` exactas que espera el RPC — no hay traducción
+// acá, solo se reenvía tal cual (ver design.md — Architecture Decision #4/#5). Todo el detalle
+// (correlativo, cabecera, coberturas, variantes, ajustes, plan de pago) se persiste dentro de
+// una única transacción de Postgres del lado del RPC; el error de Postgres se propaga sin
+// envolver, ya que el rollback lo maneja la base, no JS.
+export async function crearCotizacionAtomica(payload) {
+  const { data, error } = await supabase.rpc('crear_cotizacion_atomica', payload)
+  if (error) throw error
+  return data
+}
+
+export async function actualizarCotizacionAtomica(payload) {
+  const { data, error } = await supabase.rpc('actualizar_cotizacion_atomica', payload)
+  if (error) throw error
+  return data
+}
+
 export async function nextNumeroCorrelativo(ramoId) {
   // Incrementa y devuelve el próximo número correlativo del ramo vía RPC
   // (función `siguiente_correlativo`, migración 009) para que el incremento

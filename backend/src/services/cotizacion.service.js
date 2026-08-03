@@ -36,48 +36,46 @@ export async function crearCotizacion(body, usuario) {
     usuario,
   })
 
-  const cotizacion = await cotizacionesRepository.insertCotizacion({
-    numero_cotizacion: `${ramo.nombre.toUpperCase()}-${await cotizacionesRepository.nextNumeroCorrelativo(ramo.id)}`,
-    ramo_id: ramo.id,
-    plan_id: plan.id,
-    agente_id: usuario.id,
-    cliente_nombre: body.cliente_nombre,
-    cliente_contacto: body.cliente_contacto,
-    riesgo_datos: datosValidados.riesgo_datos,
-    capital_asegurado: datosValidados.capital_asegurado,
-    estado: 'cotizada',
-    moneda: variantesCalculadas.moneda,
-    // Snapshot de tipo de cambio SOLO cuando la cotización realmente necesitó convertir (ver
-    // resolverUmbralInspeccion) — `calcularPreview` nunca llega a este INSERT, así que el preview
-    // nunca persiste snapshot (migración 034: columnas nullable, NULL = "no hubo conversión").
-    ...(variantesCalculadas.tipoCambioUsado
-      ? {
-          tipo_cambio_snapshot: variantesCalculadas.tipoCambioUsado.venta,
-          tipo_cambio_fuente: variantesCalculadas.tipoCambioUsado.fuente,
-          tipo_cambio_fecha: variantesCalculadas.tipoCambioUsado.obtenido_en,
-        }
-      : {}),
+  const { coberturas, variantes } = await armarPayloadDetalle({
+    ramoId: ramo.id,
+    variantesCalculadas,
   })
 
-  try {
-    await insertarCoberturasYVariantes({
-      cotizacionId: cotizacion.id,
-      ramoId: ramo.id,
-      variantesCalculadas,
-    })
-  } catch (error) {
-    // Rollback manual: sin esto, la cabecera insertada arriba queda huérfana (sin variantes) si
-    // este paso falla (ej. duplicate-key del Bug 1, o cualquier otra falla de red/RPC) — rompe la
-    // generación de Carta Oferta más tarde y quema un `numero_cotizacion` que nunca se reutiliza.
-    // Mismo espíritu que el comentario de `actualizarCotizacion` sobre no dejar estados
-    // intermedios rotos, pero acá el mecanismo es un DELETE compensatorio (no hay nada previo que
-    // preservar: la cabecera se acaba de crear en este mismo call). Se re-lanza el error original
-    // sin envolverlo para no ocultar la causa real.
-    await cotizacionesRepository.deleteCotizacion(cotizacion.id)
-    throw error
-  }
+  // Un único RPC atómico (migración 052, `crear_cotizacion_atomica`) hace, en una sola
+  // transacción de Postgres: reservar el correlativo de la cabecera, insertar `cotizaciones` y
+  // delegar coberturas/variantes/ajustes/plan de pago al helper compartido — un fallo en
+  // cualquier paso hace rollback de TODO, incluido el incremento del correlativo. Ya no hace
+  // falta ninguna compensación manual del lado de JS (ver spec.md — "Manual DELETE compensation
+  // removed"): si el RPC falla, se re-lanza el error tal cual.
+  const cotizacionId = await cotizacionesRepository.crearCotizacionAtomica({
+    p_prefijo_numero: ramo.nombre.toUpperCase(),
+    p_ramo_id: ramo.id,
+    p_cotizacion: {
+      plan_id: plan.id,
+      agente_id: usuario.id,
+      cliente_nombre: body.cliente_nombre,
+      cliente_contacto: body.cliente_contacto,
+      riesgo_datos: datosValidados.riesgo_datos,
+      capital_asegurado: datosValidados.capital_asegurado,
+      estado: 'cotizada',
+      moneda: variantesCalculadas.moneda,
+      // Snapshot de tipo de cambio SOLO cuando la cotización realmente necesitó convertir (ver
+      // resolverUmbralInspeccion) — `calcularPreview` nunca llega acá, así que el preview nunca
+      // persiste snapshot (migración 034: columnas nullable, ausentes acá = NULL = "no hubo
+      // conversión", ver `crear_cotizacion_atomica`).
+      ...(variantesCalculadas.tipoCambioUsado
+        ? {
+            tipo_cambio_snapshot: variantesCalculadas.tipoCambioUsado.venta,
+            tipo_cambio_fuente: variantesCalculadas.tipoCambioUsado.fuente,
+            tipo_cambio_fecha: variantesCalculadas.tipoCambioUsado.obtenido_en,
+          }
+        : {}),
+    },
+    p_coberturas: coberturas,
+    p_variantes: variantes,
+  })
 
-  return cotizacionesRepository.findCotizacionById(cotizacion.id)
+  return cotizacionesRepository.findCotizacionById(cotizacionId)
 }
 
 export async function listarCotizaciones(query, usuario) {
@@ -169,43 +167,42 @@ export async function actualizarCotizacion(id, body, usuario) {
     usuario,
   })
 
-  // Orden deliberado: insertar los datos NUEVOS antes de tocar el header o borrar los viejos.
-  // Si `insertarCoberturasYVariantes` falla acá (red, RPC del correlativo, etc.), la cotización
-  // existente queda 100% intacta — nada se tocó todavía. Con el orden anterior (borrar → update
-  // → insertar) una falla a mitad de camino dejaba la cabecera actualizada pero SIN variantes ni
-  // coberturas (PDF roto, prima en null) — detectado por los 4 lentes de review de esta feature.
-  // Se borran los IDs viejos ya capturados (no un DELETE ciego por cotizacion_id) para no
-  // arrastrarse las filas recién insertadas, que comparten el mismo cotizacion_id.
-  const idsVariantesViejas = (existente.cotizacion_variantes ?? []).map((v) => v.id)
-  const idsCoberturasViejas = (existente.cotizacion_coberturas ?? []).map((c) => c.id)
-
-  await insertarCoberturasYVariantes({ cotizacionId: id, ramoId: ramo.id, variantesCalculadas })
-
-  await cotizacionesRepository.updateCotizacion(id, {
-    cliente_nombre: body.cliente_nombre,
-    cliente_contacto: body.cliente_contacto,
-    riesgo_datos: datosValidados.riesgo_datos,
-    capital_asegurado: datosValidados.capital_asegurado,
-    plan_id: plan.id,
-    estado: 'cotizada',
-    moneda: variantesCalculadas.moneda,
-    // Mismo criterio que crearCotizacion: solo se pisa el snapshot si ESTA edición volvió a
-    // necesitar conversión — si no, se deja el `tipo_cambio_snapshot` tal como estaba.
-    ...(variantesCalculadas.tipoCambioUsado
-      ? {
-          tipo_cambio_snapshot: variantesCalculadas.tipoCambioUsado.venta,
-          tipo_cambio_fuente: variantesCalculadas.tipoCambioUsado.fuente,
-          tipo_cambio_fecha: variantesCalculadas.tipoCambioUsado.obtenido_en,
-        }
-      : {}),
+  const { coberturas, variantes } = await armarPayloadDetalle({
+    ramoId: ramo.id,
+    variantesCalculadas,
   })
 
-  if (idsVariantesViejas.length)
-    await cotizacionesRepository.deleteVariantesByIds(idsVariantesViejas)
-  if (idsCoberturasViejas.length)
-    await cotizacionesRepository.deleteCoberturasByIds(idsCoberturasViejas)
+  // Un único RPC atómico (migración 052, `actualizar_cotizacion_atomica`) bloquea la cabecera
+  // (`FOR UPDATE`), borra el detalle viejo por `cotizacion_id`, actualiza los campos editables y
+  // reinserta el detalle nuevo — todo en una sola transacción de Postgres. Ya no hace falta el
+  // truco "insertar antes de borrar por IDs capturados": eso solo existía para sobrevivir una
+  // falla no-transaccional del cliente PostgREST (ver design.md Decision #7).
+  const cotizacionId = await cotizacionesRepository.actualizarCotizacionAtomica({
+    p_cotizacion_id: id,
+    p_cotizacion: {
+      cliente_nombre: body.cliente_nombre,
+      cliente_contacto: body.cliente_contacto,
+      riesgo_datos: datosValidados.riesgo_datos,
+      capital_asegurado: datosValidados.capital_asegurado,
+      plan_id: plan.id,
+      estado: 'cotizada',
+      moneda: variantesCalculadas.moneda,
+      // Mismo criterio que crearCotizacion: solo se pisa el snapshot si ESTA edición volvió a
+      // necesitar conversión — si no, el RPC preserva el `tipo_cambio_snapshot` existente (la
+      // clave simplemente no viaja en el payload).
+      ...(variantesCalculadas.tipoCambioUsado
+        ? {
+            tipo_cambio_snapshot: variantesCalculadas.tipoCambioUsado.venta,
+            tipo_cambio_fuente: variantesCalculadas.tipoCambioUsado.fuente,
+            tipo_cambio_fecha: variantesCalculadas.tipoCambioUsado.obtenido_en,
+          }
+        : {}),
+    },
+    p_coberturas: coberturas,
+    p_variantes: variantes,
+  })
 
-  return cotizacionesRepository.findCotizacionById(id)
+  return cotizacionesRepository.findCotizacionById(cotizacionId)
 }
 
 // ---- Fase 4 ----
@@ -235,78 +232,68 @@ function verificarPropiedad(
 }
 
 /**
- * Inserta el detalle de coberturas + variantes/planes de pago/ajustes de una cotización ya
- * persistida (cabecera insertada por `crearCotizacion` o ya existente para `actualizarCotizacion`).
- * Extraído para no duplicar esta lógica entre alta y edición — antes vivía inline dentro de
- * `crearCotizacion`.
+ * Arma el `p_coberturas`/`p_variantes` JSONB que espera el RPC atómico (migración 052) a partir
+ * del resultado del calculador — pura lógica de shape, SIN escrituras a la base: el único `await`
+ * que queda es una lectura de catálogo (necesaria para resolver `cobertura_id`/textos legales
+ * snapshot), no un insert. Reemplaza `insertarCoberturasYVariantes` (que hacía los INSERTs
+ * secuenciales uno por uno) ahora que `_insertar_detalle_cotizacion` (mismo shape de columnas)
+ * corre del lado de Postgres dentro de `crear_cotizacion_atomica`/`actualizar_cotizacion_atomica`.
  */
-async function insertarCoberturasYVariantes({ cotizacionId, ramoId, variantesCalculadas }) {
-  // Persiste el detalle de coberturas mostrado en "Detalle del plan" (hoy solo lo arma
-  // mrc.calculator.js — Incendio/Vida-AP todavía no devuelven `coberturas`, de ahí el guard).
-  // Snapshot de nombre/texto legal/exclusiones para que quede congelado aunque después
-  // cambie el catálogo (mismo criterio que cotizacion_clausulas/cotizacion_servicios).
+async function armarPayloadDetalle({ ramoId, variantesCalculadas }) {
+  // Detalle de coberturas mostrado en "Detalle del plan" (hoy solo lo arma mrc.calculator.js —
+  // Incendio/Vida-AP todavía no devuelven `coberturas`, de ahí el guard). Snapshot de
+  // nombre/texto legal/exclusiones para que quede congelado aunque después cambie el catálogo
+  // (mismo criterio que cotizacion_clausulas/cotizacion_servicios).
+  let coberturas = []
   if (variantesCalculadas.coberturas?.length) {
     const catalogoRamo = await coberturasRepository.findCoberturasCatalogoByRamoId(ramoId)
     const catalogoPorCodigo = new Map(catalogoRamo.map((c) => [c.codigo, c]))
 
-    await cotizacionesRepository.insertCoberturas(
-      variantesCalculadas.coberturas.map((cobertura) => {
-        const catalogoRow = catalogoPorCodigo.get(cobertura.codigo)
-        return {
-          cotizacion_id: cotizacionId,
-          cobertura_id: catalogoRow?.id ?? null,
-          nombre_snapshot: cobertura.nombre,
-          texto_legal_snapshot: catalogoRow?.texto_legal ?? null,
-          texto_exclusiones_snapshot: catalogoRow?.texto_exclusiones ?? null,
-          monto: cobertura.monto,
-          // El calculador ya resuelve acá la franquicia elegida por el agente (o la default del
-          // catálogo si no eligió ninguna) — ver construirListaCoberturas en mrc.calculator.js.
-          franquicia: cobertura.franquicia_default ?? null,
-          tipo_aplicacion: cobertura.tipo_aplicacion ?? 'cobertura',
-          incluida: true,
-        }
-      })
-    )
+    coberturas = variantesCalculadas.coberturas.map((cobertura) => {
+      const catalogoRow = catalogoPorCodigo.get(cobertura.codigo)
+      return {
+        cobertura_id: catalogoRow?.id ?? null,
+        nombre_snapshot: cobertura.nombre,
+        texto_legal_snapshot: catalogoRow?.texto_legal ?? null,
+        texto_exclusiones_snapshot: catalogoRow?.texto_exclusiones ?? null,
+        monto: cobertura.monto,
+        // El calculador ya resuelve acá la franquicia elegida por el agente (o la default del
+        // catálogo si no eligió ninguna) — ver construirListaCoberturas en mrc.calculator.js.
+        franquicia: cobertura.franquicia_default ?? null,
+        tipo_aplicacion: cobertura.tipo_aplicacion ?? 'cobertura',
+        incluida: true,
+      }
+    })
   }
 
-  for (const variante of variantesCalculadas.variantes) {
-    const numeroVariante = String(await cotizacionesRepository.nextNumeroCorrelativo(ramoId))
-
-    const varianteGuardada = await cotizacionesRepository.insertVariante({
-      cotizacion_id: cotizacionId,
-      numero_variante: numeroVariante,
-      tipo_franquicia: variante.tipo_franquicia,
-      franquicia_monto: variante.franquicia_monto,
-      prima: variante.prima,
-    })
-
+  // El `numero_variante` (correlativo por variante) ya NO se pide acá — el RPC lo reserva
+  // internamente por variante vía `siguiente_correlativo` dentro de la misma transacción.
+  const variantes = variantesCalculadas.variantes.map((variante) => {
     // Descuento/recargo manual del agente (mrc/incendio hoy — ver sumarAjustes en esos
     // calculadores) — se guarda el total ya topado por plan.descuento_maximo/recargo_maximo,
     // no el body crudo, para que la Carta Oferta muestre lo que efectivamente se aplicó.
-    const ajustesAGuardar = []
+    const ajustes = []
     if (variantesCalculadas.detalle?.total_descuentos > 0) {
-      ajustesAGuardar.push({
-        variante_id: varianteGuardada.id,
+      ajustes.push({
         tipo: 'descuento',
         descripcion: 'Descuento aplicado por el agente',
         monto: variantesCalculadas.detalle.total_descuentos,
       })
     }
     if (variantesCalculadas.detalle?.total_recargos > 0) {
-      ajustesAGuardar.push({
-        variante_id: varianteGuardada.id,
+      ajustes.push({
         tipo: 'recargo',
         descripcion: 'Recargo aplicado por el agente',
         monto: variantesCalculadas.detalle.total_recargos,
       })
     }
-    if (ajustesAGuardar.length) {
-      await cotizacionesRepository.insertAjustes(ajustesAGuardar)
-    }
 
-    await cotizacionesRepository.insertPlanesPago(
-      variante.formasPago.map((fp) => ({
-        variante_id: varianteGuardada.id,
+    return {
+      tipo_franquicia: variante.tipo_franquicia,
+      franquicia_monto: variante.franquicia_monto,
+      prima: variante.prima,
+      ajustes,
+      planes_pago: variante.formasPago.map((fp) => ({
         forma_pago_id: fp.forma_pago_id,
         cantidad_cuotas: fp.cantidad_cuotas,
         rpf_porcentaje: fp.rpf_porcentaje,
@@ -315,9 +302,11 @@ async function insertarCoberturasYVariantes({ cotizacionId, ramoId, variantesCal
         premio_total: fp.premio,
         monto_inicial: fp.inicial,
         monto_cuota: fp.cuota,
-      }))
-    )
-  }
+      })),
+    }
+  })
+
+  return { coberturas, variantes }
 }
 
 async function validarYResolverContexto(body) {

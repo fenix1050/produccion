@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.23](https://github.com/fenix1050/produccion/compare/v0.1.22...v0.1.23) (2026-08-03)
+
+
+### Bug Fixes
+
+* **frontend:** versionar imports ES module en build.sh, no solo script tags ([#143](https://github.com/fenix1050/produccion/issues/143)) ([d9012e4](https://github.com/fenix1050/produccion/commit/d9012e46a295e9f685e21ce73e3bcc3f1576f725))
+
 ## [0.1.22](https://github.com/fenix1050/produccion/compare/v0.1.21...v0.1.22) (2026-08-03)
 
 

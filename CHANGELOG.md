@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.19](https://github.com/fenix1050/produccion/compare/v0.1.18...v0.1.19) (2026-08-03)
+
+
+### Bug Fixes
+
+* cerrar los 5 hallazgos baratos del roadmap de issue [#87](https://github.com/fenix1050/produccion/issues/87) ([#131](https://github.com/fenix1050/produccion/issues/131)) ([5532d91](https://github.com/fenix1050/produccion/commit/5532d9126ae96204f1ad9aa46388c732ac86de29))
+
 ## [0.1.18](https://github.com/fenix1050/produccion/compare/v0.1.17...v0.1.18) (2026-08-03)
 
 

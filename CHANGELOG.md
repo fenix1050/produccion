@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.1.16](https://github.com/fenix1050/produccion/compare/v0.1.15...v0.1.16) (2026-08-03)
+
+
+### Features
+
+* **cotizaciones:** agregar RPC atómica para crear/actualizar cotización ([4e8dfcc](https://github.com/fenix1050/produccion/commit/4e8dfcc1bab3feb46cc6fa88c6da0fc9ca9fa0ba))
+* **cotizaciones:** agregar RPC atómica para crear/actualizar cotización ([7d76c2e](https://github.com/fenix1050/produccion/commit/7d76c2ee4c24a645a3ac98c30aaf63331247a01a))
+* **cotizacion:** persistir cotizaciones vía RPC atómico ([747facb](https://github.com/fenix1050/produccion/commit/747facb70e0d58e1167d67bfccb97351fe9e42dc))
+* **cotizacion:** persistir cotizaciones vía RPC atómico (tests + implementación) ([50c239c](https://github.com/fenix1050/produccion/commit/50c239cd31dce0336a9b7e7681a3760205f5c29a))
+
 ## [0.1.15](https://github.com/fenix1050/produccion/compare/v0.1.14...v0.1.15) (2026-08-02)
 
 

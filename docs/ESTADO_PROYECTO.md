@@ -1205,15 +1205,18 @@ hallazgo, con la suite de tests (`npm test`, 19 tests) verde después de cada un
   `fileFilter` a `multer` (extensión `.xlsx` + mimetype OOXML); si no matchea, `req.file` queda
   `undefined` y el controller ya lo traduce a 400.
 
-**Actualización 2026-07-23 — este hallazgo ya quedó resuelto** (ver sección 27): sigue Bearer en
-`localStorage` (decisión explícita de Kevin, no se migró a cookie httpOnly), pero ahora hay TTL
-corto (45m) + invalidación server-side vía `token_version` + logout explícito.
+**Actualización 2026-07-23 — este hallazgo ya quedó resuelto** (ver sección 27): en ese momento
+seguía Bearer en `localStorage` (decisión explícita de Kevin de no migrar a cookie httpOnly), pero
+ya había TTL corto (45m) + invalidación server-side vía `token_version` + logout explícito.
+**Actualización 2026-08-03**: la sesión sí se migró a cookie httpOnly + CSRF de doble-submit — ver
+sección 52 (cambio SDD `session-httponly-cookie`, PR #138).
 
 ## 27. Sesión JWT sin revocación — resuelto (2026-07-23)
 
-Cierra el hallazgo [ALTO] que había quedado explícitamente fuera del batch de la sección 26. Sigue
-Bearer en `Authorization` header / `localStorage` (Kevin confirmó no migrar a cookies httpOnly),
-pero ahora el token es de corta duración y revocable del lado servidor:
+Cierra el hallazgo [ALTO] que había quedado explícitamente fuera del batch de la sección 26. En ese
+momento seguía Bearer en `Authorization` header / `localStorage` (Kevin confirmó no migrar a
+cookies httpOnly en esa fecha — la migración real llegó después, ver sección 52), pero ya el token
+pasó a ser de corta duración y revocable del lado servidor:
 
 - **TTL acortado**: `JWT_EXPIRES_IN` bajó de `8h` a `45m` en `backend/src/services/auth.service.js`.
   No había convención de env var ya establecida para esto en el proyecto, así que quedó como
@@ -1503,9 +1506,8 @@ mezclar con el checklist de fases de arriba, este es transversal a fases.
 
 ### Sprint 4 — cierre de roadmap de seguridad + modularización
 
-- [ ] Migrar sesión JWT a cookie httpOnly + SameSite — sigue sin resolver, sigue en el roadmap de
-      seguridad aceptado (sección 27) e issue #87 lo reconfirma (C1, "revisitar con Kevin ahora que el
-      backend tiene CD y dominio estables").
+- [x] **Migrar sesión JWT a cookie httpOnly + SameSite — RESUELTO (2026-08-03).** Cambio SDD
+      `session-httponly-cookie`, PR #138 mergeado a `main`. Ver sección 52.
 - [ ] Logging de seguridad a sink centralizado (Sentry/Logtail) en vez de `console.warn`/`error` — sin
       resolver. El logger silencioso (sección 51) resuelve "no exponer en producción", no "centralizar
       para monitoreo" — son problemas distintos, este sigue abierto. (issue #87: D1)
@@ -2193,3 +2195,19 @@ Quinto de los 10 PRs del plan `admin-module-split` (issue #83/#84 finding #9, di
 **Verificado en vivo con Playwright** (no vía login real, por un CORS preexistente del backend local — ver más abajo): navegando a `localhost:5000` el error se loguea igual que antes; navegando a la IP de LAN de la máquina (hostname distinto de localhost, mismo servidor, simula producción) el logger no imprime nada en consola. 170/170 tests backend en verde (cambio frontend-only).
 
 **Hallazgo aparte, ya corregido (no relacionado al logger):** el `backend/.env` local tenía `FRONTEND_URL=http://localhost:5000/` con una barra final, lo que rompía el preflight CORS contra el frontend servido en `http://localhost:5000` (el header `Access-Control-Allow-Origin` devuelto no coincidía byte a byte con el origin real del navegador). Kevin lo corrigió directamente en su `.env` (no versionado, no hay nada que commitear).
+
+## 52. Sesión httpOnly + CSRF — cambio SDD `session-httponly-cookie`, PR #138 mergeado a `main` (2026-08-03)
+
+**Origen.** Cierra el hallazgo Medio pendiente de la auditoría de seguridad externa (sección 30 del roadmap, issue #87 C1): el JWT vivía en `localStorage`, expuesto a exfiltración vía XSS.
+
+**Qué se hizo.** El JWT pasó a viajar en una cookie `tajy_session` con `HttpOnly` (no accesible desde `document.cookie`/JS). Se sumó protección CSRF de doble-submit: cookie `tajy_csrf` (sí legible por JS, seteada en login) + header `X-CSRF-Token` validado por `backend/src/middleware/csrf.js` (comparación `crypto.timingSafeEqual`) en todo método mutante (`POST/PUT/PATCH/DELETE`), montado globalmente antes del router, sin excepción salvo `/auth/login` (todavía no hay cookie CSRF antes de loguearse, cubierto por `loginRateLimiter`). `middleware/auth.js` ya no acepta `Authorization: Bearer`, solo la cookie de sesión, y fija `algorithms: ['HS256']` explícito en `jwt.verify()` (cerraba otro hallazgo Bajo del mismo informe). `frontend/shared/api.js` reescrito: sin `localStorage`, `credentials: 'include'` en todo fetch, header CSRF en mutaciones, `cargarSesion()` con dedupe de llamadas en vuelo a `/auth/me`.
+
+**Bug real encontrado y corregido en la verificación:** `historial.js` pintaba el sidebar antes de que resolviera `cargarSesion()`, mostrando un instante sin datos de usuario — se agregó el `await` correspondiente, igual que el resto de guards/entry points.
+
+**Verificado.** 192/192 tests backend en verde. Verificado en vivo con Playwright: `tajy_session` no accesible desde JS, `tajy_csrf` sí, nada en `localStorage`, logout limpia ambas cookies, guard de rol en Admin redirige correctamente a un usuario no-admin.
+
+**Verificado con `sdd-verify` (2026-08-03):** 0 CRITICAL, implementación/tests/diseño coherentes con spec — ver reporte en Engram (`sdd/session-httponly-cookie/verify-report`). Dos warnings de bookkeeping (esta sección y el sync de `tasks.md` del change) cerrados en la misma sesión.
+
+**Gotcha de CI:** el check nativo "CodeQL" de default-setup (distinto del workflow propio "Analyze JavaScript", que sí es required y pasó en verde) marcó un falso positivo (`js/missing-token-validation`) sobre `app.use(cookieParser())` — la query no reconoce middlewares CSRF custom como sanitizer, solo librerías conocidas (`csurf`, etc.). No es required para mergear, no bloqueó.
+
+**Pendiente:** `sdd-archive` formal del cambio, y confirmar que el backend de la VPS ya corre este código tras el redeploy automático de `deploy-backend.yml`.

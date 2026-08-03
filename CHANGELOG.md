@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.22](https://github.com/fenix1050/produccion/compare/v0.1.21...v0.1.22) (2026-08-03)
+
+
+### Features
+
+* **auth:** migrar sesión de JWT en localStorage a cookie httpOnly + CSRF ([#138](https://github.com/fenix1050/produccion/issues/138)) ([23d6bf8](https://github.com/fenix1050/produccion/commit/23d6bf814897f4c046762ba574bb756007c6cfcc))
+
 ## [0.1.21](https://github.com/fenix1050/produccion/compare/v0.1.20...v0.1.21) (2026-08-03)
 
 

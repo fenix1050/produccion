@@ -569,6 +569,7 @@ async function selectRamo(nombre) {
   state.editandoId = null
   state.ramoId = nombre
   state.view = 'form'
+  state.sidebarAbierta = false
   state.data = {}
   state.planId = null
   state.planes = []

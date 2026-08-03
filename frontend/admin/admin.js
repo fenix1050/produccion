@@ -220,6 +220,7 @@ function registrarEventos() {
 function handleSeleccionarSeccion(el) {
   state.seccion = el.dataset.seccion
   state.banner = null
+  state.sidebarAbierta = false
   renderApp()
   if (state.seccion === 'usuarios') {
     if (!state.usuarios.length && !state.loadingUsuarios) cargarUsuarios()

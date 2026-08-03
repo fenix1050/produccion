@@ -32,9 +32,8 @@ function mockearSupabaseRpc(t, respuesta) {
 test('crearCotizacionAtomica: llama a supabase.rpc("crear_cotizacion_atomica", payload) con el payload p_* exacto', async (t) => {
   const llamadas = mockearSupabaseRpc(t, { data: 123, error: null })
 
-  const { crearCotizacionAtomica } = await import(
-    './cotizaciones.repository.js?case=crear-atomica-payload'
-  )
+  const { crearCotizacionAtomica } =
+    await import('./cotizaciones.repository.js?case=crear-atomica-payload')
 
   const payload = {
     p_prefijo_numero: 'MRC',
@@ -90,9 +89,8 @@ test('crearCotizacionAtomica: propaga el error del RPC sin envolverlo (rollback 
   )
   mockearSupabaseRpc(t, { data: null, error: errorPostgres })
 
-  const { crearCotizacionAtomica } = await import(
-    './cotizaciones.repository.js?case=crear-atomica-error'
-  )
+  const { crearCotizacionAtomica } =
+    await import('./cotizaciones.repository.js?case=crear-atomica-error')
 
   await assert.rejects(
     () =>
@@ -110,9 +108,8 @@ test('crearCotizacionAtomica: propaga el error del RPC sin envolverlo (rollback 
 test('actualizarCotizacionAtomica: llama a supabase.rpc("actualizar_cotizacion_atomica", payload) con el payload p_* exacto', async (t) => {
   const llamadas = mockearSupabaseRpc(t, { data: 5, error: null })
 
-  const { actualizarCotizacionAtomica } = await import(
-    './cotizaciones.repository.js?case=actualizar-atomica-payload'
-  )
+  const { actualizarCotizacionAtomica } =
+    await import('./cotizaciones.repository.js?case=actualizar-atomica-payload')
 
   const payload = {
     p_cotizacion_id: 5,
@@ -144,9 +141,8 @@ test('actualizarCotizacionAtomica: propaga el error del RPC sin envolverlo (esta
   const errorPostgres = new Error('cotización no encontrada para actualizar')
   mockearSupabaseRpc(t, { data: null, error: errorPostgres })
 
-  const { actualizarCotizacionAtomica } = await import(
-    './cotizaciones.repository.js?case=actualizar-atomica-error'
-  )
+  const { actualizarCotizacionAtomica } =
+    await import('./cotizaciones.repository.js?case=actualizar-atomica-error')
 
   await assert.rejects(
     () =>

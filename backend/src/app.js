@@ -30,6 +30,12 @@ export function createApp() {
 
   app.use(helmet())
   app.use(compression())
+
+  // Sin cookies ni body: se sirve antes del cookieParser para que no quede
+  // encadenado a él (CodeQL marca cualquier handler posterior al parser de
+  // cookies que no pase por CSRF, aunque este endpoint no lea ni mute nada).
+  app.get('/health', (_req, res) => res.json({ status: 'ok' }))
+
   // credentials: true habilita que el navegador envíe/reciba la cookie de sesión
   // httpOnly (fetch con credentials:'include') — requiere un origin explícito, nunca
   // wildcard: el propio spec de CORS prohíbe combinar '*' con credenciales.
@@ -42,8 +48,6 @@ export function createApp() {
   )
   app.use(cookieParser())
   app.use(express.json({ limit: '2mb' }))
-
-  app.get('/health', (_req, res) => res.json({ status: 'ok' }))
 
   app.use('/api', apiRateLimiter, csrfProtection, apiRouter)
 

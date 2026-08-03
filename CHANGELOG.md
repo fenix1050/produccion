@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.18](https://github.com/fenix1050/produccion/compare/v0.1.17...v0.1.18) (2026-08-03)
+
+
+### Bug Fixes
+
+* alinear inputs de Datos del asegurado en mobile ([#129](https://github.com/fenix1050/produccion/issues/129)) ([3b3d470](https://github.com/fenix1050/produccion/commit/3b3d47083d58419afa5569051c32b9f745dbbfb0))
+
 ## [0.1.17](https://github.com/fenix1050/produccion/compare/v0.1.16...v0.1.17) (2026-08-03)
 
 

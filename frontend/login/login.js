@@ -109,9 +109,10 @@ async function onSubmit(e) {
   render()
 
   try {
-    const data = await api.post('/auth/login', { email, password })
-    auth.setToken(data.token)
-    auth.setUsuario(data.usuario)
+    // El body de POST /auth/login ya no trae el JWT (viaja solo por cookie httpOnly) —
+    // login setea ambas cookies server-side; acá solo redirigimos, la próxima página
+    // resuelve la sesión vía auth.cargarSesion() -> GET /auth/me.
+    await api.post('/auth/login', { email, password })
     window.location.href = '../bienvenida/'
   } catch {
     state.enviando = false
@@ -120,9 +121,16 @@ async function onSubmit(e) {
   }
 }
 
-// Si ya hay una sesión guardada, evitamos el re-login innecesario.
-if (auth.isLoggedIn()) {
-  window.location.href = '../cotizar/'
-} else {
-  render()
+// Si ya hay una sesión activa (cookie httpOnly vigente), evitamos el re-login
+// innecesario. cargarSesion() resuelve contra GET /auth/me — ya no hay token en
+// localStorage para chequear de forma síncrona.
+async function init() {
+  const usuario = await auth.cargarSesion()
+  if (usuario) {
+    window.location.href = '../cotizar/'
+  } else {
+    render()
+  }
 }
+
+init()

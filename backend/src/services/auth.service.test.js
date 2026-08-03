@@ -4,6 +4,8 @@ import { test } from 'node:test'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 
+import { COOKIE_SESION } from '../utils/cookies.js'
+
 // requireAuth y jwt.sign necesitan JWT_SECRET — normalmente lo carga config/supabase.js
 // vía dotenv, pero estos tests mockean el repository y nunca importan ese módulo, así que
 // se setea acá para no depender de que .env esté presente en el entorno que corre los tests.
@@ -53,8 +55,14 @@ function mockearRepositorio(t, usuario) {
   })
 }
 
-async function correrRequireAuth(requireAuth, token) {
-  const req = { headers: { authorization: `Bearer ${token}` } }
+// Transporte cookie (cambio session-httponly-cookie): requireAuth ahora lee
+// req.cookies[COOKIE_SESION], no el header Authorization. `comoCookie: false` fabrica
+// deliberadamente un req SIN cookie (con o sin el header Bearer legacy) para los casos que
+// prueban que el corte de transporte es real.
+async function correrRequireAuth(requireAuth, token, { comoCookie = true } = {}) {
+  const req = comoCookie
+    ? { cookies: { [COOKIE_SESION]: token }, headers: {} }
+    : { cookies: {}, headers: {} }
   let error
   await requireAuth(req, {}, (err) => {
     error = err
@@ -134,6 +142,19 @@ test('login loguea login_fallido con console.warn cuando la contraseña es incor
   assert.doesNotMatch(linea, /password-incorrecta/)
 })
 
+test('login genera y devuelve un csrfToken junto al JWT (uno por sesión, no rotado por request)', async (t) => {
+  const usuario = crearUsuarioMock()
+  mockearRepositorio(t, usuario)
+  const { login } = await import('./auth.service.js?case=login-csrf-token')
+
+  const resultado = await login(usuario.email, PASSWORD_ACTUAL)
+
+  assert.ok(resultado.token, 'debe seguir devolviendo el JWT (lo setea el controller en la cookie)')
+  assert.ok(resultado.csrfToken, 'debe devolver un csrfToken')
+  assert.equal(typeof resultado.csrfToken, 'string')
+  assert.ok(resultado.csrfToken.length >= 16, 'debe tener suficiente entropía, no un valor trivial')
+})
+
 test('login loguea login_exitoso con console.warn cuando las credenciales son correctas', async (t) => {
   const usuario = crearUsuarioMock()
   mockearRepositorio(t, usuario)
@@ -147,6 +168,60 @@ test('login loguea login_exitoso con console.warn cuando las credenciales son co
   const [linea] = warnSpy.mock.calls[0].arguments
   assert.match(linea, /login_exitoso/)
   assert.doesNotMatch(linea, new RegExp(PASSWORD_ACTUAL))
+})
+
+// --- Transporte cookie (cambio session-httponly-cookie) ---
+
+test('requireAuth rechaza con 401 una request sin cookie de sesión', async (t) => {
+  const usuario = crearUsuarioMock()
+  mockearRepositorio(t, usuario)
+  const { requireAuth } = await import('../middleware/auth.js?case=sin-cookie')
+
+  const token = firmarToken(usuario)
+  const { error } = await correrRequireAuth(requireAuth, token, { comoCookie: false })
+  assert.equal(error?.status, 401)
+})
+
+test('requireAuth rechaza un Bearer token válido enviado por header cuando no hay cookie de sesión', async (t) => {
+  const usuario = crearUsuarioMock()
+  mockearRepositorio(t, usuario)
+  const { requireAuth } = await import('../middleware/auth.js?case=bearer-sin-cookie')
+
+  const token = firmarToken(usuario)
+  const req = { cookies: {}, headers: { authorization: `Bearer ${token}` } }
+  let error
+  await requireAuth(req, {}, (err) => {
+    error = err
+  })
+  assert.equal(error?.status, 401, 'el middleware ya no debe leer el header Authorization')
+})
+
+test('requireAuth rechaza un token firmado con un algoritmo distinto de HS256', async (t) => {
+  const usuario = crearUsuarioMock()
+  mockearRepositorio(t, usuario)
+  const { requireAuth } = await import('../middleware/auth.js?case=algoritmo-no-hs256')
+
+  // 'none' produce un JWT válido en estructura, sin firma — jwt.sign lo permite
+  // explícitamente pasando algorithm: 'none'.
+  const tokenAlgNone = jwt.sign(
+    { sub: usuario.id, rol: usuario.rol, token_version: usuario.token_version },
+    undefined,
+    { algorithm: 'none', expiresIn: '45m' }
+  )
+
+  const { error } = await correrRequireAuth(requireAuth, tokenAlgNone)
+  assert.equal(error?.status, 401)
+})
+
+test('requireAuth acepta la cookie de sesión y adjunta ultima_sesion a req.usuario', async (t) => {
+  const usuario = crearUsuarioMock({ ultima_sesion: '2026-08-01T10:00:00Z' })
+  mockearRepositorio(t, usuario)
+  const { requireAuth } = await import('../middleware/auth.js?case=ultima-sesion')
+
+  const token = firmarToken(usuario)
+  const { error, req } = await correrRequireAuth(requireAuth, token)
+  assert.equal(error, undefined)
+  assert.equal(req.usuario.ultima_sesion, usuario.ultima_sesion)
 })
 
 test('cambiarPassword invalida sesiones (tokens) emitidas antes del cambio', async (t) => {

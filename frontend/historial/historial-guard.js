@@ -1,9 +1,16 @@
 import { auth } from '../shared/api.js'
 
 // Guard mínimo de la página stub de Historial (WU4) — el listado real es Fase 5/WU5.
-if (!auth.isLoggedIn()) {
-  window.location.href = '../login/'
+// Cambio session-httponly-cookie: ya no hay token en localStorage para chequear de forma
+// síncrona — hay que esperar auth.cargarSesion() (GET /auth/me) antes de decidir el gate.
+async function init() {
+  const usuario = await auth.cargarSesion()
+  if (!usuario) {
+    window.location.href = '../login/'
+  }
 }
+
+init()
 
 document.getElementById('logout-link')?.addEventListener('click', async (e) => {
   e.preventDefault()

@@ -77,7 +77,13 @@ import {
 // se implementan en próximas porciones de WU5.
 
 async function init() {
-  if (!auth.isLoggedIn()) {
+  // Cambio session-httponly-cookie: ya no hay token en localStorage para chequear de
+  // forma síncrona — hay que esperar auth.cargarSesion() (GET /auth/me) antes del gate.
+  // Se cachea en memoria (shared/api.js), así que auth.tieneAccesoAdmin() de acá abajo
+  // (y el resto de los ~10 call-sites síncronos de auth.getUsuario() en render/*.js) ya
+  // la encuentran resuelta.
+  const usuario = await auth.cargarSesion()
+  if (!usuario) {
     window.location.href = '../login/'
     return
   }

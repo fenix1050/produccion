@@ -1,25 +1,32 @@
 import jwt from 'jsonwebtoken'
 
 import * as usuariosRepository from '../repositories/usuarios.repository.js'
+import { COOKIE_SESION } from '../utils/cookies.js'
 import { httpError } from '../utils/http-error.js'
 
 /**
- * Verifica el JWT del header Authorization y adjunta `req.usuario`. Va a buscar el
+ * Verifica el JWT de la cookie de sesión httpOnly y adjunta `req.usuario`. Va a buscar el
  * usuario actual a la base (no confía solo en el payload del token): un admin puede
  * desactivar a otro usuario y ese token viejo no debe seguir sirviendo.
+ *
+ * Cambio session-httponly-cookie: el header `Authorization: Bearer` YA NO se lee (corte
+ * directo, sin período de doble soporte) — el token viaja únicamente en la cookie
+ * `tajy_session`, fuera del alcance de JavaScript.
  */
 export async function requireAuth(req, res, next) {
   try {
-    const header = req.headers.authorization || ''
-    const [scheme, token] = header.split(' ')
+    const token = req.cookies?.[COOKIE_SESION]
 
-    if (scheme !== 'Bearer' || !token) {
+    if (!token) {
       throw httpError(401, 'Falta el token de autenticación')
     }
 
     let payload
     try {
-      payload = jwt.verify(token, process.env.JWT_SECRET)
+      // algorithms explícito: sin esto, jwt.verify() infiere el algoritmo del propio
+      // token en vez de exigir el firmado (HS256) — un JWT con alg:'none' o firmado con
+      // otra clave no debe poder colarse.
+      payload = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] })
     } catch {
       throw httpError(401, 'Token inválido o expirado')
     }
@@ -49,6 +56,10 @@ export async function requireAuth(req, res, next) {
       email: usuario.email,
       descuento_maximo_pct: usuario.descuento_maximo_pct,
       recargo_maximo_pct: usuario.recargo_maximo_pct,
+      // GET /auth/me es ahora la única fuente de datos de usuario para el frontend (ver
+      // D6 de design.md) — sin esto, la pantalla de Configuración (que antes lo leía del
+      // body de login) regresiona a "sin dato".
+      ultima_sesion: usuario.ultima_sesion,
     }
 
     next()

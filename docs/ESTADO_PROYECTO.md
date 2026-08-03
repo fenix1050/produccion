@@ -2088,7 +2088,7 @@ Conclusión práctica para futuros refactors: para dispatch por un valor con ori
 
 **Con esto, el issue #84 (auditoría de calidad de código) queda completamente cerrado** — los 4 refactors grandes identificados en la auditoría original (secciones 45, 46, 47 y esta) están todos implementados y verificados.
 
-## 49. `admin-module-split` PR5 — `render/planes.js` extraído (2026-08-02), rama `refactor/admin-module-split-pr5`, sin mergear todavía
+## 49. `admin-module-split` PR5 — `render/planes.js` extraído (2026-08-02), PR #110 mergeado a `main`
 
 Quinto de los 10 PRs del plan `admin-module-split` (issue #83/#84 finding #9, división de `frontend/admin/admin.js` en módulos ES nativos). PR1-4 (foundation, `render/campos-inline.js`, `render/usuarios.js`, `render/modales-usuario.js`) ya mergeados a `main`.
 
@@ -2106,4 +2106,4 @@ Quinto de los 10 PRs del plan `admin-module-split` (issue #83/#84 finding #9, di
 - Edición inline de Prima técnica mínima abre el `<input>` con Guardar/Cancelar (no se guardó el cambio, solo se verificó apertura/cierre).
 - Edición inline de Topes desc./recargo abre los dos `<input>` (Desc. %/Rec. %) — botón "Editar" visible porque el usuario logueado es admin literal, tal como espera `renderCampoTopes`.
 
-**Pendiente:** abrir PR desde `refactor/admin-module-split-pr5` hacia `main` (base: PR4 ya mergeado, así que este PR apunta directo a `main`). Sigue PR6 (`render/tasas.js` + `render/ramos.js`) del plan de 10.
+**Mergeado.** PR #110 mergeado a `main` (commit `f26e36b`), rama `refactor/admin-module-split-pr5` borrada (local y remota). Sigue PR6 (`render/tasas.js` + `render/ramos.js`) del plan de 10.

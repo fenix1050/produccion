@@ -1,5 +1,6 @@
 import { api, auth } from '../shared/api.js'
 import { escapeHtml } from '../shared/dom.js'
+import { logger } from '../shared/logger.js'
 import { initLoginFx } from '../login/login-fx.js'
 import {
   ICON_ARROW_LEFT,
@@ -218,7 +219,7 @@ async function init() {
   try {
     state.ramosActivos = await api.get('/ramos')
   } catch (err) {
-    console.error('No se pudo cargar la lista de ramos', err)
+    logger.error('No se pudo cargar la lista de ramos', err)
     state.ramosActivos = []
   }
 

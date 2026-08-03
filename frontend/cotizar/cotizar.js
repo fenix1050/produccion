@@ -17,6 +17,7 @@ import {
 import { escapeHtml, renderBanner } from '../shared/dom.js'
 import { renderSidebarFooter, renderTopbar as renderTopbarShell } from '../shared/sidebar.js'
 import { fmtGs, fmtGsInput, fmtMonto, unidadMoneda } from '../shared/format.js'
+import { logger } from '../shared/logger.js'
 
 // Cotizador Tajy — App Shell + Datos + Resultado (Fase 6, alcance MRC plan Normal).
 // Recreación en Vanilla JS del handoff de diseño original (mockup ya migrado y eliminado
@@ -377,7 +378,7 @@ async function init() {
   try {
     state.ramosActivos = await getRamos()
   } catch (err) {
-    console.error('No se pudo cargar la lista de ramos', err)
+    logger.error('No se pudo cargar la lista de ramos', err)
     state.ramosActivos = []
   }
 
@@ -425,7 +426,7 @@ async function cargarParaEditar(id) {
   try {
     state.planes = await api.get(`/ramos/${ramo.id}/planes`)
   } catch (err) {
-    console.error('No se pudieron cargar los planes del ramo', err)
+    logger.error('No se pudieron cargar los planes del ramo', err)
     state.planes = []
   }
   state.planId = cotizacion.plan_id
@@ -437,7 +438,7 @@ async function cargarParaEditar(id) {
       // lista compartida sin filtrar entre MRC/Incendio/TRO.
       state.rubros = await api.get(`/ramos/rubros-actividad?ramo_id=${ramo.id}`)
     } catch (err) {
-      console.error('No se pudieron cargar los tipos de riesgo', err)
+      logger.error('No se pudieron cargar los tipos de riesgo', err)
       state.rubros = []
     }
   }
@@ -589,7 +590,7 @@ async function selectRamo(nombre) {
   try {
     state.planes = await api.get(`/ramos/${ramo.id}/planes`)
   } catch (err) {
-    console.error('No se pudieron cargar los planes del ramo', err)
+    logger.error('No se pudieron cargar los planes del ramo', err)
     state.planes = []
   }
 
@@ -607,7 +608,7 @@ async function selectRamo(nombre) {
         // Básico no); un rubro multi-ramo (ej. "CHANCHERIAS") aparece en ambos selectores.
         state.rubros = await api.get(`/ramos/rubros-actividad?ramo_id=${ramo.id}`)
       } catch (err) {
-        console.error('No se pudieron cargar los tipos de riesgo', err)
+        logger.error('No se pudieron cargar los tipos de riesgo', err)
         state.rubros = []
       }
     }
@@ -648,7 +649,7 @@ async function cargarCoberturasCatalogo(ramoId) {
   try {
     state.coberturasCatalogo = await api.get(`/ramos/${ramoId}/coberturas-catalogo`)
   } catch (err) {
-    console.error('No se pudo cargar el catálogo de coberturas del ramo', err)
+    logger.error('No se pudo cargar el catálogo de coberturas del ramo', err)
     state.coberturasCatalogo = []
   }
 }
@@ -662,7 +663,7 @@ async function cargarPlanCoberturas(planId) {
   try {
     state.planCoberturas = await api.get(`/planes/${planId}/coberturas`)
   } catch (err) {
-    console.error('No se pudo cargar las coberturas fijas del plan', err)
+    logger.error('No se pudo cargar las coberturas fijas del plan', err)
     state.planCoberturas = []
   }
 }

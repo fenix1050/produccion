@@ -1385,77 +1385,138 @@ archivos.
 dimensión, tabla de priorización, Top 30 ROI) en el Artifact publicado / engram obs #259. Checklist
 resumido abajo — Kevin lo va resolviendo antes de lanzar a producción sin restricciones.
 
-## 30. Roadmap pre-producción — pendientes de la auditoría integral (2026-07-24)
+## 30. Roadmap pre-producción — pendientes de la auditoría integral (2026-07-24, reconfirmado y ampliado por issue #87 del 2026-08-02)
 
-Los 2 🔴 críticos ya se cerraron (sección 29). Esto es lo que falta, ordenado igual que el informe
-ejecutivo (Sprint 1-4). Marcar con `[x]` a medida que se resuelva cada uno — no mezclar con el
-checklist de fases de arriba, este es transversal a fases.
+Los 2 🔴 críticos de la auditoría del 2026-07-24 ya se cerraron (sección 29). El 2026-08-02 el issue
+#87 (revisión arquitectónica independiente, 29 mejoras propuestas) re-auditó el repo y **confirmó que
+varios ítems de este roadmap seguían sin resolver** además de sumar hallazgos nuevos — se marcan abajo
+como `(issue #87: X)`. Repasado y actualizado contra el código real el 2026-08-03: se verificó cada
+ítem contra el estado actual del repo, no solo contra lo que decían las notas — varios quedaron
+`[x]` por trabajo hecho en el trayecto (refactors del issue #84, PRs de performance del issue #83) sin
+que nadie hubiera vuelto a cerrar el checklist. Marcar con `[x]` a medida que se resuelva cada uno — no
+mezclar con el checklist de fases de arriba, este es transversal a fases.
 
-### Sprint 1 — accesibilidad y feedback del flujo principal
+### Sprint 1 — accesibilidad y feedback del flujo principal (condición dura antes de producción sin restricciones)
 
 - [ ] Selección de ramo navegable por teclado (`cotizar.js:878`, `bienvenida.js:131`) — hoy solo
-      funciona con mouse, rompe con teclado/lector de pantalla.
-- [ ] Fix de contraste `--tajy-text-secondary` (`cotizador.css:22`, 3.44:1, falla WCAG AA) — mismo
-      fix que ya se aplicó a `--tajy-text-muted`.
-- [ ] Banners de error reales en los 8 puntos de carga silenciosa de `cotizar.js` (líneas 229, 277,
-      285, 420, 437, 477, 491) — hoy solo van a `console.error`, el agente ve un formulario vacío sin
-      explicación.
-- [ ] **Insert de cotización multi-tabla sin rollback ante fallo parcial** (`cotizacion.service.js`
-      líneas 25-46 y 171-249) — si `insertPlanesPago` u otro insert intermedio falla después de que la
-      fila principal y una variante ya se guardaron, queda una cotización huérfana en Historial con
-      numeración correlativa consumida y sin plan de pago. Solución: envolver todo el conjunto en una
-      función Postgres vía `supabase.rpc(...)` (mismo patrón que `siguiente_correlativo`), o agregar
-      limpieza compensatoria en el catch. Hallazgo del QA integral del 2026-07-24 (ver artifact/engram).
+      funciona con mouse, rompe con teclado/lector de pantalla. Reconfirmado sin resolver por issue #87
+      (G1, 2026-08-02) y por lectura directa del código (2026-08-03): sin `tabindex`/`keydown` en esa
+      zona.
+- [x] **Fix de contraste `--tajy-text-secondary` — RESUELTO.** `cotizador.css:36` ahora alias a
+      `--tajy-text-muted` con comentario explícito de la razón (3.45:1 fallaba WCAG AA). No queda
+      registrado en qué commit se cerró — confirmado solo por lectura del código el 2026-08-03.
+- [ ] Banners de error reales en los 8 puntos de carga silenciosa de `cotizar.js` — **parcialmente
+      atendido, no cerrado**: el logger silencioso en producción (sección 51, PR #126) resolvió la mitad
+      del problema (ya no se exponen stack traces/detalles técnicos en consola de producción) pero
+      **no agrega el feedback visible al usuario** que pedía el hallazgo original — el agente sigue
+      viendo un formulario vacío sin explicación cuando alguno de esos 8 puntos falla. Reconfirmado por
+      issue #87 (G3, 2026-08-02).
+- [x] **Insert de cotización multi-tabla sin rollback ante fallo parcial — RESUELTO (2026-08-03).**
+      Cambio SDD `cotizacion-transaccional`, 4 PRs mergeados a `main`, función Postgres
+      `crear_cotizacion_atomica`/`actualizar_cotizacion_atomica` (migración 052) vía `supabase.rpc()`.
+      Issue #87 finding A1. Ver sección 50 para el detalle completo.
 - [ ] **"Emitir carta oferta" no valida ramo antes de persistir en Incendio/Vida-AP**
-      (`cotizar.js:721-752`, a diferencia de `historial.js:28-33` que sí tiene el guard) — cada intento
-      fallido hace `POST /cotizaciones` (201, consume correlativo) antes de descubrir con el PDF que el
-      ramo no tiene template (422), dejando cotizaciones huérfanas acumulativas. Solución: exponer
-      `ofertaDisponibleParaRamo` desde `/api/ramos` y usarlo para deshabilitar el botón en `cotizar.js`
-      igual que ya hace Historial. Hallazgo del QA integral del 2026-07-24.
-- [ ] **Race condition en el preview de cálculo en vivo de MRC** (`cotizar.js:526-716`,
-      `scheduleCalculate`/`calcularPreview`) — el debounce protege el timer pero no las peticiones ya en
-      vuelo; con red lenta, una respuesta vieja puede resolver después de una más nueva y pisar
-      `state.preview` con una prima incorrecta para los datos actuales en pantalla. Solución: número de
-      secuencia incremental o `AbortController` para descartar respuestas obsoletas. Hallazgo del QA
-      integral del 2026-07-24.
+      (`cotizar.js:721-752`) — sigue sin el guard. `ofertaDisponibleParaRamo` ya existe en
+      `backend/src/templates/oferta/index.js:27` (usado internamente para el 422 del PDF) pero **no
+      está expuesto en `/api/ramos` ni consumido por `cotizar.js`** para deshabilitar el botón antes de
+      persistir — confirmado por grep el 2026-08-03, cero referencias fuera del propio archivo backend
+      y un comentario en `historial.js:31`. Reconfirmado por issue #87 (A2, 2026-08-02).
+- [ ] **Race condition en el preview de cálculo en vivo de MRC** (`cotizar.js:526-716`) — sigue sin
+      `AbortController` ni número de secuencia (confirmado por grep el 2026-08-03: cero matches de
+      `AbortController` en el archivo). Reconfirmado por issue #87 (A3, 2026-08-02).
+
+**Nuevos, sumados desde issue #87 (2026-08-02, priorizados "Ahora" — baratos y/o de impacto alto):**
+
+- [x] **Pin de `engines.node` en `backend/package.json` + documentar versión en README — RESUELTO
+      (2026-08-03).** `"engines": { "node": ">=24.0.0" }` agregado (matchea `node-version: 24` de
+      `ci.yml`/`codeql.yml`); badge y "Requisitos" del README corregidos de "20+" a "24+" (estaban
+      desactualizados, CI ya corría en 24 por el fix de `t.mock.module()` de la sesión anterior).
+      (issue #87: B1)
+- [x] **Validar `JWT_SECRET` al arranque del backend (fail-fast si falta) — RESUELTO (2026-08-03).**
+      `createApp()` en `backend/src/app.js` valida `JWT_SECRET` junto a `FRONTEND_URL` (mismo patrón),
+      lanza `Error` explicativo si falta. `backend/.env.example` **no se pudo crear en esta sesión**
+      (el entorno de Claude Code bloquea escribir cualquier archivo `.env*`, incluso sin secretos
+      reales) — documentado en su lugar en el README, sección "Variables de entorno". Pendiente que
+      Kevin cree `backend/.env.example` a mano (contenido ya redactado, ver README). (issue #87: C2)
+- [x] **`limits.fileSize` en el `multer` del importador de tasas Excel — RESUELTO (2026-08-03).**
+      `admin-tasas.routes.js`: `limits: { fileSize: 10 * 1024 * 1024 }` (10MB) + wrapper que traduce
+      `MulterError LIMIT_FILE_SIZE` a un 400 explicativo (antes hubiera caído al handler genérico como
+      500 "Error interno del servidor"). 170/170 tests backend en verde. (issue #87: C3)
+- [x] **Documentar el backup existente (`supabase-backup.yml`) — RESUELTO (2026-08-03, solo la parte
+      de documentar).** Workflow real: `.github/workflows/supabase-backup.yml`, cron semanal (domingo
+      03:00 UTC) + `workflow_dispatch` manual, `pg_dump -F c` (formato custom de Postgres) contra
+      `secrets.SUPABASE_DB_URL`, subido como GitHub Actions artifact (no público, requiere login +
+      acceso de lectura al repo) con `retention-days: 30`. **Sigue pendiente, no abordado en esta
+      sesión:** evaluar si alcanza con este backup semanal + retención de 30 días o si conviene sumar
+      PITR pago de Supabase, y probar un restore real al menos una vez (nunca verificado que el dump
+      generado sea efectivamente restaurable). (issue #87: D4)
+- [ ] Tabla `schema_migrations` (o script equivalente) que registre qué migración ya se aplicó — la
+      colisión de numeración **ya ocurrió 3 veces en este repo** (`046` reclamado en paralelo por
+      `mrc-plan-descuento-fijo`, `enable-rls-public-tables` y `ramos-flota-tro-transporte`, resuelto a
+      mano cada vez). Confirmado sin script/tabla el 2026-08-03. (issue #87: E1)
 
 ### Sprint 2 — mantenibilidad puntual
 
-- [ ] Label de rol hardcodeado en sidebar/topbar (`frontend/shared/sidebar.js:52`) — solo contempla
-      `admin`/`agente`, cualquier rol custom (creado desde el panel de Admin) muestra siempre el texto
-      fijo "Analista comercial" en vez de su nombre real. Cosmético, sin impacto de seguridad ni de
-      permisos (los booleanos de permiso sí se leen y aplican bien). Fix: mostrar `usuario.rol`
-      capitalizado cuando no matchea los 2 casos especiales. Hallazgo del QA integral del 2026-07-24
-      (continuación con usuario admin real).
-- [ ] Extraer `mostrarBanner()` (duplicada literal en `cotizar.js:376` y `admin.js:128`) a
-      `frontend/shared/`.
-- [ ] Helper compartido para el esqueleto repetido de `mrc.calculator.js`/`incendio.calculator.js`
-      (guards de piso técnico, tope, capital×tasa).
-- [ ] Unificar cache de catálogos: hoy el mismo dato se cachea cuando lo pide el motor de cálculo
-      pero no cuando lo piden directo `cotizar.js`/`admin.js`.
-- [ ] Reemplazar `confirm()` nativo por el modal propio en las 5 acciones destructivas de admin
-      (`admin.js:210,224,364,668,860`).
+- [ ] Label de rol hardcodeado en sidebar/topbar (`frontend/shared/sidebar.js:69-72`) — sigue
+      contemplando solo `admin`/`agente` por comparación literal, cualquier rol custom muestra el texto
+      fijo en vez de su nombre real. Confirmado sin cambios el 2026-08-03.
+- [~] Extraer `mostrarBanner()` duplicada — **parcialmente resuelto.** `renderBanner` (la generación
+  del HTML del banner) ya vive compartida en `frontend/shared/dom.js` y la usan `cotizar.js`,
+  `historial.js` y `admin/render/shell.js` — lo que queda duplicado ahora es solo un wrapper
+  delgado `mostrarBanner(tipo, texto)` de 2-3 líneas por módulo (llama a `renderBanner` + actualiza
+  el DOM local), no la lógica real. Verificado por grep el 2026-08-03. Cerrado en la práctica, no
+  vale la pena una extracción más para 3 wrappers triviales.
+- [x] **Helper compartido para el esqueleto repetido de `mrc.calculator.js`/`incendio.calculator.js` —
+      RESUELTO.** `backend/src/calculators/utils/edificio-contenido.js` con `calcularCostoEdificioYContenido`
+      compartida, cerrado como parte del issue #84 (auditoría de calidad, 2026-08-02).
+- [x] **Unificar cache de catálogos — RESUELTO.** `backend/src/services/cache.js` (`withCache`) ya lo
+      usan `ramos.service.js`/`cotizacion.service.js`/`tipo-cambio.service.js` en backend; en frontend
+      `frontend/shared/catalogo.js` (`getRamos()` memoizado, PR #99) reemplazó los guards ad-hoc de
+      `admin.js`/`cotizar.js`/`historial.js`. Cerrado como parte de la auditoría de performance issue
+      #83 (2026-08-02).
+- [ ] Reemplazar `confirm()` nativo por el modal propio en las acciones destructivas de admin — sigue
+      sin resolver, confirmado el 2026-08-03: 7 usos de `confirm()` nativo repartidos en
+      `frontend/admin/coberturas.js`, `planes.js`, `ramos.js`, `roles.js`, `tasas.js`, `usuarios.js`
+      (x2) — más que los 5 originales porque el módulo se dividió en el plan `admin-module-split`, no
+      porque haya crecido el problema.
 
 ### Sprint 3 — escalabilidad y hardening restante
 
-- [ ] Punto único de registro de ramo (hoy fragmentado en 4 archivos: `calculators/index.js`,
-      `cotizacion.service.js`, `templates/oferta/index.js`, `cotizar.js`) — condición para sumar
-      Incendio/Vida-AP/Auto sin fricción creciente.
-- [ ] Habilitar RLS en las 30 tablas de Supabase (con revisión de policies).
-- [ ] Cola de concurrencia + single-pass render en Puppeteer (`pdf.service.js:20-44`) — hoy N PDFs
-      simultáneos abren N páginas sobre un solo proceso Chromium.
-- [ ] Validación inline por campo en el formulario de cotizar (hoy solo deshabilita el botón con
-      mensaje genérico).
-- [ ] Breakpoint intermedio responsive (900-1200px) en `cotizador.css:1281,1830`.
+- [ ] Punto único de registro de ramo — **sigue fragmentado**, confirmado el 2026-08-03:
+      `backend/src/calculators/index.js`, `backend/src/services/cotizacion.service.js`,
+      `backend/src/templates/oferta/index.js` (su propio diccionario `BUILDERS_POR_CALCULADOR`) y
+      `frontend/cotizar/cotizar.js` (`RAMOS_UI`, lista hardcodeada) siguen siendo 4 puntos separados.
+- [x] **Habilitar RLS en Supabase — RESUELTO (2026-07-30).** 34 tablas CRITICAL con RLS activado
+      (migración `046_enable_rls_public_tables.sql`), default-deny para anon/authenticated, backend usa
+      `SUPABASE_SERVICE_KEY` (bypasea RLS). Ver CLAUDE.md, sección "Pendientes activos".
+- [~] Cola de concurrencia + single-pass render en Puppeteer (`pdf.service.js`) — **parcialmente
+  atendido, no cerrado**: `closeBrowser()` + handlers `SIGTERM`/`SIGINT` (PR #97, issue #83 finding
+  #5) aseguran un cierre limpio del proceso Chromium, pero **no hay cola/límite de páginas
+  concurrentes** — N PDFs simultáneos siguen abriendo N páginas sobre el mismo proceso. Confirmado
+  por grep el 2026-08-03: cero matches de `queue`/`pLimit`/`semaphore`/`pool` en `pdf.service.js`.
+- [ ] Validación inline por campo en el formulario de cotizar — sin cambios, confirmado el 2026-08-03
+      (sin `aria-invalid`/mensajes de error por campo en `cotizar.js`, sigue siendo deshabilitar el
+      botón con mensaje genérico).
+- [x] **Breakpoint intermedio responsive (900-1200px) — RESUELTO (2026-07-31).** Frontend responsive
+      unificado (PR #81), breakpoints a 1024/768/480px, resuelto explícitamente como parte de ese
+      cambio. Ver CLAUDE.md, entrada "Frontend responsive unificado".
 
 ### Sprint 4 — cierre de roadmap de seguridad + modularización
 
-- [ ] Migrar sesión JWT a cookie httpOnly + SameSite (decisión de arquitectura, resuelve CORS/CSRF)
-      — ya estaba en el roadmap de seguridad aceptado (sección 27).
-- [ ] Logging de seguridad a sink centralizado (Sentry/Logtail) en vez de `console.warn`/`error`.
-- [ ] Automatizar `npm audit`/Dependabot en CI.
-- [ ] Arrancar modularización de `cotizar.js` (1739 líneas) / `admin.js` (2101 líneas) por
-      responsabilidad (fetch/render/estado) — inversión de mediano plazo, no bloqueante por sí sola.
+- [ ] Migrar sesión JWT a cookie httpOnly + SameSite — sigue sin resolver, sigue en el roadmap de
+      seguridad aceptado (sección 27) e issue #87 lo reconfirma (C1, "revisitar con Kevin ahora que el
+      backend tiene CD y dominio estables").
+- [ ] Logging de seguridad a sink centralizado (Sentry/Logtail) en vez de `console.warn`/`error` — sin
+      resolver. El logger silencioso (sección 51) resuelve "no exponer en producción", no "centralizar
+      para monitoreo" — son problemas distintos, este sigue abierto. (issue #87: D1)
+- [ ] Automatizar `npm audit`/Dependabot en CI — confirmado sin `npm audit` en ningún workflow de
+      `.github/workflows/` el 2026-08-03. (issue #87: B4)
+- [~] Modularización de `cotizar.js`/`admin.js` — **`admin.js` cerrado, `cotizar.js` sigue pendiente.**
+  `admin.js` completó el plan `admin-module-split` de 10 PRs (2026-08-02/03): pasó de 2632 a 337
+  líneas, dividido por responsabilidad en `frontend/admin/{state,secciones,render/*,inline-edit,
+usuarios,roles,ramos,planes,tasas,coberturas,catalogo-ramo}.js`. `cotizar.js` (2165+ líneas) **no
+  se tocó** — issue #87 (F1) lo sigue marcando "próximo trimestre, después de una suite E2E como red
+  de seguridad (B3)".
 
 ### QA funcional en vivo — continuación con usuario admin real (2026-07-24)
 

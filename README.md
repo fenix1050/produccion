@@ -4,7 +4,7 @@ Sistema web de cotización de pólizas para **Aseguradora Tajy** (Paraguay): Gen
 cotizar y permite crear Propuesta Formal (con KYC/PLA-FT) cuando el cliente acepta, con historial
 correlativo y numeración progresiva por rama.
 
-![Node](https://img.shields.io/badge/node-20%2B-339933?logo=node.js&logoColor=white)
+![Node](https://img.shields.io/badge/node-24%2B-339933?logo=node.js&logoColor=white)
 ![Backend](https://img.shields.io/badge/backend-Express-000000?logo=express&logoColor=white)
 ![DB](https://img.shields.io/badge/database-Supabase%20%2F%20PostgreSQL-3ECF8E?logo=supabase&logoColor=white)
 ![Frontend](https://img.shields.io/badge/frontend-Vanilla%20JS-F7DF1E?logo=javascript&logoColor=black)
@@ -101,7 +101,7 @@ Antes de tocar código, leé en este orden:
 
 ## Requisitos
 
-- Node.js 20+
+- Node.js 24+
 - Cuenta de Supabase (proyecto PostgreSQL)
 
 ## Instalación
@@ -111,6 +111,16 @@ npm install --workspaces
 cp backend/.env.example backend/.env
 # completar SUPABASE_URL y SUPABASE_SERVICE_KEY en backend/.env
 ```
+
+### Variables de entorno (`backend/.env`)
+
+| Variable               | Requerida | Descripción                                                                                          |
+| ---------------------- | :-------: | ---------------------------------------------------------------------------------------------------- |
+| `SUPABASE_URL`         |    ✅     | URL del proyecto de Supabase.                                                                        |
+| `SUPABASE_SERVICE_KEY` |    ✅     | Service role key (bypasea RLS) — nunca la anon key. El backend falla al arrancar si falta.           |
+| `FRONTEND_URL`         |    ✅     | Origen exacto permitido por CORS. Sin wildcard por seguridad. El backend falla al arrancar si falta. |
+| `JWT_SECRET`           |    ✅     | Secreto para firmar/verificar JWT de sesión. El backend falla al arrancar si falta.                  |
+| `PORT`                 |     —     | Puerto del servidor Express. Default `3000`.                                                         |
 
 ## Migraciones y base de datos
 
@@ -159,7 +169,7 @@ Esto corre todas las migraciones en orden contra tu proyecto local.
 
 ### Requisitos previos
 
-- Node.js 20+
+- Node.js 24+
 - Supabase CLI (opcional, para migraciones locales)
 - `.env` del backend con `SUPABASE_URL` y `SUPABASE_SERVICE_KEY` (**no versionado** — pedir a Kevin)
 

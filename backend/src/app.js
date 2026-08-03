@@ -7,10 +7,15 @@ import { apiRateLimiter } from './middleware/rate-limit.js'
 import { router as apiRouter } from './routes/index.js'
 
 export function createApp() {
-  const { FRONTEND_URL } = process.env
+  const { FRONTEND_URL, JWT_SECRET } = process.env
   if (!FRONTEND_URL) {
     throw new Error(
       'Falta FRONTEND_URL en el .env — copiar .env.example y completar. No hay fallback a wildcard por seguridad.'
+    )
+  }
+  if (!JWT_SECRET) {
+    throw new Error(
+      'Falta JWT_SECRET en el .env — copiar .env.example y completar. Sin esto, jwt.sign()/jwt.verify() firman y validan tokens con `undefined`, dejando la autenticación rota o falsificable.'
     )
   }
 

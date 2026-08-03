@@ -1,93 +1,22 @@
 import { supabase } from '../config/supabase.js'
 import { httpError } from '../utils/http-error.js'
 
-export async function nextNumeroCorrelativo(ramoId) {
-  // Incrementa y devuelve el próximo número correlativo del ramo vía RPC
-  // (función `siguiente_correlativo`, migración 009) para que el incremento
-  // sea atómico bajo concurrencia — el UPDATE ... RETURNING toma el lock de
-  // fila dentro de la misma transacción, sin el hueco select→update en dos pasos.
-  const { data, error } = await supabase.rpc('siguiente_correlativo', { p_ramo_id: ramoId })
+// Cambio SDD `cotizacion-transaccional`: thin wrappers de UN solo `supabase.rpc()` contra las
+// funciones plpgsql `crear_cotizacion_atomica`/`actualizar_cotizacion_atomica` (migración
+// 052_cotizacion_atomica_rpc.sql, ya aplicada contra Supabase real). El `payload` ya viene armado
+// por `cotizacion.service.js` con las keys `p_*` exactas que espera el RPC — no hay traducción
+// acá, solo se reenvía tal cual (ver design.md — Architecture Decision #4/#5). Todo el detalle
+// (correlativo, cabecera, coberturas, variantes, ajustes, plan de pago) se persiste dentro de
+// una única transacción de Postgres del lado del RPC; el error de Postgres se propaga sin
+// envolver, ya que el rollback lo maneja la base, no JS.
+export async function crearCotizacionAtomica(payload) {
+  const { data, error } = await supabase.rpc('crear_cotizacion_atomica', payload)
   if (error) throw error
   return data
 }
 
-// `cotizacion` puede traer `moneda`/`tipo_cambio_snapshot`/`tipo_cambio_fuente`/`tipo_cambio_fecha`
-// (migración 034) cuando cotizacion.service.js (crearCotizacion) los arma — el snapshot solo
-// viaja cuando esa cotización necesitó convertir moneda para el umbral de inspección
-// (resolverUmbralInspeccion); `calcularPreview` nunca invoca esta función, así que el preview
-// nunca persiste nada acá. Sin whitelist de columnas: se inserta tal cual lo que arma el caller.
-export async function insertCotizacion(cotizacion) {
-  const { data, error } = await supabase.from('cotizaciones').insert(cotizacion).select().single()
-  if (error) throw error
-  return data
-}
-
-// Rollback manual de una cabecera recién insertada cuando `insertarCoberturasYVariantes` falla
-// a mitad de camino (cotizacion.service.js, crearCotizacion) — no hay transacción multi-statement
-// vía el cliente PostgREST de Supabase, así que la compensación es un DELETE explícito por id.
-// `cotizaciones` tiene ON DELETE CASCADE hacia cotizacion_variantes/cotizacion_coberturas
-// (migración 005), así que esto no deja huérfanos en esas tablas.
-export async function deleteCotizacion(id) {
-  const { error } = await supabase.from('cotizaciones').delete().eq('id', id)
-  if (error) throw error
-}
-
-export async function insertVariante(variante) {
-  const { data, error } = await supabase
-    .from('cotizacion_variantes')
-    .insert(variante)
-    .select()
-    .single()
-  if (error) throw error
-  return data
-}
-
-export async function insertPlanesPago(planesPago) {
-  const { data, error } = await supabase.from('cotizacion_plan_pago').insert(planesPago).select()
-  if (error) throw error
-  return data
-}
-
-export async function insertCoberturas(coberturas) {
-  const { data, error } = await supabase.from('cotizacion_coberturas').insert(coberturas).select()
-  if (error) throw error
-  return data
-}
-
-// Descuento/recargo manual del agente (state.data.descuentoValor/recargoValor en cotizar.js) —
-// tabla `cotizacion_ajustes` ya existía en el schema (migración 003) sin uso hasta ahora. Se
-// persiste el total YA topado por el calculador (sumarAjustes), no el ajuste crudo que mandó el
-// frontend, para que la Carta Oferta muestre exactamente lo que se cobró.
-export async function insertAjustes(ajustes) {
-  if (!ajustes.length) return []
-  const { data, error } = await supabase.from('cotizacion_ajustes').insert(ajustes).select()
-  if (error) throw error
-  return data
-}
-
-// Borran filas por ID explícito (no un DELETE ciego por cotizacion_id) — actualizarCotizacion en
-// cotizacion.service.js inserta las filas nuevas ANTES de borrar las viejas, y ambas comparten el
-// mismo cotizacion_id, así que un DELETE por cotizacion_id se llevaría puestas también las recién
-// insertadas.
-export async function deleteVariantesByIds(ids) {
-  if (!ids.length) return
-  const { error } = await supabase.from('cotizacion_variantes').delete().in('id', ids)
-  if (error) throw error
-}
-
-export async function deleteCoberturasByIds(ids) {
-  if (!ids.length) return
-  const { error } = await supabase.from('cotizacion_coberturas').delete().in('id', ids)
-  if (error) throw error
-}
-
-export async function updateCotizacion(id, fields) {
-  const { data, error } = await supabase
-    .from('cotizaciones')
-    .update(fields)
-    .eq('id', id)
-    .select()
-    .single()
+export async function actualizarCotizacionAtomica(payload) {
+  const { data, error } = await supabase.rpc('actualizar_cotizacion_atomica', payload)
   if (error) throw error
   return data
 }

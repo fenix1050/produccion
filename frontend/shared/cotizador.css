@@ -1123,6 +1123,7 @@ button {
   font-size: 12px;
   font-weight: 600;
   color: var(--tajy-text-body);
+  min-height: 32px;
 }
 
 .field-checkbox-label {

@@ -30,7 +30,7 @@ jobs:
           echo "FILENAME=${FILENAME}.gz" >> "$GITHUB_ENV"
 
       - name: Subir como artifact (no público — requiere login + acceso de lectura al repo)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: supabase-backup-${{ env.DATE }}
           path: ${{ env.FILENAME }}

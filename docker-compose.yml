@@ -7,6 +7,12 @@ services:
     restart: unless-stopped
     env_file:
       - backend/.env
+    # env_file pisa el ENV NODE_ENV=production horneado en backend/Dockerfile si esa
+    # variable llega a estar ausente o distinta en backend/.env de la VPS — forzarla acá
+    # asegura que cookies.js siempre trate el entorno como producción (Domain
+    # compartido .cotizador.lat entre frontend/API), sin depender del contenido del .env.
+    environment:
+      - NODE_ENV=production
     expose:
       - '3000'
     networks:

@@ -48,6 +48,7 @@ import {
   guardarTasaRpf,
   eliminarPlan,
 } from './planes.js'
+import { guardarCurvaRpf } from './rpf-cuotas.js'
 import {
   seleccionarRamoTasas,
   habilitarEdicionRubroActividad,
@@ -330,6 +331,8 @@ function onInlineFormSubmit(form) {
     guardarMontoFranquicia(form.dataset.id, Number(form.dataset.planId), form)
   } else if (accion === 'rubro-actividad-tasas') {
     guardarRubroActividadTasas(form.dataset.id, form)
+  } else if (accion === 'rpf-cuotas') {
+    guardarCurvaRpf(form)
   }
 }
 

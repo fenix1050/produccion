@@ -3,6 +3,7 @@ import { getRamos } from '../shared/catalogo.js'
 import { state } from './state.js'
 import { renderApp, mostrarBanner } from './render/shell.js'
 import { habilitarEdicionInline, cancelarEdicionInline } from './inline-edit.js'
+import { cargarCurvaRpf } from './rpf-cuotas.js'
 
 // ---------------------------------------------------------------------------
 // Planes: carga y acciones
@@ -22,6 +23,12 @@ export async function cargarPlanes() {
   } finally {
     state.loadingPlanes = false
     renderApp()
+  }
+
+  // Curva GLOBAL de R.P.F. (cambio `rpf-variable-mrc`), independiente del resultado de
+  // arriba — un fallo cargando planes no debe impedir ver/editar la curva, y viceversa.
+  if (!state.curvaRpf.datos && !state.curvaRpf.loading) {
+    cargarCurvaRpf()
   }
 }
 

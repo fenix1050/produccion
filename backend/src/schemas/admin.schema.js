@@ -108,6 +108,26 @@ export const editarPlanFormaPagoSchema = z.object({
   habilitada: z.boolean().optional(),
 })
 
+// ---- R.P.F. por cuotas (migración 058, cambio `rpf-variable-mrc`) ----
+
+// Escritura BULK de la curva global (33 celdas = 11 cuotas x 3 formas de pago) en un solo
+// upsert atómico, en vez de un endpoint per-celda (ver design.md Decisión 7): 33 PUTs
+// secuenciales dejarían la curva a medio editar en vivo para otros usuarios. `cuotas` acepta
+// hasta 24 a propósito (no hardcodeado a 11) para permitir extender el rango sin migración —
+// ver design.md Decisión 5 y "Open Questions".
+export const editarCurvaRpfSchema = z.object({
+  celdas: z
+    .array(
+      z.object({
+        forma_pago_id: z.number().int().positive(),
+        cuotas: z.number().int().min(1).max(24),
+        tasa_rpf: z.number().min(0),
+      })
+    )
+    .min(1)
+    .max(100),
+})
+
 // ---- Ramos ----
 
 export const editarRamoSchema = z

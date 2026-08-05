@@ -1,0 +1,107 @@
+# Design: R.P.F. variable por cantidad de cuotas (MRC / Incendio / Vida-AP)
+
+## Technical Approach
+
+Add one **global** RPF curve table (`rpf_cuotas`, 33 rows = 11 cuotas × 3 formas de pago) plus one opt-in flag on `ramos`. `construirVariantes` (`backend/src/services/cotizacion.service.js:485`) — today the only reader of `plan_formas_pago.tasa_rpf` — gets a new pure helper `resolverTasaRpf()` (same shape/placement as `resolverDescuentos`, L467) that returns either the curve value (flagged ramos) or the legacy scalar (everyone else, byte-identical). `calcularPlanPago` keeps receiving `{ codigo, tasa_rpf }` — **its signature, body and the `ramo-calculator.contract.test.js` contract are untouched**; only the value of `tasa_rpf` changes. Admin edits the grid through one new bulk endpoint reusing the existing `requirePlanesEdit` gate.
+
+## Architecture Decisions
+
+| # | Decision | Choice | Alternatives rejected | Rationale |
+|---|---|---|---|---|
+| 1 | Curve storage | New table `rpf_cuotas(forma_pago_id, cuotas, tasa_rpf)`, `UNIQUE(forma_pago_id, cuotas)` | (a) JSON column on `formas_pago`; (b) 33 extra rows on `plan_formas_pago` per plan | (a) breaks the repo's relational convention (every rate lives in its own table: `tasas_capital`, `tasas_riesgo_objeto`, `tasas_cobertura_ramo`) and makes a 1-cell admin edit a read-modify-write of the whole blob. (b) is the current per-plan model — it would duplicate the same curve across ~30 plans and re-introduce drift, exactly what "una sola curva" rules out. |
+| 2 | Curve granularity | Global — **no** `ramo_id`/`plan_id` column | Curve per ramo (3 copies) | Kevin confirmed one shared curve for the 3 ramos. Adding a scoping column now would let the 3 copies diverge silently. If a per-ramo curve is ever needed, it is an additive `ramo_id NULL = default` column later. |
+| 3 | Ramo scoping (Auto exclusion) | New flag `ramos.usa_rpf_por_cuotas BOOLEAN NOT NULL DEFAULT FALSE`, `UPDATE ... TRUE` for `mrc`, `incendio`, `vida-ap` | (a) hardcoded `['mrc','incendio','vida-ap']` array in the service; (b) infer from presence of rows in `rpf_cuotas` | The curve is global (Decision 2), so (b) has no per-ramo signal to read. (a) forces a deploy to onboard a 4th ramo and hides business state in code. The flag matches the existing `ramos.activo` precedent (migration 041/047) and makes **Auto's exclusion a data fact with a regression test**, not a comment. |
+| 4 | `cuotas = 0` | Not stored; resolves to `0` by rule | Store 3 extra rows (36 cells) | Hoja4 row 0 is all zeros for the 3 columns, and `contado` already has `tiene_rpf = FALSE`. Keeping 0 out of the table makes the admin grid exactly the 33 editable cells the business handed over, with no meaningless always-zero row. **Behavior note:** today a financed forma de pago with `cuotas = 0` still charges the flat RPF (`plan-pago.js:12` computes `rpf` before the `!cuotas` early return); under the curve it becomes 0. That is the planilla's literal rule and must be an explicit test. |
+| 5 | Out-of-range cuotas | `httpError(422)` when `cuotas > MAX(rpf_cuotas.cuotas)` for a flagged ramo | Silent clamp to 11 (Incendio `tasa_minima` precedent) | Decision #3 (Engram #391). The bound is read from the loaded curve, **not hardcoded to 11**, so an admin adding a 12-cuota row extends the range without a deploy. |
+| 6 | Tarjeta 1–2 cuotas = 0 | Stored as literal `0` rows | Omit the rows / special-case in code | Rows exist with value 0, so "missing row" keeps meaning "out of range" (Decision 5) and the admin can edit them. No code branch. |
+| 7 | Admin write shape | Single bulk `PUT /admin/rpf-cuotas` (full 33-cell payload, one upsert) | Per-cell `PUT /admin/rpf-cuotas/:id` (mirrors `plan-formas-pago/:id`) | The curve is a monotonic matrix read as a whole; 33 sequential per-cell saves can leave a half-edited curve live for other users mid-edit. One array upsert is a single atomic statement in PostgREST. Trade-off accepted: it diverges from the inline-edit pattern of the Planes table. |
+| 8 | Admin gate | `requirePlanesEdit` (`puede_editar_planes`) | `requireRole('admin')` (the `planes/:id/topes` precedent) | Decision #4 (Engram #391) — same roles that edit the scalar today. Recorded here because the `topes` route sets the opposite precedent one line away in `admin.routes.js`; a reviewer will ask. |
+| 9 | Admin UI placement | Standalone panel **above** the Planes table (`frontend/admin/render/rpf-cuotas.js`), not inside the per-plan "Formas de pago" subrow | New sidebar section; keep it in the subrow | The curve is global — rendering it under a plan implies it is per-plan, the exact confusion this change removes. Reusing the Planes section avoids new `secciones.js` + permission wiring, and the gate is already the same. |
+| 10 | Legacy scalar | Column **kept**; input removed from the UI only for flagged ramos | `DROP COLUMN`; read-only display; runtime fallback | Decision #5. Auto still reads it, so it cannot be dropped. No fallback: if a flagged ramo has no curve row, it is a 422 (Decision 5), never a silent revert to the flat value. |
+| 11 | Caching | `withCache('rpf_cuotas', ...)` + `invalidarCacheCatalogos()` on the admin write | No cache | Same catalog-read pattern as `resolverContextoRepositorios`; the curve is read on every preview keystroke (450 ms debounce) and mutates only from the admin panel. |
+
+## Data Flow
+
+    admin grid (33 cells) ──PUT /admin/rpf-cuotas──→ planes.service ──→ rpf_cuotas
+                                                          └→ invalidarCacheCatalogos()
+
+    POST /cotizaciones|/preview
+      → construirVariantes(plan, ramo, ...)
+          ├─ resolverCuotas(plan, body.cuotas)            (unchanged)
+          ├─ findFormasPagoDelPlan(plan.id)               (unchanged, gives tasa_rpf escalar)
+          ├─ ramo.usa_rpf_por_cuotas ? findCurvaRpf() : null    ← NEW (cached)
+          ├─ resolverTasaRpf({ ramo, formaPago, curva, cuotas }) ← NEW (pure)
+          │     flag=false → fp.tasa_rpf            (Auto: zero diff)
+          │     codigo='contado' → 0                (calcularPlanPago also forces 0)
+          │     cuotas=0 → 0
+          │     curva hit → tasa                    | miss → httpError(422)
+          └─ calcularPlanPago(prima, { codigo, tasa_rpf: <resuelta> }, cuotas)   (UNCHANGED)
+
+## File Changes
+
+| File | Action | Description |
+|------|--------|-------------|
+| `backend/migrations/058_rpf_por_cuotas.sql` | Create | `CREATE TABLE rpf_cuotas` + `UNIQUE(forma_pago_id, cuotas)` + `ENABLE ROW LEVEL SECURITY` (convention from 046, no policies — backend uses `SUPABASE_SERVICE_KEY`); seed 33 rows joined by `formas_pago.codigo`; `ALTER TABLE ramos ADD COLUMN usa_rpf_por_cuotas BOOLEAN NOT NULL DEFAULT FALSE` + `UPDATE ramos SET ... = TRUE WHERE nombre IN ('mrc','incendio','vida-ap')`. Header comment **must state it reverts the 2026-07-13 decision** recorded in `002_ramos_planes.sql:38-39` and `023_rpf_incendio_y_vida_ap.sql:2-7`, now with real data from `docs/insumos/Ajuste MC.xlsx` Hoja4. `sdd-apply` MUST re-list `backend/migrations/` at PR time — 058 is free today but 046/048 collided twice before. |
+| `backend/src/repositories/ramos.repository.js` | Modify | Add `findCurvaRpf()` → `select('*, formas_pago(codigo)').from('rpf_cuotas')`. Next to `findFormasPagoDelPlan` (L106). |
+| `backend/src/repositories/tasas.repository.js` | Modify | Add `upsertCurvaRpf(celdas)` → `.upsert(celdas, { onConflict: 'forma_pago_id,cuotas' })`. |
+| `backend/src/services/cotizacion.service.js` | Modify | Export pure `resolverTasaRpf()`; in `construirVariantes` load the curve when `ramo.usa_rpf_por_cuotas`, validate range once (before the `tiposFranquicia.map`) and replace the inline `{ codigo, tasa_rpf: fp.tasa_rpf }` at L533. |
+| `backend/src/schemas/admin.schema.js` | Modify | `editarCurvaRpfSchema` (see below). `editarPlanFormaPagoSchema` untouched (Auto still uses it). |
+| `backend/src/services/admin/planes.service.js` | Modify | `listarCurvaRpf()` / `editarCurvaRpf(celdas)` (upsert + `invalidarCacheCatalogos()`). |
+| `backend/src/controllers/admin.controller.js`, `backend/src/routes/admin.routes.js` | Modify | `GET|PUT /admin/rpf-cuotas`, both `requirePlanesEdit`. |
+| `frontend/admin/render/rpf-cuotas.js` | Create | 11×3 grid renderer + one "Guardar" button (module-split convention from PRs #110–#116). |
+| `frontend/admin/rpf-cuotas.js` | Create | `cargarCurvaRpf` / `guardarCurvaRpf`; registered in `ACTION_HANDLERS`. |
+| `frontend/admin/render/planes.js` | Modify | `renderFormasPagoDelPlan` (L100) drops the "Tasa RPF (%)" `<th>`/`<td>` when the plan's ramo has `usa_rpf_por_cuotas`; `renderCampoTasaRpf` (L232) stays for Auto. |
+| `frontend/admin/state.js` | Modify | `curvaRpf: { loading, error, datos }`. |
+| `docs/ESTADO_PROYECTO.md`, `CLAUDE.md` | Modify | Status section (project convention). |
+
+## Interfaces / Contracts
+
+```sql
+CREATE TABLE rpf_cuotas (
+  id            SERIAL PRIMARY KEY,
+  forma_pago_id INT NOT NULL REFERENCES formas_pago(id),
+  cuotas        SMALLINT NOT NULL CHECK (cuotas >= 1),
+  tasa_rpf      NUMERIC(6,4) NOT NULL CHECK (tasa_rpf >= 0),
+  UNIQUE (forma_pago_id, cuotas)
+);
+```
+
+```js
+// cotizacion.service.js — pure, exported, tested without repository mocks
+export function resolverTasaRpf({ ramo, formaPagoPlan, curva, cuotas }) // → number  (throws 422 on miss)
+
+// admin.schema.js
+export const editarCurvaRpfSchema = z.object({
+  celdas: z.array(z.object({
+    forma_pago_id: z.number().int().positive(),
+    cuotas:        z.number().int().min(1).max(24),
+    tasa_rpf:      z.number().min(0).max(100),
+  })).min(1).max(100),
+})
+```
+
+Seed values (Hoja4, `cobrador` / `boca_cobranza` / `tarjeta_credito`):
+`1:` 1.2 / 1 / 0 · `2:` 1.55 / 1.24 / 0 · `3:` 1.6889 / 1.3511 / 0.8 · `4:` 2.7444 / 2.1956 / 1.3 · `5:` 3.8 / 3.04 / 1.8 · `6:` 4.8556 / 3.8844 / 2.3 · `7:` 5.9111 / 4.7289 / 2.8 · `8:` 7.1778 / 5.7422 / 3.4 · `9:` 8.2333 / 6.5867 / 3.9 · `10:` 8.8667 / 7.0933 / 4.2 · `11:` 9.5 / 7.6 / 4.5
+
+## Testing Strategy
+
+| Layer | What | Approach |
+|---|---|---|
+| Unit | `resolverTasaRpf`: flagged hit, `contado`→0, `cuotas=0`→0, tarjeta 1–2→0, miss→422 | Direct call, no mocks (same as `resolverDescuentos` suite) |
+| Unit (regression, **required**) | **Auto/Auto-Flota zero diff**: a plan on a non-flagged ramo yields the exact same `premio/rpf/iva/inicial/cuota` as today | Fixed-value assertions in `cotizacion.service.test.js` (fixtures at L164/274/383 already carry `tasa_rpf`) |
+| Unit (contract) | `ramo-calculator.contract.test.js` and the 4 `calcularPlanPago` suites unchanged and green | Run as-is — any diff means the signature was touched |
+| Integration | 422 body/status when `cuotas > MAX(curva)`; admin bulk PUT persists and invalidates cache | Service-level test with stubbed repositories |
+| Manual/live | MRC + Incendio + Vida-AP premio at 3/6/11 cuotas vs. the planilla; admin grid edit reflected in the next preview; Auto untouched; scalar input gone for the 3 ramos, present for Auto | Playwright, real Supabase after Kevin's explicit go-ahead |
+
+## Threat Matrix
+
+N/A — no routing, shell, subprocess, VCS/PR automation, executable-file classification, or process-integration boundary. The new endpoint reuses an existing authenticated + CSRF-protected admin router with an existing permission gate.
+
+## Migration / Rollout
+
+100% additive; migration applied against real Supabase **only with Kevin's explicit confirmation** (project convention). Order: migration first (`usa_rpf_por_cuotas` defaults to FALSE, so production is byte-identical until the `UPDATE` inside the same file flips the 3 ramos — flip and code deploy must land together, or previews on those ramos 422 on out-of-range cuotas before the code exists to read the curve; safest sequence is **deploy code first, then migration**). Rollback: **N1** `UPDATE ramos SET usa_rpf_por_cuotas = FALSE` for the 3 ramos — instant, no deploy, back to the flat scalar which was never overwritten; **N2** revert the commit (table inert); **N3** `DROP TABLE rpf_cuotas` + `DROP COLUMN`. Already-saved cotizaciones are not recalculated.
+
+## Open Questions
+
+- [ ] Decision 4 changes behavior for a financed forma de pago at `cuotas = 0` (flat RPF today → 0 under the curve). Confirm no live plan on the 3 ramos has `cuotas_default = 0` with a financed forma de pago enabled before applying.
+- [ ] `editarCurvaRpfSchema` allows `cuotas` up to 24 so the admin can extend the range; confirm the grid UI should offer rows beyond 11 or stay fixed at 11.

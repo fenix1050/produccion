@@ -1750,6 +1750,12 @@ function renderLivePanelBody() {
   const moneda = monedaCotizacionActual()
   const unidad = unidadMoneda(moneda)
 
+  // Capital total asegurado (Ajuste MC.xlsx ítem #7, 2026-08-05): solo MRC, donde
+  // capitalTotalAsegurado() tiene sentido (usa incluye_en_suma_asegurada_total, concepto
+  // introducido en la migración 020 específica de este ramo) — permite ver la tasa efectiva
+  // (costo/capital) sin salir del paso "Datos".
+  const capitalTotal = state.ramoId === 'mrc' ? capitalTotalAsegurado() : null
+
   return `
     ${renderLiveLabel()}
     ${renderFormaPagoPills()}
@@ -1762,6 +1768,7 @@ function renderLivePanelBody() {
       <div class="live-summary__row"><span>Forma de pago</span><span>${escapeHtml(fp.nombre_display)}</span></div>
       <div class="live-summary__row"><span>Cuotas</span><span>Inicial + ${fp.cantidad_cuotas} cuotas</span></div>
       <div class="live-summary__row"><span>Coberturas</span><span>${coberturasCount} incluidas</span></div>
+      ${capitalTotal != null ? `<div class="live-summary__row"><span>Capital total asegurado</span><span>${fmtMonto(capitalTotal, moneda)} ${unidad}</span></div>` : ''}
     </div>
     <div class="live-summary__hint">El monto se recalcula automáticamente a medida que completás los datos.</div>
   `
@@ -1999,6 +2006,23 @@ function renderFranquiciaSelect(cobertura) {
   `
 }
 
+// Suma de las líneas de "Coberturas incluidas" que cuentan como suma asegurada propia
+// (Incendio Edificio/Contenido + coberturas adicionales que agregó el agente) — igual que
+// "Suma total Gs." en el Excel del cliente (Version 01 - Calculo Varios.xlsx). Los
+// sub-límites nunca suman al total (a pedido de Kevin, 2026-07-15), ni "Robo valores
+// ventanilla" (sub-límite de "Valores en caja fuerte", marcado con
+// incluye_en_suma_asegurada_total = false en la migración 020). Extraída de
+// renderResumenCotizacion (WU7, Ajuste MC.xlsx ítem #7, 2026-08-05) para reutilizarla también
+// en el panel "Cotización en vivo" (renderLivePanelBody), donde el agente quiere ver la tasa
+// efectiva (costo/capital) sin tener que llegar a "Detalle del plan".
+function capitalTotalAsegurado() {
+  return (state.preview?.coberturas || []).reduce((acc, c) => {
+    const esSublimite = c.tipo_aplicacion === 'sublimite'
+    const cuentaParaTotal = !esSublimite && c.incluye_en_suma_asegurada_total !== false
+    return acc + (cuentaParaTotal ? Number(c.monto) || 0 : 0)
+  }, 0)
+}
+
 // Card único del sidebar de "Detalle del plan" — reemplaza los 2 cards separados que había
 // antes (resumen Contado/Financiado + Ajustes) por un único "Resumen de la cotización" con
 // secciones separadas por líneas finas, terminando en el botón de "Emitir carta oferta" (antes
@@ -2012,17 +2036,7 @@ function renderResumenCotizacion(plan) {
   const contado = variante?.formasPago.find((f) => f.codigo === 'contado')
   const formaSeleccionada = formaPagoSeleccionada()
   const financiado = formaSeleccionada?.codigo !== 'contado' ? formaSeleccionada : null
-  // Suma de las líneas de "Coberturas incluidas" que cuentan como suma asegurada propia
-  // (Incendio Edificio/Contenido + coberturas adicionales que agregó el agente) — igual que
-  // "Suma total Gs." en el Excel del cliente (Version 01 - Calculo Varios.xlsx). Los
-  // sub-límites nunca suman al total (a pedido de Kevin, 2026-07-15), ni "Robo valores
-  // ventanilla" (sub-límite de "Valores en caja fuerte", marcado con
-  // incluye_en_suma_asegurada_total = false en la migración 020).
-  const sumaAsegurada = (state.preview.coberturas || []).reduce((acc, c) => {
-    const esSublimite = c.tipo_aplicacion === 'sublimite'
-    const cuentaParaTotal = !esSublimite && c.incluye_en_suma_asegurada_total !== false
-    return acc + (cuentaParaTotal ? Number(c.monto) || 0 : 0)
-  }, 0)
+  const sumaAsegurada = capitalTotalAsegurado()
   const moneda = monedaEfectiva(plan)
   const unidad = unidadMoneda(moneda)
 

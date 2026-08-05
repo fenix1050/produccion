@@ -2,14 +2,14 @@
 
 ## Review Workload Forecast
 
-| Field | Value |
-|-------|-------|
-| Estimated changed lines | ~650-800 (migration ~90, backend ~220, admin backend ~110, admin frontend ~200, tests ~200+) |
-| 400-line budget risk | High |
-| Chained PRs recommended | Yes |
-| Suggested split | PR 1 (migration) -> PR 2 (backend resolution + regression tests) -> PR 3 (admin endpoint + UI) |
-| Delivery strategy | ask-on-risk |
-| Chain strategy | pending |
+| Field                   | Value                                                                                          |
+| ----------------------- | ---------------------------------------------------------------------------------------------- |
+| Estimated changed lines | ~650-800 (migration ~90, backend ~220, admin backend ~110, admin frontend ~200, tests ~200+)   |
+| 400-line budget risk    | High                                                                                           |
+| Chained PRs recommended | Yes                                                                                            |
+| Suggested split         | PR 1 (migration) -> PR 2 (backend resolution + regression tests) -> PR 3 (admin endpoint + UI) |
+| Delivery strategy       | ask-on-risk                                                                                    |
+| Chain strategy          | pending                                                                                        |
 
 Decision needed before apply: Yes
 Chained PRs recommended: Yes
@@ -18,12 +18,12 @@ Chain strategy: pending
 
 ### Suggested Work Units
 
-| Unit | Goal | Likely PR | Focused test command | Runtime harness | Rollback boundary |
-|------|------|-----------|----------------------|-----------------|-------------------|
-| 1 | Migration `058_rpf_por_cuotas.sql`: table + flag + 33-row seed, applied and verified against real Supabase | PR 1 | `backend/scripts/verificar-numeracion-migraciones.js` + manual SQL SELECT count(*)=33 | Supabase MCP query against real project (read-only SELECT) | `UPDATE ramos SET usa_rpf_por_cuotas = FALSE` reverts instantly; table itself is additive, DROP TABLE rpf_cuotas is a clean separate rollback |
-| 2 | `resolverTasaRpf()` + `construirVariantes` integration + Auto regression test + 422 range validation | PR 2 | `npm test --prefix backend -- cotizacion.service` | `npm test --prefix backend` (full suite, must stay green pre/post) | Revert `resolverTasaRpf` call site in `construirVariantes` back to direct `plan_formas_pago.tasa_rpf` read; flag stays FALSE from PR1 rollback so no live effect even if code ships early |
-| 3 | Admin bulk endpoint (`PUT /admin/rpf-cuotas`, schema, service, controller, route) | PR 3a (or 3) | `npm test --prefix backend -- admin` | Playwright: role with `puede_editar_planes` edits a cell, cotización reflects it; role without permission gets 403 | Remove route registration in `admin.routes.js`; no data mutation risk, endpoint is additive |
-| 4 | Admin UI (`render/rpf-cuotas.js`, wiring in `render/planes.js`, remove old `tasa_rpf` input for 3 ramos) | PR 3b (or 3) | N/A (frontend, no unit test harness in repo) | Playwright: grid renders/saves for MRC/Incendio/Vida-AP; old scalar input absent for those 3 ramos; Auto still shows old scalar input unchanged | Revert `render/planes.js` diff restores old scalar input; grid file removal is self-contained |
+| Unit | Goal                                                                                                       | Likely PR    | Focused test command                                                                  | Runtime harness                                                                                                                                 | Rollback boundary                                                                                                                                                                         |
+| ---- | ---------------------------------------------------------------------------------------------------------- | ------------ | ------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1    | Migration `058_rpf_por_cuotas.sql`: table + flag + 33-row seed, applied and verified against real Supabase | PR 1         | `backend/scripts/verificar-numeracion-migraciones.js` + manual SQL SELECT count(*)=33 | Supabase MCP query against real project (read-only SELECT)                                                                                      | `UPDATE ramos SET usa_rpf_por_cuotas = FALSE` reverts instantly; table itself is additive, DROP TABLE rpf_cuotas is a clean separate rollback                                             |
+| 2    | `resolverTasaRpf()` + `construirVariantes` integration + Auto regression test + 422 range validation       | PR 2         | `npm test --prefix backend -- cotizacion.service`                                     | `npm test --prefix backend` (full suite, must stay green pre/post)                                                                              | Revert `resolverTasaRpf` call site in `construirVariantes` back to direct `plan_formas_pago.tasa_rpf` read; flag stays FALSE from PR1 rollback so no live effect even if code ships early |
+| 3    | Admin bulk endpoint (`PUT /admin/rpf-cuotas`, schema, service, controller, route)                          | PR 3a (or 3) | `npm test --prefix backend -- admin`                                                  | Playwright: role with `puede_editar_planes` edits a cell, cotización reflects it; role without permission gets 403                              | Remove route registration in `admin.routes.js`; no data mutation risk, endpoint is additive                                                                                               |
+| 4    | Admin UI (`render/rpf-cuotas.js`, wiring in `render/planes.js`, remove old `tasa_rpf` input for 3 ramos)   | PR 3b (or 3) | N/A (frontend, no unit test harness in repo)                                          | Playwright: grid renders/saves for MRC/Incendio/Vida-AP; old scalar input absent for those 3 ramos; Auto still shows old scalar input unchanged | Revert `render/planes.js` diff restores old scalar input; grid file removal is self-contained                                                                                             |
 
 ## Phase 1: Migration & Data Foundation
 

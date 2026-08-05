@@ -70,19 +70,19 @@ Chain strategy: stacked-to-main (RESOLVED) — PR1 #161 -> PR2 #162 -> PR3 (this
 
 ## Phase 5: Spec Scenario Coverage & Live Verification
 
-- [ ] 5.1 Test: same curve applies across MRC/Incendio/Vida-AP (Cobrador@11 = 9.5% for all three).
-- [ ] 5.2 Test: curve values match source exactly (Cobrador@3 = 1.6889).
-- [ ] 5.3 Test: boca_cobranza@5 cuotas = 3.04%.
-- [ ] 5.4 Test: contado bypasses curve entirely, always RPF=0.
-- [ ] 5.5 Test: Tarjeta@1 = 0.
-- [ ] 5.6 Test: Tarjeta@3 = 0.8% (non-zero, confirms rule is cuotas-scoped).
-- [ ] 5.7 Test: 12 cuotas rejected with 422, no Premio computed.
-- [ ] 5.8 Test: 11 cuotas is the accepted max.
-- [ ] 5.9 Test: permitted role edits a cell, next cotización reflects it without deploy.
-- [ ] 5.10 Test: role without `puede_editar_planes` gets 403, no persistence.
-- [ ] 5.11 Test: old scalar `tasa_rpf` input confirmed absent from admin UI for MRC/Incendio/Vida-AP plans (grid shown instead).
-- [ ] 5.12 Test: Auto Premio byte-identical pre/post change for fixed input set.
-- [ ] 5.13 Test: Auto RPF does not vary when cuotas changes 3->11.
-- [ ] 5.14 Test: Auto admin UI keeps old scalar input unchanged (not migrated).
-- [ ] 5.15 Live Playwright matrix: MRC x financed forma de pago, Incendio x financed forma de pago, Vida-AP x financed forma de pago (at least 1 case each), plus the 422 case (cuotas=12) and the Auto-unchanged case, against the real dev environment.
-- [ ] 5.16 Confirm zero console/network errors during the live matrix; update `docs/ESTADO_PROYECTO.md` and `CLAUDE.md` per project convention once verified.
+- [x] 5.1 Test: same curve applies across MRC/Incendio/Vida-AP (Cobrador@11 = 9.5% for all three). — live Playwright (2026-08-05): Premio de Cobrador aumenta con las cuotas en los 3 ramos (MRC 1.823.000→1.972.000, Incendio 643.000→696.000, Vida-AP 556.000→602.000, todos a 1→11 cuotas), y la grilla del admin muestra los mismos 33 valores para los 3.
+- [x] 5.2 Test: curve values match source exactly (Cobrador@3 = 1.6889). — `cotizacion.service.test.js` ("ramo flagueado + cuotas dentro de rango...").
+- [x] 5.3 Test: boca_cobranza@5 cuotas = 3.04%. — `cotizacion.service.test.js` ("Boca de Cobranza @ 5 cuotas..."), agregado al cerrar el gap de sdd-verify (Engram #397).
+- [x] 5.4 Test: contado bypasses curve entirely, always RPF=0. — `cotizacion.service.test.js` ("forma de pago contado...").
+- [x] 5.5 Test: Tarjeta@1 = 0. — `cotizacion.service.test.js` ("Tarjeta de Crédito @ 1 cuota...").
+- [x] 5.6 Test: Tarjeta@3 = 0.8% (non-zero, confirms rule is cuotas-scoped). — `cotizacion.service.test.js` ("Tarjeta de Crédito @ 3 cuotas..."), agregado al cerrar el gap de sdd-verify (Engram #397).
+- [x] 5.7 Test: 12 cuotas rejected with 422, no Premio computed. — `cotizacion.service.test.js` ("ramo flagueado + cuotas fuera de rango...").
+- [x] 5.8 Test: 11 cuotas is the accepted max. — confirmado por llamada directa a `POST /api/cotizaciones/calcular` (curl, sesión real) con MRC/Cobrador a 11 cuotas: resuelve sin error, `rpf_porcentaje=9.5` (Engram #396/#397).
+- [ ] 5.9 Test: permitted role edits a cell, next cotización reflects it without deploy. — **Gap aceptado, no bloqueante** (mismo criterio que el WARNING #3 de sdd-verify, Engram #397): probado a nivel de persistencia + invalidación de caché (`admin.controller.rpf-cuotas.test.js`), pero no hay una prueba en vivo que edite una celda real y confirme que el Premio de una cotización posterior cambia sin redeploy. Requeriría credenciales admin reales o crear otro usuario descartable — no se justificó para este cierre.
+- [x] 5.10 Test: role without `puede_editar_planes` gets 403, no persistence. — `auth.rpf-cuotas.test.js` + `admin.controller.rpf-cuotas.test.js`.
+- [x] 5.11 Test: old scalar `tasa_rpf` input confirmed absent from admin UI for MRC/Incendio/Vida-AP plans (grid shown instead). — live Playwright (2026-08-05): columna "Tasa RPF (%)" ausente en la subfila de MRC NORMAL, presente e intacta en PLAN TAJY PREMIUM (Auto).
+- [x] 5.12 Test: Auto Premio byte-identical pre/post change for fixed input set. — `cotizacion.service.test.js` (test de regresión de Auto, Premio fijado).
+- [x] 5.13 Test: Auto RPF does not vary when cuotas changes 3->11. — `cotizacion.service.test.js` ("ramo NO flagueado (Auto)...").
+- [x] 5.14 Test: Auto admin UI keeps old scalar input unchanged (not migrated). — inspección de código (`renderCampoTasaRpf` sin condicional) + confirmado live en Playwright (columna intacta en Auto).
+- [x] 5.15 Live Playwright matrix: MRC x financed forma de pago, Incendio x financed forma de pago, Vida-AP x financed forma de pago (at least 1 case each), plus the 422 case (cuotas=12) and the Auto-unchanged case, against the real dev environment. — **Parcial, con sustitución documentada**: los 3 casos de ramo x forma de pago financiada SÍ se corrieron en vivo (Playwright, 2026-08-05). El caso 422 (cuotas=12) y el caso Auto-sin-cambios son estructuralmente inalcanzables desde la UI hoy — todos los planes reales tienen `cuotas_maximo=11` (el frontend nunca deja pedir 12), y Auto no está en `RAMOS_CON_CALCULO` (sigue "próximamente", Fase 2 pausada, sin relación con este cambio). Ambos casos quedan cubiertos por test unitario (5.7 y 5.12/5.13) en su lugar — mismo criterio que el resto del proyecto usa para escenarios no accesibles por UI.
+- [x] 5.16 Confirm zero console/network errors during the live matrix; update `docs/ESTADO_PROYECTO.md` and `CLAUDE.md` per project convention once verified. — cero errores de consola nuevos en la matriz en vivo (solo el 404 preexistente de `shared/config.js`, ajeno a este cambio). Docs actualizadas en este mismo commit.

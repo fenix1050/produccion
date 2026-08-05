@@ -119,6 +119,120 @@ describe('resolverDescuentos', () => {
   })
 })
 
+// resolverTasaRpf: helper puro (cambio SDD `rpf-variable-mrc`, ver design.md — Data Flow) que
+// decide, para CADA forma de pago de la variante, si la tasa de R.P.F. sale de la curva nueva
+// (`rpf_cuotas`, ramos flagueados) o del escalar legacy `plan_formas_pago.tasa_rpf` (todo lo
+// demás, byte-idéntico). Mismo patrón de mock que resolverDescuentos arriba: import dinámico +
+// repos vacíos, la función no toca ningún repository.
+describe('resolverTasaRpf', () => {
+  function mockRepositoriosYObtenerResolverTasaRpf(t, caso) {
+    t.mock.module('../repositories/ramos.repository.js', { namedExports: {} })
+    t.mock.module('../repositories/coberturas.repository.js', { namedExports: {} })
+    t.mock.module('../repositories/cotizaciones.repository.js', { namedExports: {} })
+    t.mock.module('./tipo-cambio.service.js', { namedExports: {} })
+    return import(`./cotizacion.service.js?case=resolver-tasa-rpf-${caso}`)
+  }
+
+  const RAMO_FLAGGED = { usa_rpf_por_cuotas: true }
+  const RAMO_NO_FLAGGED = { usa_rpf_por_cuotas: false }
+
+  // Subconjunto real de la curva (migración 058, Hoja4).
+  const CURVA = [
+    { forma_pago_id: 1, cuotas: 3, tasa_rpf: 1.6889, formas_pago: { codigo: 'cobrador' } },
+    { forma_pago_id: 1, cuotas: 11, tasa_rpf: 9.5, formas_pago: { codigo: 'cobrador' } },
+    { forma_pago_id: 2, cuotas: 1, tasa_rpf: 0, formas_pago: { codigo: 'tarjeta_credito' } },
+    { forma_pago_id: 2, cuotas: 3, tasa_rpf: 0.8, formas_pago: { codigo: 'tarjeta_credito' } },
+  ]
+
+  test('ramo flagueado + cuotas dentro de rango: devuelve el valor de la curva, no el escalar', async (t) => {
+    const { resolverTasaRpf } = await mockRepositoriosYObtenerResolverTasaRpf(t, 1)
+    const formaPagoPlan = { tasa_rpf: 99, formas_pago: { codigo: 'cobrador' } }
+
+    const resultado = resolverTasaRpf({
+      ramo: RAMO_FLAGGED,
+      formaPagoPlan,
+      curva: CURVA,
+      cuotas: 3,
+    })
+
+    assert.equal(resultado, 1.6889)
+  })
+
+  test('ramo NO flagueado (Auto): devuelve el escalar legacy sin tocar la curva, sin importar la cantidad de cuotas', async (t) => {
+    const { resolverTasaRpf } = await mockRepositoriosYObtenerResolverTasaRpf(t, 2)
+    const formaPagoPlan = { tasa_rpf: 5, formas_pago: { codigo: 'cobrador' } }
+
+    // Regresión (design.md — Testing Strategy): el escalar de Auto no debe variar con la
+    // cantidad de cuotas, a diferencia de la curva nueva de los 3 ramos flagueados.
+    const con3Cuotas = resolverTasaRpf({ ramo: RAMO_NO_FLAGGED, formaPagoPlan, curva: null, cuotas: 3 })
+    const con11Cuotas = resolverTasaRpf({
+      ramo: RAMO_NO_FLAGGED,
+      formaPagoPlan,
+      curva: null,
+      cuotas: 11,
+    })
+
+    assert.equal(con3Cuotas, 5)
+    assert.equal(con11Cuotas, 5)
+  })
+
+  test('forma de pago contado: siempre 0, sin importar el flag ni la curva', async (t) => {
+    const { resolverTasaRpf } = await mockRepositoriosYObtenerResolverTasaRpf(t, 3)
+    const formaPagoPlan = { tasa_rpf: 999, formas_pago: { codigo: 'contado' } }
+
+    const resultado = resolverTasaRpf({
+      ramo: RAMO_FLAGGED,
+      formaPagoPlan,
+      curva: CURVA,
+      cuotas: 5,
+    })
+
+    assert.equal(resultado, 0)
+  })
+
+  test('ramo flagueado + forma financiada con cuotas=0: devuelve 0 por regla, no el escalar (design.md Decisión 4)', async (t) => {
+    const { resolverTasaRpf } = await mockRepositoriosYObtenerResolverTasaRpf(t, 4)
+    const formaPagoPlan = { tasa_rpf: 99, formas_pago: { codigo: 'cobrador' } }
+
+    const resultado = resolverTasaRpf({
+      ramo: RAMO_FLAGGED,
+      formaPagoPlan,
+      curva: CURVA,
+      cuotas: 0,
+    })
+
+    assert.equal(resultado, 0)
+  })
+
+  test('ramo flagueado + cuotas fuera de rango: 422 explícito, sin clamp', async (t) => {
+    const { resolverTasaRpf } = await mockRepositoriosYObtenerResolverTasaRpf(t, 5)
+    const formaPagoPlan = { tasa_rpf: 99, formas_pago: { codigo: 'cobrador' } }
+
+    assert.throws(
+      () =>
+        resolverTasaRpf({ ramo: RAMO_FLAGGED, formaPagoPlan, curva: CURVA, cuotas: 12 }),
+      (err) => {
+        assert.equal(err.status, 422)
+        return true
+      }
+    )
+  })
+
+  test('Tarjeta de Crédito @ 1 cuota: devuelve 0 literal (fila real, no ausente)', async (t) => {
+    const { resolverTasaRpf } = await mockRepositoriosYObtenerResolverTasaRpf(t, 6)
+    const formaPagoPlan = { tasa_rpf: 99, formas_pago: { codigo: 'tarjeta_credito' } }
+
+    const resultado = resolverTasaRpf({
+      ramo: RAMO_FLAGGED,
+      formaPagoPlan,
+      curva: CURVA,
+      cuotas: 1,
+    })
+
+    assert.equal(resultado, 0)
+  })
+})
+
 // Tests de integración del service de cotización (grupo 5/7 de "incendio-3-planes-y-moneda"):
 // moneda + snapshot de tipo de cambio (persistido SOLO al emitir, nunca en preview) y resolución
 // de tasa por objeto de riesgo con override por plan. Repositories y `tipo-cambio.service.js`
@@ -429,6 +543,88 @@ describe('construirVariantes (vía calcularPreview) — Auto cotizacion_combinad
     // 500.000 × (1 − 20%) = 400.000 — UN solo 20%, no 500.000 × (1-20%) × (1-20%) = 320.000
     assert.equal(conFranquicia.prima, 400_000)
     assert.notEqual(conFranquicia.prima, 320_000, 'no debe aplicarse el 20% dos veces')
+  })
+})
+
+// Regresión obligatoria de `rpf-variable-mrc` (design.md — Testing Strategy, "Auto/Auto-Flota
+// zero diff"): Auto NO tiene `usa_rpf_por_cuotas`, así que resolverTasaRpf debe devolver el
+// escalar legacy `plan_formas_pago.tasa_rpf` intacto — el Premio de una forma de pago financiada
+// (no contado) debe dar exactamente igual que antes de este cambio. Valores fijados a mano:
+// prima=500.000 (10.000.000×5%), rpf=ceil(500.000×3.5%/1000)×1000=18.000,
+// iva=500.000×10%+18.000×10%=51.800, premio=floor((500.000+18.000+51.800)/1000)×1000=569.000,
+// cuota=floor(569.000/12/1000)×1000=47.000, inicial=floor((569.000−11×47.000)/1000)×1000=52.000.
+describe('construirVariantes (vía calcularPreview) — Auto con forma de pago financiada: regresión de RPF (rpf-variable-mrc)', () => {
+  const PLAN_AUTO_BASICO = {
+    id: 31,
+    ramo_id: 3,
+    nombre: 'PLAN TAJY BASICO',
+    prima_tecnica_minima: 100,
+    cotizacion_combinada: false,
+    cuotas_default: 11,
+  }
+  const RAMO_AUTO_NO_FLAGGED = {
+    id: 3,
+    nombre: 'auto',
+    calculador: 'auto',
+    activo: true,
+    usa_rpf_por_cuotas: false,
+  }
+  const FORMA_PAGO_COBRADOR = [
+    {
+      forma_pago_id: 2,
+      tasa_rpf: 3.5,
+      formas_pago: { codigo: 'cobrador', nombre_display: 'Cobrador' },
+    },
+  ]
+
+  test('Premio/RPF/IVA/Inicial/Cuota byte-idénticos al valor fijado a mano (cero diff)', async (t) => {
+    invalidarCacheCatalogos()
+    t.mock.module('../repositories/ramos.repository.js', {
+      namedExports: {
+        findPlanById: async () => PLAN_AUTO_BASICO,
+        findRamoById: async () => RAMO_AUTO_NO_FLAGGED,
+        findFormasPagoDelPlan: async () => FORMA_PAGO_COBRADOR,
+        findCoberturasByPlanId: async () => [],
+        findTasaCapital: async () => ({ tasa_porcentaje: 5 }),
+        // Auto no tiene el flag activo — si construirVariantes invocara findCurvaRpf igual,
+        // este mock revienta el test en vez de dejar pasar en falso un wiring incorrecto.
+        findCurvaRpf: async () => {
+          throw new Error('findCurvaRpf no debe invocarse: Auto no tiene usa_rpf_por_cuotas')
+        },
+      },
+    })
+    t.mock.module('../repositories/coberturas.repository.js', { namedExports: {} })
+    t.mock.module('../repositories/cotizaciones.repository.js', { namedExports: {} })
+    t.mock.module('./tipo-cambio.service.js', { namedExports: {} })
+    const { calcularPreview } = await import(
+      './cotizacion.service.js?case=regresion-auto-rpf-financiado'
+    )
+
+    const resultado = await calcularPreview(
+      {
+        plan_id: PLAN_AUTO_BASICO.id,
+        capital_asegurado: 10_000_000,
+        riesgo_datos: {
+          marca: 'Toyota',
+          modelo: 'Corolla',
+          anio_fabricacion: 2020,
+          destino: 'PARTICULAR',
+          via_importacion: 'REPRESENTANTE',
+        },
+        cliente_nombre: 'Cliente Test',
+      },
+      { id: 1, rol: 'agente' }
+    )
+
+    const [variante] = resultado.variantes
+    const [cobrador] = variante.formasPago
+
+    assert.equal(cobrador.rpf_porcentaje, 3.5, 'escalar legacy intacto, no la curva')
+    assert.equal(cobrador.rpf, 18_000)
+    assert.equal(cobrador.iva, 51_800)
+    assert.equal(cobrador.premio, 569_000)
+    assert.equal(cobrador.inicial, 52_000)
+    assert.equal(cobrador.cuota, 47_000)
   })
 })
 

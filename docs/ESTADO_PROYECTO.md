@@ -2211,3 +2211,15 @@ Quinto de los 10 PRs del plan `admin-module-split` (issue #83/#84 finding #9, di
 **Gotcha de CI:** el check nativo "CodeQL" de default-setup (distinto del workflow propio "Analyze JavaScript", que sí es required y pasó en verde) marcó un falso positivo (`js/missing-token-validation`) sobre `app.use(cookieParser())` — la query no reconoce middlewares CSRF custom como sanitizer, solo librerías conocidas (`csurf`, etc.). No es required para mergear, no bloqueó.
 
 **Pendiente:** `sdd-archive` formal del cambio, y confirmar que el backend de la VPS ya corre este código tras el redeploy automático de `deploy-backend.yml`.
+
+## 53. MRC — ajustes de Análisis de Riesgo, Parte A ítems 1-2 (2026-08-05), PR #150 mergeado a `main`
+
+**Origen.** Kevin recibió una planilla de Análisis de Riesgo (`docs/insumos/Ajuste MC.xlsx`, hojas 2 y 4) con 10 pedidos sobre MRC. Se dividió en Parte A (fixes chicos directos) y Parte B (RPF variable por cantidad de cuotas, SDD completo, todavía sin arrancar — detalle completo en memoria Engram/local `project_mrc_ajustes_analisis_riesgo.md`).
+
+**Qué se hizo.** Ítem #1: tasa de Robo Contenido en MRC 8‰ → 10‰ (migración `054_ajuste_tasa_robo_contenido_mrc.sql`). Ítem #2 (reformulado tras verificar contra código y DB real — el plan original decía "cobertura nueva a crear", pero el sublímite "Daños a murallas, cercados perimetrales y rejas" (`sublimite_murallas_cercos`) ya existía en el catálogo con tasa 22‰ correcta): tenía `plan_coberturas.incluida_por_defecto = FALSE` en los 2 planes activos (NORMAL/SEGUCOOP), desalineado del seed original (`012_seed_mrc.sql`, TRUE) y del plan legacy "COMERCIO PROTECCION TOTAL" (seguía en TRUE) — por eso aparecía seleccionable en "Agregar cobertura adicional" del cotizador en vez de listarse como sublímite fijo. Migración `053_fix_incluida_defecto_murallas_mrc.sql` corrige el flag. Ambas migraciones aplicadas y verificadas contra Supabase real antes del PR.
+
+**Verificado.** 192/192 tests backend en verde. Verificado en vivo con Playwright en ambos planes: el sublímite de murallas aparece en el panel fijo "Sublímites incluidos" y ya no aparece en el selector "Agregar cobertura adicional".
+
+**Gotcha nuevo:** el Bash tool (git-bash) resuelve rutas `/tmp/...` a `C:\Users\...\AppData\Local\Temp\...`, pero un script Node lanzado desde ese mismo Bash resuelve el mismo `/tmp/...` (path POSIX sin drive letter) a `C:\tmp\...` — mismo problema de raíz que el ya documentado Write-vs-Bash, pero esta vez Bash-vs-Node-hijo. Para screenshots de Playwright generados por un script Node vía Bash, usar rutas absolutas con drive letter explícita.
+
+**Pendiente de Parte A:** ítem #3 franquicia default en Incendio Contenido/Mobiliario (dentro de MRC), #4 bug de forma de pago hardcodeada en "Costo Financiado" del Resumen, #5 auto-vincular sublímite Ventanilla a Caja Fuerte, #6 sacar botón "Agregar cobertura adicional" del Resumen (a confirmar con Kevin), #7 mostrar Capital Total Asegurado en cotización en vivo, #8 Carta Oferta PDF de MRC (vigencia + firma). Parte B sigue bloqueada hasta pedirle a Análisis de Riesgo las tablas de cuotas de Incendio y Vida/AP.

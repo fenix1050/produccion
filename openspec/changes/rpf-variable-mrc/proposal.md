@@ -74,29 +74,29 @@ Descartado: mover la resolución dentro de `calcularPlanPago` — obliga a tocar
 
 ## Affected Areas
 
-| Área                                                                                                                | Impacto         | Descripción                                                     |
-| ------------------------------------------------------------------------------------------------------------------- | --------------- | ---------------------------------------------------------------- |
+| Área                                                                                                                | Impacto         | Descripción                                                                                        |
+| ------------------------------------------------------------------------------------------------------------------- | --------------- | -------------------------------------------------------------------------------------------------- |
 | `backend/migrations/0XX_rpf_por_cuotas.sql`                                                                         | New             | Modelo + seed de 33 celdas + adhesión de MRC/Incendio/Vida-AP + comentario de reversión de 002/023 |
-| `backend/src/services/cotizacion.service.js`                                                                        | Modified        | `resolverTasaRpf` (nueva, pura) + `construirVariantes`          |
-| `backend/src/repositories/ramos.repository.js`                                                                      | Modified        | Lectura de la curva (candidata a `withCache`)                    |
-| `backend/src/calculators/utils/plan-pago.js`                                                                        | **Sin cambios** | Contrato compartido preservado                                   |
-| `backend/src/schemas/admin.schema.js`, `admin.routes.js`, `admin.controller.js`, `services/admin/planes.service.js`  | Modified        | Endpoint(s) de edición de la grilla                              |
-| `frontend/admin/render/planes.js`, `frontend/admin/planes.js`                                                        | Modified        | UI de la grilla (extiende `renderCampoTasaRpf`)                  |
-| `docs/PLAN_DESARROLLO.md`, `CLAUDE.md`, `docs/ESTADO_PROYECTO.md`                                                    | Modified        | Fórmula de RPF y registro de estado                              |
+| `backend/src/services/cotizacion.service.js`                                                                        | Modified        | `resolverTasaRpf` (nueva, pura) + `construirVariantes`                                             |
+| `backend/src/repositories/ramos.repository.js`                                                                      | Modified        | Lectura de la curva (candidata a `withCache`)                                                      |
+| `backend/src/calculators/utils/plan-pago.js`                                                                        | **Sin cambios** | Contrato compartido preservado                                                                     |
+| `backend/src/schemas/admin.schema.js`, `admin.routes.js`, `admin.controller.js`, `services/admin/planes.service.js` | Modified        | Endpoint(s) de edición de la grilla                                                                |
+| `frontend/admin/render/planes.js`, `frontend/admin/planes.js`                                                       | Modified        | UI de la grilla (extiende `renderCampoTasaRpf`)                                                    |
+| `docs/PLAN_DESARROLLO.md`, `CLAUDE.md`, `docs/ESTADO_PROYECTO.md`                                                   | Modified        | Fórmula de RPF y registro de estado                                                                |
 
 ## Risks
 
-| Riesgo                                                                                       | Prob.    | Mitigación                                                                                                    |
-| ---------------------------------------------------------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------- |
-| Cambio silencioso de primas en **Auto** por tocar la ruta compartida                          | **Alta** | `calcularPlanPago` intacto + fallback al valor plano + test de regresión que fija el Premio actual de un caso de Auto |
-| Salto fuerte de prima a 11 cuotas en los 3 ramos (1.6% → 9.5%, ~6x)                           | **Alta** | Es el efecto buscado; verificar en vivo contra un cálculo manual de Análisis de Riesgo **por cada ramo** antes de mergear |
-| El alcance de 3 ramos multiplica la superficie de verificación en vivo                        | Media    | Matriz mínima explícita: 3 ramos × (Cobrador, Boca, Tarjeta) × (1, 3, 11 cuotas) + Contado                     |
-| "Aquí Pago" no es exactamente `boca_cobranza` → columna mal mapeada en los 3 ramos            | Media    | Confirmación explícita de Kevin (pregunta #1) antes de escribir el seed                                        |
-| Un plan con `cuotas_maximo > 11` (el admin puede subirlo) pide una fila inexistente            | Media    | Regla de clamp/fallback explícita en el diseño; hoy todos los planes están en ≤ 11                             |
-| La grilla editable (33 celdas) rompe el patrón inline de una celda del admin                  | Media    | Decisión de UI en `sdd-design`; el gate de permisos debe seguir siendo el mismo (`requirePlanesEdit`) o subirse a admin literal si Kevin lo pide |
-| Precisión: la tabla trae 4 decimales (1.6889); `tasa_rpf` es `NUMERIC(10,6)`                  | Baja     | Cabe sin pérdida; conservar el mismo tipo                                                                     |
-| Se reintroduce a futuro el valor plano por desconocer que fue reemplazado                     | Media    | La migración documenta la reversión de 002/023 y `PLAN_DESARROLLO.md` sección 5 se actualiza en el mismo cambio |
-| Colisión de numeración de migración (precedente 046/048)                                      | Baja     | `npm run verify:migrations` ya corre en CI                                                                    |
+| Riesgo                                                                              | Prob.    | Mitigación                                                                                                                                       |
+| ----------------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Cambio silencioso de primas en **Auto** por tocar la ruta compartida                | **Alta** | `calcularPlanPago` intacto + fallback al valor plano + test de regresión que fija el Premio actual de un caso de Auto                            |
+| Salto fuerte de prima a 11 cuotas en los 3 ramos (1.6% → 9.5%, ~6x)                 | **Alta** | Es el efecto buscado; verificar en vivo contra un cálculo manual de Análisis de Riesgo **por cada ramo** antes de mergear                        |
+| El alcance de 3 ramos multiplica la superficie de verificación en vivo              | Media    | Matriz mínima explícita: 3 ramos × (Cobrador, Boca, Tarjeta) × (1, 3, 11 cuotas) + Contado                                                       |
+| "Aquí Pago" no es exactamente `boca_cobranza` → columna mal mapeada en los 3 ramos  | Media    | Confirmación explícita de Kevin (pregunta #1) antes de escribir el seed                                                                          |
+| Un plan con `cuotas_maximo > 11` (el admin puede subirlo) pide una fila inexistente | Media    | Regla de clamp/fallback explícita en el diseño; hoy todos los planes están en ≤ 11                                                               |
+| La grilla editable (33 celdas) rompe el patrón inline de una celda del admin        | Media    | Decisión de UI en `sdd-design`; el gate de permisos debe seguir siendo el mismo (`requirePlanesEdit`) o subirse a admin literal si Kevin lo pide |
+| Precisión: la tabla trae 4 decimales (1.6889); `tasa_rpf` es `NUMERIC(10,6)`        | Baja     | Cabe sin pérdida; conservar el mismo tipo                                                                                                        |
+| Se reintroduce a futuro el valor plano por desconocer que fue reemplazado           | Media    | La migración documenta la reversión de 002/023 y `PLAN_DESARROLLO.md` sección 5 se actualiza en el mismo cambio                                  |
+| Colisión de numeración de migración (precedente 046/048)                            | Baja     | `npm run verify:migrations` ya corre en CI                                                                                                       |
 
 ## Rollback Plan
 

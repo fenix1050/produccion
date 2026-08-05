@@ -106,3 +106,36 @@ test('buildMrcOfertaPages no rompe si planCoberturas es undefined', () => {
     })
   })
 })
+
+// Ítem #8 del Ajuste MC.xlsx (Análisis de Riesgo, 2026-08-05): línea de vigencia + bloque de
+// firma en la página 1.
+test('buildMrcOfertaPages incluye la línea de vigencia y el bloque de firma con teléfono', () => {
+  const cotizacionConTelefono = {
+    ...COTIZACION_BASE,
+    usuarios: { nombre: 'Agente Prueba', email: 'agente@tajy.com.py', telefono: '0981 123 456' },
+  }
+
+  const { paginaUno } = buildMrcOfertaPages({
+    cotizacion: cotizacionConTelefono,
+    plan: PLAN_BASE,
+    ramo: RAMO_BASE,
+    planCoberturas: [],
+  })
+
+  assert.match(paginaUno, /Vigencia del seguro: 1 año, desde/)
+  assert.match(paginaUno, /Realizado por:/)
+  assert.match(paginaUno, /Agente Prueba - Agente de Seguro/)
+  assert.match(paginaUno, /0981 123 456/)
+})
+
+test('buildMrcOfertaPages omite la línea de teléfono en el bloque de firma si el agente no lo cargó', () => {
+  const { paginaUno } = buildMrcOfertaPages({
+    cotizacion: COTIZACION_BASE,
+    plan: PLAN_BASE,
+    ramo: RAMO_BASE,
+    planCoberturas: [],
+  })
+
+  assert.match(paginaUno, /Realizado por:/)
+  assert.doesNotMatch(paginaUno, /firma-block__linea">undefined/)
+})

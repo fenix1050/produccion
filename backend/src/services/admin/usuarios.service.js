@@ -18,7 +18,7 @@ export async function listarUsuarios() {
 // podía crear directamente un usuario nuevo con rol_id = admin, evadiendo por completo el
 // chequeo de asegurarPuedeAsignarRol (que hasta ahora solo corría en editarUsuario). Mismo
 // criterio que ese chequeo: solo un solicitante 'admin' puede dar de alta un usuario admin.
-export async function crearUsuario({ nombre, email, rol_id, password }, solicitante) {
+export async function crearUsuario({ nombre, email, rol_id, password, telefono }, solicitante) {
   await asegurarPuedeAsignarRol(rol_id, solicitante)
 
   const existente = await usuariosRepository.findByEmail(email)
@@ -27,7 +27,7 @@ export async function crearUsuario({ nombre, email, rol_id, password }, solicita
   }
 
   const password_hash = await bcrypt.hash(password, BCRYPT_ROUNDS)
-  return usuariosRepository.crear({ nombre, email, rol_id, password_hash })
+  return usuariosRepository.crear({ nombre, email, rol_id, password_hash, telefono })
 }
 
 // Un rol custom con puede_gestionar_usuarios no puede tocar (editar, desactivar, resetear

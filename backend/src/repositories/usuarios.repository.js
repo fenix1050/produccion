@@ -34,7 +34,7 @@ export async function findByEmail(email) {
   const { data, error } = await supabase
     .from('usuarios')
     .select(
-      `id, nombre, email, rol_id, ${CAMPOS_ROL}, activo, password_hash, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct, token_version`
+      `id, nombre, email, telefono, rol_id, ${CAMPOS_ROL}, activo, password_hash, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct, token_version`
     )
     .eq('email', email)
     .maybeSingle()
@@ -46,7 +46,7 @@ export async function findById(id) {
   const { data, error } = await supabase
     .from('usuarios')
     .select(
-      `id, nombre, email, rol_id, ${CAMPOS_ROL}, activo, password_hash, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct, token_version`
+      `id, nombre, email, telefono, rol_id, ${CAMPOS_ROL}, activo, password_hash, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct, token_version`
     )
     .eq('id', id)
     .maybeSingle()
@@ -69,14 +69,14 @@ export async function findAll() {
   const { data, error } = await supabase
     .from('usuarios')
     .select(
-      `id, nombre, email, rol_id, ${CAMPOS_ROL}, activo, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct`
+      `id, nombre, email, telefono, rol_id, ${CAMPOS_ROL}, activo, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct`
     )
     .order('id')
   if (error) throw error
   return (data ?? []).map(aplanar)
 }
 
-export async function crear({ nombre, email, rol_id, password_hash }) {
+export async function crear({ nombre, email, rol_id, password_hash, telefono }) {
   const { data, error } = await supabase
     .from('usuarios')
     .insert({
@@ -84,10 +84,11 @@ export async function crear({ nombre, email, rol_id, password_hash }) {
       email,
       rol_id,
       password_hash,
+      telefono: telefono ?? null,
       activo: true,
     })
     .select(
-      `id, nombre, email, rol_id, ${CAMPOS_ROL}, activo, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct`
+      `id, nombre, email, telefono, rol_id, ${CAMPOS_ROL}, activo, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct`
     )
     .single()
   if (error) throw error
@@ -100,7 +101,7 @@ export async function actualizar(id, cambios) {
     .update(cambios)
     .eq('id', id)
     .select(
-      `id, nombre, email, rol_id, ${CAMPOS_ROL}, activo, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct`
+      `id, nombre, email, telefono, rol_id, ${CAMPOS_ROL}, activo, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct`
     )
     .maybeSingle()
   if (error) throw error

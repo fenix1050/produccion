@@ -154,6 +154,13 @@ export const BASE_CSS = `
     color: #8a8a8a;
     margin-top: 4mm;
   }
+  .firma-block {
+    text-align: right;
+    margin-top: 6mm;
+    font-size: 11px;
+    line-height: 1.5;
+  }
+  .firma-block__linea:first-child { font-weight: 700; color: #1a1a1a; }
   .cols {
     column-count: 2;
     column-gap: 8mm;

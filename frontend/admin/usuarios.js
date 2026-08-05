@@ -33,6 +33,7 @@ export function abrirModalCrear() {
     email: '',
     rol_id: rolDefault?.id ?? '',
     password: '',
+    telefono: '',
   }
   renderApp()
   enfocarPrimerElemento(app.querySelector('.admin-modal'))
@@ -54,6 +55,7 @@ export function abrirModalEditar(usuarioId) {
     activo: Boolean(usuario.activo),
     descuento_maximo_pct: usuario.descuento_maximo_pct,
     recargo_maximo_pct: usuario.recargo_maximo_pct,
+    telefono: usuario.telefono ?? '',
   }
   renderApp()
   enfocarPrimerElemento(app.querySelector('.admin-modal'))
@@ -111,6 +113,7 @@ export async function guardarModalCrear(form) {
   const email = form.email.value.trim()
   const rol_id = Number(form.rol_id.value)
   const password = form.password.value
+  const telefono = form.telefono.value.trim() || null
 
   if (!nombre || !email) {
     state.modal.error = 'Completá nombre y email.'
@@ -133,7 +136,7 @@ export async function guardarModalCrear(form) {
   renderApp()
 
   try {
-    await api.post('/admin/usuarios', { nombre, email, rol_id, password })
+    await api.post('/admin/usuarios', { nombre, email, rol_id, password, telefono })
     cerrarModal()
     mostrarBanner('success', `Usuario ${nombre} creado.`)
     await cargarUsuarios()
@@ -155,6 +158,7 @@ export async function guardarModalEditar(form) {
     form.descuento_maximo_pct.value === '' ? null : Number(form.descuento_maximo_pct.value)
   const recargoMaximoPct =
     form.recargo_maximo_pct.value === '' ? null : Number(form.recargo_maximo_pct.value)
+  const telefono = form.telefono.value.trim() || null
 
   if (!nombre || !email) {
     state.modal.error = 'Completá nombre y email.'
@@ -179,6 +183,7 @@ export async function guardarModalEditar(form) {
       activo,
       descuento_maximo_pct: descuentoMaximoPct,
       recargo_maximo_pct: recargoMaximoPct,
+      telefono,
     })
     cerrarModal()
     mostrarBanner('success', `Usuario ${usuario.nombre} actualizado.`)

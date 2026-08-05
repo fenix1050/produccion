@@ -180,6 +180,7 @@ export function buildMrcOfertaPages({ cotizacion, plan, planCoberturas }) {
     ${(cotizacion.cotizacion_variantes || []).map(renderVariantePlanPago).join('')}
 
     <div class="footer-legal">
+      Vigencia del seguro: 1 año, desde ${fmtFecha(cotizacion.fecha || cotizacion.created_at)}. <br>
       Este presupuesto es válido por ${cotizacion.vigencia_dias || 30} días. <br>
       Esta cotización no implica aceptación del riesgo, ni el consentimiento de cobertura alguna por parte del
 Asegurado. <br>
@@ -191,6 +192,12 @@ de seguridad y adecuaciones que surjan de la misma.
         <span><strong>AGENTE:</strong> ${escapeHtml(cotizacion.usuarios?.nombre || 'Aseguradora Tajy')}</span>
         ${cotizacion.usuarios?.email ? `<span><strong>EMAIL:</strong> ${escapeHtml(cotizacion.usuarios.email)}</span>` : ''}
       </div>
+    </div>
+    <div class="firma-block">
+      <div class="firma-block__linea">Realizado por:</div>
+      <div class="firma-block__linea">${escapeHtml(cotizacion.usuarios?.nombre || 'Aseguradora Tajy')} - Agente de Seguro</div>
+      ${cotizacion.usuarios?.email ? `<div class="firma-block__linea">${escapeHtml(cotizacion.usuarios.email)}</div>` : ''}
+      ${cotizacion.usuarios?.telefono ? `<div class="firma-block__linea">${escapeHtml(cotizacion.usuarios.telefono)}</div>` : ''}
     </div>
   `
 

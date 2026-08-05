@@ -7,6 +7,9 @@ export const crearUsuarioSchema = z.object({
   email: z.string().email('email inválido'),
   rol_id: z.number().int().positive(),
   password: z.string().min(8, 'password debe tener al menos 8 caracteres'),
+  // Opcional: usado en el bloque de firma de la Carta Oferta (ver templates/oferta/mrc.js,
+  // Ajuste MC.xlsx ítem #8) — no todos los roles emiten cartas oferta, así que no es requerido.
+  telefono: z.string().max(30).nullable().optional(),
 })
 
 export const editarUsuarioSchema = z.object({
@@ -17,6 +20,7 @@ export const editarUsuarioSchema = z.object({
   // NULL = el usuario no tiene tope propio, se respeta el tope del plan tal cual.
   descuento_maximo_pct: z.number().min(0).max(100).nullable().optional(),
   recargo_maximo_pct: z.number().min(0).max(100).nullable().optional(),
+  telefono: z.string().max(30).nullable().optional(),
 })
 
 export const resetPasswordSchema = z.object({

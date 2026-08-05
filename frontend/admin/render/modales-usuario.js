@@ -171,6 +171,12 @@ export function renderModalRol() {
               Puede ver el descuento fijo de un plan
             </label>
           </div>
+          <div class="admin-modal__field">
+            <label class="admin-modal__checkbox">
+              <input type="checkbox" name="puede_agregar_cobertura_libre" ${m.puede_agregar_cobertura_libre ? 'checked' : ''} />
+              Puede agregar coberturas libremente (sin esto, solo checkboxes fijos)
+            </label>
+          </div>
           <div class="admin-modal__actions">
             <button type="button" class="btn-outline" data-action="cerrar-modal-rol">Cancelar</button>
             <button type="submit" class="btn-primary" ${m.guardando ? 'disabled' : ''}>${m.guardando ? 'Guardando…' : 'Guardar'}</button>

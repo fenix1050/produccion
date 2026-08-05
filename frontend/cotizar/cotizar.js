@@ -309,17 +309,42 @@ const state = {
 }
 
 // Códigos que no deben ofrecerse en "Coberturas adicionales": las 2 fijas ya tienen su propio
-// campo en el formulario, sublimite_cctv todavía no tiene tasa cargada (no cotizable), y
+// campo en el formulario, sublimite_cctv todavía no tiene tasa cargada (no cotizable),
 // 'equipos_electronicos' (la cobertura, distinta del sublímite) queda representada por ese
 // mismo sublímite fijo en MRC — confirmado por el área técnica, 2026-07-15: en esta rama no se
-// ofrece por separado. Los sublímites fijos por defecto (WU6, 2026-07-17: ya no hardcodeados,
-// ver sublimitesFijosMrc()) se agregan a esta lista de exclusión en tiempo real.
+// ofrece por separado — y 'robo_valores_ventanilla' pasa a auto-calcularse a partir de "Valores
+// en caja fuerte" (ver sublimiteVentanillaCalculado(), Ajuste MC.xlsx ítem #5, 2026-08-05): el
+// agente ya no lo elige a mano, revierte la decisión anterior de 2026-07-13 (migración 020,
+// donde el 30% era solo referencia). Los sublímites fijos por defecto (WU6, 2026-07-17: ya no
+// hardcodeados, ver sublimitesFijosMrc()) se agregan a esta lista de exclusión en tiempo real.
 const CODIGOS_COBERTURA_EXCLUIDOS_BASE = [
   'incendio_edificio',
   'incendio_contenido',
   'sublimite_cctv',
   'equipos_electronicos',
+  'robo_valores_ventanilla',
 ]
+
+// Porcentaje del capital declarado en "Valores en caja fuerte" (codigo robo_caja_registradora)
+// que se auto-asigna como suma asegurada del sublímite "Robo valores ventanilla".
+const PORCENTAJE_VENTANILLA_SOBRE_CAJA_FUERTE = 0.3
+
+// Sublímite "Robo valores ventanilla" calculado en vivo — no vive en plan_coberturas (a
+// diferencia de los sublímites fijos del plan) porque depende de un monto que el agente recién
+// carga en esta cotización, no de un default del plan. Devuelve null si todavía no se cargó
+// "Valores en caja fuerte" (no hay nada que auto-vincular).
+function sublimiteVentanillaCalculado() {
+  const capitalCajaFuerte = state.coberturasAdicionales
+    .filter((l) => l.codigo === 'robo_caja_registradora')
+    .reduce((acc, l) => acc + (Number(l.sumaAsegurada) || 0), 0)
+  if (capitalCajaFuerte <= 0) return null
+  const catalogo = state.coberturasCatalogo.find((c) => c.codigo === 'robo_valores_ventanilla')
+  return {
+    codigo: 'robo_valores_ventanilla',
+    nombre: catalogo?.nombre ?? 'Robo valores ventanilla',
+    monto: Math.round(capitalCajaFuerte * PORCENTAJE_VENTANILLA_SOBRE_CAJA_FUERTE),
+  }
+}
 
 // Cuántas veces puede cargarse la MISMA cobertura entre las líneas de "Coberturas adicionales"
 // (con distinta suma asegurada cada vez). Por defecto 1 (sin repetición) — 'robo_contenido' es
@@ -353,7 +378,7 @@ const ICON_PLUS = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><
 // `plan_coberturas` (se cotizan por Capital Edificio/Contenido, campo propio del formulario),
 // pero se filtran igual por defensividad ante un dato inesperado.
 function sublimitesFijosMrc() {
-  return state.planCoberturas
+  const fijosDelPlan = state.planCoberturas
     .filter(
       (pc) =>
         pc.incluida_por_defecto &&
@@ -365,6 +390,8 @@ function sublimitesFijosMrc() {
       monto: pc.monto,
     }))
     .filter((s) => s.codigo)
+  const ventanilla = sublimiteVentanillaCalculado()
+  return ventanilla ? [...fijosDelPlan, ventanilla] : fijosDelPlan
 }
 
 let debounceTimer = null
@@ -479,9 +506,15 @@ function prefillDatosDesdeCotizacion(ramoNombre, plan, cotizacion) {
     state.data.capitalEdificio = rd.capital_edificio || ''
     state.data.capitalContenido = rd.capital_contenido || ''
 
-    // Los sublímites fijos del plan (ver sublimitesFijosMrc()) ya se re-agregan solos en
-    // armarRiesgoDatos() — no deben duplicarse acá como línea editable de "Coberturas adicionales".
-    const codigosFijos = new Set(sublimitesFijosMrc().map((s) => s.codigo))
+    // Los sublímites fijos del plan y el de Ventanilla (ver sublimitesFijosMrc()) ya se
+    // re-agregan solos en armarRiesgoDatos() — no deben duplicarse acá como línea editable de
+    // "Coberturas adicionales". sublimitesFijosMrc() todavía no puede calcular Ventanilla acá
+    // (depende de state.coberturasAdicionales, que recién se llena en esta misma asignación) —
+    // se usa CODIGOS_COBERTURA_EXCLUIDOS_BASE para cubrir ese caso sin depender del orden.
+    const codigosFijos = new Set([
+      ...CODIGOS_COBERTURA_EXCLUIDOS_BASE,
+      ...sublimitesFijosMrc().map((s) => s.codigo),
+    ])
     state.coberturasAdicionales = (rd.coberturas_adicionales || [])
       .filter((c) => c.codigo && !codigosFijos.has(c.codigo))
       .map((c) => ({ id: idLinea(), codigo: c.codigo, sumaAsegurada: c.suma_asegurada }))

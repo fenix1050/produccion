@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.1.26](https://github.com/fenix1050/produccion/compare/v0.1.25...v0.1.26) (2026-08-05)
+
+
+### Features
+
+* **mrc:** línea de vigencia y bloque de firma en la Carta Oferta ([#159](https://github.com/fenix1050/produccion/issues/159)) ([72cf586](https://github.com/fenix1050/produccion/commit/72cf586e52b713993218c78a42ee5933137c8f50))
+* **mrc:** mostrar Capital total asegurado en Cotización en vivo ([#158](https://github.com/fenix1050/produccion/issues/158)) ([6b922a6](https://github.com/fenix1050/produccion/commit/6b922a6e40dfbf89be07a7b012503720ff1f7ef3))
+* **mrc:** permiso de rol para agregar coberturas adicionales libremente ([#157](https://github.com/fenix1050/produccion/issues/157)) ([7ccbc4b](https://github.com/fenix1050/produccion/commit/7ccbc4b61e783da284f3c933b097597dc3d004fc))
+
+
+### Bug Fixes
+
+* **mrc:** auto-vincular sublímite Ventanilla a Valores en Caja Fuerte ([#156](https://github.com/fenix1050/produccion/issues/156)) ([bf6f75e](https://github.com/fenix1050/produccion/commit/bf6f75e00072001b1c0d7390b7f11c048b1b6db5))
+* **mrc:** bloque Financiado del Resumen usa la forma de pago elegida ([#155](https://github.com/fenix1050/produccion/issues/155)) ([315bc7a](https://github.com/fenix1050/produccion/commit/315bc7a8459e78f47745515284501da58ad6ab2f))
+* **mrc:** sin franquicia por defecto en Incendio Contenido/Mobiliario ([#153](https://github.com/fenix1050/produccion/issues/153)) ([f1cdb4f](https://github.com/fenix1050/produccion/commit/f1cdb4ff5a26271323d5aa7788beb93fffac1dba))
+
 ## [0.1.25](https://github.com/fenix1050/produccion/compare/v0.1.24...v0.1.25) (2026-08-05)
 
 

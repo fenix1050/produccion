@@ -136,6 +136,15 @@ export async function findClausulasObligatoriasByPlanId(planId) {
   return data
 }
 
+// Curva GLOBAL de R.P.F. por cantidad de cuotas (migración 058, cambio `rpf-variable-mrc`) —
+// compartida por los ramos con `usa_rpf_por_cuotas = true` (MRC/Incendio/Vida-AP). No lleva
+// filtro por ramo/plan: es una sola tabla de 33 celdas (11 cuotas × 3 formas de pago).
+export async function findCurvaRpf() {
+  const { data, error } = await supabase.from('rpf_cuotas').select('*, formas_pago(codigo)')
+  if (error) throw error
+  return data
+}
+
 export async function findFormasPagoDelPlanTodas(planId) {
   const { data, error } = await supabase
     .from('plan_formas_pago')

@@ -36,6 +36,7 @@ export const crearRolSchema = z.object({
   puede_editar_planes: z.boolean().default(false),
   puede_editar_descuento_plan: z.boolean().default(false),
   puede_ver_descuento_plan: z.boolean().default(true),
+  puede_agregar_cobertura_libre: z.boolean().default(true),
 })
 
 // Los roles nuevos (es_sistema = false) son totalmente editables, incluido el nombre.
@@ -49,6 +50,7 @@ export const editarRolSchema = z.object({
   puede_editar_planes: z.boolean().optional(),
   puede_editar_descuento_plan: z.boolean().optional(),
   puede_ver_descuento_plan: z.boolean().optional(),
+  puede_agregar_cobertura_libre: z.boolean().optional(),
   activo: z.boolean().optional(),
 })
 

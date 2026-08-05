@@ -55,6 +55,7 @@ export function abrirModalRolCrear() {
     puede_editar_planes: false,
     puede_editar_descuento_plan: false,
     puede_ver_descuento_plan: true,
+    puede_agregar_cobertura_libre: true,
   }
   renderApp()
   enfocarPrimerElemento(app.querySelector('.admin-modal'))
@@ -76,6 +77,7 @@ export function abrirModalRolEditar(rolId) {
     puede_editar_planes: Boolean(rol.puede_editar_planes),
     puede_editar_descuento_plan: Boolean(rol.puede_editar_descuento_plan),
     puede_ver_descuento_plan: Boolean(rol.puede_ver_descuento_plan),
+    puede_agregar_cobertura_libre: Boolean(rol.puede_agregar_cobertura_libre),
   }
   renderApp()
   enfocarPrimerElemento(app.querySelector('.admin-modal'))
@@ -100,6 +102,7 @@ export async function guardarModalRol(form) {
     puede_editar_planes: form.puede_editar_planes.checked,
     puede_editar_descuento_plan: form.puede_editar_descuento_plan.checked,
     puede_ver_descuento_plan: form.puede_ver_descuento_plan.checked,
+    puede_agregar_cobertura_libre: form.puede_agregar_cobertura_libre.checked,
   }
 
   if (!nombre) {

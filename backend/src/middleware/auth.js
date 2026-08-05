@@ -52,6 +52,7 @@ export async function requireAuth(req, res, next) {
       puede_editar_planes: usuario.puede_editar_planes,
       puede_editar_descuento_plan: usuario.puede_editar_descuento_plan,
       puede_ver_descuento_plan: usuario.puede_ver_descuento_plan,
+      puede_agregar_cobertura_libre: usuario.puede_agregar_cobertura_libre,
       nombre: usuario.nombre,
       email: usuario.email,
       descuento_maximo_pct: usuario.descuento_maximo_pct,

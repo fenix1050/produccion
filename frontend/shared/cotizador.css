@@ -1783,6 +1783,20 @@ button {
   font-size: 12.5px;
 }
 
+/* Modo checkbox de "Coberturas adicionales" (roles sin puede_agregar_cobertura_libre, ver
+   renderCoberturasAdicionalesCheckbox en cotizar.js) — cada fila es un checkbox y, si está
+   tildado, su input de monto debajo. */
+.cobertura-adicional-checkbox-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 0;
+}
+
+.cobertura-adicional-checkbox-row + .cobertura-adicional-checkbox-row {
+  border-top: 1px solid var(--tajy-border);
+}
+
 /* Intermedio 768px: solo densidad (padding/gaps/tipografía), sin tocar el grid-template —
    evita el salto abrupto entre el layout de escritorio y el fallback vertical de 480px. */
 @media (max-width: 768px) {

@@ -767,6 +767,22 @@ function removeCoberturaLinea(id) {
   scheduleCalculate()
 }
 
+// Modo checkbox de "Coberturas adicionales" (roles sin puede_agregar_cobertura_libre, ver
+// CODIGOS_COBERTURA_EXCLUIDOS_BASE/renderCoberturasAdicionalesCheckbox, Ajuste MC.xlsx ítem #6,
+// 2026-08-05): cada código mapea a lo sumo una línea (sin la repetición x2 de robo_contenido
+// que sí permite el flujo libre — simplificación a propósito para este modo restringido).
+function toggleCoberturaAdicionalPorCodigo(codigo, marcado) {
+  if (marcado) {
+    if (!state.coberturasAdicionales.some((l) => l.codigo === codigo)) {
+      state.coberturasAdicionales.push({ id: idLinea(), codigo, sumaAsegurada: '' })
+    }
+  } else {
+    state.coberturasAdicionales = state.coberturasAdicionales.filter((l) => l.codigo !== codigo)
+  }
+  renderApp()
+  scheduleCalculate()
+}
+
 function updateCoberturaLinea(id, field, value) {
   const linea = state.coberturasAdicionales.find((l) => l.id === id)
   if (!linea) return
@@ -1411,10 +1427,15 @@ function camposObjetoRiesgo(plan) {
 }
 
 function camposEspecificosMrc() {
+  const puedeAgregarLibre = auth.getUsuario()?.puede_agregar_cobertura_libre !== false
   return `
     ${camposEdificioContenido()}
     <div class="field field--span2">
-      ${renderCoberturasAdicionales(coberturasDisponibles())}
+      ${
+        puedeAgregarLibre
+          ? renderCoberturasAdicionales(coberturasDisponibles())
+          : renderCoberturasAdicionalesCheckbox(coberturasDisponibles())
+      }
     </div>
   `
 }
@@ -1640,6 +1661,52 @@ function renderCoberturasAdicionales(catalogoDisponible) {
       <label id="coberturas-adicionales-label">Coberturas adicionales</label>
       ${filas}
       <button type="button" class="btn-outline" data-action="add-cobertura-linea" ${quedanCoberturasPorAgregar ? '' : 'disabled title="Ya agregaste el máximo de coberturas disponibles"'}>+ Agregar cobertura</button>
+    </div>
+  `
+}
+
+// Variante de "Coberturas adicionales" para roles sin puede_agregar_cobertura_libre (Ajuste
+// MC.xlsx ítem #6): en vez del selector libre + botón "+ Agregar cobertura", una lista fija de
+// checkboxes (una por cobertura disponible del catálogo) — al tildar una aparece su campo de
+// suma asegurada. Reutiliza state.coberturasAdicionales/toggleCoberturaAdicionalPorCodigo, así
+// que el resto del flujo (armarRiesgoDatosMrc, prefill, cálculo) no distingue el modo.
+function renderCoberturasAdicionalesCheckbox(catalogoDisponible) {
+  const filas = catalogoDisponible
+    .map((c) => {
+      const linea = state.coberturasAdicionales.find((l) => l.codigo === c.codigo)
+      const marcado = Boolean(linea)
+      return `
+    <div class="cobertura-adicional-checkbox-row">
+      <label class="field-checkbox-label">
+        <input type="checkbox" data-action="toggle-cobertura-checkbox" data-codigo="${escapeHtml(c.codigo)}" ${marcado ? 'checked' : ''} />
+        ${escapeHtml(c.nombre)}${c.categoria === 'Sublímites' ? ' · Sublímite' : ''}
+      </label>
+      ${
+        marcado
+          ? `
+        <label class="sr-only" for="cobertura-linea-${linea.id}-suma">Suma asegurada de ${escapeHtml(c.nombre)} (Gs.)</label>
+        <input
+          class="field-input"
+          id="cobertura-linea-${linea.id}-suma"
+          type="text"
+          inputmode="numeric"
+          data-linea-id="${linea.id}"
+          data-linea-field="sumaAsegurada"
+          data-money="true"
+          placeholder="Suma asegurada (Gs.)"
+          value="${fmtGsInput(linea.sumaAsegurada)}"
+        />`
+          : ''
+      }
+    </div>
+  `
+    })
+    .join('')
+
+  return `
+    <div class="coberturas-adicionales coberturas-adicionales--checkbox" role="group" aria-labelledby="coberturas-adicionales-label">
+      <label id="coberturas-adicionales-label">Coberturas adicionales</label>
+      ${filas || '<div class="empty-state__subtitle">No hay coberturas adicionales disponibles para este plan.</div>'}
     </div>
   `
 }
@@ -2136,6 +2203,8 @@ app.addEventListener('click', (e) => {
   else if (action === 'show-tab') setView(target.dataset.view)
   else if (action === 'add-cobertura-linea') addCoberturaLinea()
   else if (action === 'remove-cobertura-linea') removeCoberturaLinea(target.dataset.lineaId)
+  else if (action === 'toggle-cobertura-checkbox')
+    toggleCoberturaAdicionalPorCodigo(target.dataset.codigo, target.checked)
   else if (action === 'emitir-carta') emitirCartaOferta()
 })
 

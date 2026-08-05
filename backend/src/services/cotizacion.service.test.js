@@ -164,7 +164,12 @@ describe('resolverTasaRpf', () => {
 
     // Regresión (design.md — Testing Strategy): el escalar de Auto no debe variar con la
     // cantidad de cuotas, a diferencia de la curva nueva de los 3 ramos flagueados.
-    const con3Cuotas = resolverTasaRpf({ ramo: RAMO_NO_FLAGGED, formaPagoPlan, curva: null, cuotas: 3 })
+    const con3Cuotas = resolverTasaRpf({
+      ramo: RAMO_NO_FLAGGED,
+      formaPagoPlan,
+      curva: null,
+      cuotas: 3,
+    })
     const con11Cuotas = resolverTasaRpf({
       ramo: RAMO_NO_FLAGGED,
       formaPagoPlan,
@@ -209,8 +214,7 @@ describe('resolverTasaRpf', () => {
     const formaPagoPlan = { tasa_rpf: 99, formas_pago: { codigo: 'cobrador' } }
 
     assert.throws(
-      () =>
-        resolverTasaRpf({ ramo: RAMO_FLAGGED, formaPagoPlan, curva: CURVA, cuotas: 12 }),
+      () => resolverTasaRpf({ ramo: RAMO_FLAGGED, formaPagoPlan, curva: CURVA, cuotas: 12 }),
       (err) => {
         assert.equal(err.status, 422)
         return true
@@ -596,9 +600,8 @@ describe('construirVariantes (vía calcularPreview) — Auto con forma de pago f
     t.mock.module('../repositories/coberturas.repository.js', { namedExports: {} })
     t.mock.module('../repositories/cotizaciones.repository.js', { namedExports: {} })
     t.mock.module('./tipo-cambio.service.js', { namedExports: {} })
-    const { calcularPreview } = await import(
-      './cotizacion.service.js?case=regresion-auto-rpf-financiado'
-    )
+    const { calcularPreview } =
+      await import('./cotizacion.service.js?case=regresion-auto-rpf-financiado')
 
     const resultado = await calcularPreview(
       {

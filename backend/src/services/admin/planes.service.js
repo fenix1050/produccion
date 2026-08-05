@@ -73,3 +73,16 @@ export async function editarPlanFormaPago(id, cambios) {
   }
   return fila
 }
+
+// --- R.P.F. por cuotas (migración 058, cambio `rpf-variable-mrc`) ---
+// Curva GLOBAL compartida por los ramos con `usa_rpf_por_cuotas = true` — no hay filtro por
+// plan/ramo acá, la invalidación de caché (invalidarCacheCatalogos) queda a cargo del
+// controller, mismo patrón que crearTasa/eliminarTasa/editarRubroActividad.
+
+export async function listarCurvaRpf() {
+  return ramosRepository.findCurvaRpf()
+}
+
+export async function editarCurvaRpf(celdas) {
+  return tasasRepository.upsertCurvaRpf(celdas)
+}

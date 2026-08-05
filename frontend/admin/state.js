@@ -34,6 +34,12 @@ export const state = {
   topesEnEdicion: new Set(), // ids de plan con descuento_maximo/recargo_maximo habilitados para editar (solo admin literal)
   tasaRpfEnEdicion: new Set(), // ids de plan_formas_pago con la tasa habilitada para editar
 
+  // Curva GLOBAL de R.P.F. por cuotas (migración 058, cambio `rpf-variable-mrc`), panel propio
+  // arriba de la tabla de Planes — no es por plan/ramo, así que no vive en `formasPagoPorPlan`.
+  // `datos` guarda las 33 filas tal cual las devuelve GET /admin/rpf-cuotas; el guardado es un
+  // único PUT bulk (design.md Decisión 7), no hay Set de edición per-celda.
+  curvaRpf: { loading: false, error: '', datos: null, guardando: false },
+
   ramoTasasSeleccionado: null,
   tasasPorRamo: {}, // ramoId -> { loading, error, historial: [] }
   catalogoPorRamo: {}, // ramoId -> coberturas_catalogo[] (para el selector del modal de alta)

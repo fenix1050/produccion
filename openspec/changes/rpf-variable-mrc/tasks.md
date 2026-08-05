@@ -8,12 +8,12 @@
 | 400-line budget risk | High |
 | Chained PRs recommended | Yes |
 | Suggested split | PR 1 (migration) -> PR 2 (backend resolution + regression tests) -> PR 3 (admin endpoint + UI) |
-| Delivery strategy | ask-on-risk |
-| Chain strategy | pending |
+| Delivery strategy | auto-chain (RESOLVED) |
+| Chain strategy | stacked-to-main (RESOLVED) |
 
-Decision needed before apply: Yes
+Decision needed before apply: Yes (RESOLVED)
 Chained PRs recommended: Yes
-Chain strategy: pending
+Chain strategy: stacked-to-main (RESOLVED) — PR1 #161 -> PR2 #162 -> PR3 (this batch, branched from PR2)
 400-line budget risk: High
 
 ### Suggested Work Units
@@ -53,20 +53,20 @@ Chain strategy: pending
 
 ## Phase 3: Admin Backend
 
-- [ ] 3.1 RED: write failing test for `editarCurvaRpfSchema` (Zod, `backend/src/schemas/admin.schema.js`) — validates 33-cell bulk payload shape, rejects malformed cells.
-- [ ] 3.2 GREEN: implement `editarCurvaRpfSchema`.
-- [ ] 3.3 Add `upsertCurvaRpf()` to `backend/src/repositories/tasas.repository.js` — single atomic bulk upsert of all submitted cells.
-- [ ] 3.4 Add service method in `backend/src/services/admin/planes.service.js` (or equivalent) calling `upsertCurvaRpf()` then `invalidarCacheCatalogos()`.
-- [ ] 3.5 Add `PUT /admin/rpf-cuotas` route in `backend/src/routes/admin.routes.js`, gated by `requirePlanesEdit` (`puede_editar_planes`) — NOT literal admin.
-- [ ] 3.6 Add controller handler in `backend/src/controllers/admin.controller.js` wiring schema + service.
-- [ ] 3.7 RED+GREEN: integration test — role with `puede_editar_planes` can PUT and persist; role without permission gets 403, no persistence.
+- [x] 3.1 RED: write failing test for `editarCurvaRpfSchema` (Zod, `backend/src/schemas/admin.schema.js`) — validates 33-cell bulk payload shape, rejects malformed cells. `backend/src/schemas/admin.schema.rpf-cuotas.test.js` (6 cases: valid 33-cell payload, missing `tasa_rpf`, negative `tasa_rpf`, `cuotas` out of range 0/30, empty array, `tasa_rpf=0` for Tarjeta 1-2 cuotas).
+- [x] 3.2 GREEN: implement `editarCurvaRpfSchema` — `z.object({ celdas: z.array(...).min(1).max(100) })`, `cuotas` allows up to 24 (extensible without migration, per design.md Decisión 5/Open Questions).
+- [x] 3.3 Added `upsertCurvaRpf(celdas)` to `backend/src/repositories/tasas.repository.js` — single `.upsert(celdas, { onConflict: 'forma_pago_id,cuotas' })`.
+- [x] 3.4 Added `listarCurvaRpf()`/`editarCurvaRpf(celdas)` to `backend/src/services/admin/planes.service.js`. Cache invalidation (`invalidarCacheCatalogos()`) called from the controller, matching the existing pattern for `crearTasa`/`eliminarTasa`/`editarRubroActividad` (service stays a thin passthrough, no cache import added there).
+- [x] 3.5 Added `GET /admin/rpf-cuotas` + `PUT /admin/rpf-cuotas` in `backend/src/routes/admin.routes.js`, both gated by `requirePlanesEdit` (`puede_editar_planes`) — NOT literal admin. GET added beyond the original task wording so the admin UI grid has something to load (design.md's "File Changes" row already specified `GET|PUT`).
+- [x] 3.6 Added `listarCurvaRpf`/`editarCurvaRpf` controller handlers in `backend/src/controllers/admin.controller.js` wiring schema + service + cache invalidation.
+- [x] 3.7 Integration tests: `backend/src/middleware/auth.rpf-cuotas.test.js` (3 cases — `requirePlanesEdit` unit-tested directly: permitted role passes with no error, role without the permission gets `httpError(403)`, unauthenticated request gets 403) + `backend/src/controllers/admin.controller.rpf-cuotas.test.js` (4 cases — valid payload calls the service, invalidates cache, responds 200 with persisted rows; malformed/empty payload passes a `ZodError` to `next()` without calling the service; `GET` returns the service's curve). **Deviation**: malformed-payload tests assert `err.name === 'ZodError'` rather than a `400` status — `admin.controller.js`'s `schema.parse()` calls throw a raw `ZodError` with no `.status`/`.statusCode`, and `app.js`'s global error handler defaults to `500` for any error without `.status` (no `ZodError` → `400` mapping exists anywhere in the codebase today; this is the same known, accepted gap noted in CLAUDE.md as "errores Zod sin mapear a 400", not something introduced or fixed by this task). The test still proves the schema rejects invalid input and the service is never called with bad data.
 
 ## Phase 4: Admin UI
 
-- [ ] 4.1 Create `frontend/admin/render/rpf-cuotas.js` — standalone panel above the Planes table (not inside per-plan "Formas de pago" subrow), renders 33-cell grid (11 cuotas × 3 formas de pago).
-- [ ] 4.2 Wire panel state/fetch in `frontend/admin/state.js` and mount point.
-- [ ] 4.3 Implement bulk save (single PUT call, not per-cell) with success/error feedback.
-- [ ] 4.4 Update `frontend/admin/render/planes.js` (~L100, L232) to remove the old `tasa_rpf` scalar input for plans belonging to mrc/incendio/vida-ap; keep it unchanged for Auto/Auto-Flota.
+- [x] 4.1 Created `frontend/admin/render/rpf-cuotas.js` — standalone panel above the Planes table (not inside per-plan "Formas de pago" subrow), renders an 11x3 grid (rows = cuotas 1-11, columns = Cobrador/Boca de Cobranza/Tarjeta de Crédito in that fixed order, matching Hoja4). Column labels come from `formas_pago.nombre_display` (added to the `findCurvaRpf()` select in `ramos.repository.js`, additive — `resolverTasaRpf()` only reads `.codigo`, unaffected) instead of being hardcoded.
+- [x] 4.2 Wired `state.curvaRpf = { loading, error, datos, guardando }` in `frontend/admin/state.js`; mount point is `renderPlanes()` in `frontend/admin/render/planes.js` (prepended, always visible — the curve is global, not per-plan). Load is triggered from `cargarPlanes()` (`frontend/admin/planes.js`) via `cargarCurvaRpf()`, independent of the planes fetch outcome (a failure loading one must not block the other).
+- [x] 4.3 Implemented bulk save in `frontend/admin/rpf-cuotas.js` (`guardarCurvaRpf(form)`) — reads all 33 `<input data-forma-pago-id data-cuotas>` in the form, one `PUT /admin/rpf-cuotas` call with `{ celdas: [...] }`, success/error banners via `mostrarBanner()` (same pattern as the rest of the admin panel). Wired as a `data-form-action="rpf-cuotas"` submit handled in `frontend/admin/admin.js`'s `onInlineFormSubmit`, no new click-based `ACTION_HANDLERS` entry needed (single form submit, not per-cell edit toggle).
+- [x] 4.4 Updated `frontend/admin/render/planes.js`'s `renderFormasPagoDelPlan` (not `renderCampoTasaRpf` itself, which stays untouched and still used by Auto) to conditionally omit the "Tasa RPF (%)" `<th>`/`<td>` when the plan's ramo has `usa_rpf_por_cuotas` (looked up via `state.ramos`, already populated by `getRamos()` in `cargarPlanes()`). Auto/Auto-Flota plans (flag absent/false) render the column exactly as before.
 
 ## Phase 5: Spec Scenario Coverage & Live Verification
 

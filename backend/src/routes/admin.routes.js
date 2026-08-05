@@ -62,6 +62,12 @@ router.delete('/planes/:id', requirePlanesEdit, adminController.eliminarPlan)
 router.get('/planes/:id/formas-pago', requirePlanesEdit, adminController.listarFormasPagoDePlan)
 router.put('/plan-formas-pago/:id', requirePlanesEdit, adminController.editarPlanFormaPago)
 
+// R.P.F. por cuotas (gate: puede_editar_planes, mismo permiso que ya edita el escalar
+// tasa_rpf hoy vía plan-formas-pago/:id — ver design.md Decisión 8, Engram #391 decisión 4).
+// Curva GLOBAL: no cuelga de /planes/:id, es un solo recurso compartido por MRC/Incendio/Vida-AP.
+router.get('/rpf-cuotas', requirePlanesEdit, adminController.listarCurvaRpf)
+router.put('/rpf-cuotas', requirePlanesEdit, adminController.editarCurvaRpf)
+
 // Topes de descuento/recargo del plan (gate: rol admin literal, no un permiso booleano
 // delegable). Ver docs/ESTADO_PROYECTO.md: si esto fuera parte de puede_editar_planes, un
 // Jefe/Analista de Riesgo (que ya tiene ese permiso) podría subir el mismo tope que limita

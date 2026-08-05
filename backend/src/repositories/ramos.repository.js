@@ -140,7 +140,9 @@ export async function findClausulasObligatoriasByPlanId(planId) {
 // compartida por los ramos con `usa_rpf_por_cuotas = true` (MRC/Incendio/Vida-AP). No lleva
 // filtro por ramo/plan: es una sola tabla de 33 celdas (11 cuotas × 3 formas de pago).
 export async function findCurvaRpf() {
-  const { data, error } = await supabase.from('rpf_cuotas').select('*, formas_pago(codigo)')
+  const { data, error } = await supabase
+    .from('rpf_cuotas')
+    .select('*, formas_pago(codigo, nombre_display)')
   if (error) throw error
   return data
 }

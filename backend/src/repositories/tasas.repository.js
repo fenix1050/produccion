@@ -84,3 +84,15 @@ export async function actualizarPlanFormaPago(id, cambios) {
   if (error) throw error
   return data
 }
+
+// Curva GLOBAL de R.P.F. por cuotas (migración 058, cambio `rpf-variable-mrc`) — un solo
+// upsert atómico de las 33 celdas en vez de 33 escrituras per-celda (design.md Decisión 7):
+// evita que la curva quede a medio editar en vivo para otros usuarios mientras se guarda.
+export async function upsertCurvaRpf(celdas) {
+  const { data, error } = await supabase
+    .from('rpf_cuotas')
+    .upsert(celdas, { onConflict: 'forma_pago_id,cuotas' })
+    .select('*, formas_pago(codigo)')
+  if (error) throw error
+  return data
+}

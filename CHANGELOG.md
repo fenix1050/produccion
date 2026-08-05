@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.25](https://github.com/fenix1050/produccion/compare/v0.1.24...v0.1.25) (2026-08-05)
+
+
+### Bug Fixes
+
+* **mrc:** corregir sublímite de murallas y tasa de robo contenido ([#150](https://github.com/fenix1050/produccion/issues/150)) ([61267d9](https://github.com/fenix1050/produccion/commit/61267d9edddc482e6b2ee2e732d2346a4de66a06))
+
 ## [0.1.24](https://github.com/fenix1050/produccion/compare/v0.1.23...v0.1.24) (2026-08-04)
 
 

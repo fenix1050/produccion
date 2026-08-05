@@ -283,8 +283,11 @@ La API valida **toda** entrada antes de usarla — si falla, devuelve 422 con de
 
 - Sin transpilación, sin bundler — `<script>` directo en HTML.
 - Estructura por página: `/frontend/{pagina}/index.html` + `.js`/`.css` colocalizados.
-- Fetch wrapper en `/frontend/shared/api.js` para reutilizar (headers, auth token, etc.).
-- Estado local en `localStorage` (usuario logueado) + en memoria si hace falta.
+- Fetch wrapper en `/frontend/shared/api.js` para reutilizar (`credentials: 'include'`, header
+  `X-CSRF-Token` en mutaciones, etc.).
+- Sesión en cookie `tajy_session` (`HttpOnly`, la fija el backend) + cookie `tajy_csrf` de
+  doble-submit — nada en `localStorage`. Estado del usuario logueado en memoria, cargado vía
+  `cargarSesion()` contra `/auth/me`.
 
 ### Generación de PDF
 
@@ -303,13 +306,20 @@ Usa Puppeteer (Chromium headless) para convertir HTML → PDF. Cada ramo puede t
   queda como alternativa de despliegue en Render (no es el destino activo). **Redeploy automático
   vía CD** (`.github/workflows/deploy-backend.yml`): al terminar CI en verde sobre `main`, un
   workflow separado se conecta por SSH a la VPS y corre `git reset --hard origin/main` +
-  `docker compose up --build -d backend`, con health check contra `/health` al final.
+  `docker compose up --build -d backend`, con health check contra `/health` al final — si el
+  health check falla, hace rollback automático al commit anterior y vuelve a levantar ese build.
+  `NODE_ENV=production` está fijado a nivel de `docker-compose.yml` (no solo en el `Dockerfile`),
+  porque `env_file` puede pisarlo en runtime si esa clave llega ausente o distinta en el `.env`
+  real de la VPS.
 - **Frontend:** Vercel (`frontend/vercel.json`), con despliegue automático al hacer push a `main`
-  vía la integración nativa de Vercel con GitHub.
+  vía la integración nativa de Vercel con GitHub. `frontend/scripts/build.sh` versiona con
+  cache-busting (`?v=<sha>`) tanto los `src`/`href` del HTML como los imports ES module relativos
+  dentro de los `.js`, para que un módulo compartido (ej. `shared/api.js`) no quede sirviendo una
+  copia cacheada vieja mientras el entry point ya es el nuevo.
 
 ## Estado actual
 
-**Última actualización:** 2026-07-31 — MRC e Incendio operativos end-to-end (calculador + Carta Oferta en PDF); Vida-AP tiene calculador completo pero sigue sin template (falta texto oficial). Incendio suma 3 planes nuevos, moneda USD/Gs. y tasas por rubro de actividad (~209 rubros, migraciones 043/044 ya aplicadas contra Supabase real). MRC suma el plan "SEGUCOOP" con descuento fijo del 10% (permiso de rol dedicado). Panel admin con secciones de Usuarios/Coberturas/Tasas/Planes/Roles/Ramos (esta última para habilitar/deshabilitar, editar nombre y eliminar ramos del sidebar, ahora con 8 ramos) y opción de eliminar planes. RLS activado (default-deny) en las 34 tablas CRITICAL de Supabase. Se removieron los imports de Vercel Analytics/Speed Insights del frontend (rompían con `Uncaught TypeError` fuera del build de Vercel). Backend desplegado en VPS propia (Docker + Caddy, `api.cotizador.lat`, redeploy automático vía CD tras CI en verde); frontend en Vercel (auto-deploy en `main`).
+**Última actualización:** 2026-08-04 — MRC e Incendio operativos end-to-end (calculador + Carta Oferta en PDF); Vida-AP tiene calculador completo pero sigue sin template (falta texto oficial). Incendio suma 3 planes nuevos, moneda USD/Gs. y tasas por rubro de actividad (~209 rubros, migraciones 043/044 ya aplicadas contra Supabase real). MRC suma el plan "SEGUCOOP" con descuento fijo del 10% (permiso de rol dedicado). Panel admin con secciones de Usuarios/Coberturas/Tasas/Planes/Roles/Ramos (esta última para habilitar/deshabilitar, editar nombre y eliminar ramos del sidebar, ahora con 8 ramos) y opción de eliminar planes. RLS activado (default-deny) en las 34 tablas CRITICAL de Supabase. Se removieron los imports de Vercel Analytics/Speed Insights del frontend (rompían con `Uncaught TypeError` fuera del build de Vercel). Sesión migrada de JWT en `localStorage` a cookie `HttpOnly` + CSRF de doble-submit (PR #138); el deploy de ese cambio destapó dos bugs de producción ya corregidos — imports ES module sin cache-busting en `build.sh` (PR #143) y `NODE_ENV` no fijado a nivel de `docker-compose.yml` rompiendo el `Domain` de las cookies y todo método mutante con 403 CSRF (PR #146). El CD del backend ahora hace rollback automático si el health check post-deploy falla (PR #133). Backend desplegado en VPS propia (Docker + Caddy, `api.cotizador.lat`, redeploy automático vía CD tras CI en verde); frontend en Vercel (auto-deploy en `main`).
 
 Ver `docs/ESTADO_PROYECTO.md` para el detalle completo de:
 

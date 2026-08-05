@@ -142,6 +142,7 @@ describe('resolverTasaRpf', () => {
     { forma_pago_id: 1, cuotas: 11, tasa_rpf: 9.5, formas_pago: { codigo: 'cobrador' } },
     { forma_pago_id: 2, cuotas: 1, tasa_rpf: 0, formas_pago: { codigo: 'tarjeta_credito' } },
     { forma_pago_id: 2, cuotas: 3, tasa_rpf: 0.8, formas_pago: { codigo: 'tarjeta_credito' } },
+    { forma_pago_id: 3, cuotas: 5, tasa_rpf: 3.04, formas_pago: { codigo: 'boca_cobranza' } },
   ]
 
   test('ramo flagueado + cuotas dentro de rango: devuelve el valor de la curva, no el escalar', async (t) => {
@@ -234,6 +235,41 @@ describe('resolverTasaRpf', () => {
     })
 
     assert.equal(resultado, 0)
+  })
+
+  // Cierra el gap de sdd-verify (obs #397, spec matrix fila 6): a diferencia de 1-2 cuotas
+  // (0% literal), a partir de 3 cuotas Tarjeta de Crédito SÍ cobra R.P.F. — confirma que no hay
+  // un atajo de código que devuelva 0 para toda la forma de pago, solo para las cuotas exactas
+  // que la planilla marca en 0.
+  test('Tarjeta de Crédito @ 3 cuotas: no-cero (distinto de 1-2 cuotas)', async (t) => {
+    const { resolverTasaRpf } = await mockRepositoriosYObtenerResolverTasaRpf(t, 7)
+    const formaPagoPlan = { tasa_rpf: 99, formas_pago: { codigo: 'tarjeta_credito' } }
+
+    const resultado = resolverTasaRpf({
+      ramo: RAMO_FLAGGED,
+      formaPagoPlan,
+      curva: CURVA,
+      cuotas: 3,
+    })
+
+    assert.equal(resultado, 0.8)
+  })
+
+  // Cierra el gap de sdd-verify (obs #397, spec matrix fila 3): prueba explícita del mapeo
+  // "Aquí Pago" (Excel) -> `boca_cobranza` (sistema) — hasta ahora solo probado genéricamente
+  // vía Cobrador/Tarjeta, nunca con este código puntual.
+  test('Boca de Cobranza @ 5 cuotas: resuelve desde la columna "Aquí Pago" de la curva', async (t) => {
+    const { resolverTasaRpf } = await mockRepositoriosYObtenerResolverTasaRpf(t, 8)
+    const formaPagoPlan = { tasa_rpf: 99, formas_pago: { codigo: 'boca_cobranza' } }
+
+    const resultado = resolverTasaRpf({
+      ramo: RAMO_FLAGGED,
+      formaPagoPlan,
+      curva: CURVA,
+      cuotas: 5,
+    })
+
+    assert.equal(resultado, 3.04)
   })
 })
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.24](https://github.com/fenix1050/produccion/compare/v0.1.23...v0.1.24) (2026-08-04)
+
+
+### Bug Fixes
+
+* **deploy:** forzar NODE_ENV=production en docker-compose, no solo en el Dockerfile ([#146](https://github.com/fenix1050/produccion/issues/146)) ([1ed7555](https://github.com/fenix1050/produccion/commit/1ed75557fba079d619baa9f5c897f6da0e0995b5))
+
 ## [0.1.23](https://github.com/fenix1050/produccion/compare/v0.1.22...v0.1.23) (2026-08-03)
 
 

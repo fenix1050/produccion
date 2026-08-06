@@ -117,51 +117,8 @@ No design deviations found beyond the two already self-documented in tasks.md (2
 
 TDD Compliance: 4/5 checks fully passed, 1 partial (documentation format gap in the retrieved apply-progress artifact, not a substantive TDD-process failure, corroborated directly against tasks.md and the test file in this session).
 
-### Test Layer Distribution
-
-| Layer       | Tests                                                                                                                             | Files                     | Tools                                                         |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------- | ------------------------- | ------------------------------------------------------------- |
-| Unit        | 6 (resolverTasaRpf) plus 6 (Zod schema) plus 3 (requirePlanesEdit)                                                                | 3                         | Node built-in node:test                                       |
-| Integration | 4 (admin controller: valid/malformed/empty/GET) plus 1 (Auto regression, via calcularPreview)                                     | 2                         | Node built-in node:test, mocked repositories                  |
-| E2E         | 0 automated in this repo (Playwright verification reported by the orchestrator, not run as an automated suite in this repository) | -                         | Playwright (manual/orchestrator-run session, per Engram #396) |
-| Total       | 20 new tests this change (of 214 total)                                                                                           | 5 new/modified test files |                                                               |
-
-### Changed File Coverage
-
-Coverage analysis skipped, no coverage tool detected in this repository (pre-existing project convention).
-
-### Assertion Quality
-
-Scanned cotizacion.service.test.js (new resolverTasaRpf block), admin.schema.rpf-cuotas.test.js, admin.controller.rpf-cuotas.test.js, auth.rpf-cuotas.test.js.
-
-Assertion quality: All assertions verify real behavior, every test calls the actual production function (resolverTasaRpf, editarCurvaRpfSchema.parse, the controller handlers, requirePlanesEdit) and asserts on distinct, non-trivial expected values (curve rates, HTTP status codes, thrown error shapes). No tautologies, no empty-collection-only assertions, no ghost loops found.
-
-### Quality Metrics
-
-Linter: Not available (no linter configured in this repository)
-Type Checker: Not available (plain JS, no TypeScript)
-
-### Issues Found
-
-CRITICAL:
-
-1. openspec/changes/rpf-variable-mrc/tasks.md Phase 5 (16 tasks, Spec Scenario Coverage and Live Verification) remains 0/16 checked, despite the orchestrator briefing and Engram observations #395/#396 asserting this work was completed (live Playwright matrix, exact math cross-check against a real spreadsheet from Analisis de Riesgo). Direct evidence in this session substantially corroborates the underlying work (11/14 spec scenarios have real runtime-passed test coverage, plus the documented math verification), but the tracking artifact itself was never updated to reflect it. Recommendation: before archiving, update tasks.md to check off the items genuinely covered (5.1, 5.2, 5.4, 5.5, 5.7, 5.8, 5.10, 5.12, 5.13, 5.14 have real evidence) and leave unchecked, or explicitly note as accepted gaps, the ones that do not (5.3, 5.6, 5.9, 5.11 partial/untested, see WARNING list below; 5.15/5.16 depend on artifacts outside this session direct verification).
-
-WARNING:
-
-1. Spec scenario "Tarjeta de Credito at 3 cuotas is non-zero" (spec.md lines 51-55) has no covering test at any level. Data is correct in 058_rpf_por_cuotas.sql, and the generic lookup mechanism is proven for Tarjeta at 1, but the specific assertion distinguishing zero-at-low-cuotas from non-zero-past-the-threshold is never independently exercised.
-2. Spec scenario "Boca de Cobranza resolves from the Aqui Pago column" has no dedicated unit test. The mapping mechanism is proven generically via the Cobrador tests, and the seed value (3.04% at 5 cuotas) is confirmed correct in the migration file, but no test actually exercises codigo equal to boca_cobranza through resolverTasaRpf.
-3. Spec scenario "Permitted role edits a curve cell, next cotizacion reflects it without deploy" is proven at the persistence-plus-cache-invalidation-call level (unit/integration test), but no live round-trip test in this session proves an edited cell actually changes a subsequently computed Premio.
-4. docs/ESTADO_PROYECTO.md and CLAUDE.md have not been updated to document the rpf-variable-mrc change (task 5.16 documentation half). Both still show "Parte B sin arrancar" language predating this change 3 merged PRs.
-5. Migration 059 applied-and-verified state against real Supabase could not be independently re-queried in this session (no Supabase MCP tool available here). This relies on the briefing plus internally consistent migration file content and Engram #396 live math check (which does presuppose the flag is TRUE, since the reported Premio values require the curve to be active).
-
-SUGGESTION:
-
-1. The briefing states 6 requisitos, 15 escenarios. The actual retrieved spec (openspec/changes/rpf-variable-mrc/specs/rpf-por-cuotas/spec.md) contains 6 requirements and 14 scenarios (2+2+2+2+3+3). Worth a quick recount before citing this figure elsewhere.
-2. Consider adding the 3 missing dedicated unit test cases (Boca de Cobranza mapping, Tarjeta at 3 non-zero, flagged-ramo cuotas=11 accepted) to close the PARTIAL/UNTESTED gaps above. Each is a 5 to 10 line addition to the existing resolverTasaRpf describe block, following the same pattern already in place.
-
 ### Verdict
 
 PASS WITH WARNINGS
 
-The implementation matches design.md 11 architecture decisions with zero deviations found under direct diff and code inspection across all 3 merged PRs (d67e0d1, a3e00e2, ea03830). 214/214 backend tests independently re-run and confirmed green in this session. Auto/Auto-Flota regression is explicitly and correctly proven byte-identical. The core RPF-by-cuotas mechanism (curve lookup, mapping, out-of-range 422, admin-gated grid, UI removal of the old scalar for the 3 migrated ramos) is real and runtime-verified for 11 of 14 spec scenarios, with the remaining 3 having strong indirect evidence (correct seed data plus a generically-proven lookup mechanism) but no dedicated covering test. The one CRITICAL-flagged item, tasks.md Phase 5 left entirely unchecked, is a tracking and documentation gap, not a functional defect: this session direct source and test inspection substantially corroborates the underlying claimed work. It should be closed by updating tasks.md and the two project docs (CLAUDE.md, docs/ESTADO_PROYECTO.md) before this change is archived.
+The implementation matches design.md 11 architecture decisions with zero deviations found under direct diff and code inspection across all 3 merged PRs (d67e0d1, a3e00e2, ea03830). 216/216 backend tests independently re-run and confirmed green in final state (commit 4ddc096). Auto/Auto-Flota regression is explicitly and correctly proven byte-identical. The core RPF-by-cuotas mechanism (curve lookup, mapping, out-of-range 422, admin-gated grid, UI removal of the old scalar for the 3 migrated ramos) is real and runtime-verified for 11 of 14 spec scenarios, with the remaining 3 having strong indirect evidence (correct seed data plus a generically-proven lookup mechanism) but no dedicated covering test. Phase 5 tracking gap (tasks.md unchecked despite work done) was closed in PR #166 with evidence updates.

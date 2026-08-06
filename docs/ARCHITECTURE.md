@@ -115,7 +115,11 @@ Frontend
   Caddy como reverse proxy TLS (`Caddyfile`, dominio `api.cotizador.lat`). Redeploy automático vía
   CD (`.github/workflows/deploy-backend.yml`): al terminar CI en verde sobre `main`, un workflow
   separado se conecta por SSH y corre `git reset --hard origin/main` +
-  `docker compose up --build -d backend`, con health check contra `/health`. `render.yaml` queda
-  como alternativa no activa.
+  `docker compose up --build -d backend`, con health check contra `/health`. Si el health check
+  falla, el workflow hace rollback automático (`git reset --hard` al SHA anterior + rebuild) y
+  vuelve a verificar `/health` antes de reportar el deploy como fallido. `render.yaml` queda
+  como alternativa no activa. `NODE_ENV=production` está fijado en `docker-compose.yml` (gana
+  sobre `env_file` para esa misma clave) para que el `.env` real de la VPS no pueda dejar al
+  proceso corriendo como no-producción sin querer.
 - **Frontend:** Vercel, auto-deploy al pushear a `main` (integración nativa de Vercel con GitHub,
   configurada en `frontend/vercel.json`).

@@ -30,7 +30,7 @@ All diffs read directly (git diff main...sdd/mrc-plan-descuento-fijo-frontend), 
 - Decision 2: forzadoPorPlan neutralizes only the user's tope, not the plan's, via topeEfectivo(plan.descuento_maximo, forzadoPorPlan ? null : usuario?.descuento_maximo_pct) in backend/src/calculators/mrc.calculator.js. Exact one-liner, default false.
 - Same one-liner applied to backend/src/calculators/incendio.calculator.js "for symmetry, inert today" - present, correctly a no-op (no Incendio plan seeds descuento_default).
 - Decision 3: !plan.cotizacion_combinada guard prevents double-discount on Auto PREMIUM/SUPERIOR/FUERTE - present in code and covered by a real dedicated runtime regression test.
-- Permission plumbing across roles.repository.js (CAMPOS + crear()), usuarios.repository.js (CAMPOS_ROL + aplanar()), auth.js (req.usuario), admin/roles.service.js (PERMISOS_ROL), admin.schema.js (crear/editarRolSchema), auth.service.js (login response) - all 6 files present, each adds exactly puede_editar_descuento_plan in the same shape as the other 4 existing puede_* permissions. No partial wiring found.
+- Permission plumbing across roles.repository.js (CAMPOS + crear()), usuarios.repository.js (CAMPOS*ROL + aplanar()), auth.js (req.usuario), admin/roles.service.js (PERMISOS_ROL), admin.schema.js (crear/editarRolSchema), auth.service.js (login response) - all 6 files present, each adds exactly puede_editar_descuento_plan in the same shape as the other 4 existing puede*\* permissions. No partial wiring found.
 - Admin Roles checkbox (not on user edit form): frontend/admin/admin.js - checkbox + badge column added to abrirModalRolCrear/Editar/guardarModalRol/renderTablaRoles - confirmed NOT present in the user-edit modal code path.
 - Cotizador prefill + lock: frontend/cotizar/cotizar.js - state.data.descuentoPorcentaje set at both selectRamo (~583) and selectPlan (~616); renderAjusteField computes bloqueado and applies it to both Monto/Porcentaje disabled attributes plus the hint-text swap - matches design exactly. usuario is already in scope at that point via the pre-existing auth.getUsuario() call at line 1954.
 
@@ -58,7 +58,7 @@ The counterpart "User with permission can override" scenario also has a real pas
 
 ## Spec Scenario Compliance Matrix (11 scenarios in spec.md)
 
-1. New MRC plan seeded with fixed discount - PASS. Migration + applied to real Supabase (plan id 20 per apply-progress.md); descuento_default travels via pre-existing select('*') in ramos.repository.js; corroborated live by Playwright showing field prefilled to 10.
+1. New MRC plan seeded with fixed discount - PASS. Migration + applied to real Supabase (plan id 20 per apply-progress.md); descuento_default travels via pre-existing select('\*') in ramos.repository.js; corroborated live by Playwright showing field prefilled to 10.
 2. Plan restricted to Contado - PASS. Migration seeds only contado.habilitada=TRUE; live Playwright confirms only "Contado" badge shown.
 3. Permission defaults false for non-admin roles - PASS. ALTER ... DEFAULT FALSE plus explicit UPDATE for the 3 confirmed roles; live-verified 3 roles with TRUE.
 4. Permission editable from admin Roles section only - PASS. Code inspection: checkbox present only in Roles modal, absent from user-edit form. No frontend test framework exists in this project (pre-existing convention) - compliance is code-review-level, consistent with the rest of the admin panel in this codebase.
@@ -96,7 +96,7 @@ None.
 
 ### SUGGESTION
 
-1. Consider a dedicated unit/integration test asserting descuento_default is actually present in the GET planes-by-ramo response payload for the new plan (spec scenario 1) - today this passes "by construction" via the pre-existing select('*') pattern, which is correct but has zero direct test coverage tying the migration to the endpoint contract.
+1. Consider a dedicated unit/integration test asserting descuento_default is actually present in the GET planes-by-ramo response payload for the new plan (spec scenario 1) - today this passes "by construction" via the pre-existing select('\*') pattern, which is correct but has zero direct test coverage tying the migration to the endpoint contract.
 2. No automated frontend test exists in this project for either admin.js or cotizar.js - this is a pre-existing project convention, not a regression introduced by this change, but it is the reason WARNING #1 above cannot be closed with an automated test today.
 
 ## Final Verdict: PASS WITH WARNINGS

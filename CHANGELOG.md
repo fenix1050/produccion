@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.27](https://github.com/fenix1050/produccion/compare/v0.1.26...v0.1.27) (2026-08-06)
+
+
+### Features
+
+* **mrc:** admin backend + UI para la curva de R.P.F. por cuotas (PR3) ([#163](https://github.com/fenix1050/produccion/issues/163)) ([ea03830](https://github.com/fenix1050/produccion/commit/ea03830699de67bd68540b29d435820e09f875f7))
+* **mrc:** resolver R.P.F. desde la curva por cuotas (PR2) ([#162](https://github.com/fenix1050/produccion/issues/162)) ([a3e00e2](https://github.com/fenix1050/produccion/commit/a3e00e28cc6d84543096cbde7e4335078ef2ab2e))
+* **mrc:** tabla rpf_cuotas y flag usa_rpf_por_cuotas (PR1/3) ([#161](https://github.com/fenix1050/produccion/issues/161)) ([d67e0d1](https://github.com/fenix1050/produccion/commit/d67e0d1b9e76acd34fee9f3f0e896a67d123a913))
+
 ## [0.1.26](https://github.com/fenix1050/produccion/compare/v0.1.25...v0.1.26) (2026-08-05)
 
 

@@ -475,7 +475,11 @@ describe('mrc.calculator — robo_valores_ventanilla no suma costo a la prima', 
     ]
     const tasas = [
       ...tasasBase(),
-      { coberturas_catalogo: { codigo: 'robo_valores_ventanilla' }, tasa_valor: 10, unidad: 'permil' },
+      {
+        coberturas_catalogo: { codigo: 'robo_valores_ventanilla' },
+        tasa_valor: 10,
+        unidad: 'permil',
+      },
     ]
 
     const resultado = await calcularPrima({

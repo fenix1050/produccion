@@ -50,38 +50,40 @@ test('buildMrcOfertaPages usa los montos vigentes de planCoberturas, no valores 
   assert.doesNotMatch(paginaDosBalanceada, /Equipos Electrónicos: 5\.000\.000/)
 })
 
-test('buildMrcOfertaPages incluye sublimite_murallas_cercos (bug: faltaba en el array hardcodeado)', () => {
+// A pedido de Kevin (2026-08-06): los sub-límites fijos por defecto (agua/equipos
+// electrónicos/granizo) también deben figurar como fila en "Sumas Aseguradas" (página 1), con
+// la misma etiqueta SUBLÍMITE que ya tenía "Robo valores ventanilla" — revierte la exclusión de
+// 2026-07-15. Se muestran a propósito en AMBOS lugares (esta tabla y "Distribución del capital
+// asegurado"), no es una duplicación accidental.
+test('buildMrcOfertaPages muestra los sub-límites fijos también en Sumas Aseguradas, igual que Robo valores ventanilla', () => {
   const planCoberturas = [
     planCoberturaFija('sublimite_equipos_electronicos', 5000000),
     planCoberturaFija('sublimite_danos_agua', 2500000),
-    planCoberturaFija('sublimite_murallas_cercos', 1000000),
     planCoberturaFija('sublimite_granizo', 5000000),
   ]
 
-  const cotizacionConSublimiteMurallas = {
+  const cotizacionConSublimiteAgua = {
     ...COTIZACION_BASE,
     cotizacion_coberturas: [
       {
         tipo_aplicacion: 'sublimite',
-        monto: 1000000,
+        monto: 2500000,
         franquicia: null,
-        nombre_snapshot: 'Daños a Murallas, Cercos Perimetrales y Rejas',
-        coberturas_catalogo: { codigo: 'sublimite_murallas_cercos' },
+        nombre_snapshot: 'Daños por agua',
+        coberturas_catalogo: { codigo: 'sublimite_danos_agua' },
       },
     ],
   }
 
-  const { paginaUno } = buildMrcOfertaPages({
-    cotizacion: cotizacionConSublimiteMurallas,
+  const { paginaUno, paginaDosBalanceada } = buildMrcOfertaPages({
+    cotizacion: cotizacionConSublimiteAgua,
     plan: PLAN_BASE,
     ramo: RAMO_BASE,
     planCoberturas,
   })
 
-  // El sub-límite fijo de murallas no debe aparecer como fila cotizable en "Sumas Aseguradas":
-  // ya se muestra en "Distribución del capital asegurado". Antes del fix, al faltar en el
-  // array hardcodeado, sí aparecía ahí (y cobraba franquicia indebidamente).
-  assert.doesNotMatch(paginaUno, /Daños a Murallas, Cercos Perimetrales y Rejas/)
+  assert.match(paginaUno, /badge--sublimite">Sublímite<\/span>Daños por agua/)
+  assert.match(paginaDosBalanceada, /Daños por agua: 2\.500\.000/)
 })
 
 test('buildMrcOfertaPages no rompe si planCoberturas no trae un código esperado', () => {

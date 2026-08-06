@@ -11,6 +11,7 @@ import {
   editarPlanSchema,
   editarPlanTopesSchema,
   editarPlanFormaPagoSchema,
+  editarCurvaRpfSchema,
   editarRamoSchema,
 } from '../schemas/admin.schema.js'
 import { rubrosActividadQuerySchema } from '../schemas/ramos.schema.js'
@@ -259,6 +260,27 @@ export async function editarPlanFormaPago(req, res, next) {
     const cambios = editarPlanFormaPagoSchema.parse(req.body)
     const fila = await planesService.editarPlanFormaPago(req.params.id, cambios)
     res.json(fila)
+  } catch (err) {
+    next(err)
+  }
+}
+
+// --- R.P.F. por cuotas ---
+
+export async function listarCurvaRpf(_req, res, next) {
+  try {
+    res.json(await planesService.listarCurvaRpf())
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function editarCurvaRpf(req, res, next) {
+  try {
+    const { celdas } = editarCurvaRpfSchema.parse(req.body)
+    const filas = await planesService.editarCurvaRpf(celdas)
+    invalidarCacheCatalogos()
+    res.json(filas)
   } catch (err) {
     next(err)
   }

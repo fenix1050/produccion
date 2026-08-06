@@ -7,6 +7,9 @@ export const crearUsuarioSchema = z.object({
   email: z.string().email('email inválido'),
   rol_id: z.number().int().positive(),
   password: z.string().min(8, 'password debe tener al menos 8 caracteres'),
+  // Opcional: usado en el bloque de firma de la Carta Oferta (ver templates/oferta/mrc.js,
+  // Ajuste MC.xlsx ítem #8) — no todos los roles emiten cartas oferta, así que no es requerido.
+  telefono: z.string().max(30).nullable().optional(),
 })
 
 export const editarUsuarioSchema = z.object({
@@ -17,6 +20,7 @@ export const editarUsuarioSchema = z.object({
   // NULL = el usuario no tiene tope propio, se respeta el tope del plan tal cual.
   descuento_maximo_pct: z.number().min(0).max(100).nullable().optional(),
   recargo_maximo_pct: z.number().min(0).max(100).nullable().optional(),
+  telefono: z.string().max(30).nullable().optional(),
 })
 
 export const resetPasswordSchema = z.object({
@@ -36,6 +40,7 @@ export const crearRolSchema = z.object({
   puede_editar_planes: z.boolean().default(false),
   puede_editar_descuento_plan: z.boolean().default(false),
   puede_ver_descuento_plan: z.boolean().default(true),
+  puede_agregar_cobertura_libre: z.boolean().default(true),
 })
 
 // Los roles nuevos (es_sistema = false) son totalmente editables, incluido el nombre.
@@ -49,6 +54,7 @@ export const editarRolSchema = z.object({
   puede_editar_planes: z.boolean().optional(),
   puede_editar_descuento_plan: z.boolean().optional(),
   puede_ver_descuento_plan: z.boolean().optional(),
+  puede_agregar_cobertura_libre: z.boolean().optional(),
   activo: z.boolean().optional(),
 })
 
@@ -100,6 +106,26 @@ export const editarPlanTopesSchema = z.object({
 export const editarPlanFormaPagoSchema = z.object({
   tasa_rpf: z.number().optional(),
   habilitada: z.boolean().optional(),
+})
+
+// ---- R.P.F. por cuotas (migración 058, cambio `rpf-variable-mrc`) ----
+
+// Escritura BULK de la curva global (33 celdas = 11 cuotas x 3 formas de pago) en un solo
+// upsert atómico, en vez de un endpoint per-celda (ver design.md Decisión 7): 33 PUTs
+// secuenciales dejarían la curva a medio editar en vivo para otros usuarios. `cuotas` acepta
+// hasta 24 a propósito (no hardcodeado a 11) para permitir extender el rango sin migración —
+// ver design.md Decisión 5 y "Open Questions".
+export const editarCurvaRpfSchema = z.object({
+  celdas: z
+    .array(
+      z.object({
+        forma_pago_id: z.number().int().positive(),
+        cuotas: z.number().int().min(1).max(24),
+        tasa_rpf: z.number().min(0),
+      })
+    )
+    .min(1)
+    .max(100),
 })
 
 // ---- Ramos ----

@@ -25,6 +25,10 @@ function renderCuerpoModalCrear(m) {
       <label for="admin-modal-password">Contraseña (mín. 8 caracteres)</label>
       <input class="field-input" id="admin-modal-password" type="password" name="password" autocomplete="new-password" />
     </div>
+    <div class="admin-modal__field">
+      <label for="admin-modal-telefono">Teléfono (opcional, para la Carta Oferta)</label>
+      <input class="field-input" id="admin-modal-telefono" type="text" name="telefono" value="${escapeHtml(m.telefono ?? '')}" />
+    </div>
   `
 }
 
@@ -57,6 +61,10 @@ function renderCuerpoModalEditar(m) {
     <div class="admin-modal__field">
       <label for="admin-modal-recargo">Recargo máx. propio (%) — vacío = usa el tope del plan</label>
       <input class="field-input" id="admin-modal-recargo" type="number" step="0.01" min="0" max="100" name="recargo_maximo_pct" value="${m.recargo_maximo_pct ?? ''}" />
+    </div>
+    <div class="admin-modal__field">
+      <label for="admin-modal-telefono">Teléfono (opcional, para la Carta Oferta)</label>
+      <input class="field-input" id="admin-modal-telefono" type="text" name="telefono" value="${escapeHtml(m.telefono ?? '')}" />
     </div>
   `
 }
@@ -169,6 +177,12 @@ export function renderModalRol() {
             <label class="admin-modal__checkbox">
               <input type="checkbox" name="puede_ver_descuento_plan" ${m.puede_ver_descuento_plan ? 'checked' : ''} />
               Puede ver el descuento fijo de un plan
+            </label>
+          </div>
+          <div class="admin-modal__field">
+            <label class="admin-modal__checkbox">
+              <input type="checkbox" name="puede_agregar_cobertura_libre" ${m.puede_agregar_cobertura_libre ? 'checked' : ''} />
+              Puede agregar coberturas libremente (sin esto, solo checkboxes fijos)
             </label>
           </div>
           <div class="admin-modal__actions">

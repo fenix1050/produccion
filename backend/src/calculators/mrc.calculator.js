@@ -9,6 +9,14 @@ import { calcularCostoEdificioYContenido } from './utils/edificio-contenido.js'
 const CODIGO_INCENDIO_EDIFICIO = 'incendio_edificio'
 const CODIGO_INCENDIO_CONTENIDO = 'incendio_contenido'
 
+// A pedido de Kevin (2026-08-06): "Robo valores ventanilla" es un sub-límite puramente
+// informativo de "Valores en caja fuerte" (tope 30% del capital de esa cobertura, ya
+// auto-calculado por el frontend) — su monto NO debe sumar costo a la prima, a diferencia
+// del resto de las coberturas adicionales. Revierte el comportamiento que tenía desde el
+// Ajuste MC Parte A (2026-08-05, ítem #5): ese ítem solo resolvió que la suma asegurada se
+// auto-calculara al 30% de Caja Fuerte, no que su costo se sumara — eso quedó mal.
+const CODIGO_ROBO_VALORES_VENTANILLA = 'robo_valores_ventanilla'
+
 // A pedido de Kevin (2026-07-15): la cotización de MRC necesita al menos 3 coberturas de tipo
 // "Cobertura" (Incendio Edificio/Contenido cuentan siempre, más lo que agregue el agente como
 // cobertura adicional) — los sub-límites fijos (agua/equipos electrónicos/granizo) NO cuentan
@@ -168,7 +176,12 @@ export async function calcularPrima({
       )
     }
 
-    const costoLinea = linea.suma_asegurada * (tasaInfo.tasa_valor / 1000)
+    // "Robo valores ventanilla" no aporta costo propio (ver CODIGO_ROBO_VALORES_VENTANILLA) —
+    // se sigue tarifando internamente para no perder el dato, pero no se suma a la prima.
+    const costoLinea =
+      linea.codigo === CODIGO_ROBO_VALORES_VENTANILLA
+        ? 0
+        : linea.suma_asegurada * (tasaInfo.tasa_valor / 1000)
     totalCoberturasAdicionales += costoLinea
 
     coberturasAdicionalesValidadas.push({

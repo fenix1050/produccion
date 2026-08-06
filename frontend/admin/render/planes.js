@@ -3,6 +3,7 @@ import { escapeHtml } from '../../shared/dom.js'
 import { fmtGsConPrefijo as fmtGs, fmtUsdConPrefijo as fmtUsd } from '../../shared/format.js'
 import { state } from '../state.js'
 import { renderCampoInline } from './campos-inline.js'
+import { renderRpfCuotas } from './rpf-cuotas.js'
 
 // Render de la sección Planes (tabla de planes + formas de pago expandibles) —
 // extraído de admin.js (WU admin-module-split, PR5).
@@ -17,6 +18,7 @@ export function renderPlanes() {
     .join('')
 
   return `
+    ${renderRpfCuotas()}
     <div class="panel card">
       <div class="card__title card__title--toolbar">
         <span>Planes</span>
@@ -97,6 +99,10 @@ function renderTablaPlanes() {
   `
 }
 
+// Cambio `rpf-variable-mrc`: el escalar viejo `tasa_rpf` deja de editarse desde acá para los
+// 3 ramos migrados (MRC/Incendio/Vida-AP, ver `ramos.usa_rpf_por_cuotas`) — ahora usan la
+// grilla global de `renderRpfCuotas()`. Auto/Auto-Flota (sin el flag) conservan la columna
+// intacta, sin fallback ni modo solo-lectura (design.md Decisión 10, Engram #391 decisión 5).
 function renderFormasPagoDelPlan(planId) {
   const entry = state.formasPagoPorPlan[planId]
   if (!entry || entry.loading) {
@@ -109,12 +115,16 @@ function renderFormasPagoDelPlan(planId) {
     return '<div class="empty-state__subtitle">Este plan no tiene formas de pago configuradas.</div>'
   }
 
+  const plan = state.planes.find((p) => p.id === planId)
+  const ramo = state.ramos.find((r) => r.id === plan?.ramo_id)
+  const usaCurva = Boolean(ramo?.usa_rpf_por_cuotas)
+
   const filas = entry.datos
     .map(
       (f) => `
     <tr>
       <td data-label="Forma de pago">${escapeHtml(f.formas_pago?.nombre_display ?? '')}</td>
-      <td data-label="Tasa RPF (%)">${renderCampoTasaRpf(f, planId)}</td>
+      ${usaCurva ? '' : `<td data-label="Tasa RPF (%)">${renderCampoTasaRpf(f, planId)}</td>`}
       <td data-label="Estado">
         <label class="admin-modal__checkbox">
           <input type="checkbox" data-action="toggle-forma-pago-habilitada" data-id="${f.id}" data-plan-id="${planId}" ${f.habilitada ? 'checked' : ''} />
@@ -132,7 +142,7 @@ function renderFormasPagoDelPlan(planId) {
         <thead>
           <tr>
             <th>Forma de pago</th>
-            <th>Tasa RPF (%)</th>
+            ${usaCurva ? '' : '<th>Tasa RPF (%)</th>'}
             <th>Estado</th>
           </tr>
         </thead>

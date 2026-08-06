@@ -107,13 +107,12 @@ Cláusula de cobranza (todas las formas de pago excepto Segucoop).`
 export function buildMrcOfertaPages({ cotizacion, plan, planCoberturas }) {
   const riesgo = cotizacion.riesgo_datos || {}
   const sublimitesFijos = sublimitesFijosMrc(planCoberturas)
-  const codigosSublimitesFijos = sublimitesFijos.map((s) => s.codigo)
 
   // Orden fijo (a pedido de Kevin, 2026-07-15): Incendio Edificio y Contenido siempre primero
   // (en ese orden), después el resto de coberturas, y por último los sub-límites. Dentro de los
   // sub-límites, los cargados manualmente por el agente (con franquicia elegida) van antes que
-  // los fijos por defecto (agua/equipos electrónicos/murallas/granizo, que no muestran
-  // franquicia — ver codigosSublimitesFijos y textoFranquicia).
+  // los fijos por defecto (agua/equipos electrónicos/granizo, que no muestran franquicia — ver
+  // textoFranquicia).
   const ordenPrioridad = (codigo) => {
     if (codigo === 'incendio_edificio') return 0
     if (codigo === 'incendio_contenido') return 1
@@ -162,13 +161,11 @@ export function buildMrcOfertaPages({ cotizacion, plan, planCoberturas }) {
         <th>Suma Asegurada</th>
         <th>Franquicia</th>
       </tr>
-      <!-- Los sub-límites fijos (agua/equipos electrónicos/murallas/granizo) no van en esta
-      tabla: ya figuran con su monto en "Distribución del capital asegurado" (a pedido de Kevin,
-      2026-07-15). -->
-      ${coberturasCotizadas
-        .filter((c) => !codigosSublimitesFijos.includes(codigoDe(c)))
-        .map(renderFilaSumaAsegurada)
-        .join('')}
+      <!-- Los sub-límites fijos (agua/equipos electrónicos/granizo) SÍ van en esta tabla (a
+      pedido de Kevin, 2026-08-06 — revierte la exclusión de 2026-07-15), igual que "Robo
+      valores ventanilla". Se muestran también, a propósito, en "Distribución del capital
+      asegurado" — es la misma información en dos formatos, no un error. -->
+      ${coberturasCotizadas.map(renderFilaSumaAsegurada).join('')}
       <tr class="sumas-table__total">
         <td>Suma Asegurada Total, Gs.</td>
         <td>${fmtGs(sumaAseguradaTotal)}</td>

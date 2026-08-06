@@ -458,6 +458,50 @@ describe('mrc.calculator — límite de repetición por cobertura adicional', ()
   })
 })
 
+// A pedido de Kevin (2026-08-06): "Robo valores ventanilla" es un sub-límite informativo de
+// "Valores en caja fuerte" — su suma asegurada no debe sumar costo a la prima, a diferencia
+// del resto de las coberturas adicionales (que sí tarifan por tasa × monto).
+describe('mrc.calculator — robo_valores_ventanilla no suma costo a la prima', () => {
+  test('la línea se acepta y se lista, pero su costo no entra en costo_coberturas_adicionales', async () => {
+    const catalogo = [
+      ...catalogoBase(),
+      {
+        codigo: 'robo_valores_ventanilla',
+        nombre: 'Robo valores ventanilla',
+        categoria: 'Sublímites',
+        franquicia_default: null,
+        incluye_en_suma_asegurada_total: false,
+      },
+    ]
+    const tasas = [
+      ...tasasBase(),
+      { coberturas_catalogo: { codigo: 'robo_valores_ventanilla' }, tasa_valor: 10, unidad: 'permil' },
+    ]
+
+    const resultado = await calcularPrima({
+      plan: planBase(),
+      riesgoDatos: {
+        rubro_actividad: 'Bazar',
+        capital_edificio: 1_000_000,
+        capital_contenido: 1_000_000,
+        coberturas_adicionales: [
+          { codigo: 'responsabilidad_civil', suma_asegurada: 500_000 },
+          { codigo: 'robo_valores_ventanilla', suma_asegurada: 3_000_000 },
+        ],
+      },
+      rubro: rubroBase(),
+      catalogoRamo: catalogo,
+      tasasRamo: tasas,
+    })
+
+    // costoRC = 500.000*2/1000 = 1000 — igual que si la línea de ventanilla no existiera.
+    assert.equal(resultado.detalle.costo_coberturas_adicionales, 1000)
+    const lineaVentanilla = resultado.coberturas.find((c) => c.codigo === 'robo_valores_ventanilla')
+    assert.ok(lineaVentanilla, 'la línea de ventanilla se sigue listando en coberturas')
+    assert.equal(lineaVentanilla.monto, 3_000_000)
+  })
+})
+
 describe('mrc.calculator — MRC-specific: dos líneas de cobertura + adicional, piso independiente por línea', () => {
   test('el total es la suma real de cada línea (Edificio + Contenido + adicional), no un piso combinado único', async () => {
     const resultado = await calcularPrima({

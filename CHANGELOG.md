@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.32](https://github.com/fenix1050/produccion/compare/v0.1.31...v0.1.32) (2026-08-07)
+
+
+### Bug Fixes
+
+* **admin:** permitir autoedición sin tocar el tope propio + firma real en Carta Oferta MRC ([#182](https://github.com/fenix1050/produccion/issues/182)) ([f6a3078](https://github.com/fenix1050/produccion/commit/f6a30789cd32f1245759c4736ba55a26bf5d0169))
+* **cotizar:** bloquear cambio de plan y agregar coberturas tras pasar a Detalle del plan ([#183](https://github.com/fenix1050/produccion/issues/183)) ([0ff0306](https://github.com/fenix1050/produccion/commit/0ff03065123c45965904131227488dbc06390893))
+* **mrc:** quitar franquicia de robo valores ventanilla y bloque agente duplicado ([#180](https://github.com/fenix1050/produccion/issues/180)) ([d3a68a6](https://github.com/fenix1050/produccion/commit/d3a68a673641dcd40b5c862ca69d953c1169bf54))
+
 ## [0.1.31](https://github.com/fenix1050/produccion/compare/v0.1.30...v0.1.31) (2026-08-07)
 
 

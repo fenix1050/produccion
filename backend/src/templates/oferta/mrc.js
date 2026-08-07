@@ -184,12 +184,6 @@ Asegurado. <br>
       La compañía se reserva el derecho de realizar la inspección para el seguro, y la exigencia de medidas
 de seguridad y adecuaciones que surjan de la misma.
     </div>
-    <div class="pie-agente">
-      <div class="agente-linea">
-        <span><strong>AGENTE:</strong> ${escapeHtml(cotizacion.usuarios?.nombre || 'Aseguradora Tajy')}</span>
-        ${cotizacion.usuarios?.email ? `<span><strong>EMAIL:</strong> ${escapeHtml(cotizacion.usuarios.email)}</span>` : ''}
-      </div>
-    </div>
     <div class="firma-block">
       <div class="firma-block__linea">Realizado por:</div>
       <div class="firma-block__linea">${escapeHtml(cotizacion.usuarios?.nombre || 'Aseguradora Tajy')} - Agente de Seguro</div>

@@ -1794,13 +1794,36 @@ button {
    tildado, su input de monto debajo. */
 .cobertura-adicional-checkbox-row {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 6px 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
 }
 
 .cobertura-adicional-checkbox-row + .cobertura-adicional-checkbox-row {
   border-top: 1px solid var(--tajy-border);
+}
+
+.cobertura-adicional-checkbox-row .field-checkbox-label {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.cobertura-adicional-checkbox-row__monto {
+  flex: 0 0 auto;
+  width: 180px;
+}
+
+/* Angosto: el monto ya no entra al lado del label sin apretar demasiado — pasa debajo,
+   mismo criterio que el resto de .field-row en breakpoints chicos. */
+@media (max-width: 480px) {
+  .cobertura-adicional-checkbox-row {
+    flex-wrap: wrap;
+  }
+
+  .cobertura-adicional-checkbox-row__monto {
+    width: 100%;
+  }
 }
 
 /* Intermedio 768px: solo densidad (padding/gaps/tipografía), sin tocar el grid-template —

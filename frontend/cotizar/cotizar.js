@@ -1150,8 +1150,16 @@ function aplicarAriaBloqueo(el, habilitado) {
 // adelante, en la Carta Oferta.
 // ---------------------------------------------------------------------------
 
+// Mismo orden que ORDEN_FORMAS_PAGO en backend/src/templates/oferta/{mrc,incendio}.js — el
+// backend no garantiza este orden en la respuesta de preview, así que se ordena acá para que
+// los pills de "Forma de pago" del panel en vivo salgan siempre igual (pedido de Kevin 2026-08-07).
+const ORDEN_FORMAS_PAGO = ['contado', 'cobrador', 'boca_cobranza', 'tarjeta_credito']
+
 function formasPagoDisponibles() {
-  return state.preview?.variantes?.[0]?.formasPago ?? []
+  const formas = state.preview?.variantes?.[0]?.formasPago ?? []
+  return [...formas].sort(
+    (a, b) => ORDEN_FORMAS_PAGO.indexOf(a.codigo) - ORDEN_FORMAS_PAGO.indexOf(b.codigo)
+  )
 }
 
 function formaPagoSeleccionada() {
@@ -1750,7 +1758,7 @@ function renderCoberturasAdicionalesCheckbox(catalogoDisponible) {
           ? `
         <label class="sr-only" for="cobertura-linea-${linea.id}-suma">Suma asegurada de ${escapeHtml(c.nombre)} (Gs.)</label>
         <input
-          class="field-input"
+          class="field-input cobertura-adicional-checkbox-row__monto"
           id="cobertura-linea-${linea.id}-suma"
           type="text"
           inputmode="numeric"
@@ -1824,8 +1832,8 @@ function renderLivePanelBody() {
   // Numerador y unidad confirmados contra docs/insumos/Version 01 - Calculo Varios.xlsx (hoja
   // MRC, fila "Tasa Global"): esa celda es `Costo total / Suma total × 1000` (‰, no %) — con
   // Costo total = 3.847.000 y Suma total = 970.000.000 da 3,97, en la misma escala que cada
-  // tasa individual de la planilla (1‰, 2‰, 8‰...). El "Costo" (`fp.cuota||fp.premio`) que se
-  // ve en el tile de arriba ya incluye RPF/IVA/cuotas — NO es este numerador: acá se usa la
+  // tasa individual de la planilla (1‰, 2‰, 8‰...). El "Costo" (`fp.cuota_sin_iva||fp.premio_sin_iva`,
+  // ver renderLivePanelBody) todavía incluye RPF/cuotas — NO es este numerador: acá se usa la
   // prima cruda del calculador (`state.preview.prima`), que es la misma que arma la planilla
   // (suma de capital×tasa por cobertura, sublímites fijos incluidos vía coberturas_adicionales).
   const capitalTotal =
@@ -1837,9 +1845,13 @@ function renderLivePanelBody() {
   return `
     ${renderLiveLabel()}
     ${renderFormaPagoPills()}
-    <div class="live-summary__price-label">Costo ${ICON_INFO}</div>
-    <div class="live-summary__price">${fmtMonto(fp.cuota || fp.premio, moneda)} <span class="live-summary__price-unit">${unidad}</span></div>
-    <div class="live-summary__sub">${unidad}${fp.codigo === 'contado' ? '' : ' / mes'} · ${fmtMonto(fp.premio, moneda)} ${unidad} premio total</div>
+    <div class="live-summary__price-label">Costo (sin IVA) ${ICON_INFO}</div>
+    <div class="live-summary__price">${fmtMonto(fp.premio_sin_iva, moneda)} <span class="live-summary__price-unit">${unidad}</span></div>
+    <div class="live-summary__sub">${
+      fp.cuota_sin_iva
+        ? `${unidad} / mes · ${fmtMonto(fp.cuota_sin_iva, moneda)} ${unidad} cuota sin IVA`
+        : `${unidad} · ${fmtMonto(fp.premio_sin_iva, moneda)} ${unidad} premio total sin IVA`
+    }</div>
     <div class="live-summary__divider"></div>
     ${renderCuotasSelect()}
     <div class="live-summary__rows">

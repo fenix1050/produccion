@@ -250,6 +250,32 @@ describe('mrc.calculator — invariante Inicial + N×Cuota === Premio', () => {
   })
 })
 
+describe('mrc.calculator — calcularPlanPago — premio_sin_iva (panel "Cotización en vivo")', () => {
+  test('Contado: premio_sin_iva === Prima (RPF=0, sin IVA)', () => {
+    const resultado = calcularPlanPago(1_452_000, { codigo: 'contado', tasa_rpf: 0 }, 0)
+    assert.equal(resultado.premio_sin_iva, 1_452_000)
+    assert.equal(resultado.inicial_sin_iva, 1_452_000)
+    assert.equal(resultado.cuota_sin_iva, 0)
+  })
+
+  test('Financiado sin cuotas (cuotas=0): premio_sin_iva === Prima+RPF, sin el IVA que sí lleva premio', () => {
+    const resultado = calcularPlanPago(1_452_000, { codigo: 'cobrador', tasa_rpf: 1.6 }, 0)
+    assert.equal(resultado.rpf, 24_000)
+    assert.equal(resultado.premio, 1_623_000) // con IVA
+    assert.equal(resultado.premio_sin_iva, 1_476_000) // 1.452.000 + 24.000, sin IVA
+    assert.equal(resultado.inicial_sin_iva, 1_476_000)
+    assert.equal(resultado.cuota_sin_iva, 0)
+  })
+
+  test('Cuota/Inicial sin IVA redondean igual que con IVA (millar hacia abajo) y suman exacto el premio_sin_iva', () => {
+    const resultado = calcularPlanPago(1_452_000, { codigo: 'boca_cobranza', tasa_rpf: 1.35 }, 5)
+    assert.equal(resultado.premio_sin_iva, 1_472_000) // 1.452.000 + 20.000 de RPF
+    assert.equal(resultado.cuota_sin_iva, 245_000) // floor(1.472.000 / 6)
+    assert.equal(resultado.inicial_sin_iva, 247_000) // absorbe el resto
+    assert.equal(resultado.inicial_sin_iva + 5 * resultado.cuota_sin_iva, resultado.premio_sin_iva)
+  })
+})
+
 describe('mrc.calculator — tope efectivo de descuento/recargo (MIN(plan, usuario))', () => {
   const primaBaseAlta = {
     riesgoDatos: {

@@ -4,7 +4,7 @@
  *
  * @typedef {Object} RamoCalculator
  * @property {(input: object) => Promise<{ prima: number, detalle: object }>} calcularPrima
- * @property {(prima: number, formaPago: object, cuotas: number) => { rpf: number, iva: number, premio: number, inicial: number, cuota: number }} calcularPlanPago
+ * @property {(prima: number, formaPago: object, cuotas: number) => { rpf: number, iva: number, premio: number, inicial: number, cuota: number, premio_sin_iva: number, inicial_sin_iva: number, cuota_sin_iva: number }} calcularPlanPago
  */
 
 // No hay código ejecutable acá — es documentación de contrato para los calculadores

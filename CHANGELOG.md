@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.29](https://github.com/fenix1050/produccion/compare/v0.1.28...v0.1.29) (2026-08-07)
+
+
+### Bug Fixes
+
+* **mrc:** quitar excepción de repetición x2 de robo_contenido ([#174](https://github.com/fenix1050/produccion/issues/174)) ([06c8a08](https://github.com/fenix1050/produccion/commit/06c8a08b3c8a4b85290b47101ff27f35e6b28c14))
+
 ## [0.1.28](https://github.com/fenix1050/produccion/compare/v0.1.27...v0.1.28) (2026-08-07)
 
 

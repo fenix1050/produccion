@@ -14,7 +14,7 @@ import {
   ICON_SUBLIMITE_GENERICO,
   ICON_ARROW_LEFT as ICON_ARROW_LEFT_ROUND,
 } from '../shared/nav-icons.js'
-import { escapeHtml, renderBanner } from '../shared/dom.js'
+import { atraparFoco, enfocarPrimerElemento, escapeHtml, renderBanner } from '../shared/dom.js'
 import { renderSidebarFooter, renderTopbar as renderTopbarShell } from '../shared/sidebar.js'
 import { fmtGs, fmtGsInput, fmtMonto, unidadMoneda } from '../shared/format.js'
 import { logger } from '../shared/logger.js'
@@ -301,6 +301,11 @@ const state = {
   // true mientras se guarda la cotización y se genera el PDF, para deshabilitar el botón y
   // evitar doble click (crearía 2 cotizaciones con números correlativos distintos).
   emitiendoCarta: false,
+  // Progreso del modal de emisión — null cuando el modal está cerrado.
+  // { paso: 0-3 (índice en PASOS_EMISION_CARTA), estado: 'activo'|'exito'|'error', error?: string }
+  // Los pasos 1 y 2 quedan atados a los 2 awaits reales de emitirCartaOferta() (crear/actualizar
+  // cotización, generar PDF) — no son una animación simulada.
+  progresoCarta: null,
   // Id de la cotización que se está editando (via ?editar=<id> — ver historial.js, botón
   // "Editar" dentro de la ventana de 30 días). null = flujo normal de alta. Si está seteado,
   // emitirCartaOferta() hace PUT /cotizaciones/:id en vez de POST /cotizaciones.
@@ -367,6 +372,16 @@ const SUBLIMITE_ICONOS = {
 // Ícono de precio para el footnote de "Detalle del plan" — no vive en nav-icons.js porque
 // es específico de esta franja de resumen, no de la navegación.
 const ICON_TAG = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M11.5 3.5H5a1.5 1.5 0 0 0-1.5 1.5v6.5a1.5 1.5 0 0 0 .44 1.06l8 8a1.5 1.5 0 0 0 2.12 0l6.5-6.5a1.5 1.5 0 0 0 0-2.12l-8-8A1.5 1.5 0 0 0 11.5 3.5z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"></path><circle cx="8.2" cy="8.2" r="1.4" fill="currentColor"></circle></svg>`
+
+// Pasos del modal de progreso de emitirCartaOferta() — 0 y 3 son instantáneos (validación
+// ya resuelta por el guard de entrada / blob ya resuelto), 1 y 2 quedan activos mientras
+// corren los 2 awaits reales (crear/actualizar cotización, generar PDF).
+const PASOS_EMISION_CARTA = [
+  'Validando datos',
+  'Generando Carta Oferta',
+  'Generando PDF',
+  'Cotización lista',
+]
 const ICON_PLUS = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path></svg>`
 
 // Sublímites de MRC fijos por defecto — leídos de `plan_coberturas.incluida_por_defecto` del
@@ -395,6 +410,9 @@ function sublimitesFijosMrc() {
 
 let debounceTimer = null
 const app = document.getElementById('app')
+// Elemento con foco al abrir el modal de progreso de emisión — se le devuelve el foco al cerrar
+// (mismo patrón que elementoDisparadorModal en historial.js).
+let elementoDisparadorModalCarta = null
 
 async function init() {
   // Cambio session-httponly-cookie: ya no hay token en localStorage para chequear de
@@ -1027,30 +1045,53 @@ async function emitirCartaOferta() {
   }
 
   state.emitiendoCarta = true
+  state.progresoCarta = { paso: 0, estado: 'activo' }
+  elementoDisparadorModalCarta = document.activeElement
   renderApp()
-
-  // Abrir la pestaña ya mismo, en el mismo tick del click: si se abre recién después
-  // de los await de abajo, el navegador ya no lo asocia al gesto del usuario y la
-  // bloquea como pop-up.
-  const pestañaPdf = window.open('', '_blank')
+  enfocarPrimerElemento(app.querySelector('.progreso-carta-modal'))
 
   try {
+    state.progresoCarta = { paso: 1, estado: 'activo' }
+    renderApp()
     const cotizacion = state.editandoId
       ? await api.put(`/cotizaciones/${state.editandoId}`, body)
       : await api.post('/cotizaciones', body)
+
+    state.progresoCarta = { paso: 2, estado: 'activo' }
+    renderApp()
     const blob = await api.getBlob(`/cotizaciones/${cotizacion.id}/pdf-oferta`)
-    const url = URL.createObjectURL(blob)
-    if (pestañaPdf) {
-      pestañaPdf.location.href = url
-    } else {
-      window.open(url, '_blank')
-    }
+
+    // No se abre la pestaña sola acá: el modal queda visible durante todo el proceso y el
+    // usuario la abre a mano con el botón "Ver PDF" del estado de éxito — un click real,
+    // así que el navegador nunca lo bloquea como pop-up (a diferencia de abrirla después de
+    // un await, sin gesto del usuario en el mismo tick).
+    state.progresoCarta = { paso: 3, estado: 'exito', pdfUrl: URL.createObjectURL(blob) }
   } catch (err) {
-    pestañaPdf?.close()
+    state.progresoCarta = {
+      ...state.progresoCarta,
+      estado: 'error',
+      error: err.message || 'No se pudo generar la Carta Oferta.',
+    }
     mostrarBanner('error', err.message || 'No se pudo generar la Carta Oferta.')
   } finally {
     state.emitiendoCarta = false
     renderApp()
+    // El bloque de resultado (éxito/error) recién aparece en este render — se enfoca su
+    // primer control (Ver PDF/Cerrar/Reintentar) para que el flujo por teclado no quede varado.
+    enfocarPrimerElemento(app.querySelector('.progreso-carta-modal'))
+  }
+}
+
+// Cierra el modal de progreso — solo llamable desde los estados terminales ('exito'/'error'),
+// nunca mientras está 'activo' (ver renderModalProgresoCarta/onKeydown).
+function cerrarModalProgresoCarta() {
+  if (state.progresoCarta?.estado === 'activo') return
+  if (state.progresoCarta?.pdfUrl) URL.revokeObjectURL(state.progresoCarta.pdfUrl)
+  state.progresoCarta = null
+  renderApp()
+  if (elementoDisparadorModalCarta) {
+    elementoDisparadorModalCarta.focus()
+    elementoDisparadorModalCarta = null
   }
 }
 
@@ -1140,6 +1181,7 @@ function renderApp() {
         ${contenido}
       </main>
     </div>
+    ${renderModalProgresoCarta()}
   `
 }
 
@@ -2206,14 +2248,107 @@ function renderAjustesDescuentoRecargo(plan) {
 }
 
 // ---------------------------------------------------------------------------
+// Modal de progreso de emisión — mismo patrón de modal que renderModalDetalle() de
+// historial.js (admin-modal-backdrop + admin-modal + focus trap), con marcado propio
+// (.progreso-carta-modal) porque cotizar/index.html no importa admin.css.
+// ---------------------------------------------------------------------------
+
+function renderModalProgresoCarta() {
+  const p = state.progresoCarta
+  if (!p) return ''
+
+  const stepsHtml = PASOS_EMISION_CARTA.map((nombre, index) => {
+    const estadoPaso =
+      p.estado === 'error' && index === p.paso
+        ? 'error'
+        : index < p.paso || (index === p.paso && p.estado === 'exito')
+          ? 'completado'
+          : index === p.paso
+            ? 'activo'
+            : 'pendiente'
+    const marcador =
+      estadoPaso === 'completado'
+        ? '<span class="progreso-step__check" aria-hidden="true">✓</span>'
+        : estadoPaso === 'activo'
+          ? '<span class="spinner" aria-hidden="true"></span>'
+          : estadoPaso === 'error'
+            ? '<span class="progreso-step__check" aria-hidden="true">!</span>'
+            : `<span>${index + 1}</span>`
+    return `
+      <li class="progreso-step progreso-step--${estadoPaso}">
+        <span class="progreso-step__marker">${marcador}</span>
+        <span class="progreso-step__label">${escapeHtml(nombre)}</span>
+      </li>
+    `
+  }).join('')
+
+  const porcentaje = Math.round(
+    ((p.estado === 'exito' ? PASOS_EMISION_CARTA.length : p.paso) /
+      PASOS_EMISION_CARTA.length) *
+      100
+  )
+
+  const permiteCerrar = p.estado === 'exito' || p.estado === 'error'
+
+  const resultadoHtml =
+    p.estado === 'exito'
+      ? `
+        <div class="progreso-resultado progreso-resultado--exito" role="status">
+          <div><strong>Cotización generada correctamente</strong><p>La Carta Oferta está lista para revisar y descargar.</p></div>
+        </div>
+        <div class="admin-modal__actions">
+          <button type="button" class="btn-outline" data-action="cerrar-modal-progreso-carta">Cerrar</button>
+          <button type="button" class="resumen-sistema__cta" data-action="ver-pdf-carta">Ver PDF</button>
+        </div>
+      `
+      : p.estado === 'error'
+        ? `
+        <div class="progreso-resultado progreso-resultado--error" role="alert">
+          <div><strong>No pudimos completar la Carta Oferta</strong><p>${escapeHtml(p.error || 'Ocurrió un error inesperado.')}</p></div>
+        </div>
+        <div class="admin-modal__actions">
+          <button type="button" class="btn-outline" data-action="cerrar-modal-progreso-carta">Cerrar</button>
+          <button type="button" class="resumen-sistema__cta" data-action="reintentar-carta">Reintentar</button>
+        </div>
+      `
+        : ''
+
+  return `
+    <div class="admin-modal-backdrop" ${permiteCerrar ? 'data-action="cerrar-modal-progreso-carta"' : ''}>
+      <div class="admin-modal progreso-carta-modal" data-stop-propagation="true" role="dialog" aria-modal="true" aria-labelledby="progreso-carta-title">
+        <div class="admin-modal__title" id="progreso-carta-title">Proceso de cotización</div>
+        <div class="progreso-track" role="progressbar" aria-label="Progreso de la emisión" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${porcentaje}">
+          <div class="progreso-fill" style="width: ${porcentaje}%"></div>
+        </div>
+        <ol class="progreso-steps" aria-live="polite">
+          ${stepsHtml}
+        </ol>
+        ${resultadoHtml}
+      </div>
+    </div>
+  `
+}
+
+// ---------------------------------------------------------------------------
 // Eventos (delegación sobre #app, registrada una única vez — renderApp() reemplaza el
 // innerHTML de #app pero no el nodo #app en sí, así que estos listeners sobreviven a
 // cada re-render sin necesidad de volver a engancharlos).
 // ---------------------------------------------------------------------------
 
-app.addEventListener('click', (e) => {
+// Respeta data-stop-propagation (el modal de progreso): un click dentro del modal que no
+// caiga sobre su propio data-action no debe "escapar" hacia el data-action del backdrop
+// que lo contiene — mismo patrón que resolveActionTarget() de historial.js.
+function resolveActionTarget(e) {
   const target = e.target.closest('[data-action]')
-  if (!target || target.disabled) return
+  if (!target || target.disabled) return null
+  const stopEl = e.target.closest('[data-stop-propagation]')
+  if (stopEl && !stopEl.contains(target)) return null
+  return target
+}
+
+app.addEventListener('click', (e) => {
+  const target = resolveActionTarget(e)
+  if (!target) return
 
   const action = target.dataset.action
   if (action === 'logout') cerrarSesion()
@@ -2232,6 +2367,25 @@ app.addEventListener('click', (e) => {
   else if (action === 'toggle-cobertura-checkbox')
     toggleCoberturaAdicionalPorCodigo(target.dataset.codigo, target.checked)
   else if (action === 'emitir-carta') emitirCartaOferta()
+  else if (action === 'cerrar-modal-progreso-carta') cerrarModalProgresoCarta()
+  else if (action === 'reintentar-carta') emitirCartaOferta()
+  else if (action === 'ver-pdf-carta' && state.progresoCarta?.pdfUrl)
+    window.open(state.progresoCarta.pdfUrl, '_blank')
+})
+
+// Escape cierra el modal de progreso solo si ya llegó a un estado terminal (éxito/error) —
+// mientras está 'activo' no se puede cortar la ilusión de progreso (la petición real sigue
+// en curso). Tab/Shift+Tab quedan atrapados dentro del modal mientras esté abierto.
+document.addEventListener('keydown', (e) => {
+  if (!state.progresoCarta) return
+  if (e.key === 'Escape') {
+    cerrarModalProgresoCarta()
+    return
+  }
+  if (e.key === 'Tab') {
+    const modalAbierto = app.querySelector('.progreso-carta-modal')
+    if (modalAbierto) atraparFoco(e, modalAbierto)
+  }
 })
 
 // Formatea un input de dinero in-place (misma lógica para el campo money de una línea de

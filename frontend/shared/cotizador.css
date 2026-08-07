@@ -2085,3 +2085,178 @@ button {
     overflow: visible;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Modal de progreso de emisión (emitirCartaOferta, ver cotizar.js) — cotizar/index.html
+   no importa admin.css, así que .admin-modal-backdrop/.admin-modal se definen acá con el
+   mismo contrato visual que la versión de admin.css/historial.js (mismos nombres de clase,
+   reusables si algún día se comparte un archivo de modales común).
+   --------------------------------------------------------------------------- */
+.admin-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(26, 26, 26, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+.admin-modal {
+  background: #fff;
+  border-radius: var(--tajy-radius-xl);
+  padding: 24px;
+  width: 380px;
+  max-width: calc(100vw - 32px);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.25);
+}
+
+.admin-modal__title {
+  font-family: 'Sora', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+.admin-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.progreso-carta-modal {
+  width: 420px;
+}
+
+.progreso-track {
+  height: 5px;
+  overflow: hidden;
+  margin-bottom: 20px;
+  background: var(--tajy-border-light);
+  border-radius: 999px;
+}
+
+.progreso-fill {
+  height: 100%;
+  background: var(--tajy-red);
+  border-radius: inherit;
+  transition: width 280ms ease;
+}
+
+.progreso-steps {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.progreso-step {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 42px;
+  color: var(--tajy-text-secondary);
+}
+
+.progreso-step:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 30px;
+  left: 13px;
+  bottom: -6px;
+  width: 1px;
+  background: var(--tajy-border);
+}
+
+.progreso-step--completado:not(:last-child)::after {
+  background: var(--tajy-green-fg);
+}
+
+.progreso-step__marker {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  color: var(--tajy-text-secondary);
+  background: var(--tajy-border-light);
+  border: 1px solid var(--tajy-border);
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.progreso-step__label {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.progreso-step--activo {
+  color: var(--tajy-ink);
+}
+
+.progreso-step--activo .progreso-step__marker {
+  background: var(--tajy-pink);
+  border-color: var(--tajy-red-soft);
+}
+
+.progreso-step--completado {
+  color: var(--tajy-ink);
+}
+
+.progreso-step--completado .progreso-step__marker {
+  color: #fff;
+  background: var(--tajy-green-fg);
+  border-color: var(--tajy-green-fg);
+}
+
+.progreso-step__check {
+  font-size: 13px;
+  line-height: 1;
+}
+
+.progreso-step--error .progreso-step__marker {
+  color: #fff;
+  background: var(--tajy-red);
+  border-color: var(--tajy-red);
+}
+
+.progreso-resultado {
+  margin-top: 18px;
+  padding: 14px;
+  border-radius: var(--tajy-radius-lg);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.progreso-resultado strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 13px;
+}
+
+.progreso-resultado p {
+  margin: 0;
+}
+
+.progreso-resultado--exito {
+  color: var(--tajy-green-fg);
+  background: var(--tajy-green-bg);
+  border: 1px solid var(--tajy-green-fg);
+}
+
+.progreso-resultado--error {
+  color: var(--tajy-red-a11y);
+  background: var(--tajy-pink);
+  border: 1px solid var(--tajy-red-soft);
+}
+
+@media (max-width: 480px) {
+  .admin-modal,
+  .progreso-carta-modal {
+    width: 100%;
+  }
+}

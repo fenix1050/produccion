@@ -7,7 +7,16 @@ import { REGISTRO } from './index.js'
 // registrado (implementado o stub) — no valida lógica de negocio, solo la forma del contrato.
 
 const FORMA_PAGO_DUMMY = { codigo: 'contado', tasa_rpf: 0 }
-const CAMPOS_PLAN_PAGO = ['rpf', 'iva', 'premio', 'inicial', 'cuota']
+const CAMPOS_PLAN_PAGO = [
+  'rpf',
+  'iva',
+  'premio',
+  'inicial',
+  'cuota',
+  'premio_sin_iva',
+  'inicial_sin_iva',
+  'cuota_sin_iva',
+]
 
 for (const [codigoRamo, calculador] of Object.entries(REGISTRO)) {
   test(`calculador "${codigoRamo}" expone calcularPrima/calcularPlanPago`, () => {

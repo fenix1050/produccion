@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.28](https://github.com/fenix1050/produccion/compare/v0.1.27...v0.1.28) (2026-08-07)
+
+
+### Bug Fixes
+
+* **cotizar:** quitar 'para el cliente' del subtitulo del ramo ([#171](https://github.com/fenix1050/produccion/issues/171)) ([1151c93](https://github.com/fenix1050/produccion/commit/1151c93d433653e0c6cd7dd460036944df851f57))
+* **mrc:** mostrar sublimites fijos tambien en la tabla de Sumas Aseguradas ([#170](https://github.com/fenix1050/produccion/issues/170)) ([97a24d0](https://github.com/fenix1050/produccion/commit/97a24d0f82dc6744db3261d6ecfa25fda0b818ff))
+* **mrc:** quitar murallas y cercos, ventanilla sin costo propio ([#168](https://github.com/fenix1050/produccion/issues/168)) ([f7dac0f](https://github.com/fenix1050/produccion/commit/f7dac0fd37141e70df95751dfe09a4b54781fb89))
+
 ## [0.1.27](https://github.com/fenix1050/produccion/compare/v0.1.26...v0.1.27) (2026-08-06)
 
 

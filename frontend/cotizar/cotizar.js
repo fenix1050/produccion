@@ -1192,9 +1192,7 @@ function renderSidebar() {
 }
 
 function renderHeader(ramo) {
-  const subtitle = ramo
-    ? `Cotizando ${ramo.label} para el cliente`
-    : 'Elegí una sección para comenzar'
+  const subtitle = ramo ? `Cotizando ${ramo.label}` : 'Elegí una sección para comenzar'
   const showTabs = Boolean(ramo) && ramo.estado !== 'pausa' && ramo.estado !== 'proximamente'
   const bloqueado = !puedeAvanzarADetalle()
 

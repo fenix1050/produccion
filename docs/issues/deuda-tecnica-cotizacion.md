@@ -11,6 +11,7 @@ El sistema funciona y el backend tiene buena cobertura de tests, pero hay deuda 
 ## Hallazgos principales
 
 ### 1) `frontend/cotizar/cotizar.js` es un punto crítico de fragilidad
+
 - Archivo muy grande (~2300 líneas)
 - Mezcla:
   - estado
@@ -22,6 +23,7 @@ El sistema funciona y el backend tiene buena cobertura de tests, pero hay deuda 
 - Alto riesgo de regresiones al tocar cualquier flujo del cotizador
 
 ### 2) Hay reglas de negocio duplicadas entre frontend y backend
+
 - El frontend contiene lógica derivada del dominio:
   - planes calculables
   - moneda efectiva
@@ -30,6 +32,7 @@ El sistema funciona y el backend tiene buena cobertura de tests, pero hay deuda 
 - Riesgo de desalineación entre UI y cálculo real
 
 ### 3) `backend/src/services/cotizacion.service.js` está demasiado cargado
+
 - Mezcla:
   - validación
   - resolución de contexto
@@ -43,14 +46,17 @@ El sistema funciona y el backend tiene buena cobertura de tests, pero hay deuda 
 - Alto costo de mantenimiento al agregar/modificar ramos
 
 ### 4) Falta cobertura de tests en frontend
+
 - No se detectaron tests equivalentes en `frontend/`
 - El área más volátil del sistema depende hoy de testing manual
 
 ### 5) Acoplamiento fuerte a RPC/shape de persistencia
+
 - Persistencia depende de payloads JSONB específicos hacia RPCs atómicos
 - El dominio queda repartido entre JS y SQL/Postgres
 
 ### 6) Hay ramos registrados pero no implementados
+
 - Existen calculadores stub para:
   - auto-flota
   - hogar
@@ -59,6 +65,7 @@ El sistema funciona y el backend tiene buena cobertura de tests, pero hay deuda 
 - Riesgo de confusión, habilitación accidental o surface area innecesaria
 
 ### 7) Parte de la lógica depende de nombres/flags/configuración implícita
+
 - `ramo.calculador`
 - `plan.tipo_mecanica`
 - `plan.nombre`
@@ -67,6 +74,7 @@ El sistema funciona y el backend tiene buena cobertura de tests, pero hay deuda 
 - Esto vuelve más frágil el sistema ante cambios de catálogo/datos
 
 ### 8) La documentación compensa complejidad estructural
+
 - Hay varias fuentes relevantes:
   - `README.md`
   - `CLAUDE.md`
@@ -79,10 +87,12 @@ El sistema funciona y el backend tiene buena cobertura de tests, pero hay deuda 
 ## Evidencia rápida
 
 ### Estado de calidad ejecutado
+
 - `npm test --workspace=backend` ✅
 - `npm run lint` ✅ (sin errores, con warnings menores)
 
 ### Warnings de lint detectados
+
 - `backend/src/utils/cookies.js`
 - `backend/src/utils/cookies.test.js`
 - `frontend/cotizar/cotizar.js`
@@ -92,17 +102,20 @@ El sistema funciona y el backend tiene buena cobertura de tests, pero hay deuda 
 ## Prioridad propuesta
 
 ### Alta prioridad
+
 - [ ] Partir `frontend/cotizar/cotizar.js` por responsabilidades
 - [ ] Reducir duplicación de reglas entre frontend y backend
 - [ ] Dividir `backend/src/services/cotizacion.service.js`
 - [ ] Empezar a agregar tests sobre helpers puros del frontend
 
 ### Prioridad media
+
 - [ ] Endurecer feature flags / exposición de ramos no implementados
 - [ ] Formalizar DTOs/contratos hacia RPCs
 - [ ] Reducir lógica dependiente de nombres mágicos o seeds
 
 ### Prioridad baja
+
 - [ ] Limpiar warnings de lint
 - [ ] Modularizar CSS grande
 - [ ] Consolidar documentación operativa
@@ -112,6 +125,7 @@ El sistema funciona y el backend tiene buena cobertura de tests, pero hay deuda 
 ## Propuesta de modularización
 
 ### Frontend: `frontend/cotizar/cotizar.js`
+
 Extraer en módulos como:
 
 - [ ] `frontend/cotizar/state.js`
@@ -128,6 +142,7 @@ Extraer en módulos como:
 - [ ] `frontend/cotizar/render/render-resultado.js`
 
 ### Backend: `backend/src/services/cotizacion.service.js`
+
 Separar por responsabilidad:
 
 - [ ] `backend/src/services/cotizacion/cotizacion-context.service.js`
@@ -140,6 +155,7 @@ Separar por responsabilidad:
 - [ ] `backend/src/services/cotizacion/umbral-inspeccion.service.js`
 
 ### Por ramo
+
 - [ ] Evaluar resolver contexto por ramo en archivos separados:
   - `resolver-contexto-auto.js`
   - `resolver-contexto-mrc.js`
@@ -151,22 +167,26 @@ Separar por responsabilidad:
 ## Roadmap sugerido
 
 ### Fase 1 — quick wins
+
 - [ ] limpiar warnings de lint
 - [ ] revisar exposición de ramos no implementados
 - [ ] documentar contrato de payload a RPC
 - [ ] extraer helpers puros de `cotizar.js`
 
 ### Fase 2 — refactor seguro frontend
+
 - [ ] extraer `constants.js`
 - [ ] extraer `domain-rules.js`
 - [ ] extraer `body-builder.js`
 - [ ] agregar tests sobre esas piezas
 
 ### Fase 3 — refactor backend cotización
+
 - [ ] dividir `cotizacion.service.js`
 - [ ] mover resolución de contexto a resolvers por ramo
 
 ### Fase 4 — alineación de arquitectura
+
 - [ ] hacer que el backend exponga más metadata de ramo/plan
 - [ ] reducir la necesidad de lógica duplicada en frontend
 

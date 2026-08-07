@@ -2283,8 +2283,7 @@ function renderModalProgresoCarta() {
   }).join('')
 
   const porcentaje = Math.round(
-    ((p.estado === 'exito' ? PASOS_EMISION_CARTA.length : p.paso) /
-      PASOS_EMISION_CARTA.length) *
+    ((p.estado === 'exito' ? PASOS_EMISION_CARTA.length : p.paso) / PASOS_EMISION_CARTA.length) *
       100
   )
 

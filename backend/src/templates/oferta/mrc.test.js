@@ -127,7 +127,50 @@ test('buildMrcOfertaPages incluye la línea de vigencia y el bloque de firma con
   assert.match(paginaUno, /Vigencia del seguro: 1 año, desde/)
   assert.match(paginaUno, /Realizado por:/)
   assert.match(paginaUno, /Agente Prueba - Agente de Seguro/)
-  assert.match(paginaUno, /0981 123 456/)
+  assert.match(paginaUno, /Telef\. 0981 123 456/)
+})
+
+test('buildMrcOfertaPages muestra el rol real del usuario en el bloque de firma, no "Agente de Seguro" fijo', () => {
+  const cotizacionConRol = {
+    ...COTIZACION_BASE,
+    usuarios: { nombre: 'Nestor Zorrilla', roles: { nombre: 'Jefe de Análisis de Riesgo' } },
+  }
+
+  const { paginaUno } = buildMrcOfertaPages({
+    cotizacion: cotizacionConRol,
+    plan: PLAN_BASE,
+    ramo: RAMO_BASE,
+    planCoberturas: [],
+  })
+
+  assert.match(paginaUno, /Nestor Zorrilla - Jefe de Análisis de Riesgo/)
+})
+
+test('buildMrcOfertaPages capitaliza roles de sistema en minúscula (ej. "agente" -> "Agente")', () => {
+  const cotizacionRolSistema = {
+    ...COTIZACION_BASE,
+    usuarios: { nombre: 'Agente Prueba', roles: { nombre: 'agente' } },
+  }
+
+  const { paginaUno } = buildMrcOfertaPages({
+    cotizacion: cotizacionRolSistema,
+    plan: PLAN_BASE,
+    ramo: RAMO_BASE,
+    planCoberturas: [],
+  })
+
+  assert.match(paginaUno, /Agente Prueba - Agente</)
+})
+
+test('buildMrcOfertaPages usa "Agente de Seguro" si el usuario no trae rol embebido', () => {
+  const { paginaUno } = buildMrcOfertaPages({
+    cotizacion: COTIZACION_BASE,
+    plan: PLAN_BASE,
+    ramo: RAMO_BASE,
+    planCoberturas: [],
+  })
+
+  assert.match(paginaUno, /Agente Prueba - Agente de Seguro/)
 })
 
 test('buildMrcOfertaPages omite la línea de teléfono en el bloque de firma si el agente no lo cargó', () => {

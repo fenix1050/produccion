@@ -1647,7 +1647,8 @@ function quedanCoberturasAdicionalesPorAgregar(catalogoDisponible) {
     conteo.set(l.codigo, (conteo.get(l.codigo) || 0) + 1)
   }
   return catalogoDisponible.some((c) => {
-    const limite = LIMITE_REPETICION_COBERTURA_MRC[c.codigo] ?? LIMITE_REPETICION_COBERTURA_MRC_DEFAULT
+    const limite =
+      LIMITE_REPETICION_COBERTURA_MRC[c.codigo] ?? LIMITE_REPETICION_COBERTURA_MRC_DEFAULT
     return (conteo.get(c.codigo) || 0) < limite
   })
 }

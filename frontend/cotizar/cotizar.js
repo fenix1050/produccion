@@ -273,6 +273,10 @@ const state = {
   sidebarAbierta: false,
   planes: [],
   planId: null,
+  // true una vez que el agente llegó a "Detalle del plan" al menos una vez — a partir de ahí
+  // el selector de plan en "Datos" queda de solo lectura (ver renderPlanRow()), aunque vuelva
+  // a la pestaña "Datos". Se resetea al elegir ramo o al cargar una cotización para editar.
+  planBloqueado: false,
   rubros: [],
   view: 'form', // 'form' | 'result'
   data: {},
@@ -471,6 +475,7 @@ async function cargarParaEditar(id) {
   state.editandoId = id
   state.ramoId = ramo.nombre
   state.view = 'form'
+  state.planBloqueado = false
 
   try {
     state.planes = await api.get(`/ramos/${ramo.id}/planes`)
@@ -625,6 +630,7 @@ async function selectRamo(nombre) {
   state.editandoId = null
   state.ramoId = nombre
   state.view = 'form'
+  state.planBloqueado = false
   state.sidebarAbierta = false
   state.data = {}
   state.planId = null
@@ -683,6 +689,7 @@ async function selectRamo(nombre) {
 }
 
 function selectPlan(planId) {
+  if (state.planBloqueado) return // ya se pasó a "Detalle del plan": el plan queda fijo
   const plan = state.planes.find((p) => p.id === planId)
   if (!plan || !planEsCalculable(state.ramoId, plan)) return // plan sin RPF/tasas confirmadas: bloqueado
   state.planId = planId
@@ -746,6 +753,7 @@ function selectFranquicia(codigoCobertura, valor) {
 
 function setView(view) {
   state.view = view
+  if (view === 'result') state.planBloqueado = true
   renderApp()
 }
 
@@ -1289,7 +1297,12 @@ function renderPlanRow() {
     <div class="plan-row">
       <div class="plan-row__box">
         <div class="plan-row__label">Plan a presentar</div>
-        <select class="field-input plan-row__select" data-action-select="select-plan" aria-label="Plan a presentar">${options}</select>
+        <select
+          class="field-input plan-row__select"
+          data-action-select="select-plan"
+          aria-label="Plan a presentar"
+          ${state.planBloqueado ? 'disabled title="El plan ya no se puede cambiar: se pasó a \'Detalle del plan\'. Empezá una cotización nueva para elegir otro plan."' : ''}
+        >${options}</select>
       </div>
     </div>
   `
@@ -1623,6 +1636,22 @@ function renderDatosView(ramo) {
   `
 }
 
+// true si todavía queda al menos un código de `catalogoDisponible` que no llegó a su límite de
+// repetición (ver LIMITE_REPETICION_COBERTURA_MRC) — usado para deshabilitar tanto el "+ Agregar
+// cobertura" del selector libre (Datos) como el "Agregar cobertura adicional" de "Detalle del
+// plan" una vez que ya se cargó el máximo de coberturas disponibles para el plan.
+function quedanCoberturasAdicionalesPorAgregar(catalogoDisponible) {
+  const conteo = new Map()
+  for (const l of state.coberturasAdicionales) {
+    if (!l.codigo) continue
+    conteo.set(l.codigo, (conteo.get(l.codigo) || 0) + 1)
+  }
+  return catalogoDisponible.some((c) => {
+    const limite = LIMITE_REPETICION_COBERTURA_MRC[c.codigo] ?? LIMITE_REPETICION_COBERTURA_MRC_DEFAULT
+    return (conteo.get(c.codigo) || 0) < limite
+  })
+}
+
 // Sección "Coberturas adicionales": líneas cobertura/sublímite más allá de Incendio Edificio/
 // Contenido. `catalogoDisponible` ya viene sin las 2 fijas y sin sublimite_cctv (ver
 // coberturasDisponibles()).
@@ -1688,12 +1717,7 @@ function renderCoberturasAdicionales(catalogoDisponible) {
     )
     .join('')
 
-  const conteoTotal = conteoPorCodigo(null)
-  const quedanCoberturasPorAgregar = catalogoDisponible.some((c) => {
-    const limite =
-      LIMITE_REPETICION_COBERTURA_MRC[c.codigo] ?? LIMITE_REPETICION_COBERTURA_MRC_DEFAULT
-    return (conteoTotal.get(c.codigo) || 0) < limite
-  })
+  const quedanCoberturasPorAgregar = quedanCoberturasAdicionalesPorAgregar(catalogoDisponible)
 
   return `
     <div class="coberturas-adicionales" role="group" aria-labelledby="coberturas-adicionales-label">
@@ -1965,6 +1989,10 @@ function renderResultadoVacio(ramo, plan, planLabel, esCalculable) {
 function renderResultadoCompleto(ramo, plan, planLabel) {
   const fp = formaPagoSeleccionada()
   const coberturas = state.preview.coberturas || []
+  // "Coberturas adicionales" solo existe en el formulario de MRC (ver camposEspecificosMrc) —
+  // en otros ramos no hay límite que evaluar, así que el botón queda siempre habilitado.
+  const puedeAgregarMasCoberturas =
+    ramo.nombre !== 'mrc' || quedanCoberturasAdicionalesPorAgregar(coberturasDisponibles())
 
   return `
     <div class="resultado-view panel">
@@ -2013,7 +2041,12 @@ function renderResultadoCompleto(ramo, plan, planLabel) {
                   })
                   .join('')}
               </div>
-              <button class="cobertura-card__agregar" data-action="show-tab" data-view="form">${ICON_PLUS} Agregar cobertura adicional</button>
+              <button
+                class="cobertura-card__agregar"
+                data-action="show-tab"
+                data-view="form"
+                ${puedeAgregarMasCoberturas ? '' : 'disabled title="Ya agregaste todas las coberturas adicionales disponibles para este plan"'}
+              >${ICON_PLUS} Agregar cobertura adicional</button>
             </div>
           </div>
           <div class="resultado-layout__aside">

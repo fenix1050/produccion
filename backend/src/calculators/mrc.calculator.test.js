@@ -379,9 +379,9 @@ describe('mrc.calculator — casos de error explícitos', () => {
   })
 })
 
-// A pedido de Kevin (2026-07-30): ninguna cobertura adicional debe poder cargarse más de una
-// vez, salvo 'robo_contenido' que puede repetirse hasta 2 veces (regla original confirmada
-// 2026-07-13 contra "Version 01 - Calculo Varios.xlsx", ver LIMITE_REPETICION_COBERTURA_MRC).
+// A pedido de Kevin (2026-08-07): ninguna cobertura adicional puede cargarse más de una vez,
+// incluido 'robo_contenido' — revierte la excepción a 2 confirmada el 2026-07-13 y ajustada
+// el 2026-07-30 (ver LIMITE_REPETICION_COBERTURA_MRC).
 describe('mrc.calculator — límite de repetición por cobertura adicional', () => {
   test('rechaza una cobertura sin excepción (ej. responsabilidad_civil) cargada 2 veces', async () => {
     await assert.rejects(
@@ -409,28 +409,7 @@ describe('mrc.calculator — límite de repetición por cobertura adicional', ()
     )
   })
 
-  test('acepta robo_contenido cargado 2 veces con sumas distintas (excepción confirmada)', async () => {
-    const resultado = await calcularPrima({
-      plan: planBase(),
-      riesgoDatos: {
-        rubro_actividad: 'Bazar',
-        capital_edificio: 1_000_000,
-        capital_contenido: 1_000_000,
-        coberturas_adicionales: [
-          { codigo: 'robo_contenido', suma_asegurada: 50_000_000 },
-          { codigo: 'robo_contenido', suma_asegurada: 10_000_000 },
-        ],
-      },
-      rubro: rubroBase(),
-      catalogoRamo: catalogoBase(),
-      tasasRamo: tasasBase(),
-    })
-
-    const lineasRoboContenido = resultado.coberturas.filter((c) => c.codigo === 'robo_contenido')
-    assert.equal(lineasRoboContenido.length, 2)
-  })
-
-  test('rechaza robo_contenido cargado una 3ra vez (supera la excepción de 2)', async () => {
+  test('rechaza robo_contenido cargado 2 veces (ya no tiene excepción)', async () => {
     await assert.rejects(
       () =>
         calcularPrima({
@@ -442,7 +421,6 @@ describe('mrc.calculator — límite de repetición por cobertura adicional', ()
             coberturas_adicionales: [
               { codigo: 'robo_contenido', suma_asegurada: 50_000_000 },
               { codigo: 'robo_contenido', suma_asegurada: 10_000_000 },
-              { codigo: 'robo_contenido', suma_asegurada: 5_000_000 },
             ],
           },
           rubro: rubroBase(),
@@ -451,7 +429,7 @@ describe('mrc.calculator — límite de repetición por cobertura adicional', ()
         }),
       (err) => {
         assert.equal(err.status, 422)
-        assert.match(err.message, /solo puede cargarse 2 vez\/veces como cobertura adicional/)
+        assert.match(err.message, /solo puede cargarse 1 vez\/veces como cobertura adicional/)
         return true
       }
     )

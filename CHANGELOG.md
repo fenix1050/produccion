@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.30](https://github.com/fenix1050/produccion/compare/v0.1.29...v0.1.30) (2026-08-07)
+
+
+### Features
+
+* **cotizar:** agregar tasa efectiva (costo/capital) al panel en vivo ([#176](https://github.com/fenix1050/produccion/issues/176)) ([390eb77](https://github.com/fenix1050/produccion/commit/390eb7753e670f7813eb8b4dd2fe7d7ae946fced))
+
 ## [0.1.29](https://github.com/fenix1050/produccion/compare/v0.1.28...v0.1.29) (2026-08-07)
 
 

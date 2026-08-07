@@ -10,21 +10,21 @@
 
 ## 1. Resumen ejecutivo
 
-| Categoría                                      | Resultado                                                                              |
-| ----------------------------------------------- | --------------------------------------------------------------------------------------- |
-| Secretos expuestos (repo + historial git)       | 1 hallazgo bajo nuevo (hash bcrypt de contraseña real en una migración versionada).     |
-| Dependencias (`npm audit`)                      | 0 vulnerabilidades en 481 paquetes. Sin cambios respecto al 30/07 (483→481 es drift trivial de lockfile). |
-| OWASP — Broken Access Control (A01)              | Sin hallazgos. Nuevos endpoints de admin (topes de plan, Ramos) correctamente gateados con `requireRole('admin')` literal, no permiso delegable — verificado en código, previene auto-escalada de privilegios. |
-| OWASP — Cryptographic Failures (A02)             | Sin cambios. Sigue el hallazgo medio ya trackeado (JWT en `localStorage`).              |
-| OWASP — Injection (A03)                          | Sin hallazgos explotables. 1 nota informacional (interpolación de filtro PostgREST con dato server-side, no de usuario). |
-| OWASP — Insecure Design (A04)                    | Sin hallazgos. Validación Zod aplicada a los endpoints nuevos, incluyendo whitelist de campos que evita mass-assignment entre el endpoint de topes y el de edición general de plan. |
-| OWASP — Security Misconfiguration (A05)          | 1 hallazgo bajo nuevo (contenedor backend sin `USER` no-root en Dockerfile).            |
-| OWASP — Software/Data Integrity Failures (A08)   | Sin hallazgos. Pipeline nuevo de deploy a VPS revisado — sin inyección de comandos, sin trigger desde forks. |
-| OWASP — Authentication Failures (A07)            | Sin hallazgos. Mecánica core (bcrypt-12, JWT 45min + revocación, rate limit, anti-enumeración) confirmada sin cambios. |
-| OWASP — Logging & Monitoring (A09)                | Sin cambios respecto al 30/07.                                                          |
-| Permiso nuevo `puede_ver_descuento_plan`         | Confirmado cosmético (solo frontend) — no se usa para gatear ninguna escritura server-side. |
-| CSRF                                             | No aplica (Bearer JWT, sin cookies de sesión) — sin cambios.                            |
-| Release pública con backup de Supabase (2026-07-31) | Ya remediada antes de esta auditoría (issue #66) — confirmado sin rastro residual: no hay releases con archivos de datos, solo tags de versión (`v0.1.7`–`v0.1.12`). |
+| Categoría                                           | Resultado                                                                                                                                                                                                      |
+| --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Secretos expuestos (repo + historial git)           | 1 hallazgo bajo nuevo (hash bcrypt de contraseña real en una migración versionada).                                                                                                                            |
+| Dependencias (`npm audit`)                          | 0 vulnerabilidades en 481 paquetes. Sin cambios respecto al 30/07 (483→481 es drift trivial de lockfile).                                                                                                      |
+| OWASP — Broken Access Control (A01)                 | Sin hallazgos. Nuevos endpoints de admin (topes de plan, Ramos) correctamente gateados con `requireRole('admin')` literal, no permiso delegable — verificado en código, previene auto-escalada de privilegios. |
+| OWASP — Cryptographic Failures (A02)                | Sin cambios. Sigue el hallazgo medio ya trackeado (JWT en `localStorage`).                                                                                                                                     |
+| OWASP — Injection (A03)                             | Sin hallazgos explotables. 1 nota informacional (interpolación de filtro PostgREST con dato server-side, no de usuario).                                                                                       |
+| OWASP — Insecure Design (A04)                       | Sin hallazgos. Validación Zod aplicada a los endpoints nuevos, incluyendo whitelist de campos que evita mass-assignment entre el endpoint de topes y el de edición general de plan.                            |
+| OWASP — Security Misconfiguration (A05)             | 1 hallazgo bajo nuevo (contenedor backend sin `USER` no-root en Dockerfile).                                                                                                                                   |
+| OWASP — Software/Data Integrity Failures (A08)      | Sin hallazgos. Pipeline nuevo de deploy a VPS revisado — sin inyección de comandos, sin trigger desde forks.                                                                                                   |
+| OWASP — Authentication Failures (A07)               | Sin hallazgos. Mecánica core (bcrypt-12, JWT 45min + revocación, rate limit, anti-enumeración) confirmada sin cambios.                                                                                         |
+| OWASP — Logging & Monitoring (A09)                  | Sin cambios respecto al 30/07.                                                                                                                                                                                 |
+| Permiso nuevo `puede_ver_descuento_plan`            | Confirmado cosmético (solo frontend) — no se usa para gatear ninguna escritura server-side.                                                                                                                    |
+| CSRF                                                | No aplica (Bearer JWT, sin cookies de sesión) — sin cambios.                                                                                                                                                   |
+| Release pública con backup de Supabase (2026-07-31) | Ya remediada antes de esta auditoría (issue #66) — confirmado sin rastro residual: no hay releases con archivos de datos, solo tags de versión (`v0.1.7`–`v0.1.12`).                                           |
 
 ---
 
@@ -53,20 +53,20 @@ Revisión en frío: todo el árbol de trabajo actual, `git log --all -p` complet
 
 `npm audit --json` en la raíz (lockfile único, workspace npm — cubre `backend/` sin necesidad de auditoría separada): **0 vulnerabilidades** en las 4 categorías de severidad, sobre 481 paquetes (302 prod / 178 dev / 3 opcionales). Sin cambios respecto al 30/07 (483→481 es drift trivial del lockfile, sin señal de seguridad).
 
-| Paquete                | Pinneado | Instalado (lockfile) | Última disponible | Estado                                                        |
-| ----------------------- | -------- | --------------------- | ------------------ | --------------------------------------------------------------- |
-| express                 | ^4.19.2  | 4.22.2                 | 5.2.1               | Un major atrás — deliberado, sin cambio                        |
-| puppeteer                | ^24.15.0 | 24.43.1                | 25.4.0              | Un major atrás — deliberado, sin cambio                        |
-| zod                      | ^3.23.8  | 3.25.76                | 4.4.3               | Un major atrás — deliberado, sin cambio                        |
-| jsonwebtoken             | ^9.0.3   | 9.0.3                  | 9.0.3               | Al día                                                           |
-| bcryptjs                 | ^3.0.3   | 3.0.3                  | 3.0.3               | Al día                                                           |
-| helmet                   | ^8.3.0   | 8.3.0                  | 8.3.0               | Al día                                                           |
-| cors                     | ^2.8.5   | 2.8.6                  | 2.8.6               | Al día                                                           |
-| multer                   | ^2.2.0   | 2.2.0                  | 2.2.0               | Al día                                                           |
-| dotenv                   | ^17.4.2  | 17.4.2                 | 17.4.2              | Al día                                                           |
-| @supabase/supabase-js    | ^2.110.8 | 2.110.8                | 2.111.0             | Patch nuevo disponible (menor, no breaking) — único cambio desde el 30/07 |
-| exceljs                  | ^4.4.0   | 4.4.0                  | 4.4.0               | Al día                                                           |
-| express-rate-limit       | ^8.6.1   | 8.6.1                  | 8.6.1               | Al día                                                           |
+| Paquete               | Pinneado | Instalado (lockfile) | Última disponible | Estado                                                                    |
+| --------------------- | -------- | -------------------- | ----------------- | ------------------------------------------------------------------------- |
+| express               | ^4.19.2  | 4.22.2               | 5.2.1             | Un major atrás — deliberado, sin cambio                                   |
+| puppeteer             | ^24.15.0 | 24.43.1              | 25.4.0            | Un major atrás — deliberado, sin cambio                                   |
+| zod                   | ^3.23.8  | 3.25.76              | 4.4.3             | Un major atrás — deliberado, sin cambio                                   |
+| jsonwebtoken          | ^9.0.3   | 9.0.3                | 9.0.3             | Al día                                                                    |
+| bcryptjs              | ^3.0.3   | 3.0.3                | 3.0.3             | Al día                                                                    |
+| helmet                | ^8.3.0   | 8.3.0                | 8.3.0             | Al día                                                                    |
+| cors                  | ^2.8.5   | 2.8.6                | 2.8.6             | Al día                                                                    |
+| multer                | ^2.2.0   | 2.2.0                | 2.2.0             | Al día                                                                    |
+| dotenv                | ^17.4.2  | 17.4.2               | 17.4.2            | Al día                                                                    |
+| @supabase/supabase-js | ^2.110.8 | 2.110.8              | 2.111.0           | Patch nuevo disponible (menor, no breaking) — único cambio desde el 30/07 |
+| exceljs               | ^4.4.0   | 4.4.0                | 4.4.0             | Al día                                                                    |
+| express-rate-limit    | ^8.6.1   | 8.6.1                | 8.6.1             | Al día                                                                    |
 
 `.github/dependabot.yml`: actualizaciones semanales npm (agrupadas) e independientes para GitHub Actions, con `ignore` explícito de majors para `eslint*`/`express`/`zod`/`multer`/`puppeteer` — consistente con las decisiones deliberadas de arriba.
 

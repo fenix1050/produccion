@@ -13,17 +13,17 @@ Existen dos auditorías previas con el mismo alcance: `docs/auditorias/AUDITORIA
 
 - El JWT ya no vive en `localStorage` — ahora es una cookie `httpOnly` (`tajy_session`) con protección CSRF de doble-submit (cambio `session-httponly-cookie`, PR #138). Cierra el hallazgo 🟠 Medio #1 de la auditoría 08-02.
 - `JWT_SECRET` ahora falla rápido al arranque si falta (`backend/src/app.js`). Cierra el hallazgo 🟡 Bajo #2 de la auditoría 08-02.
-- `app.set('trust proxy', 1)` agregado (evita que los rate limiters compartan un solo balde detrás de Caddy) y el login ahora compara contra un hash *dummy* de tiempo constante cuando el usuario no existe (mitiga enumeración de cuentas por canal lateral de tiempo) — PR #135, cerrado el 2026-08-03.
+- `app.set('trust proxy', 1)` agregado (evita que los rate limiters compartan un solo balde detrás de Caddy) y el login ahora compara contra un hash _dummy_ de tiempo constante cuando el usuario no existe (mitiga enumeración de cuentas por canal lateral de tiempo) — PR #135, cerrado el 2026-08-03.
 
 Quedan sin cerrar, sin cambios respecto a la corrida anterior: la falta de cabeceras CSP en el frontend estático, y el Dockerfile del backend corriendo como root. A esto se suma el hallazgo Medio de esta corrida (§5.1), identificado en una auditoría externa el 2026-08-03 y registrado en `CLAUDE.md` pero nunca antes documentado en esta serie de reportes ni convertido en Issue de GitHub — se corrige esa omisión acá.
 
-| Categoría | Resultado |
-|---|---|
-| Secretos expuestos (repo + historial git) | 1 hallazgo Medio heredado (hash bcrypt de admin real, §5.1). Sin secretos nuevos. |
-| Dependencias (`npm audit`) | 0 vulnerabilidades (`--omit=dev` y completo). 9 paquetes con versión más nueva disponible, ninguno vulnerable (§3). |
-| OWASP Top 10 | Sin hallazgos Críticos/Altos. Controles de acceso, CSRF, XSS y logging de seguridad revisados en detalle (§4). |
-| Prácticas de autenticación | Sólidas: cookie httpOnly, JWT con `algorithms` explícito, revocación server-side vía `token_version`, mitigación de timing attack, rate limiting compuesto IP+email. |
-| Hallazgos heredados sin cambios | CSP ausente en frontend (Bajo), Dockerfile sin `USER` no-root (Bajo), errores Zod sin mapear a 400 (Bajo), `incrementarTokenVersion` no atómico (Bajo). |
+| Categoría                                 | Resultado                                                                                                                                                            |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Secretos expuestos (repo + historial git) | 1 hallazgo Medio heredado (hash bcrypt de admin real, §5.1). Sin secretos nuevos.                                                                                    |
+| Dependencias (`npm audit`)                | 0 vulnerabilidades (`--omit=dev` y completo). 9 paquetes con versión más nueva disponible, ninguno vulnerable (§3).                                                  |
+| OWASP Top 10                              | Sin hallazgos Críticos/Altos. Controles de acceso, CSRF, XSS y logging de seguridad revisados en detalle (§4).                                                       |
+| Prácticas de autenticación                | Sólidas: cookie httpOnly, JWT con `algorithms` explícito, revocación server-side vía `token_version`, mitigación de timing attack, rate limiting compuesto IP+email. |
+| Hallazgos heredados sin cambios           | CSP ausente en frontend (Bajo), Dockerfile sin `USER` no-root (Bajo), errores Zod sin mapear a 400 (Bajo), `incrementarTokenVersion` no atómico (Bajo).              |
 
 **Se crea 1 Issue de GitHub** por el hallazgo Medio de §5.1 (rotación de contraseña de administrador committeada en migración SQL) — ver §6.
 
@@ -47,15 +47,15 @@ Barrido de patrones (`api_key`, `secret`, `password`, `token`, claves PEM, `AKIA
 
 `npm outdated` sobre el mismo workspace — ningún resultado corresponde a una vulnerabilidad conocida, son versiones más nuevas disponibles:
 
-| Paquete | Actual | Última | Nota |
-|---|---|---|---|
-| `express` | 4.22.2 | 5.2.1 | Salto de versión mayor (breaking changes), no urgente — sin CVE abierto en 4.x a la fecha. |
-| `zod` | 3.25.76 | 4.4.3 | Salto de versión mayor, requiere revisar cambios de API antes de migrar. |
-| `puppeteer` | 24.43.1 | 25.5.0 | Sigue el ritmo de versiones de Chromium; sin CVE conocido en la serie 24.x usada. |
-| `eslint` / `@eslint/js` | 9.39.5 | 10.x | Tooling de desarrollo, no impacta runtime de producción. |
-| `express-rate-limit` | 8.6.1 | 8.6.2 | Patch menor. |
-| `@supabase/supabase-js` | 2.111.0 | 2.112.0 | Patch menor. |
-| `lint-staged`, `globals` | — | — | Tooling de desarrollo, patch/minor. |
+| Paquete                  | Actual  | Última  | Nota                                                                                       |
+| ------------------------ | ------- | ------- | ------------------------------------------------------------------------------------------ |
+| `express`                | 4.22.2  | 5.2.1   | Salto de versión mayor (breaking changes), no urgente — sin CVE abierto en 4.x a la fecha. |
+| `zod`                    | 3.25.76 | 4.4.3   | Salto de versión mayor, requiere revisar cambios de API antes de migrar.                   |
+| `puppeteer`              | 24.43.1 | 25.5.0  | Sigue el ritmo de versiones de Chromium; sin CVE conocido en la serie 24.x usada.          |
+| `eslint` / `@eslint/js`  | 9.39.5  | 10.x    | Tooling de desarrollo, no impacta runtime de producción.                                   |
+| `express-rate-limit`     | 8.6.1   | 8.6.2   | Patch menor.                                                                               |
+| `@supabase/supabase-js`  | 2.111.0 | 2.112.0 | Patch menor.                                                                               |
+| `lint-staged`, `globals` | —       | —       | Tooling de desarrollo, patch/minor.                                                        |
 
 **Acción sugerida:** ninguna urgente. Programar la migración a Express 5 y Zod 4 como tarea de mantenimiento (no de seguridad) cuando haya ventana, dado que son cambios de versión mayor con riesgo de romper comportamiento.
 

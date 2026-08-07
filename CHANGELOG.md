@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.31](https://github.com/fenix1050/produccion/compare/v0.1.30...v0.1.31) (2026-08-07)
+
+
+### Features
+
+* **cotizar:** modal de progreso al emitir Carta Oferta ([#178](https://github.com/fenix1050/produccion/issues/178)) ([30d7052](https://github.com/fenix1050/produccion/commit/30d70524bb9f893c7304531aab2884d71e568160))
+
 ## [0.1.30](https://github.com/fenix1050/produccion/compare/v0.1.29...v0.1.30) (2026-08-07)
 
 

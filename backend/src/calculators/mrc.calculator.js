@@ -24,11 +24,10 @@ const CODIGO_ROBO_VALORES_VENTANILLA = 'robo_valores_ventanilla'
 const MINIMO_COBERTURAS_MRC = 3
 
 // Cuántas veces puede repetirse la MISMA cobertura entre las líneas de "coberturas adicionales"
-// (con distinta suma asegurada cada vez). Por defecto 1 (sin repetición) — 'robo_contenido' es
-// la única excepción confirmada por Kevin (2026-07-13, ver comentario más abajo): en la práctica
-// puede aparecer 2 veces con sumas distintas. Ajustado el 2026-07-30 a pedido de Kevin: el resto
-// del catálogo ya NO puede repetirse (antes cualquier cobertura era repetible sin límite).
-const LIMITE_REPETICION_COBERTURA_MRC = { robo_contenido: 2 }
+// (con distinta suma asegurada cada vez). Por defecto 1 (sin repetición). Ajustado el 2026-08-07
+// a pedido de Kevin: 'robo_contenido' pierde su excepción de repetición x2 (confirmada el
+// 2026-07-13) y pasa a comportarse como el resto del catálogo — máximo 1 vez.
+const LIMITE_REPETICION_COBERTURA_MRC = {}
 const LIMITE_REPETICION_COBERTURA_MRC_DEFAULT = 1
 
 /**
@@ -61,10 +60,9 @@ const LIMITE_REPETICION_COBERTURA_MRC_DEFAULT = 1
  * Coberturas adicionales (desde 2026-07-13): fuera de Incendio Edificio/Contenido, ninguna
  * cobertura se incluye por defecto. El agente agrega explícitamente cada línea vía
  * `riesgoDatos.coberturas_adicionales` ({codigo, suma_asegurada}). Cada código puede repetirse
- * hasta `LIMITE_REPETICION_COBERTURA_MRC[codigo] ?? 1` veces con distinta suma asegurada —
- * 'robo_contenido' es la única excepción confirmada a 2 (ver "Version 01 - Calculo
- * Varios.xlsx", hoja MRC/DATOS: aparece dos veces en una cotización real con sumas distintas);
- * el resto del catálogo, desde 2026-07-30, solo una vez. Cada línea se tarifica con
+ * hasta `LIMITE_REPETICION_COBERTURA_MRC[codigo] ?? 1` veces con distinta suma asegurada — desde
+ * 2026-08-07 todo el catálogo, incluido 'robo_contenido', solo una vez (revierte la excepción a 2
+ * confirmada el 2026-07-13). Cada línea se tarifica con
  * `tasas_cobertura_ramo` (permil) y su costo se suma a la prima; se rechaza con 422 si el
  * código no existe/no está activo en el ramo, si es uno de los 2 códigos fijos (ya cubiertos
  * por el capital declarado), si no tiene tasa confirmada (hoy el caso de `sublimite_cctv`), o

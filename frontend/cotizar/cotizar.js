@@ -347,11 +347,10 @@ function sublimiteVentanillaCalculado() {
 }
 
 // Cuántas veces puede cargarse la MISMA cobertura entre las líneas de "Coberturas adicionales"
-// (con distinta suma asegurada cada vez). Por defecto 1 (sin repetición) — 'robo_contenido' es
-// la única excepción confirmada por Kevin (2026-07-13, ver mrc.calculator.js): en la práctica
-// puede aparecer 2 veces con sumas distintas. Ajustado el 2026-07-30 a pedido de Kevin: el resto
-// del catálogo ya NO puede repetirse (antes cualquier cobertura era repetible sin límite).
-const LIMITE_REPETICION_COBERTURA_MRC = { robo_contenido: 2 }
+// (con distinta suma asegurada cada vez). Por defecto 1 (sin repetición). Ajustado el 2026-08-07
+// a pedido de Kevin: 'robo_contenido' pierde su excepción de repetición x2 (confirmada el
+// 2026-07-13) y pasa a comportarse como el resto del catálogo — máximo 1 vez.
+const LIMITE_REPETICION_COBERTURA_MRC = {}
 const LIMITE_REPETICION_COBERTURA_MRC_DEFAULT = 1
 
 // Ícono por código de sublímite en el panel "Cotización en vivo" — códigos reales de MRC

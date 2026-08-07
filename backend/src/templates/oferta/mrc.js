@@ -9,6 +9,14 @@ const ORDEN_FORMAS_PAGO = ['contado', 'cobrador', 'boca_cobranza', 'tarjeta_cred
 // frontend/cotizar/cotizar.js.
 const CODIGOS_COBERTURA_EXCLUIDOS_BASE = ['incendio_edificio', 'incendio_contenido']
 
+// Los roles de sistema ('agente', 'admin') se guardan en minúscula (`028_auth_usuarios.sql`);
+// los roles custom ya vienen bien capitalizados ('Jefe de Análisis de Riesgo'). Se capitaliza
+// acá solo para que el bloque de firma de un documento formal no muestre "Nestor - agente".
+function capitalizarRol(nombreRol) {
+  if (!nombreRol) return nombreRol
+  return nombreRol.charAt(0).toUpperCase() + nombreRol.slice(1)
+}
+
 // Antes esto era una constante hardcodeada (`SUBLIMITES_FIJOS_MRC`) con 3 códigos "que alguien
 // recordó" al escribirla — se le olvidó `sublimite_murallas_cercos`, así que ese sub-límite
 // quedaba mal en la tabla de Sumas Aseguradas y cobraba franquicia indebidamente. Ahora se deriva
@@ -186,9 +194,9 @@ de seguridad y adecuaciones que surjan de la misma.
     </div>
     <div class="firma-block">
       <div class="firma-block__linea">Realizado por:</div>
-      <div class="firma-block__linea">${escapeHtml(cotizacion.usuarios?.nombre || 'Aseguradora Tajy')} - Agente de Seguro</div>
+      <div class="firma-block__linea">${escapeHtml(cotizacion.usuarios?.nombre || 'Aseguradora Tajy')} - ${escapeHtml(capitalizarRol(cotizacion.usuarios?.roles?.nombre) || 'Agente de Seguro')}</div>
       ${cotizacion.usuarios?.email ? `<div class="firma-block__linea">${escapeHtml(cotizacion.usuarios.email)}</div>` : ''}
-      ${cotizacion.usuarios?.telefono ? `<div class="firma-block__linea">${escapeHtml(cotizacion.usuarios.telefono)}</div>` : ''}
+      ${cotizacion.usuarios?.telefono ? `<div class="firma-block__linea">Telef. ${escapeHtml(cotizacion.usuarios.telefono)}</div>` : ''}
     </div>
   `
 

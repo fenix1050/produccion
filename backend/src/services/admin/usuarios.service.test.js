@@ -122,6 +122,27 @@ test('editarUsuario permite que un admin modifique su propio tope de descuento',
   assert.equal(resultado.descuento_maximo_pct, 50)
 })
 
+test('editarUsuario permite que un solicitante no-admin se edite otro campo (ej. telefono) aunque el payload traiga su propio tope sin cambios', async (t) => {
+  const solicitante = { id: 9, rol: 'agente', puede_gestionar_usuarios: true }
+  mockearRepositorios(t, {
+    usuario: {
+      id: 9,
+      rol: 'agente',
+      email: 'agente@tajy.com',
+      descuento_maximo_pct: null,
+      recargo_maximo_pct: null,
+    },
+  })
+  const { editarUsuario } = await import('./usuarios.service.js?case=auto-edicion-sin-cambio-tope')
+
+  const resultado = await editarUsuario(
+    solicitante.id,
+    { telefono: '0981123456', descuento_maximo_pct: null, recargo_maximo_pct: null },
+    solicitante
+  )
+  assert.equal(resultado.telefono, '0981123456')
+})
+
 test('editarUsuario permite modificar el tope de OTRO usuario aunque el solicitante no sea admin', async (t) => {
   mockearRepositorios(t, { usuario: USUARIO_OBJETIVO })
   const { editarUsuario } = await import('./usuarios.service.js?case=tope-otro-usuario-permitido')

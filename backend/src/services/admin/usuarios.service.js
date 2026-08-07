@@ -69,10 +69,19 @@ async function asegurarPuedeAsignarRol(rolId, solicitante) {
 // (o volverlo NULL, que hereda el tope — más alto — del plan) usando el mismo permiso
 // puede_gestionar_usuarios que ya tiene para gestionar a otros usuarios. El tope propio lo
 // tiene que fijar otra persona (un admin real), nunca uno mismo.
-function asegurarNoAutoAjustaTope(idObjetivo, cambios, solicitante) {
+// Comparar contra el valor ACTUAL, no solo contra `undefined`: el modal de edición del
+// frontend manda siempre los dos campos (aunque no se hayan tocado), así que bloquear por
+// mera presencia en el payload rompía cualquier auto-edición (ej. guardar el teléfono).
+function asegurarNoAutoAjustaTope(idObjetivo, cambios, usuarioActual, solicitante) {
   if (solicitante.rol === 'admin') return
   if (String(idObjetivo) !== String(solicitante.id)) return
-  if (cambios.descuento_maximo_pct === undefined && cambios.recargo_maximo_pct === undefined) return
+  const cambiaDescuento =
+    cambios.descuento_maximo_pct !== undefined &&
+    cambios.descuento_maximo_pct !== usuarioActual.descuento_maximo_pct
+  const cambiaRecargo =
+    cambios.recargo_maximo_pct !== undefined &&
+    cambios.recargo_maximo_pct !== usuarioActual.recargo_maximo_pct
+  if (!cambiaDescuento && !cambiaRecargo) return
   logSeguridad(
     'intento_auto_ajuste_tope_rechazado',
     { solicitanteId: solicitante.id, solicitanteEmail: solicitante.email },
@@ -92,7 +101,7 @@ export async function editarUsuario(id, cambios, solicitante) {
   }
   asegurarPuedeModificarAdmin(usuarioActual, solicitante)
   await asegurarPuedeAsignarRol(cambios.rol_id, solicitante)
-  asegurarNoAutoAjustaTope(id, cambios, solicitante)
+  asegurarNoAutoAjustaTope(id, cambios, usuarioActual, solicitante)
 
   if (cambios.email && cambios.email !== usuarioActual.email) {
     const existente = await usuariosRepository.findByEmail(cambios.email)

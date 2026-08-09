@@ -1,13 +1,7 @@
 import { api, auth } from '../shared/api.js'
 import { getRamos } from '../shared/catalogo.js'
 import {
-  ICON_RAMO_INCENDIO,
-  ICON_RAMO_HOGAR,
   ICON_INFO,
-  ICON_SUBLIMITE_AGUA,
-  ICON_SUBLIMITE_ELECTRICOS,
-  ICON_SUBLIMITE_GRANIZO,
-  ICON_SUBLIMITE_MURALLAS,
   ICON_SUBLIMITE_GENERICO,
   ICON_ARROW_LEFT as ICON_ARROW_LEFT_ROUND,
 } from '../shared/nav-icons.js'
@@ -26,17 +20,23 @@ import {
   FRANQUICIA_OPCIONES,
   RAMOS_CON_AJUSTES,
   OBJETOS_RIESGO_CAMPOS,
+  MOTIVO_BLOQUEO_ID,
+  DEBOUNCE_MS,
+  CODIGOS_COBERTURA_EXCLUIDOS_BASE,
+  PORCENTAJE_VENTANILLA_SOBRE_CAJA_FUERTE,
+  LIMITE_REPETICION_COBERTURA_MRC,
+  LIMITE_REPETICION_COBERTURA_MRC_DEFAULT,
+  SUBLIMITE_ICONOS,
+  ICON_TAG,
+  PASOS_EMISION_CARTA,
+  ICON_PLUS,
+  ORDEN_FORMAS_PAGO,
+  COTIZADOR_VERSION,
 } from './constants.js'
 
 // Cotizador Tajy — App Shell + Datos + Resultado (Fase 6, alcance MRC plan Normal).
 // Recreación en Vanilla JS del handoff de diseño original (mockup ya migrado y eliminado
 // tras la implementación de "Diseño 2" en frontend/cotizar).
-
-// id del elemento del panel "Cotización en vivo" que explica por qué está bloqueado el avance a
-// "Detalle del plan" (capital insuficiente, prima por debajo de la mínima, cálculo aún pendiente).
-// Referenciado por aria-describedby desde el botón/tab deshabilitados para que el motivo sea
-// accesible por lector de pantalla, no solo por el tooltip `title` (ver syncAvanceButtons()).
-const MOTIVO_BLOQUEO_ID = 'motivo-bloqueo-avance'
 
 // Criterio de "plan calculable" (RPF/tasas confirmados) según el ramo — MRC e Incendio usan
 // prima_tecnica_minima; Vida-AP no maneja ese piso (decisión de Kevin) y usa la lista fija de
@@ -155,29 +155,6 @@ function recargosParaBody() {
   return ajustesParaBody('recargo', 'Recargo aplicado por el agente')
 }
 
-const DEBOUNCE_MS = 450
-
-// Códigos que no deben ofrecerse en "Coberturas adicionales": las 2 fijas ya tienen su propio
-// campo en el formulario, sublimite_cctv todavía no tiene tasa cargada (no cotizable),
-// 'equipos_electronicos' (la cobertura, distinta del sublímite) queda representada por ese
-// mismo sublímite fijo en MRC — confirmado por el área técnica, 2026-07-15: en esta rama no se
-// ofrece por separado — y 'robo_valores_ventanilla' pasa a auto-calcularse a partir de "Valores
-// en caja fuerte" (ver sublimiteVentanillaCalculado(), Ajuste MC.xlsx ítem #5, 2026-08-05): el
-// agente ya no lo elige a mano, revierte la decisión anterior de 2026-07-13 (migración 020,
-// donde el 30% era solo referencia). Los sublímites fijos por defecto (WU6, 2026-07-17: ya no
-// hardcodeados, ver sublimitesFijosMrc()) se agregan a esta lista de exclusión en tiempo real.
-const CODIGOS_COBERTURA_EXCLUIDOS_BASE = [
-  'incendio_edificio',
-  'incendio_contenido',
-  'sublimite_cctv',
-  'equipos_electronicos',
-  'robo_valores_ventanilla',
-]
-
-// Porcentaje del capital declarado en "Valores en caja fuerte" (codigo robo_caja_registradora)
-// que se auto-asigna como suma asegurada del sublímite "Robo valores ventanilla".
-const PORCENTAJE_VENTANILLA_SOBRE_CAJA_FUERTE = 0.3
-
 // Sublímite "Robo valores ventanilla" calculado en vivo — no vive en plan_coberturas (a
 // diferencia de los sublímites fijos del plan) porque depende de un monto que el agente recién
 // carga en esta cotización, no de un default del plan. Devuelve null si todavía no se cargó
@@ -194,39 +171,6 @@ function sublimiteVentanillaCalculado() {
     monto: Math.round(capitalCajaFuerte * PORCENTAJE_VENTANILLA_SOBRE_CAJA_FUERTE),
   }
 }
-
-// Cuántas veces puede cargarse la MISMA cobertura entre las líneas de "Coberturas adicionales"
-// (con distinta suma asegurada cada vez). Por defecto 1 (sin repetición). Ajustado el 2026-08-07
-// a pedido de Kevin: 'robo_contenido' pierde su excepción de repetición x2 (confirmada el
-// 2026-07-13) y pasa a comportarse como el resto del catálogo — máximo 1 vez.
-const LIMITE_REPETICION_COBERTURA_MRC = {}
-const LIMITE_REPETICION_COBERTURA_MRC_DEFAULT = 1
-
-// Ícono por código de sublímite en el panel "Cotización en vivo" — códigos reales de MRC
-// (migración 012/019), fallback genérico para cualquier código sin ícono propio definido.
-const SUBLIMITE_ICONOS = {
-  sublimite_danos_agua: ICON_SUBLIMITE_AGUA,
-  sublimite_equipos_electronicos: ICON_SUBLIMITE_ELECTRICOS,
-  sublimite_granizo: ICON_SUBLIMITE_GRANIZO,
-  sublimite_murallas_cercos: ICON_SUBLIMITE_MURALLAS,
-  incendio_edificio: ICON_RAMO_HOGAR,
-  incendio_contenido: ICON_RAMO_INCENDIO,
-}
-
-// Ícono de precio para el footnote de "Detalle del plan" — no vive en nav-icons.js porque
-// es específico de esta franja de resumen, no de la navegación.
-const ICON_TAG = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M11.5 3.5H5a1.5 1.5 0 0 0-1.5 1.5v6.5a1.5 1.5 0 0 0 .44 1.06l8 8a1.5 1.5 0 0 0 2.12 0l6.5-6.5a1.5 1.5 0 0 0 0-2.12l-8-8A1.5 1.5 0 0 0 11.5 3.5z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"></path><circle cx="8.2" cy="8.2" r="1.4" fill="currentColor"></circle></svg>`
-
-// Pasos del modal de progreso de emitirCartaOferta() — 0 y 3 son instantáneos (validación
-// ya resuelta por el guard de entrada / blob ya resuelto), 1 y 2 quedan activos mientras
-// corren los 2 awaits reales (crear/actualizar cotización, generar PDF).
-const PASOS_EMISION_CARTA = [
-  'Validando datos',
-  'Generando Carta Oferta',
-  'Generando PDF',
-  'Cotización lista',
-]
-const ICON_PLUS = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path></svg>`
 
 // Sublímites de MRC fijos por defecto — leídos de `plan_coberturas.incluida_por_defecto` del
 // plan elegido (WU6, 2026-07-17), en vez de la vieja constante hardcodeada SUBLIMITES_FIJOS_MRC.
@@ -989,11 +933,6 @@ function aplicarAriaBloqueo(el, habilitado) {
 // adelante, en la Carta Oferta.
 // ---------------------------------------------------------------------------
 
-// Mismo orden que ORDEN_FORMAS_PAGO en backend/src/templates/oferta/{mrc,incendio}.js — el
-// backend no garantiza este orden en la respuesta de preview, así que se ordena acá para que
-// los pills de "Forma de pago" del panel en vivo salgan siempre igual (pedido de Kevin 2026-08-07).
-const ORDEN_FORMAS_PAGO = ['contado', 'cobrador', 'boca_cobranza', 'tarjeta_credito']
-
 function formasPagoDisponibles() {
   const formas = state.preview?.variantes?.[0]?.formasPago ?? []
   return [...formas].sort(
@@ -1039,11 +978,6 @@ function renderApp() {
     ${renderModalProgresoCarta()}
   `
 }
-
-// Versión del cotizador mostrada en el topbar y en el pie de página del sidebar (chrome de
-// UI, no viene de la base) — única fuente de verdad para que ambas queden siempre de la mano.
-// Se incrementa a mano cuando haya un cambio visible que valga la pena versionar.
-const COTIZADOR_VERSION = '1.0.1'
 
 function renderTopbar(ramo) {
   return renderTopbarShell({

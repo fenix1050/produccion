@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.33](https://github.com/fenix1050/produccion/compare/v0.1.32...v0.1.33) (2026-08-08)
+
+
+### Features
+
+* **cotizar:** panel en vivo sin IVA, costo/cuota ordenados y pills reordenados ([#184](https://github.com/fenix1050/produccion/issues/184)) ([77b29a2](https://github.com/fenix1050/produccion/commit/77b29a25631d09e4d618b3ae61588701c0e0ef15))
+
 ## [0.1.32](https://github.com/fenix1050/produccion/compare/v0.1.31...v0.1.32) (2026-08-07)
 
 

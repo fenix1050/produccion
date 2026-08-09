@@ -1,3 +1,4 @@
+import { auth } from '../../shared/api.js'
 import { escapeHtml } from '../../shared/dom.js'
 import { fmtGsInput, unidadMoneda } from '../../shared/format.js'
 import { state } from '../state.js'
@@ -11,6 +12,7 @@ import {
   monedaEfectiva,
   sugerenciaInspeccion,
   quedanCoberturasAdicionalesPorAgregar,
+  coberturasDisponibles,
 } from '../domain-rules.js'
 import { idParaCampo } from './render-campos.js'
 
@@ -243,4 +245,119 @@ export function renderCoberturasAdicionalesCheckbox(catalogoDisponible) {
       ${filas || '<div class="empty-state__subtitle">No hay coberturas adicionales disponibles para este plan.</div>'}
     </div>
   `
+}
+
+function camposEspecificosMrc() {
+  const puedeAgregarLibre = auth.getUsuario()?.puede_agregar_cobertura_libre !== false
+  return `
+    ${camposEdificioContenido()}
+    <div class="field field--span2">
+      ${
+        puedeAgregarLibre
+          ? renderCoberturasAdicionales(coberturasDisponibles())
+          : renderCoberturasAdicionalesCheckbox(coberturasDisponibles())
+      }
+    </div>
+  `
+}
+
+function camposEspecificosIncendio(plan) {
+  if (!plan) {
+    return `<div class="field field--span2"><div class="live-summary__pending">Seleccioná un plan para ver el formulario.</div></div>`
+  }
+  if (plan.nombre === 'MAQUINARIA BASICO') {
+    return `
+      <div class="field">
+        <label for="${idParaCampo('capitalMaquinaria')}">Capital Maquinaria (USD)</label>
+        <input class="field-input" id="${idParaCampo('capitalMaquinaria')}" type="text" inputmode="numeric" data-field="capitalMaquinaria" data-money="true" placeholder="50.000" value="${fmtGsInput(state.data.capitalMaquinaria)}" />
+      </div>
+      ${campoSublimitePorcentaje('sublimiteVandalismoPorcentaje', 'Sublímite Vandalismo (%)')}
+    `
+  }
+  if (plan.tipo_mecanica === 'objeto_riesgo') {
+    return camposObjetoRiesgo(plan)
+  }
+  return camposEdificioContenido(
+    campoSublimitePorcentaje(
+      'sublimiteFenomenosNaturalesPorcentaje',
+      'Sublímite Fenómenos Naturales (%)'
+    )
+  )
+}
+
+function camposEspecificosVidaAp(plan) {
+  if (!plan) {
+    return `<div class="field field--span2"><div class="live-summary__pending">Seleccioná un plan para ver el formulario.</div></div>`
+  }
+  const campoCapital = `
+    <div class="field">
+      <label for="${idParaCampo('capitalAsegurado')}">Capital Asegurado (Gs.)</label>
+      <input class="field-input" id="${idParaCampo('capitalAsegurado')}" type="text" inputmode="numeric" data-field="capitalAsegurado" data-money="true" placeholder="100.000.000" value="${fmtGsInput(state.data.capitalAsegurado)}" />
+    </div>
+  `
+
+  if (plan.nombre === 'PROTECCION FAMILIAR') {
+    return campoCapital
+  }
+
+  const campoEdad = `
+    <div class="field">
+      <label for="${idParaCampo('edad')}">Edad</label>
+      <input class="field-input" id="${idParaCampo('edad')}" type="number" min="0" max="99" data-field="edad" placeholder="35" value="${escapeHtml(state.data.edad ?? '')}" />
+    </div>
+  `
+
+  if (
+    plan.nombre === 'ACCIDENTES PERSONALES - SECTOR COOPERATIVO' ||
+    plan.nombre === 'ACCIDENTES PERSONALES - SECTOR PRIVADO'
+  ) {
+    const incluyeRenta = Boolean(state.data.incluyeRentaDiaria)
+    return `
+      ${campoCapital}
+      ${campoEdad}
+      <div class="field field--span2">
+        <label class="field-checkbox-label">
+          <input type="checkbox" data-field="incluyeRentaDiaria" ${incluyeRenta ? 'checked' : ''} />
+          Incluir Renta Diaria
+        </label>
+      </div>
+      ${
+        incluyeRenta
+          ? `
+        <div class="field">
+          <label for="${idParaCampo('sumaRentaDiaria')}">Suma Renta Diaria (Gs.)</label>
+          <input class="field-input" id="${idParaCampo('sumaRentaDiaria')}" type="text" inputmode="numeric" data-field="sumaRentaDiaria" data-money="true" placeholder="50.000" value="${fmtGsInput(state.data.sumaRentaDiaria)}" />
+        </div>
+      `
+          : ''
+      }
+    `
+  }
+
+  // VIDA DIRECTIVOS Y EMPLEADOS
+  return `${campoCapital}${campoEdad}`
+}
+
+function camposEspecificosPendiente() {
+  return `
+    <div class="field field--span2">
+      <div class="live-summary__pending live-summary__pending--gap">
+        Este ramo todavía no tiene su calculador conectado en el cotizador — el formulario de datos
+        específicos se agrega en otra tarea. Podés cargar los datos del cliente mientras tanto.
+      </div>
+    </div>
+  `
+}
+
+export function camposEspecificosParaRamo(ramo, plan) {
+  switch (ramo.nombre) {
+    case 'mrc':
+      return camposEspecificosMrc()
+    case 'incendio':
+      return camposEspecificosIncendio(plan)
+    case 'vida-ap':
+      return camposEspecificosVidaAp(plan)
+    default:
+      return camposEspecificosPendiente()
+  }
 }

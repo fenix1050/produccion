@@ -1,15 +1,10 @@
 import { api, auth } from '../shared/api.js'
 import { getRamos } from '../shared/catalogo.js'
-import { atraparFoco, enfocarPrimerElemento, escapeHtml, renderBanner } from '../shared/dom.js'
+import { atraparFoco, enfocarPrimerElemento } from '../shared/dom.js'
 import { fmtGsInput } from '../shared/format.js'
 import { logger } from '../shared/logger.js'
 import { state, app } from './state.js'
-import {
-  RAMOS_CON_CALCULO,
-  MOTIVO_BLOQUEO_ID,
-  DEBOUNCE_MS,
-  PASOS_EMISION_CARTA,
-} from './constants.js'
+import { RAMOS_CON_CALCULO, MOTIVO_BLOQUEO_ID, DEBOUNCE_MS } from './constants.js'
 import {
   planEsCalculable,
   franquiciaValorPorDefecto,
@@ -22,17 +17,7 @@ import {
 } from './domain-rules.js'
 import { prefillDatosDesdeCotizacion, idLinea, armarRiesgoDatos } from './body-builder.js'
 import { renderLivePanel } from './render/render-cotizacion-vivo.js'
-import { renderResultadoView } from './render/render-detalle-plan.js'
-import { renderDatosView } from './render/render-datos.js'
-import {
-  ramoInfo,
-  ramoActivo,
-  renderTopbar,
-  renderSidebar,
-  renderHeader,
-  renderEmptyState,
-  renderRamoNoDisponible,
-} from './render/render-shell.js'
+import { ramoActivo, renderApp } from './render/render-shell.js'
 
 // Cotizador Tajy — App Shell + Datos + Resultado (Fase 6, alcance MRC plan Normal).
 // Recreación en Vanilla JS del handoff de diseño original (mockup ya migrado y eliminado
@@ -502,120 +487,6 @@ function aplicarAriaBloqueo(el, habilitado) {
     el.setAttribute('aria-disabled', 'true')
     el.setAttribute('aria-describedby', MOTIVO_BLOQUEO_ID)
   }
-}
-
-// ---------------------------------------------------------------------------
-// Render
-// ---------------------------------------------------------------------------
-
-function renderApp() {
-  const ramo = state.ramoId ? ramoInfo(state.ramoId) : null
-
-  let contenido
-  if (!ramo) {
-    contenido = renderEmptyState()
-  } else if (ramo.estado === 'pausa' || ramo.estado === 'proximamente') {
-    contenido = renderRamoNoDisponible(ramo)
-  } else if (state.view === 'form') {
-    contenido = renderDatosView(ramo)
-  } else {
-    contenido = renderResultadoView(ramo)
-  }
-
-  app.innerHTML = `
-    ${renderTopbar(ramo)}
-    <div class="app-body">
-      <div class="sidebar-overlay ${state.sidebarAbierta ? 'sidebar-overlay--visible' : ''}" data-action="close-sidebar"></div>
-      ${renderSidebar()}
-      <main class="main">
-        ${renderHeader(ramo)}
-        ${renderBanner(state.banner)}
-        ${contenido}
-      </main>
-    </div>
-    ${renderModalProgresoCarta()}
-  `
-}
-
-// ---------------------------------------------------------------------------
-// Modal de progreso de emisión — mismo patrón de modal que renderModalDetalle() de
-// historial.js (admin-modal-backdrop + admin-modal + focus trap), con marcado propio
-// (.progreso-carta-modal) porque cotizar/index.html no importa admin.css.
-// ---------------------------------------------------------------------------
-
-function renderModalProgresoCarta() {
-  const p = state.progresoCarta
-  if (!p) return ''
-
-  const stepsHtml = PASOS_EMISION_CARTA.map((nombre, index) => {
-    const estadoPaso =
-      p.estado === 'error' && index === p.paso
-        ? 'error'
-        : index < p.paso || (index === p.paso && p.estado === 'exito')
-          ? 'completado'
-          : index === p.paso
-            ? 'activo'
-            : 'pendiente'
-    const marcador =
-      estadoPaso === 'completado'
-        ? '<span class="progreso-step__check" aria-hidden="true">✓</span>'
-        : estadoPaso === 'activo'
-          ? '<span class="spinner" aria-hidden="true"></span>'
-          : estadoPaso === 'error'
-            ? '<span class="progreso-step__check" aria-hidden="true">!</span>'
-            : `<span>${index + 1}</span>`
-    return `
-      <li class="progreso-step progreso-step--${estadoPaso}">
-        <span class="progreso-step__marker">${marcador}</span>
-        <span class="progreso-step__label">${escapeHtml(nombre)}</span>
-      </li>
-    `
-  }).join('')
-
-  const porcentaje = Math.round(
-    ((p.estado === 'exito' ? PASOS_EMISION_CARTA.length : p.paso) / PASOS_EMISION_CARTA.length) *
-      100
-  )
-
-  const permiteCerrar = p.estado === 'exito' || p.estado === 'error'
-
-  const resultadoHtml =
-    p.estado === 'exito'
-      ? `
-        <div class="progreso-resultado progreso-resultado--exito" role="status">
-          <div><strong>Cotización generada correctamente</strong><p>La Carta Oferta está lista para revisar y descargar.</p></div>
-        </div>
-        <div class="admin-modal__actions">
-          <button type="button" class="btn-outline" data-action="cerrar-modal-progreso-carta">Cerrar</button>
-          <button type="button" class="resumen-sistema__cta" data-action="ver-pdf-carta">Ver PDF</button>
-        </div>
-      `
-      : p.estado === 'error'
-        ? `
-        <div class="progreso-resultado progreso-resultado--error" role="alert">
-          <div><strong>No pudimos completar la Carta Oferta</strong><p>${escapeHtml(p.error || 'Ocurrió un error inesperado.')}</p></div>
-        </div>
-        <div class="admin-modal__actions">
-          <button type="button" class="btn-outline" data-action="cerrar-modal-progreso-carta">Cerrar</button>
-          <button type="button" class="resumen-sistema__cta" data-action="reintentar-carta">Reintentar</button>
-        </div>
-      `
-        : ''
-
-  return `
-    <div class="admin-modal-backdrop" ${permiteCerrar ? 'data-action="cerrar-modal-progreso-carta"' : ''}>
-      <div class="admin-modal progreso-carta-modal" data-stop-propagation="true" role="dialog" aria-modal="true" aria-labelledby="progreso-carta-title">
-        <div class="admin-modal__title" id="progreso-carta-title">Proceso de cotización</div>
-        <div class="progreso-track" role="progressbar" aria-label="Progreso de la emisión" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${porcentaje}">
-          <div class="progreso-fill" style="width: ${porcentaje}%"></div>
-        </div>
-        <ol class="progreso-steps" aria-live="polite">
-          ${stepsHtml}
-        </ol>
-        ${resultadoHtml}
-      </div>
-    </div>
-  `
 }
 
 // ---------------------------------------------------------------------------

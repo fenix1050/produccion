@@ -8,6 +8,8 @@ import {
   CODIGOS_COBERTURA_EXCLUIDOS_BASE,
   RAMOS_CON_CALCULO,
   ORDEN_FORMAS_PAGO,
+  LIMITE_REPETICION_COBERTURA_MRC,
+  LIMITE_REPETICION_COBERTURA_MRC_DEFAULT,
 } from './constants.js'
 
 // Criterio de "plan calculable" (RPF/tasas confirmados) según el ramo — MRC e Incendio usan
@@ -271,4 +273,32 @@ export function capitalTotalAsegurado() {
     const cuentaParaTotal = !esSublimite && c.incluye_en_suma_asegurada_total !== false
     return acc + (cuentaParaTotal ? Number(c.monto) || 0 : 0)
   }, 0)
+}
+
+// Opciones seleccionables en "Coberturas adicionales": el catálogo del ramo sin las 2 fijas
+// (tienen su propio campo), sin sublimite_cctv (sin tasa cargada todavía — no cotizable), y sin
+// los sublímites fijos por defecto del plan actual (ver sublimitesFijosMrc()).
+export function coberturasDisponibles() {
+  const excluidos = [
+    ...CODIGOS_COBERTURA_EXCLUIDOS_BASE,
+    ...sublimitesFijosMrc().map((s) => s.codigo),
+  ]
+  return state.coberturasCatalogo.filter((c) => !excluidos.includes(c.codigo))
+}
+
+// true si todavía queda al menos un código de `catalogoDisponible` que no llegó a su límite de
+// repetición (ver LIMITE_REPETICION_COBERTURA_MRC) — usado para deshabilitar tanto el "+ Agregar
+// cobertura" del selector libre (Datos) como el "Agregar cobertura adicional" de "Detalle del
+// plan" una vez que ya se cargó el máximo de coberturas disponibles para el plan.
+export function quedanCoberturasAdicionalesPorAgregar(catalogoDisponible) {
+  const conteo = new Map()
+  for (const l of state.coberturasAdicionales) {
+    if (!l.codigo) continue
+    conteo.set(l.codigo, (conteo.get(l.codigo) || 0) + 1)
+  }
+  return catalogoDisponible.some((c) => {
+    const limite =
+      LIMITE_REPETICION_COBERTURA_MRC[c.codigo] ?? LIMITE_REPETICION_COBERTURA_MRC_DEFAULT
+    return (conteo.get(c.codigo) || 0) < limite
+  })
 }

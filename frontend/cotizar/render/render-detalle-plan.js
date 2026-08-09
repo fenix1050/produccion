@@ -1,13 +1,28 @@
 import { auth } from '../../shared/api.js'
+import {
+  ICON_SUBLIMITE_GENERICO,
+  ICON_ARROW_LEFT as ICON_ARROW_LEFT_ROUND,
+} from '../../shared/nav-icons.js'
 import { escapeHtml } from '../../shared/dom.js'
 import { fmtGsInput, fmtMonto, unidadMoneda } from '../../shared/format.js'
 import { state } from '../state.js'
-import { FRANQUICIA_OPCIONES, RAMOS_CON_AJUSTES, ICON_TAG } from '../constants.js'
+import {
+  FRANQUICIA_OPCIONES,
+  RAMOS_CON_AJUSTES,
+  ICON_TAG,
+  RAMOS_CON_CALCULO,
+  SUBLIMITE_ICONOS,
+  ICON_PLUS,
+} from '../constants.js'
 import {
   franquiciaValorPorDefecto,
   monedaEfectiva,
   formaPagoSeleccionada,
   capitalTotalAsegurado,
+  sublimitesFijosMrc,
+  monedaCotizacionActual,
+  coberturasDisponibles,
+  quedanCoberturasAdicionalesPorAgregar,
 } from '../domain-rules.js'
 import { idParaCampo } from './render-campos.js'
 
@@ -206,4 +221,141 @@ export function renderResumenCotizacion(plan) {
       </div>
     </div>
   `
+}
+
+// Referencia visual de avance (1. Datos del plan → 2. Detalle del plan → 3. Carta oferta).
+// "Carta oferta" no tiene un state.view propio — se emite como acción (PDF) dentro de
+// "Detalle del plan" (ver emitirCartaOferta()) — así que ese paso queda siempre pendiente,
+// solo marca el recorrido esperado, no un estado navegable. Exportada: también la usa
+// renderDatosView (cotizar.js, junto a renderPlanRow), no solo renderResultado*.
+export function renderStepper() {
+  const pasos = [
+    { n: 1, label: 'Datos del plan', activo: state.view === 'form' },
+    { n: 2, label: 'Detalle del plan', activo: state.view === 'result' },
+    { n: 3, label: 'Carta oferta', activo: false },
+  ]
+
+  return `
+    <div class="stepper-row">
+      <div class="stepper">
+        ${pasos
+          .map(
+            (p, i) => `
+          <div class="stepper__step">
+            <div class="stepper__circle ${p.activo ? 'stepper__circle--active' : ''}">${p.n}</div>
+            <div class="stepper__label ${p.activo ? 'stepper__label--active' : ''}">${escapeHtml(p.label)}</div>
+          </div>
+          ${i < pasos.length - 1 ? '<div class="stepper__connector"></div>' : ''}
+        `
+          )
+          .join('')}
+      </div>
+    </div>
+  `
+}
+
+function renderResultadoVacio(ramo, plan, planLabel, esCalculable) {
+  return `
+    <div class="resultado-view panel">
+      <div class="resultado-view__inner">
+        ${esCalculable ? `<div class="stepper-wrap">${renderStepper()}</div>` : ''}
+        <div class="resultado-hero">
+          <div>
+            <div class="resultado-hero__label">Plan ${escapeHtml(planLabel)} · ${escapeHtml(ramo.label)}</div>
+            <div class="resultado-hero__price">— <span>Gs. / mes</span></div>
+          </div>
+          <button class="btn-primary" data-action="emitir-carta" disabled title="Requiere una cotización calculada">Emitir carta oferta</button>
+        </div>
+        <div class="empty-state empty-state--compact">
+          <div class="empty-state__subtitle">
+            ${esCalculable ? 'Completá los datos del riesgo en la pestaña "Datos" para ver el detalle del plan.' : 'Cálculo pendiente de confirmación de tasas para este ramo.'}
+          </div>
+        </div>
+      </div>
+    </div>
+  `
+}
+
+function renderResultadoCompleto(ramo, plan, planLabel) {
+  const fp = formaPagoSeleccionada()
+  const coberturas = state.preview.coberturas || []
+  // "Coberturas adicionales" solo existe en el formulario de MRC (ver camposEspecificosMrc) —
+  // en otros ramos no hay límite que evaluar, así que el botón queda siempre habilitado.
+  const puedeAgregarMasCoberturas =
+    ramo.nombre !== 'mrc' || quedanCoberturasAdicionalesPorAgregar(coberturasDisponibles())
+
+  return `
+    <div class="resultado-view panel">
+      <div class="resultado-view__inner">
+        <div class="resultado-layout">
+          <div class="resultado-layout__main">
+            ${renderStepper()}
+            <div class="plan-info-card">
+              <div>
+                <div class="plan-info-card__title">${escapeHtml(planLabel)}</div>
+                <div class="plan-info-card__pills">
+                  <span class="plan-info-card__badge plan-info-card__badge--neutral">${escapeHtml(ramo.label)}</span>
+                  <span class="plan-info-card__badge plan-info-card__badge--success">${escapeHtml(fp.nombre_display)}</span>
+                </div>
+              </div>
+              <button class="link-button" data-action="show-tab" data-view="form">${ICON_ARROW_LEFT_ROUND} Cambiar datos</button>
+            </div>
+            <div class="coberturas-section">
+              <div class="coberturas-section__title">Coberturas incluidas</div>
+              <div class="coberturas-lista">
+                ${[...coberturas]
+                  // Los sub-límites fijos del plan no van en este listado de "Coberturas incluidas"
+                  // (a pedido de Kevin, 2026-07-15) — se muestran aparte en renderSublimitesFijosMrc.
+                  .filter((c) => !sublimitesFijosMrc().some((s) => s.codigo === c.codigo))
+                  .sort(
+                    (a, b) =>
+                      (a.tipo_aplicacion === 'sublimite' ? 1 : 0) -
+                      (b.tipo_aplicacion === 'sublimite' ? 1 : 0)
+                  )
+                  .map((c) => {
+                    const esSublimite = c.tipo_aplicacion === 'sublimite'
+                    return `
+                    <div class="cobertura-card">
+                      <div class="cobertura-card__status ${esSublimite ? 'cobertura-card__status--warning' : ''}">${esSublimite ? '!' : '✓'}</div>
+                      <div class="cobertura-card__icon">${SUBLIMITE_ICONOS[c.codigo] || ICON_SUBLIMITE_GENERICO}</div>
+                      <div class="cobertura-card__main">
+                        <div class="cobertura-card__name">${escapeHtml(c.nombre)}</div>
+                        ${renderFranquiciaSelect(c)}
+                      </div>
+                      <div class="cobertura-card__monto">
+                        <span>Suma asegurada</span>
+                        <div>${typeof c.monto === 'number' ? `${fmtMonto(c.monto, monedaCotizacionActual())} <em>${unidadMoneda(monedaCotizacionActual())}</em>` : escapeHtml(c.monto ?? '—')}</div>
+                      </div>
+                    </div>
+                  `
+                  })
+                  .join('')}
+              </div>
+              <button
+                class="cobertura-card__agregar"
+                data-action="show-tab"
+                data-view="form"
+                ${puedeAgregarMasCoberturas ? '' : 'disabled title="Ya agregaste todas las coberturas adicionales disponibles para este plan"'}
+              >${ICON_PLUS} Agregar cobertura adicional</button>
+            </div>
+          </div>
+          <div class="resultado-layout__aside">
+            ${renderResumenCotizacion(plan)}
+          </div>
+        </div>
+      </div>
+    </div>
+  `
+}
+
+export function renderResultadoView(ramo) {
+  const esCalculable = RAMOS_CON_CALCULO.includes(state.ramoId)
+  const plan = state.planes.find((p) => p.id === state.planId)
+  const planLabel = plan ? plan.nombre : '—'
+
+  if (!esCalculable || !state.preview) {
+    return renderResultadoVacio(ramo, plan, planLabel, esCalculable)
+  }
+
+  return renderResultadoCompleto(ramo, plan, planLabel)
 }

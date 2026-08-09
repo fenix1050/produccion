@@ -7,14 +7,21 @@ import {
   OBJETOS_RIESGO_CAMPOS,
   LIMITE_REPETICION_COBERTURA_MRC,
   LIMITE_REPETICION_COBERTURA_MRC_DEFAULT,
+  RAMOS_CON_CALCULO,
+  CLIENT_FIELDS,
+  MOTIVO_BLOQUEO_ID,
 } from '../constants.js'
 import {
   monedaEfectiva,
   sugerenciaInspeccion,
   quedanCoberturasAdicionalesPorAgregar,
   coberturasDisponibles,
+  planEsCalculable,
+  puedeAvanzarADetalle,
 } from '../domain-rules.js'
 import { idParaCampo } from './render-campos.js'
+import { renderLivePanelContent } from './render-cotizacion-vivo.js'
+import { renderStepper } from './render-detalle-plan.js'
 
 // Campos "Tipo de Riesgo"/"Ciudad"/capitales del esqueleto MRC — reusado por MRC e Incendio
 // (plan "Edificio y Contenido"), que comparten el mismo motor de tasas por rubro.
@@ -360,4 +367,75 @@ export function camposEspecificosParaRamo(ramo, plan) {
     default:
       return camposEspecificosPendiente()
   }
+}
+
+export function renderPlanRow() {
+  const options = state.planes
+    .map((p) => {
+      const calculable = planEsCalculable(state.ramoId, p)
+      const sufijo = calculable ? '' : ' (pendiente de confirmación)'
+      return `
+      <option value="${p.id}" ${p.id === state.planId ? 'selected' : ''} ${!calculable ? 'disabled' : ''}>
+        ${escapeHtml(p.nombre)}${sufijo}
+      </option>
+    `
+    })
+    .join('')
+
+  return `
+    <div class="plan-row">
+      <div class="plan-row__box">
+        <div class="plan-row__label">Plan a presentar</div>
+        <select
+          class="field-input plan-row__select"
+          data-action-select="select-plan"
+          aria-label="Plan a presentar"
+          ${state.planBloqueado ? 'disabled title="El plan ya no se puede cambiar: se pasó a \'Detalle del plan\'. Empezá una cotización nueva para elegir otro plan."' : ''}
+        >${options}</select>
+      </div>
+    </div>
+  `
+}
+
+export function renderDatosView(ramo) {
+  const esCalculable = RAMOS_CON_CALCULO.includes(state.ramoId)
+  const plan = state.planes.find((p) => p.id === state.planId)
+
+  const camposEspecificos = esCalculable
+    ? camposEspecificosParaRamo(ramo, plan)
+    : camposEspecificosParaRamo({ nombre: null }, null)
+
+  return `
+    <div class="datos-view panel">
+      <div class="datos-view__form">
+        ${esCalculable && ramo.estado === 'disponible' ? renderStepper() + renderPlanRow() : ''}
+        <div class="datos-view__form-inner">
+          <div class="form-heading">
+            <div class="form-heading__label">Datos del asegurado</div>
+          </div>
+          <div class="datos-view__form-body">
+            <div class="field-grid">
+              ${CLIENT_FIELDS.map(
+                (f) => `
+                <div class="field ${f.span === 2 ? 'field--span2' : ''}">
+                  <label for="${idParaCampo(f.key)}">${f.label}</label>
+                  <input class="field-input" id="${idParaCampo(f.key)}" type="text" inputmode="${f.money ? 'numeric' : 'text'}" data-field="${f.key}" ${f.money ? 'data-money="true"' : ''} placeholder="${f.placeholder}" value="${escapeHtml(f.money ? fmtGsInput(state.data[f.key]) : (state.data[f.key] ?? ''))}" />
+                </div>
+              `
+              ).join('')}
+              ${camposEspecificos}
+            </div>
+            <button
+              id="btn-ver-detalle"
+              class="btn-primary form-cta"
+              data-action="show-tab"
+              data-view="result"
+              ${puedeAvanzarADetalle() ? '' : `disabled title="Corregí el capital declarado antes de avanzar — ver el mensaje de alerta" aria-disabled="true" aria-describedby="${MOTIVO_BLOQUEO_ID}"`}
+            >Ver detalle completo →</button>
+          </div>
+        </div>
+      </div>
+      <div class="live-summary" id="live-summary">${renderLivePanelContent()}</div>
+    </div>
+  `
 }

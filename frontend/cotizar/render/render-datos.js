@@ -1,8 +1,17 @@
 import { escapeHtml } from '../../shared/dom.js'
 import { fmtGsInput, unidadMoneda } from '../../shared/format.js'
 import { state } from '../state.js'
-import { CIUDADES, OBJETOS_RIESGO_CAMPOS } from '../constants.js'
-import { monedaEfectiva, sugerenciaInspeccion } from '../domain-rules.js'
+import {
+  CIUDADES,
+  OBJETOS_RIESGO_CAMPOS,
+  LIMITE_REPETICION_COBERTURA_MRC,
+  LIMITE_REPETICION_COBERTURA_MRC_DEFAULT,
+} from '../constants.js'
+import {
+  monedaEfectiva,
+  sugerenciaInspeccion,
+  quedanCoberturasAdicionalesPorAgregar,
+} from '../domain-rules.js'
 import { idParaCampo } from './render-campos.js'
 
 // Campos "Tipo de Riesgo"/"Ciudad"/capitales del esqueleto MRC — reusado por MRC e Incendio
@@ -111,5 +120,127 @@ export function camposObjetoRiesgo(plan) {
         ? `<div class="field field--span2"><div class="live-summary__pending live-summary__pending--gap">${escapeHtml(sugerencia)}</div></div>`
         : ''
     }
+  `
+}
+
+// Sección "Coberturas adicionales": líneas cobertura/sublímite más allá de Incendio Edificio/
+// Contenido. `catalogoDisponible` ya viene sin las 2 fijas y sin sublimite_cctv (ver
+// coberturasDisponibles()).
+export function renderCoberturasAdicionales(catalogoDisponible) {
+  // Cuenta de veces que cada código ya está elegido en OTRAS filas — el select de cada fila
+  // excluye los códigos que llegaron a su límite (ver LIMITE_REPETICION_COBERTURA_MRC),
+  // manteniendo siempre disponible el propio valor actual de la fila.
+  const conteoPorCodigo = (codigoExcluir) => {
+    const conteo = new Map()
+    for (const l of state.coberturasAdicionales) {
+      if (!l.codigo || l.codigo === codigoExcluir) continue
+      conteo.set(l.codigo, (conteo.get(l.codigo) || 0) + 1)
+    }
+    return conteo
+  }
+
+  const opciones = (codigoActual) => {
+    const conteo = conteoPorCodigo(codigoActual)
+    return catalogoDisponible
+      .filter((c) => {
+        const limite =
+          LIMITE_REPETICION_COBERTURA_MRC[c.codigo] ?? LIMITE_REPETICION_COBERTURA_MRC_DEFAULT
+        return (conteo.get(c.codigo) || 0) < limite
+      })
+      .map(
+        (c) => `
+    <option value="${escapeHtml(c.codigo)}" ${c.codigo === codigoActual ? 'selected' : ''}>
+      ${escapeHtml(c.nombre)}${c.categoria === 'Sublímites' ? ' · Sublímite' : ''}
+    </option>
+  `
+      )
+      .join('')
+  }
+
+  // Cada fila es repetible (el agente puede agregar varias líneas de cobertura), así que
+  // el id de cada campo usa l.id (clave estable de la fila, ver agregarCoberturaLinea) para
+  // no duplicar ids en el DOM. Los <label> son visualmente ocultos (.sr-only): el layout ya
+  // usa el placeholder como pista visual y agregar 2 labels visibles por fila no entra.
+  const filas = state.coberturasAdicionales
+    .map(
+      (l) => `
+    <div class="cobertura-adicional-row" data-linea-id="${l.id}">
+      <label class="sr-only" for="cobertura-linea-${l.id}-codigo">Cobertura de la línea</label>
+      <select class="field-input" id="cobertura-linea-${l.id}-codigo" data-linea-id="${l.id}" data-linea-field="codigo">
+        <option value="">Seleccioná una cobertura…</option>
+        ${opciones(l.codigo)}
+      </select>
+      <label class="sr-only" for="cobertura-linea-${l.id}-suma">Suma asegurada de la línea (Gs.)</label>
+      <input
+        class="field-input"
+        id="cobertura-linea-${l.id}-suma"
+        type="text"
+        inputmode="numeric"
+        data-linea-id="${l.id}"
+        data-linea-field="sumaAsegurada"
+        data-money="true"
+        placeholder="Suma asegurada (Gs.)"
+        value="${fmtGsInput(l.sumaAsegurada)}"
+      />
+      <button type="button" class="btn-outline cobertura-adicional-row__quitar" data-action="remove-cobertura-linea" data-linea-id="${l.id}">Quitar</button>
+    </div>
+  `
+    )
+    .join('')
+
+  const quedanCoberturasPorAgregar = quedanCoberturasAdicionalesPorAgregar(catalogoDisponible)
+
+  return `
+    <div class="coberturas-adicionales" role="group" aria-labelledby="coberturas-adicionales-label">
+      <label id="coberturas-adicionales-label">Coberturas adicionales</label>
+      ${filas}
+      <button type="button" class="btn-outline" data-action="add-cobertura-linea" ${quedanCoberturasPorAgregar ? '' : 'disabled title="Ya agregaste el máximo de coberturas disponibles"'}>+ Agregar cobertura</button>
+    </div>
+  `
+}
+
+// Variante de "Coberturas adicionales" para roles sin puede_agregar_cobertura_libre (Ajuste
+// MC.xlsx ítem #6): en vez del selector libre + botón "+ Agregar cobertura", una lista fija de
+// checkboxes (una por cobertura disponible del catálogo) — al tildar una aparece su campo de
+// suma asegurada. Reutiliza state.coberturasAdicionales/toggleCoberturaAdicionalPorCodigo, así
+// que el resto del flujo (armarRiesgoDatosMrc, prefill, cálculo) no distingue el modo.
+export function renderCoberturasAdicionalesCheckbox(catalogoDisponible) {
+  const filas = catalogoDisponible
+    .map((c) => {
+      const linea = state.coberturasAdicionales.find((l) => l.codigo === c.codigo)
+      const marcado = Boolean(linea)
+      return `
+    <div class="cobertura-adicional-checkbox-row">
+      <label class="field-checkbox-label">
+        <input type="checkbox" data-action="toggle-cobertura-checkbox" data-codigo="${escapeHtml(c.codigo)}" ${marcado ? 'checked' : ''} />
+        ${escapeHtml(c.nombre)}${c.categoria === 'Sublímites' ? ' · Sublímite' : ''}
+      </label>
+      ${
+        marcado
+          ? `
+        <label class="sr-only" for="cobertura-linea-${linea.id}-suma">Suma asegurada de ${escapeHtml(c.nombre)} (Gs.)</label>
+        <input
+          class="field-input cobertura-adicional-checkbox-row__monto"
+          id="cobertura-linea-${linea.id}-suma"
+          type="text"
+          inputmode="numeric"
+          data-linea-id="${linea.id}"
+          data-linea-field="sumaAsegurada"
+          data-money="true"
+          placeholder="Suma asegurada (Gs.)"
+          value="${fmtGsInput(linea.sumaAsegurada)}"
+        />`
+          : ''
+      }
+    </div>
+  `
+    })
+    .join('')
+
+  return `
+    <div class="coberturas-adicionales coberturas-adicionales--checkbox" role="group" aria-labelledby="coberturas-adicionales-label">
+      <label id="coberturas-adicionales-label">Coberturas adicionales</label>
+      ${filas || '<div class="empty-state__subtitle">No hay coberturas adicionales disponibles para este plan.</div>'}
+    </div>
   `
 }

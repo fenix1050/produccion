@@ -1,12 +1,8 @@
 import { api, auth } from '../shared/api.js'
 import { getRamos } from '../shared/catalogo.js'
-import {
-  ICON_SUBLIMITE_GENERICO,
-  ICON_ARROW_LEFT as ICON_ARROW_LEFT_ROUND,
-} from '../shared/nav-icons.js'
 import { atraparFoco, enfocarPrimerElemento, escapeHtml, renderBanner } from '../shared/dom.js'
 import { renderSidebarFooter, renderTopbar as renderTopbarShell } from '../shared/sidebar.js'
-import { fmtGsInput, fmtMonto, unidadMoneda } from '../shared/format.js'
+import { fmtGsInput, unidadMoneda } from '../shared/format.js'
 import { logger } from '../shared/logger.js'
 import { state, app } from './state.js'
 import {
@@ -18,32 +14,28 @@ import {
   OBJETOS_RIESGO_CAMPOS,
   MOTIVO_BLOQUEO_ID,
   DEBOUNCE_MS,
-  CODIGOS_COBERTURA_EXCLUIDOS_BASE,
   LIMITE_REPETICION_COBERTURA_MRC,
   LIMITE_REPETICION_COBERTURA_MRC_DEFAULT,
-  SUBLIMITE_ICONOS,
   PASOS_EMISION_CARTA,
-  ICON_PLUS,
   COTIZADOR_VERSION,
 } from './constants.js'
 import {
   planEsCalculable,
   franquiciaValorPorDefecto,
   monedaEfectiva,
-  monedaCotizacionActual,
   sugerenciaInspeccion,
   descuentosParaBody,
   recargosParaBody,
-  sublimitesFijosMrc,
   datosMinimosCompletos,
   capitalAseguradoParaBody,
-  formaPagoSeleccionada,
   puedeAvanzarADetalle,
+  coberturasDisponibles,
+  quedanCoberturasAdicionalesPorAgregar,
 } from './domain-rules.js'
 import { prefillDatosDesdeCotizacion, idLinea, armarRiesgoDatos } from './body-builder.js'
 import { idParaCampo } from './render/render-campos.js'
 import { renderLivePanel, renderLivePanelContent } from './render/render-cotizacion-vivo.js'
-import { renderFranquiciaSelect, renderResumenCotizacion } from './render/render-detalle-plan.js'
+import { renderStepper, renderResultadoView } from './render/render-detalle-plan.js'
 
 // Cotizador Tajy — App Shell + Datos + Resultado (Fase 6, alcance MRC plan Normal).
 // Recreación en Vanilla JS del handoff de diseño original (mockup ya migrado y eliminado
@@ -291,17 +283,6 @@ async function cargarPlanCoberturas(planId) {
     logger.error('No se pudo cargar las coberturas fijas del plan', err)
     state.planCoberturas = []
   }
-}
-
-// Opciones seleccionables en "Coberturas adicionales": el catálogo del ramo sin las 2 fijas
-// (tienen su propio campo), sin sublimite_cctv (sin tasa cargada todavía — no cotizable), y sin
-// los sublímites fijos por defecto del plan actual (ver sublimitesFijosMrc()).
-function coberturasDisponibles() {
-  const excluidos = [
-    ...CODIGOS_COBERTURA_EXCLUIDOS_BASE,
-    ...sublimitesFijosMrc().map((s) => s.codigo),
-  ]
-  return state.coberturasCatalogo.filter((c) => !excluidos.includes(c.codigo))
 }
 
 function selectFormaPago(codigo) {
@@ -675,36 +656,6 @@ function renderPlanRow() {
   `
 }
 
-// Referencia visual de avance (1. Datos del plan → 2. Detalle del plan → 3. Carta oferta).
-// "Carta oferta" no tiene un state.view propio — se emite como acción (PDF) dentro de
-// "Detalle del plan" (ver emitirCartaOferta()) — así que ese paso queda siempre pendiente,
-// solo marca el recorrido esperado, no un estado navegable.
-function renderStepper() {
-  const pasos = [
-    { n: 1, label: 'Datos del plan', activo: state.view === 'form' },
-    { n: 2, label: 'Detalle del plan', activo: state.view === 'result' },
-    { n: 3, label: 'Carta oferta', activo: false },
-  ]
-
-  return `
-    <div class="stepper-row">
-      <div class="stepper">
-        ${pasos
-          .map(
-            (p, i) => `
-          <div class="stepper__step">
-            <div class="stepper__circle ${p.activo ? 'stepper__circle--active' : ''}">${p.n}</div>
-            <div class="stepper__label ${p.activo ? 'stepper__label--active' : ''}">${escapeHtml(p.label)}</div>
-          </div>
-          ${i < pasos.length - 1 ? '<div class="stepper__connector"></div>' : ''}
-        `
-          )
-          .join('')}
-      </div>
-    </div>
-  `
-}
-
 function renderEmptyState() {
   return `
     <div class="empty-state">
@@ -997,23 +948,6 @@ function renderDatosView(ramo) {
   `
 }
 
-// true si todavía queda al menos un código de `catalogoDisponible` que no llegó a su límite de
-// repetición (ver LIMITE_REPETICION_COBERTURA_MRC) — usado para deshabilitar tanto el "+ Agregar
-// cobertura" del selector libre (Datos) como el "Agregar cobertura adicional" de "Detalle del
-// plan" una vez que ya se cargó el máximo de coberturas disponibles para el plan.
-function quedanCoberturasAdicionalesPorAgregar(catalogoDisponible) {
-  const conteo = new Map()
-  for (const l of state.coberturasAdicionales) {
-    if (!l.codigo) continue
-    conteo.set(l.codigo, (conteo.get(l.codigo) || 0) + 1)
-  }
-  return catalogoDisponible.some((c) => {
-    const limite =
-      LIMITE_REPETICION_COBERTURA_MRC[c.codigo] ?? LIMITE_REPETICION_COBERTURA_MRC_DEFAULT
-    return (conteo.get(c.codigo) || 0) < limite
-  })
-}
-
 // Sección "Coberturas adicionales": líneas cobertura/sublímite más allá de Incendio Edificio/
 // Contenido. `catalogoDisponible` ya viene sin las 2 fijas y sin sublimite_cctv (ver
 // coberturasDisponibles()).
@@ -1134,112 +1068,6 @@ function renderCoberturasAdicionalesCheckbox(catalogoDisponible) {
       ${filas || '<div class="empty-state__subtitle">No hay coberturas adicionales disponibles para este plan.</div>'}
     </div>
   `
-}
-
-function renderResultadoVacio(ramo, plan, planLabel, esCalculable) {
-  return `
-    <div class="resultado-view panel">
-      <div class="resultado-view__inner">
-        ${esCalculable ? `<div class="stepper-wrap">${renderStepper()}</div>` : ''}
-        <div class="resultado-hero">
-          <div>
-            <div class="resultado-hero__label">Plan ${escapeHtml(planLabel)} · ${escapeHtml(ramo.label)}</div>
-            <div class="resultado-hero__price">— <span>Gs. / mes</span></div>
-          </div>
-          <button class="btn-primary" data-action="emitir-carta" disabled title="Requiere una cotización calculada">Emitir carta oferta</button>
-        </div>
-        <div class="empty-state empty-state--compact">
-          <div class="empty-state__subtitle">
-            ${esCalculable ? 'Completá los datos del riesgo en la pestaña "Datos" para ver el detalle del plan.' : 'Cálculo pendiente de confirmación de tasas para este ramo.'}
-          </div>
-        </div>
-      </div>
-    </div>
-  `
-}
-
-function renderResultadoCompleto(ramo, plan, planLabel) {
-  const fp = formaPagoSeleccionada()
-  const coberturas = state.preview.coberturas || []
-  // "Coberturas adicionales" solo existe en el formulario de MRC (ver camposEspecificosMrc) —
-  // en otros ramos no hay límite que evaluar, así que el botón queda siempre habilitado.
-  const puedeAgregarMasCoberturas =
-    ramo.nombre !== 'mrc' || quedanCoberturasAdicionalesPorAgregar(coberturasDisponibles())
-
-  return `
-    <div class="resultado-view panel">
-      <div class="resultado-view__inner">
-        <div class="resultado-layout">
-          <div class="resultado-layout__main">
-            ${renderStepper()}
-            <div class="plan-info-card">
-              <div>
-                <div class="plan-info-card__title">${escapeHtml(planLabel)}</div>
-                <div class="plan-info-card__pills">
-                  <span class="plan-info-card__badge plan-info-card__badge--neutral">${escapeHtml(ramo.label)}</span>
-                  <span class="plan-info-card__badge plan-info-card__badge--success">${escapeHtml(fp.nombre_display)}</span>
-                </div>
-              </div>
-              <button class="link-button" data-action="show-tab" data-view="form">${ICON_ARROW_LEFT_ROUND} Cambiar datos</button>
-            </div>
-            <div class="coberturas-section">
-              <div class="coberturas-section__title">Coberturas incluidas</div>
-              <div class="coberturas-lista">
-                ${[...coberturas]
-                  // Los sub-límites fijos del plan no van en este listado de "Coberturas incluidas"
-                  // (a pedido de Kevin, 2026-07-15) — se muestran aparte en renderSublimitesFijosMrc.
-                  .filter((c) => !sublimitesFijosMrc().some((s) => s.codigo === c.codigo))
-                  .sort(
-                    (a, b) =>
-                      (a.tipo_aplicacion === 'sublimite' ? 1 : 0) -
-                      (b.tipo_aplicacion === 'sublimite' ? 1 : 0)
-                  )
-                  .map((c) => {
-                    const esSublimite = c.tipo_aplicacion === 'sublimite'
-                    return `
-                    <div class="cobertura-card">
-                      <div class="cobertura-card__status ${esSublimite ? 'cobertura-card__status--warning' : ''}">${esSublimite ? '!' : '✓'}</div>
-                      <div class="cobertura-card__icon">${SUBLIMITE_ICONOS[c.codigo] || ICON_SUBLIMITE_GENERICO}</div>
-                      <div class="cobertura-card__main">
-                        <div class="cobertura-card__name">${escapeHtml(c.nombre)}</div>
-                        ${renderFranquiciaSelect(c)}
-                      </div>
-                      <div class="cobertura-card__monto">
-                        <span>Suma asegurada</span>
-                        <div>${typeof c.monto === 'number' ? `${fmtMonto(c.monto, monedaCotizacionActual())} <em>${unidadMoneda(monedaCotizacionActual())}</em>` : escapeHtml(c.monto ?? '—')}</div>
-                      </div>
-                    </div>
-                  `
-                  })
-                  .join('')}
-              </div>
-              <button
-                class="cobertura-card__agregar"
-                data-action="show-tab"
-                data-view="form"
-                ${puedeAgregarMasCoberturas ? '' : 'disabled title="Ya agregaste todas las coberturas adicionales disponibles para este plan"'}
-              >${ICON_PLUS} Agregar cobertura adicional</button>
-            </div>
-          </div>
-          <div class="resultado-layout__aside">
-            ${renderResumenCotizacion(plan)}
-          </div>
-        </div>
-      </div>
-    </div>
-  `
-}
-
-function renderResultadoView(ramo) {
-  const esCalculable = RAMOS_CON_CALCULO.includes(state.ramoId)
-  const plan = state.planes.find((p) => p.id === state.planId)
-  const planLabel = plan ? plan.nombre : '—'
-
-  if (!esCalculable || !state.preview) {
-    return renderResultadoVacio(ramo, plan, planLabel, esCalculable)
-  }
-
-  return renderResultadoCompleto(ramo, plan, planLabel)
 }
 
 // ---------------------------------------------------------------------------

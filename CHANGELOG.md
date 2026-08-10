@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.35](https://github.com/fenix1050/produccion/compare/v0.1.34...v0.1.35) (2026-08-10)
+
+
+### Bug Fixes
+
+* **carta-oferta:** usar fecha de emisión en vez de created_at, bajar bloque de firma ([#220](https://github.com/fenix1050/produccion/issues/220)) ([495c1ab](https://github.com/fenix1050/produccion/commit/495c1ab7202697f83f3d3005269475c6fcb7a123))
+
 ## [0.1.34](https://github.com/fenix1050/produccion/compare/v0.1.33...v0.1.34) (2026-08-10)
 
 

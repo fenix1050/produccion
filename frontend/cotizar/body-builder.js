@@ -32,7 +32,10 @@ export function prefillDatosDesdeCotizacion(ramoNombre, plan, cotizacion) {
     // re-agregan solos en armarRiesgoDatos() — no deben duplicarse acá como línea editable de
     // "Coberturas adicionales". sublimitesFijosMrc() todavía no puede calcular Ventanilla acá
     // (depende de state.coberturasAdicionales, que recién se llena en esta misma asignación) —
-    // se usa CODIGOS_COBERTURA_EXCLUIDOS_BASE para cubrir ese caso sin depender del orden.
+    // se usa CODIGOS_COBERTURA_EXCLUIDOS_BASE para cubrir ese caso sin depender del orden. Las
+    // Coberturas Principales "Por defecto" (ver coberturasPrincipalesFijasMrc()) NO se excluyen
+    // acá a propósito: no tienen monto fijo, así que la cotización guardada ya trae la suma
+    // asegurada real que cargó el agente — se restaura como cualquier otra línea normal.
     const codigosFijos = new Set([
       ...CODIGOS_COBERTURA_EXCLUIDOS_BASE,
       ...sublimitesFijosMrc().map((s) => s.codigo),

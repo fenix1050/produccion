@@ -13,6 +13,7 @@ import {
   recargosParaBody,
   monedaEfectiva,
   franquiciaValorPorDefecto,
+  coberturasPrincipalesFijasMrc,
 } from './domain-rules.js'
 import { armarRiesgoDatos, idLinea, prefillDatosDesdeCotizacion } from './body-builder.js'
 import { ramoActivo, renderApp } from './render/render-shell.js'
@@ -58,6 +59,20 @@ export async function cargarPlanCoberturas(planId) {
     logger.error('No se pudo cargar las coberturas fijas del plan', err)
     state.planCoberturas = []
   }
+}
+
+// Agrega una línea vacía de "Coberturas adicionales" por cada Cobertura Principal que el plan
+// trae marcada "Por defecto" (2026-08-10, ver coberturasPrincipalesFijasMrc()) — a diferencia
+// de los sublímites fijos, estas no tienen un monto de plan: quedan precargadas en el
+// formulario (tildadas en modo checkbox / con fila propia en el selector libre) para que el
+// agente solo tenga que completar la suma asegurada, no buscarlas de nuevo en el catálogo.
+// No pisa líneas que ya existan para ese código (evita duplicar si se llama más de una vez).
+function preagregarCoberturasPrincipalesFijasMrc() {
+  const codigosExistentes = new Set(state.coberturasAdicionales.map((l) => l.codigo))
+  const nuevas = coberturasPrincipalesFijasMrc()
+    .filter((c) => !codigosExistentes.has(c.codigo))
+    .map((c) => ({ id: idLinea(), codigo: c.codigo, sumaAsegurada: '' }))
+  if (nuevas.length) state.coberturasAdicionales = [...state.coberturasAdicionales, ...nuevas]
 }
 
 // El botón "Ver detalle completo" y la pestaña "Detalle del plan" viven fuera del subárbol que
@@ -277,7 +292,10 @@ export async function selectRamo(nombre) {
       // para "Normal" y "Protección Total") — se carga una sola vez acá. Solo MRC usa
       // "Coberturas adicionales" en esta pasada.
       await cargarCoberturasCatalogo(ramo.id)
-      if (state.planId) await cargarPlanCoberturas(state.planId)
+      if (state.planId) {
+        await cargarPlanCoberturas(state.planId)
+        preagregarCoberturasPrincipalesFijasMrc()
+      }
     }
   } else {
     state.planId = state.planes[0]?.id ?? null
@@ -297,7 +315,10 @@ export function selectPlan(planId) {
   renderApp()
   scheduleCalculate()
   if (state.ramoId === 'mrc') {
-    cargarPlanCoberturas(planId).then(renderApp)
+    cargarPlanCoberturas(planId).then(() => {
+      preagregarCoberturasPrincipalesFijasMrc()
+      renderApp()
+    })
   }
 }
 

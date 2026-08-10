@@ -144,7 +144,11 @@ export function sublimiteVentanillaCalculado() {
 // plan elegido (WU6, 2026-07-17), en vez de la vieja constante hardcodeada SUBLIMITES_FIJOS_MRC.
 // El agente no los elige ni les cambia el monto, así que se muestran aparte en el panel
 // "Sublímites" (ver renderSublimitesFijosMrc), no como fila editable/quitable en "Coberturas
-// adicionales". Excluye explícitamente Incendio Edificio/Contenido: esas 2 no viven en
+// adicionales". Filtra por `categoria === 'Sublímites'` (2026-08-10, ver
+// coberturasPrincipalesFijasMrc): antes cualquier fila con `incluida_por_defecto = true`
+// entraba acá sin importar su categoría, así que una "Cobertura Principal" marcada por defecto
+// (ej. Robo contenido) se mezclaba en el panel de Sublímites en vez de mostrarse como cobertura
+// propia. Excluye explícitamente Incendio Edificio/Contenido: esas 2 no viven en
 // `plan_coberturas` (se cotizan por Capital Edificio/Contenido, campo propio del formulario),
 // pero se filtran igual por defensividad ante un dato inesperado.
 export function sublimitesFijosMrc() {
@@ -152,6 +156,7 @@ export function sublimitesFijosMrc() {
     .filter(
       (pc) =>
         pc.incluida_por_defecto &&
+        pc.coberturas_catalogo?.categoria === 'Sublímites' &&
         !CODIGOS_COBERTURA_EXCLUIDOS_BASE.includes(pc.coberturas_catalogo?.codigo)
     )
     .map((pc) => ({
@@ -162,6 +167,27 @@ export function sublimitesFijosMrc() {
     .filter((s) => s.codigo)
   const ventanilla = sublimiteVentanillaCalculado()
   return ventanilla ? [...fijosDelPlan, ventanilla] : fijosDelPlan
+}
+
+// Coberturas Principales de MRC marcadas "Por defecto" en el plan (2026-08-10, pedido de
+// Kevin: poder agregar coberturas nuevas al catálogo, marcarlas "Por defecto" en el admin, y
+// que aparezcan ya precargadas como línea en "Coberturas adicionales" al elegir el plan — a
+// diferencia de los sublímites (ver sublimitesFijosMrc()), acá NO hay un monto fijo por plan:
+// el agente sigue cargando la suma asegurada a mano, esta función solo dice QUÉ códigos deben
+// pre-agregarse como línea vacía (ver preagregarCoberturasPrincipalesFijasMrc en actions.js).
+export function coberturasPrincipalesFijasMrc() {
+  return state.planCoberturas
+    .filter(
+      (pc) =>
+        pc.incluida_por_defecto &&
+        pc.coberturas_catalogo?.categoria !== 'Sublímites' &&
+        !CODIGOS_COBERTURA_EXCLUIDOS_BASE.includes(pc.coberturas_catalogo?.codigo)
+    )
+    .map((pc) => ({
+      codigo: pc.coberturas_catalogo?.codigo,
+      nombre: pc.coberturas_catalogo?.nombre ?? pc.coberturas_catalogo?.codigo,
+    }))
+    .filter((s) => s.codigo)
 }
 
 export function datosMinimosCompletos() {
@@ -277,7 +303,13 @@ export function capitalTotalAsegurado() {
 
 // Opciones seleccionables en "Coberturas adicionales": el catálogo del ramo sin las 2 fijas
 // (tienen su propio campo), sin sublimite_cctv (sin tasa cargada todavía — no cotizable), y sin
-// los sublímites fijos por defecto del plan actual (ver sublimitesFijosMrc()).
+// los sublímites fijos por defecto del plan actual (ver sublimitesFijosMrc()) — esos se
+// auto-agregan solos con monto fijo, no tiene sentido ofrecerlos para que el agente los
+// duplique. Las Coberturas Principales marcadas "Por defecto" (ver
+// coberturasPrincipalesFijasMrc()) SÍ quedan disponibles acá a propósito: se pre-cargan como
+// línea vacía (ver actions.js), pero siguen siendo una cobertura normal que el agente completa
+// a mano — necesitan seguir aaparecidas en este catálogo para que su fila (checkbox o selector
+// libre) tengan de dónde sacar nombre/categoría.
 export function coberturasDisponibles() {
   const excluidos = [
     ...CODIGOS_COBERTURA_EXCLUIDOS_BASE,

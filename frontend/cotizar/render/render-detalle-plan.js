@@ -12,7 +12,6 @@ import {
   ICON_TAG,
   RAMOS_CON_CALCULO,
   SUBLIMITE_ICONOS,
-  ICON_PLUS,
 } from '../constants.js'
 import {
   franquiciaValorPorDefecto,
@@ -21,8 +20,6 @@ import {
   capitalTotalAsegurado,
   sublimitesFijosMrc,
   monedaCotizacionActual,
-  coberturasDisponibles,
-  quedanCoberturasAdicionalesPorAgregar,
 } from '../domain-rules.js'
 import { idParaCampo } from './render-campos.js'
 
@@ -279,10 +276,6 @@ function renderResultadoVacio(ramo, plan, planLabel, esCalculable) {
 function renderResultadoCompleto(ramo, plan, planLabel) {
   const fp = formaPagoSeleccionada()
   const coberturas = state.preview.coberturas || []
-  // "Coberturas adicionales" solo existe en el formulario de MRC (ver camposEspecificosMrc) —
-  // en otros ramos no hay límite que evaluar, así que el botón queda siempre habilitado.
-  const puedeAgregarMasCoberturas =
-    ramo.nombre !== 'mrc' || quedanCoberturasAdicionalesPorAgregar(coberturasDisponibles())
 
   return `
     <div class="resultado-view panel">
@@ -331,12 +324,6 @@ function renderResultadoCompleto(ramo, plan, planLabel) {
                   })
                   .join('')}
               </div>
-              <button
-                class="cobertura-card__agregar"
-                data-action="show-tab"
-                data-view="form"
-                ${puedeAgregarMasCoberturas ? '' : 'disabled title="Ya agregaste todas las coberturas adicionales disponibles para este plan"'}
-              >${ICON_PLUS} Agregar cobertura adicional</button>
             </div>
           </div>
           <div class="resultado-layout__aside">

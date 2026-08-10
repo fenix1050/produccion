@@ -1,20 +1,13 @@
 import { api, auth } from '../shared/api.js'
 import { getRamos } from '../shared/catalogo.js'
-import { atraparFoco, enfocarPrimerElemento } from '../shared/dom.js'
+import { atraparFoco } from '../shared/dom.js'
 import { fmtGsInput } from '../shared/format.js'
 import { logger } from '../shared/logger.js'
 import { state, app } from './state.js'
 import { RAMOS_CON_CALCULO } from './constants.js'
-import {
-  planEsCalculable,
-  monedaEfectiva,
-  descuentosParaBody,
-  recargosParaBody,
-  capitalAseguradoParaBody,
-} from './domain-rules.js'
-import { prefillDatosDesdeCotizacion, armarRiesgoDatos } from './body-builder.js'
+import { prefillDatosDesdeCotizacion } from './body-builder.js'
 import { renderLivePanel } from './render/render-cotizacion-vivo.js'
-import { ramoActivo, renderApp } from './render/render-shell.js'
+import { renderApp } from './render/render-shell.js'
 import {
   mostrarBanner,
   setView,
@@ -27,15 +20,15 @@ import {
   updateCoberturaLinea,
   toggleCoberturaAdicionalPorCodigo,
   selectMoneda,
+  selectRamo,
+  selectPlan,
+  emitirCartaOferta,
+  cerrarModalProgresoCarta,
 } from './actions.js'
 
 // Cotizador Tajy — App Shell + Datos + Resultado (Fase 6, alcance MRC plan Normal).
 // Recreación en Vanilla JS del handoff de diseño original (mockup ya migrado y eliminado
 // tras la implementación de "Diseño 2" en frontend/cotizar).
-
-// Elemento con foco al abrir el modal de progreso de emisión — se le devuelve el foco al cerrar
-// (mismo patrón que elementoDisparadorModal en historial.js).
-let elementoDisparadorModalCarta = null
 
 async function init() {
   // Cambio session-httponly-cookie: ya no hay token en localStorage para chequear de
@@ -138,87 +131,6 @@ async function cerrarSesion() {
 // Acciones de estado
 // ---------------------------------------------------------------------------
 
-async function selectRamo(nombre) {
-  // Salir del modo edición al cambiar de ramo manualmente: el backend rechaza un PUT que cambie
-  // el ramo de una cotización existente (actualizarCotizacion, cotizacion.service.js), así que
-  // sin este reset el agente llenaría todo el formulario de otro ramo para recién enterarse del
-  // 422 al guardar — detectado en review-readability/risk de la feature de edición.
-  state.editandoId = null
-  state.ramoId = nombre
-  state.view = 'form'
-  state.planBloqueado = false
-  state.sidebarAbierta = false
-  state.data = {}
-  state.planId = null
-  state.planes = []
-  state.franquiciasPorCobertura = {}
-  state.rubros = []
-  state.coberturasCatalogo = []
-  state.planCoberturas = []
-  state.coberturasAdicionales = []
-  state.preview = null
-  state.previewError = null
-  state.formaPagoCodigo = null
-  renderApp()
-
-  const ramo = ramoActivo(nombre)
-  if (!ramo) return
-
-  try {
-    state.planes = await api.get(`/ramos/${ramo.id}/planes`)
-  } catch (err) {
-    logger.error('No se pudieron cargar los planes del ramo', err)
-    state.planes = []
-  }
-
-  if (RAMOS_CON_CALCULO.includes(nombre)) {
-    // Preselecciona el primer plan calculable hoy (RPF/tasas confirmados).
-    const planCalculable = state.planes.find((p) => planEsCalculable(nombre, p))
-    state.planId = planCalculable ? planCalculable.id : (state.planes[0]?.id ?? null)
-    state.data.cuotas = planCalculable?.cuotas_default ?? null
-    state.data.descuentoPorcentaje = planCalculable?.descuento_default ?? null
-
-    if (nombre === 'mrc' || nombre === 'incendio') {
-      try {
-        // Cambio "incendio-tasas-por-rubro": filtrado por ramo (rubro_actividad_ramo).
-        // Incendio solo usa esta lista para el plan "Edificio y Contenido" (Maquinaria
-        // Básico no); un rubro multi-ramo (ej. "CHANCHERIAS") aparece en ambos selectores.
-        state.rubros = await api.get(`/ramos/rubros-actividad?ramo_id=${ramo.id}`)
-      } catch (err) {
-        logger.error('No se pudieron cargar los tipos de riesgo', err)
-        state.rubros = []
-      }
-    }
-
-    if (nombre === 'mrc') {
-      // El catálogo de coberturas es por RAMO, no por plan (mismas coberturas disponibles
-      // para "Normal" y "Protección Total") — se carga una sola vez acá. Solo MRC usa
-      // "Coberturas adicionales" en esta pasada.
-      await cargarCoberturasCatalogo(ramo.id)
-      if (state.planId) await cargarPlanCoberturas(state.planId)
-    }
-  } else {
-    state.planId = state.planes[0]?.id ?? null
-  }
-
-  renderApp()
-}
-
-function selectPlan(planId) {
-  if (state.planBloqueado) return // ya se pasó a "Detalle del plan": el plan queda fijo
-  const plan = state.planes.find((p) => p.id === planId)
-  if (!plan || !planEsCalculable(state.ramoId, plan)) return // plan sin RPF/tasas confirmadas: bloqueado
-  state.planId = planId
-  state.data.cuotas = plan.cuotas_default ?? null
-  state.data.descuentoPorcentaje = plan.descuento_default ?? null
-  state.coberturasAdicionales = []
-  renderApp()
-  scheduleCalculate()
-  if (state.ramoId === 'mrc') {
-    cargarPlanCoberturas(planId).then(renderApp)
-  }
-}
-
 function selectFormaPago(codigo) {
   state.formaPagoCodigo = codigo
   renderLivePanel()
@@ -233,76 +145,6 @@ function updateField(key, value) {
   state.data[key] = value
   if (RAMOS_CON_CALCULO.includes(state.ramoId)) {
     scheduleCalculate()
-  }
-}
-
-// Guarda la cotización (POST /cotizaciones, si es la primera vez que se emite carta para esta
-// pasada por el formulario) y descarga el PDF de la Carta Oferta. Reutiliza exactamente el mismo
-// body que calcularPreview — el backend valida y calcula de nuevo antes de persistir.
-async function emitirCartaOferta() {
-  if (state.emitiendoCarta || !state.preview) return
-
-  const d = state.data
-  const plan = state.planes.find((p) => p.id === state.planId)
-  const body = {
-    plan_id: state.planId,
-    capital_asegurado: capitalAseguradoParaBody(plan),
-    riesgo_datos: armarRiesgoDatos(plan),
-    descuentos: descuentosParaBody(),
-    recargos: recargosParaBody(),
-    cliente_nombre: d.clienteNombre || '',
-    moneda: monedaEfectiva(plan),
-    ...(d.cuotas ? { cuotas: Number(d.cuotas) } : {}),
-  }
-
-  state.emitiendoCarta = true
-  state.progresoCarta = { paso: 0, estado: 'activo' }
-  elementoDisparadorModalCarta = document.activeElement
-  renderApp()
-  enfocarPrimerElemento(app.querySelector('.progreso-carta-modal'))
-
-  try {
-    state.progresoCarta = { paso: 1, estado: 'activo' }
-    renderApp()
-    const cotizacion = state.editandoId
-      ? await api.put(`/cotizaciones/${state.editandoId}`, body)
-      : await api.post('/cotizaciones', body)
-
-    state.progresoCarta = { paso: 2, estado: 'activo' }
-    renderApp()
-    const blob = await api.getBlob(`/cotizaciones/${cotizacion.id}/pdf-oferta`)
-
-    // No se abre la pestaña sola acá: el modal queda visible durante todo el proceso y el
-    // usuario la abre a mano con el botón "Ver PDF" del estado de éxito — un click real,
-    // así que el navegador nunca lo bloquea como pop-up (a diferencia de abrirla después de
-    // un await, sin gesto del usuario en el mismo tick).
-    state.progresoCarta = { paso: 3, estado: 'exito', pdfUrl: URL.createObjectURL(blob) }
-  } catch (err) {
-    state.progresoCarta = {
-      ...state.progresoCarta,
-      estado: 'error',
-      error: err.message || 'No se pudo generar la Carta Oferta.',
-    }
-    mostrarBanner('error', err.message || 'No se pudo generar la Carta Oferta.')
-  } finally {
-    state.emitiendoCarta = false
-    renderApp()
-    // El bloque de resultado (éxito/error) recién aparece en este render — se enfoca su
-    // primer control (Ver PDF/Cerrar/Reintentar) para que el flujo por teclado no quede varado.
-    enfocarPrimerElemento(app.querySelector('.progreso-carta-modal'))
-  }
-}
-
-// Cierra el modal de progreso — solo llamable desde los estados terminales ('exito'/'error'),
-// nunca mientras está 'activo' (ver renderModalProgresoCarta/onKeydown).
-function cerrarModalProgresoCarta() {
-  if (state.progresoCarta?.estado === 'activo') return
-  if (state.progresoCarta?.pdfUrl) URL.revokeObjectURL(state.progresoCarta.pdfUrl)
-  state.progresoCarta = null
-  renderApp()
-  if (elementoDisparadorModalCarta) {
-    elementoDisparadorModalCarta.focus()
-    elementoDisparadorModalCarta = null
   }
 }
 

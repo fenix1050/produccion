@@ -9,7 +9,6 @@ import {
   RAMOS_UI,
   RAMO_ICONOS,
   RAMOS_CON_CALCULO,
-  CLIENT_FIELDS,
   MOTIVO_BLOQUEO_ID,
   DEBOUNCE_MS,
   PASOS_EMISION_CARTA,
@@ -26,10 +25,9 @@ import {
   puedeAvanzarADetalle,
 } from './domain-rules.js'
 import { prefillDatosDesdeCotizacion, idLinea, armarRiesgoDatos } from './body-builder.js'
-import { idParaCampo } from './render/render-campos.js'
-import { renderLivePanel, renderLivePanelContent } from './render/render-cotizacion-vivo.js'
-import { renderStepper, renderResultadoView } from './render/render-detalle-plan.js'
-import { camposEspecificosParaRamo } from './render/render-datos.js'
+import { renderLivePanel } from './render/render-cotizacion-vivo.js'
+import { renderResultadoView } from './render/render-detalle-plan.js'
+import { renderDatosView } from './render/render-datos.js'
 
 // Cotizador Tajy — App Shell + Datos + Resultado (Fase 6, alcance MRC plan Normal).
 // Recreación en Vanilla JS del handoff de diseño original (mockup ya migrado y eliminado
@@ -622,34 +620,6 @@ function renderHeader(ramo) {
   `
 }
 
-function renderPlanRow() {
-  const options = state.planes
-    .map((p) => {
-      const calculable = planEsCalculable(state.ramoId, p)
-      const sufijo = calculable ? '' : ' (pendiente de confirmación)'
-      return `
-      <option value="${p.id}" ${p.id === state.planId ? 'selected' : ''} ${!calculable ? 'disabled' : ''}>
-        ${escapeHtml(p.nombre)}${sufijo}
-      </option>
-    `
-    })
-    .join('')
-
-  return `
-    <div class="plan-row">
-      <div class="plan-row__box">
-        <div class="plan-row__label">Plan a presentar</div>
-        <select
-          class="field-input plan-row__select"
-          data-action-select="select-plan"
-          aria-label="Plan a presentar"
-          ${state.planBloqueado ? 'disabled title="El plan ya no se puede cambiar: se pasó a \'Detalle del plan\'. Empezá una cotización nueva para elegir otro plan."' : ''}
-        >${options}</select>
-      </div>
-    </div>
-  `
-}
-
 function renderEmptyState() {
   return `
     <div class="empty-state">
@@ -671,49 +641,6 @@ function renderRamoNoDisponible(ramo) {
     <div class="empty-state">
       <div class="empty-state__title">${escapeHtml(ramo.label)}</div>
       <div class="empty-state__subtitle">Próximamente.</div>
-    </div>
-  `
-}
-
-function renderDatosView(ramo) {
-  const esCalculable = RAMOS_CON_CALCULO.includes(state.ramoId)
-  const plan = state.planes.find((p) => p.id === state.planId)
-
-  const camposEspecificos = esCalculable
-    ? camposEspecificosParaRamo(ramo, plan)
-    : camposEspecificosParaRamo({ nombre: null }, null)
-
-  return `
-    <div class="datos-view panel">
-      <div class="datos-view__form">
-        ${esCalculable && ramo.estado === 'disponible' ? renderStepper() + renderPlanRow() : ''}
-        <div class="datos-view__form-inner">
-          <div class="form-heading">
-            <div class="form-heading__label">Datos del asegurado</div>
-          </div>
-          <div class="datos-view__form-body">
-            <div class="field-grid">
-              ${CLIENT_FIELDS.map(
-                (f) => `
-                <div class="field ${f.span === 2 ? 'field--span2' : ''}">
-                  <label for="${idParaCampo(f.key)}">${f.label}</label>
-                  <input class="field-input" id="${idParaCampo(f.key)}" type="text" inputmode="${f.money ? 'numeric' : 'text'}" data-field="${f.key}" ${f.money ? 'data-money="true"' : ''} placeholder="${f.placeholder}" value="${escapeHtml(f.money ? fmtGsInput(state.data[f.key]) : (state.data[f.key] ?? ''))}" />
-                </div>
-              `
-              ).join('')}
-              ${camposEspecificos}
-            </div>
-            <button
-              id="btn-ver-detalle"
-              class="btn-primary form-cta"
-              data-action="show-tab"
-              data-view="result"
-              ${puedeAvanzarADetalle() ? '' : `disabled title="Corregí el capital declarado antes de avanzar — ver el mensaje de alerta" aria-disabled="true" aria-describedby="${MOTIVO_BLOQUEO_ID}"`}
-            >Ver detalle completo →</button>
-          </div>
-        </div>
-      </div>
-      <div class="live-summary" id="live-summary">${renderLivePanelContent()}</div>
     </div>
   `
 }

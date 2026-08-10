@@ -4,17 +4,15 @@ import { atraparFoco, enfocarPrimerElemento } from '../shared/dom.js'
 import { fmtGsInput } from '../shared/format.js'
 import { logger } from '../shared/logger.js'
 import { state, app } from './state.js'
-import { RAMOS_CON_CALCULO, DEBOUNCE_MS } from './constants.js'
+import { RAMOS_CON_CALCULO } from './constants.js'
 import {
   planEsCalculable,
-  franquiciaValorPorDefecto,
   monedaEfectiva,
   descuentosParaBody,
   recargosParaBody,
-  datosMinimosCompletos,
   capitalAseguradoParaBody,
 } from './domain-rules.js'
-import { prefillDatosDesdeCotizacion, idLinea, armarRiesgoDatos } from './body-builder.js'
+import { prefillDatosDesdeCotizacion, armarRiesgoDatos } from './body-builder.js'
 import { renderLivePanel } from './render/render-cotizacion-vivo.js'
 import { ramoActivo, renderApp } from './render/render-shell.js'
 import {
@@ -22,20 +20,19 @@ import {
   setView,
   cargarCoberturasCatalogo,
   cargarPlanCoberturas,
-  syncAvanceButtons,
+  calcularPreview,
+  scheduleCalculate,
+  addCoberturaLinea,
+  removeCoberturaLinea,
+  updateCoberturaLinea,
+  toggleCoberturaAdicionalPorCodigo,
+  selectMoneda,
 } from './actions.js'
 
 // Cotizador Tajy — App Shell + Datos + Resultado (Fase 6, alcance MRC plan Normal).
 // Recreación en Vanilla JS del handoff de diseño original (mockup ya migrado y eliminado
 // tras la implementación de "Diseño 2" en frontend/cotizar).
 
-function selectMoneda(moneda) {
-  state.data.moneda = moneda
-  renderApp()
-  scheduleCalculate()
-}
-
-let debounceTimer = null
 // Elemento con foco al abrir el modal de progreso de emisión — se le devuelve el foco al cerrar
 // (mismo patrón que elementoDisparadorModal en historial.js).
 let elementoDisparadorModalCarta = null
@@ -236,111 +233,6 @@ function updateField(key, value) {
   state.data[key] = value
   if (RAMOS_CON_CALCULO.includes(state.ramoId)) {
     scheduleCalculate()
-  }
-}
-
-function scheduleCalculate() {
-  clearTimeout(debounceTimer)
-  debounceTimer = setTimeout(calcularPreview, DEBOUNCE_MS)
-}
-
-// ---------------------------------------------------------------------------
-// Coberturas adicionales: líneas cobertura/sublímite más allá de Incendio Edificio/Contenido.
-// ---------------------------------------------------------------------------
-
-function addCoberturaLinea() {
-  state.coberturasAdicionales.push({ id: idLinea(), codigo: '', sumaAsegurada: '' })
-  renderApp() // fila nueva: hace falta re-render completo
-}
-
-function removeCoberturaLinea(id) {
-  state.coberturasAdicionales = state.coberturasAdicionales.filter((l) => l.id !== id)
-  renderApp()
-  scheduleCalculate()
-}
-
-// Modo checkbox de "Coberturas adicionales" (roles sin puede_agregar_cobertura_libre, ver
-// CODIGOS_COBERTURA_EXCLUIDOS_BASE/renderCoberturasAdicionalesCheckbox, Ajuste MC.xlsx ítem #6,
-// 2026-08-05): cada código mapea a lo sumo una línea (sin la repetición x2 de robo_contenido
-// que sí permite el flujo libre — simplificación a propósito para este modo restringido).
-function toggleCoberturaAdicionalPorCodigo(codigo, marcado) {
-  if (marcado) {
-    if (!state.coberturasAdicionales.some((l) => l.codigo === codigo)) {
-      state.coberturasAdicionales.push({ id: idLinea(), codigo, sumaAsegurada: '' })
-    }
-  } else {
-    state.coberturasAdicionales = state.coberturasAdicionales.filter((l) => l.codigo !== codigo)
-  }
-  renderApp()
-  scheduleCalculate()
-}
-
-function updateCoberturaLinea(id, field, value) {
-  const linea = state.coberturasAdicionales.find((l) => l.id === id)
-  if (!linea) return
-  linea[field] = value
-  if (field === 'codigo') {
-    // Re-renderiza para que las demás filas reflejen el límite por cobertura recién elegida
-    // (ver renderCoberturasAdicionales/LIMITE_REPETICION_COBERTURA_MRC) — no se hace en cada
-    // tecleo de sumaAsegurada para no perder el foco del input mientras el agente escribe.
-    renderApp()
-  }
-  scheduleCalculate()
-}
-
-async function calcularPreview() {
-  if (!datosMinimosCompletos()) {
-    state.preview = null
-    state.previewError = null
-    renderLivePanel()
-    if (state.view === 'result') renderApp()
-    syncAvanceButtons()
-    return
-  }
-
-  const d = state.data
-  const plan = state.planes.find((p) => p.id === state.planId)
-  const body = {
-    plan_id: state.planId,
-    capital_asegurado: capitalAseguradoParaBody(plan),
-    riesgo_datos: armarRiesgoDatos(plan),
-    descuentos: descuentosParaBody(),
-    recargos: recargosParaBody(),
-    cliente_nombre: d.clienteNombre || '',
-    moneda: monedaEfectiva(plan),
-    ...(d.cuotas ? { cuotas: Number(d.cuotas) } : {}),
-  }
-
-  state.loadingPreview = true
-  renderLivePanel()
-
-  try {
-    const resultado = await api.post('/cotizaciones/calcular', body)
-    state.preview = resultado
-    state.previewError = null
-    // Primera vez que llega un cálculo: default a "Contado" (sin RPF) si el agente
-    // todavía no eligió forma de pago. Si ya había una elegida, se respeta.
-    if (!state.formaPagoCodigo) {
-      state.formaPagoCodigo =
-        resultado.variantes?.[0]?.formasPago?.find((fp) => fp.codigo === 'contado')?.codigo ??
-        resultado.variantes?.[0]?.formasPago?.[0]?.codigo ??
-        null
-    }
-    // Defaultea la franquicia de cada cobertura nueva a la de catálogo — sin pisar una que
-    // el agente ya haya elegido a mano en esta misma cotización.
-    for (const c of resultado.coberturas || []) {
-      if (!(c.codigo in state.franquiciasPorCobertura)) {
-        state.franquiciasPorCobertura[c.codigo] = franquiciaValorPorDefecto(c.franquicia_default)
-      }
-    }
-  } catch (err) {
-    state.preview = null
-    state.previewError = err.message || 'No se pudo calcular la cotización.'
-  } finally {
-    state.loadingPreview = false
-    renderLivePanel()
-    if (state.view === 'result') renderApp()
-    syncAvanceButtons()
   }
 }
 

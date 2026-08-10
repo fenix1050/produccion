@@ -1786,7 +1786,7 @@ button {
    (borrados en el cutover de Unit 3, junto con este comentario). */
 .cobertura-adicional-card {
   display: grid;
-  grid-template-columns: auto auto 1fr auto auto;
+  grid-template-columns: auto auto minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 10px;
   padding: 14px 4px;
@@ -1885,15 +1885,20 @@ button {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 10px;
-  width: 215px;
+  gap: 8px;
+  width: 190px;
 }
 
+/* Bloque "Suma asegurada" — mismo ancho/alineación estático o en edición, para que el input
+   se sienta como un estado temporal de este bloque y no como un formulario ancho aparte
+   (pedido de Kevin, ver campoMontoCobertura en render-datos.js). */
 .cobertura-adicional-card__estatico {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   gap: 2px;
+  width: 152px;
+  min-width: 0;
 }
 
 .cobertura-adicional-card__estatico-label {
@@ -1908,15 +1913,24 @@ button {
   font-weight: 700;
   color: var(--tajy-ink);
   font-variant-numeric: tabular-nums;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .cobertura-adicional-card__input {
   border: 1.5px solid var(--tajy-red);
   border-radius: var(--tajy-radius-sm);
-  padding: 9px 10px;
+  padding: 2px 6px;
   text-align: right;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: inherit;
+  color: var(--tajy-ink);
   font-variant-numeric: tabular-nums;
   width: 100%;
+  background: #fff;
 }
 
 .cobertura-adicional-card__input:focus {
@@ -1972,11 +1986,7 @@ button {
   .cobertura-adicional-card__field {
     grid-column: 1 / -1;
     width: 100%;
-    justify-content: space-between;
-  }
-
-  .cobertura-adicional-card__input {
-    flex: 1 1 auto;
+    justify-content: flex-start;
   }
 
   .cobertura-adicional-card .cobertura-adicional-card__quitar {

@@ -1,7 +1,7 @@
 import { auth } from '../../shared/api.js'
 import { escapeHtml } from '../../shared/dom.js'
 import { fmtGsInput, unidadMoneda } from '../../shared/format.js'
-import { ICON_PENCIL, ICON_LOCK, ICON_CHECK_SMALL, ICON_SUBLIMITE_GENERICO } from '../../shared/nav-icons.js'
+import { ICON_PENCIL, ICON_LOCK, ICON_SUBLIMITE_GENERICO } from '../../shared/nav-icons.js'
 import { state } from '../state.js'
 import {
   CIUDADES,
@@ -141,35 +141,47 @@ export function camposObjetoRiesgo(plan) {
 //    acá, aunque sumaAsegurada ya tenga monto (regla confirmada por Kevin, requirement 3)
 //  - editing: input real (mismo id/atributos de siempre) + botón de confirmar
 function campoMontoCobertura({ locked, editing, lineaId, sumaAsegurada, nombreAccesible }) {
-  const estatico = `
-    <div class="cobertura-adicional-card__estatico">
-      <span class="cobertura-adicional-card__estatico-label">Suma asegurada</span>
-      <span class="cobertura-adicional-card__estatico-valor">—</span>
-    </div>
-  `
-  if (locked) {
-    return `${estatico}<span class="cobertura-adicional-card__lock" title="Elegí una cobertura para cargar la suma asegurada" aria-hidden="true">${ICON_LOCK}</span>`
-  }
-  if (editing) {
-    return `
+  // La etiqueta "Suma asegurada" nunca desaparece — en edición se reemplaza solo el valor de
+  // abajo por un input compacto, no todo el bloque, para que el ancho/alto de la zona no salte
+  // entre estados (pedido de Kevin: "el input debe sentirse como un estado temporal del bloque
+  // de suma asegurada, no como un formulario grande agregado a la fila").
+  const valor = editing
+    ? `
       <label class="sr-only" for="cobertura-linea-${lineaId}-suma">Suma asegurada de ${escapeHtml(nombreAccesible)} (Gs.)</label>
       <input
-        class="field-input cobertura-adicional-card__input"
+        class="cobertura-adicional-card__input"
         id="cobertura-linea-${lineaId}-suma"
         type="text"
         inputmode="numeric"
         data-linea-id="${lineaId}"
         data-linea-field="sumaAsegurada"
         data-money="true"
-        placeholder="Suma asegurada (Gs.)"
+        placeholder="0"
         value="${fmtGsInput(sumaAsegurada)}"
       />
-      <button type="button" class="cobertura-adicional-card__accion" data-action="cerrar-edicion-monto-cobertura" data-linea-id="${lineaId}" aria-label="Listo, cerrar edición de ${escapeHtml(nombreAccesible)}">${ICON_CHECK_SMALL}</button>
     `
+    : `<span class="cobertura-adicional-card__estatico-valor">—</span>`
+
+  const bloque = `
+    <div class="cobertura-adicional-card__estatico">
+      <span class="cobertura-adicional-card__estatico-label">Suma asegurada</span>
+      ${valor}
+    </div>
+  `
+
+  if (locked) {
+    return `${bloque}<span class="cobertura-adicional-card__lock" title="Elegí una cobertura para cargar la suma asegurada" aria-hidden="true">${ICON_LOCK}</span>`
   }
+
+  // Mismo ícono de lápiz para abrir y cerrar la edición (Kevin: "quiero utilizar el lápiz para
+  // representar la edición del monto", en vez del check rojo previo) — solo cambia la acción.
+  const accion = editing
+    ? { action: 'cerrar-edicion-monto-cobertura', label: `Listo, cerrar edición de ${escapeHtml(nombreAccesible)}` }
+    : { action: 'editar-monto-cobertura', label: `Editar suma asegurada de ${escapeHtml(nombreAccesible)}` }
+
   return `
-    ${estatico}
-    <button type="button" class="cobertura-adicional-card__accion" data-action="editar-monto-cobertura" data-linea-id="${lineaId}" aria-label="Editar suma asegurada de ${escapeHtml(nombreAccesible)}">${ICON_PENCIL}</button>
+    ${bloque}
+    <button type="button" class="cobertura-adicional-card__accion" data-action="${accion.action}" data-linea-id="${lineaId}" aria-label="${accion.label}">${ICON_PENCIL}</button>
   `
 }
 

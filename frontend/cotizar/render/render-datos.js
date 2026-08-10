@@ -1,6 +1,7 @@
 import { auth } from '../../shared/api.js'
 import { escapeHtml } from '../../shared/dom.js'
 import { fmtGsInput, unidadMoneda } from '../../shared/format.js'
+import { ICON_PENCIL, ICON_LOCK, ICON_CHECK_SMALL, ICON_SUBLIMITE_GENERICO } from '../../shared/nav-icons.js'
 import { state } from '../state.js'
 import {
   CIUDADES,
@@ -10,6 +11,7 @@ import {
   RAMOS_CON_CALCULO,
   CLIENT_FIELDS,
   MOTIVO_BLOQUEO_ID,
+  COBERTURA_ICONOS,
 } from '../constants.js'
 import {
   monedaEfectiva,
@@ -132,6 +134,90 @@ export function camposObjetoRiesgo(plan) {
   `
 }
 
+// Zona de campo (slot derecho) de la card de "Coberturas adicionales" — 3 estados mutuamente
+// excluyentes (design.md sección 2.4):
+//  - locked: sin cobertura elegida todavía → placeholder "—" + candado inerte
+//  - static (no locked, no editing): placeholder "—" + lápiz — el valor real NUNCA se muestra
+//    acá, aunque sumaAsegurada ya tenga monto (regla confirmada por Kevin, requirement 3)
+//  - editing: input real (mismo id/atributos de siempre) + botón de confirmar
+function campoMontoCobertura({ locked, editing, lineaId, sumaAsegurada, nombreAccesible }) {
+  const estatico = `
+    <div class="cobertura-adicional-card__estatico">
+      <span class="cobertura-adicional-card__estatico-label">Suma asegurada</span>
+      <span class="cobertura-adicional-card__estatico-valor">—</span>
+    </div>
+  `
+  if (locked) {
+    return `${estatico}<span class="cobertura-adicional-card__lock" title="Elegí una cobertura para cargar la suma asegurada" aria-hidden="true">${ICON_LOCK}</span>`
+  }
+  if (editing) {
+    return `
+      <label class="sr-only" for="cobertura-linea-${lineaId}-suma">Suma asegurada de ${escapeHtml(nombreAccesible)} (Gs.)</label>
+      <input
+        class="field-input cobertura-adicional-card__input"
+        id="cobertura-linea-${lineaId}-suma"
+        type="text"
+        inputmode="numeric"
+        data-linea-id="${lineaId}"
+        data-linea-field="sumaAsegurada"
+        data-money="true"
+        placeholder="Suma asegurada (Gs.)"
+        value="${fmtGsInput(sumaAsegurada)}"
+      />
+      <button type="button" class="cobertura-adicional-card__accion" data-action="cerrar-edicion-monto-cobertura" data-linea-id="${lineaId}" aria-label="Listo, cerrar edición de ${escapeHtml(nombreAccesible)}">${ICON_CHECK_SMALL}</button>
+    `
+  }
+  return `
+    ${estatico}
+    <button type="button" class="cobertura-adicional-card__accion" data-action="editar-monto-cobertura" data-linea-id="${lineaId}" aria-label="Editar suma asegurada de ${escapeHtml(nombreAccesible)}">${ICON_PENCIL}</button>
+  `
+}
+
+// Skin único de "Coberturas adicionales" (coberturas-adicionales-redesign) — reemplaza el
+// markup crudo que tenían el selector libre y el modo checkbox por una misma card (design.md
+// sección 1-2): icono de COBERTURA_ICONOS, indicador circular en el slot de identidad (mode-
+// specific, ver 2.2/2.3), zona de campo con los 3 estados de campoMontoCobertura(), y un slot
+// final opcional ("Quitar", solo en modo libre). `modifier` es solo un modificador de ancho de
+// columna vía CSS (`--libre`/`--fija`), sin efecto de comportamiento.
+function cardCoberturaAdicional({
+  modifier,
+  locked,
+  editing,
+  lineaId,
+  codigo,
+  sub,
+  checkHtml,
+  mainHtml,
+  trailingHtml,
+  sumaAsegurada,
+  nombreAccesible,
+}) {
+  const icono = COBERTURA_ICONOS[codigo] || ICON_SUBLIMITE_GENERICO
+  const clases = [
+    'cobertura-adicional-card',
+    `cobertura-adicional-card--${modifier}`,
+    locked ? 'is-locked' : '',
+    editing ? 'is-editing' : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+
+  return `
+    <div class="${clases}" ${lineaId ? `data-linea-id="${lineaId}"` : ''}>
+      ${checkHtml}
+      <span class="cobertura-adicional-card__icon">${icono}</span>
+      <div class="cobertura-adicional-card__main">
+        ${mainHtml}
+        <span class="cobertura-adicional-card__sub">${sub}</span>
+      </div>
+      <div class="cobertura-adicional-card__field">
+        ${campoMontoCobertura({ locked, editing, lineaId, sumaAsegurada, nombreAccesible })}
+      </div>
+      ${trailingHtml || ''}
+    </div>
+  `
+}
+
 // Sección "Coberturas adicionales": líneas cobertura/sublímite más allá de Incendio Edificio/
 // Contenido. `catalogoDisponible` ya viene sin las 2 fijas y sin sublimite_cctv (ver
 // coberturasDisponibles()).
@@ -171,30 +257,47 @@ export function renderCoberturasAdicionales(catalogoDisponible) {
   // no duplicar ids en el DOM. Los <label> son visualmente ocultos (.sr-only): el layout ya
   // usa el placeholder como pista visual y agregar 2 labels visibles por fila no entra.
   const filas = state.coberturasAdicionales
-    .map(
-      (l) => `
-    <div class="cobertura-adicional-row" data-linea-id="${l.id}">
-      <label class="sr-only" for="cobertura-linea-${l.id}-codigo">Cobertura de la línea</label>
-      <select class="field-input" id="cobertura-linea-${l.id}-codigo" data-linea-id="${l.id}" data-linea-field="codigo">
-        <option value="">Seleccioná una cobertura…</option>
-        ${opciones(l.codigo)}
-      </select>
-      <label class="sr-only" for="cobertura-linea-${l.id}-suma">Suma asegurada de la línea (Gs.)</label>
-      <input
-        class="field-input"
-        id="cobertura-linea-${l.id}-suma"
-        type="text"
-        inputmode="numeric"
-        data-linea-id="${l.id}"
-        data-linea-field="sumaAsegurada"
-        data-money="true"
-        placeholder="Suma asegurada (Gs.)"
-        value="${fmtGsInput(l.sumaAsegurada)}"
-      />
-      <button type="button" class="btn-outline cobertura-adicional-row__quitar" data-action="remove-cobertura-linea" data-linea-id="${l.id}">Quitar</button>
-    </div>
-  `
-    )
+    .map((l) => {
+      const catalogado = catalogoDisponible.find((c) => c.codigo === l.codigo)
+      const nombreAccesible = catalogado ? catalogado.nombre : 'la cobertura'
+      const locked = !l.codigo
+      const editing = state.coberturasAdicionalesEditando.has(l.id)
+      const sub = l.codigo
+        ? catalogado?.categoria === 'Sublímites'
+          ? 'Sublímite'
+          : 'Cobertura'
+        : 'Elegí una cobertura para cargar la suma asegurada'
+
+      const checkHtml = `
+        <span class="cobertura-adicional-card__check cobertura-adicional-card__check--estatico ${l.codigo ? 'is-filled' : ''}" aria-hidden="true">
+          <span class="cobertura-adicional-card__dot"></span>
+        </span>
+      `
+
+      const mainHtml = `
+        <label class="sr-only" for="cobertura-linea-${l.id}-codigo">Cobertura de la línea</label>
+        <select class="field-input" id="cobertura-linea-${l.id}-codigo" data-linea-id="${l.id}" data-linea-field="codigo">
+          <option value="">Seleccioná una cobertura…</option>
+          ${opciones(l.codigo)}
+        </select>
+      `
+
+      const trailingHtml = `<button type="button" class="btn-outline cobertura-adicional-card__quitar" data-action="remove-cobertura-linea" data-linea-id="${l.id}">Quitar</button>`
+
+      return cardCoberturaAdicional({
+        modifier: 'libre',
+        locked,
+        editing,
+        lineaId: l.id,
+        codigo: l.codigo,
+        sub,
+        checkHtml,
+        mainHtml,
+        trailingHtml,
+        sumaAsegurada: l.sumaAsegurada,
+        nombreAccesible,
+      })
+    })
     .join('')
 
   const quedanCoberturasPorAgregar = quedanCoberturasAdicionalesPorAgregar(catalogoDisponible)
@@ -203,7 +306,7 @@ export function renderCoberturasAdicionales(catalogoDisponible) {
     <div class="coberturas-adicionales" role="group" aria-labelledby="coberturas-adicionales-label">
       <label id="coberturas-adicionales-label">Coberturas adicionales</label>
       ${filas}
-      <button type="button" class="btn-outline" data-action="add-cobertura-linea" ${quedanCoberturasPorAgregar ? '' : 'disabled title="Ya agregaste el máximo de coberturas disponibles"'}>+ Agregar cobertura</button>
+      <button type="button" class="btn-outline${quedanCoberturasPorAgregar ? '' : ' is-locked'}" data-action="add-cobertura-linea" ${quedanCoberturasPorAgregar ? '' : 'disabled title="Ya agregaste el máximo de coberturas disponibles"'}>${quedanCoberturasPorAgregar ? '' : `${ICON_LOCK} `}+ Agregar cobertura</button>
     </div>
   `
 }
@@ -218,31 +321,31 @@ export function renderCoberturasAdicionalesCheckbox(catalogoDisponible) {
     .map((c) => {
       const linea = state.coberturasAdicionales.find((l) => l.codigo === c.codigo)
       const marcado = Boolean(linea)
-      return `
-    <div class="cobertura-adicional-checkbox-row">
-      <label class="field-checkbox-label">
-        <input type="checkbox" data-action="toggle-cobertura-checkbox" data-codigo="${escapeHtml(c.codigo)}" ${marcado ? 'checked' : ''} />
-        ${escapeHtml(c.nombre)}${c.categoria === 'Sublímites' ? ' · Sublímite' : ''}
-      </label>
-      ${
-        marcado
-          ? `
-        <label class="sr-only" for="cobertura-linea-${linea.id}-suma">Suma asegurada de ${escapeHtml(c.nombre)} (Gs.)</label>
-        <input
-          class="field-input cobertura-adicional-checkbox-row__monto"
-          id="cobertura-linea-${linea.id}-suma"
-          type="text"
-          inputmode="numeric"
-          data-linea-id="${linea.id}"
-          data-linea-field="sumaAsegurada"
-          data-money="true"
-          placeholder="Suma asegurada (Gs.)"
-          value="${fmtGsInput(linea.sumaAsegurada)}"
-        />`
-          : ''
-      }
-    </div>
-  `
+      const editing = marcado && state.coberturasAdicionalesEditando.has(linea.id)
+      const sub = c.categoria === 'Sublímites' ? 'Sublímite' : 'Cobertura'
+
+      const checkHtml = `
+        <label class="cobertura-adicional-card__check">
+          <input type="checkbox" class="sr-only" data-action="toggle-cobertura-checkbox" data-codigo="${escapeHtml(c.codigo)}" ${marcado ? 'checked' : ''} />
+          <span class="cobertura-adicional-card__dot" aria-hidden="true"></span>
+          <span class="sr-only">${escapeHtml(c.nombre)}</span>
+        </label>
+      `
+
+      const mainHtml = `<span class="cobertura-adicional-card__nombre">${escapeHtml(c.nombre)}</span>`
+
+      return cardCoberturaAdicional({
+        modifier: 'fija',
+        locked: !marcado,
+        editing,
+        lineaId: linea?.id,
+        codigo: c.codigo,
+        sub,
+        checkHtml,
+        mainHtml,
+        sumaAsegurada: linea?.sumaAsegurada,
+        nombreAccesible: c.nombre,
+      })
     })
     .join('')
 

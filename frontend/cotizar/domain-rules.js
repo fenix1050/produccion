@@ -6,6 +6,8 @@ import {
   RAMOS_CON_AJUSTES,
   PORCENTAJE_VENTANILLA_SOBRE_CAJA_FUERTE,
   CODIGOS_COBERTURA_EXCLUIDOS_BASE,
+  RAMOS_CON_CALCULO,
+  ORDEN_FORMAS_PAGO,
 } from './constants.js'
 
 // Criterio de "plan calculable" (RPF/tasas confirmados) según el ramo — MRC e Incendio usan
@@ -158,4 +160,115 @@ export function sublimitesFijosMrc() {
     .filter((s) => s.codigo)
   const ventanilla = sublimiteVentanillaCalculado()
   return ventanilla ? [...fijosDelPlan, ventanilla] : fijosDelPlan
+}
+
+export function datosMinimosCompletos() {
+  if (!RAMOS_CON_CALCULO.includes(state.ramoId) || !state.planId) return false
+  const plan = state.planes.find((p) => p.id === state.planId)
+  if (!planEsCalculable(state.ramoId, plan)) return false
+  const d = state.data
+
+  if (state.ramoId === 'mrc') {
+    const capitalEdificio = Number(d.capitalEdificio) || 0
+    const capitalContenido = Number(d.capitalContenido) || 0
+    return (
+      Boolean(d.rubroActividad) &&
+      Boolean(d.ciudad) &&
+      (capitalEdificio > 0 || capitalContenido > 0)
+    )
+  }
+
+  if (state.ramoId === 'incendio') {
+    if (plan.nombre === 'MAQUINARIA BASICO') {
+      return (Number(d.capitalMaquinaria) || 0) > 0
+    }
+    if (plan.tipo_mecanica === 'objeto_riesgo') {
+      return Boolean(d.rubroActividad) && sumaObjetoRiesgo() > 0
+    }
+    const capitalEdificio = Number(d.capitalEdificio) || 0
+    const capitalContenido = Number(d.capitalContenido) || 0
+    return (
+      Boolean(d.rubroActividad) &&
+      Boolean(d.ciudad) &&
+      (capitalEdificio > 0 || capitalContenido > 0)
+    )
+  }
+
+  if (state.ramoId === 'vida-ap') {
+    const capitalAsegurado = Number(d.capitalAsegurado) || 0
+    if (plan.nombre === 'PROTECCION FAMILIAR') return capitalAsegurado > 0
+    return capitalAsegurado > 0 && Boolean(d.edad)
+  }
+
+  return false
+}
+
+// `capital_asegurado` es una columna propia de `cotizaciones` (no del cálculo de prima en sí,
+// cada calculador usa sus propios campos de riesgo_datos) — se manda siempre en el body porque
+// el schema de validación de cada ramo lo exige (ver schemas/mrc|incendio|vida-ap.schema.js).
+export function capitalAseguradoParaBody(plan) {
+  const d = state.data
+
+  if (state.ramoId === 'mrc') {
+    return (Number(d.capitalEdificio) || 0) + (Number(d.capitalContenido) || 0)
+  }
+
+  if (state.ramoId === 'incendio') {
+    if (plan?.nombre === 'MAQUINARIA BASICO') return Number(d.capitalMaquinaria) || 0
+    if (plan?.tipo_mecanica === 'objeto_riesgo') return sumaObjetoRiesgo()
+    return (Number(d.capitalEdificio) || 0) + (Number(d.capitalContenido) || 0)
+  }
+
+  if (state.ramoId === 'vida-ap') {
+    return Number(d.capitalAsegurado) || 0
+  }
+
+  return 0
+}
+
+// ---------------------------------------------------------------------------
+// Forma de pago: las 4 (Contado, Crédito/Cobrador, Boca de Cobranza, Tarjeta de Crédito)
+// siempre se calculan en simultáneo (ver PLAN_DESARROLLO.md sección 5) — acá el agente
+// elige UNA para presentarle al cliente en el cotizador. Esa elección se conserva en
+// state.formaPagoCodigo y es la que se vuelve a mostrar en "Detalle del plan" y, más
+// adelante, en la Carta Oferta.
+// ---------------------------------------------------------------------------
+
+export function formasPagoDisponibles() {
+  const formas = state.preview?.variantes?.[0]?.formasPago ?? []
+  return [...formas].sort(
+    (a, b) => ORDEN_FORMAS_PAGO.indexOf(a.codigo) - ORDEN_FORMAS_PAGO.indexOf(b.codigo)
+  )
+}
+
+export function formaPagoSeleccionada() {
+  const formas = formasPagoDisponibles()
+  if (!formas.length) return null
+  return formas.find((fp) => fp.codigo === state.formaPagoCodigo) || formas[0]
+}
+
+// El agente no puede pasar a "Detalle del plan" mientras haya una alerta bloqueante
+// (prima por debajo de la Prima Técnica Mínima, o capital por encima de la Responsabilidad
+// Máxima Cotizable) — ver mrc.calculator.js. Otros ramos (sin calculador conectado todavía)
+// no tienen esta restricción.
+export function puedeAvanzarADetalle() {
+  if (!RAMOS_CON_CALCULO.includes(state.ramoId)) return true
+  return Boolean(state.preview) && !state.previewError
+}
+
+// Suma de las líneas de "Coberturas incluidas" que cuentan como suma asegurada propia
+// (Incendio Edificio/Contenido + coberturas adicionales que agregó el agente) — igual que
+// "Suma total Gs." en el Excel del cliente (Version 01 - Calculo Varios.xlsx). Los
+// sub-límites nunca suman al total (a pedido de Kevin, 2026-07-15), ni "Robo valores
+// ventanilla" (sub-límite de "Valores en caja fuerte", marcado con
+// incluye_en_suma_asegurada_total = false en la migración 020). Extraída de
+// renderResumenCotizacion (WU7, Ajuste MC.xlsx ítem #7, 2026-08-05) para reutilizarla también
+// en el panel "Cotización en vivo" (renderLivePanelBody), donde el agente quiere ver la tasa
+// efectiva (costo/capital) sin tener que llegar a "Detalle del plan".
+export function capitalTotalAsegurado() {
+  return (state.preview?.coberturas || []).reduce((acc, c) => {
+    const esSublimite = c.tipo_aplicacion === 'sublimite'
+    const cuentaParaTotal = !esSublimite && c.incluye_en_suma_asegurada_total !== false
+    return acc + (cuentaParaTotal ? Number(c.monto) || 0 : 0)
+  }, 0)
 }

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.34](https://github.com/fenix1050/produccion/compare/v0.1.33...v0.1.34) (2026-08-10)
+
+
+### Bug Fixes
+
+* **mrc:** limitar filas del selector libre de coberturas adicionales ([#216](https://github.com/fenix1050/produccion/issues/216)) ([ece36ef](https://github.com/fenix1050/produccion/commit/ece36ef588b212d605d3770ff181a1de0e36c779))
+
 ## [0.1.33](https://github.com/fenix1050/produccion/compare/v0.1.32...v0.1.33) (2026-08-08)
 
 

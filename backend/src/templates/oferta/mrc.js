@@ -192,6 +192,12 @@ Asegurado. <br>
       La compañía se reserva el derecho de realizar la inspección para el seguro, y la exigencia de medidas
 de seguridad y adecuaciones que surjan de la misma.
     </div>
+  `
+
+  // A pedido de Kevin (2026-08-10): el bloque de firma pasa de la hoja 1 a la hoja 2, justo
+  // debajo de "Forman parte del contrato" (el último bloque, ver `bloques` más abajo) — antes
+  // vivía al pie de la hoja 1, después del texto de vigencia.
+  const firmaBlock = `
     <div class="firma-block">
       <div class="firma-block__linea">Realizado por:</div>
       <div class="firma-block__linea">${escapeHtml(cotizacion.usuarios?.nombre || 'Aseguradora Tajy')} - ${escapeHtml(capitalizarRol(cotizacion.usuarios?.roles?.nombre) || 'Agente de Seguro')}</div>
@@ -252,14 +258,14 @@ de seguridad y adecuaciones que surjan de la misma.
     ${tituloPaginaDos}
     <div class="cols cols-flex">
       <div class="col">${bloques.slice(0, 3).map(renderBloque).join('')}</div>
-      <div class="col">${bloques.slice(3).map(renderBloque).join('')}</div>
+      <div class="col">${bloques.slice(3).map(renderBloque).join('')}${firmaBlock}</div>
     </div>
   `
 
   const paginaDosBalanceada = `
     ${tituloPaginaDos}
     <div class="cols">
-      ${bloques.map(renderBloque).join('')}
+      ${bloques.map(renderBloque).join('')}${firmaBlock}
     </div>
   `
 

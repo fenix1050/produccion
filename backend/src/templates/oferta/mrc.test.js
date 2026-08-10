@@ -109,15 +109,16 @@ test('buildMrcOfertaPages no rompe si planCoberturas es undefined', () => {
   })
 })
 
-// Ítem #8 del Ajuste MC.xlsx (Análisis de Riesgo, 2026-08-05): línea de vigencia + bloque de
-// firma en la página 1.
-test('buildMrcOfertaPages incluye la línea de vigencia y el bloque de firma con teléfono', () => {
+// Ítem #8 del Ajuste MC.xlsx (Análisis de Riesgo, 2026-08-05): línea de vigencia en la página 1
+// + bloque de firma. A pedido de Kevin (2026-08-10) la firma se movió a la página 2, debajo de
+// "Forman parte del contrato" (antes vivía al pie de la página 1).
+test('buildMrcOfertaPages incluye la línea de vigencia en la página 1 y el bloque de firma con teléfono en la página 2', () => {
   const cotizacionConTelefono = {
     ...COTIZACION_BASE,
     usuarios: { nombre: 'Agente Prueba', email: 'agente@tajy.com.py', telefono: '0981 123 456' },
   }
 
-  const { paginaUno } = buildMrcOfertaPages({
+  const { paginaUno, paginaDosFlex } = buildMrcOfertaPages({
     cotizacion: cotizacionConTelefono,
     plan: PLAN_BASE,
     ramo: RAMO_BASE,
@@ -125,9 +126,10 @@ test('buildMrcOfertaPages incluye la línea de vigencia y el bloque de firma con
   })
 
   assert.match(paginaUno, /Vigencia del seguro: 1 año, desde/)
-  assert.match(paginaUno, /Realizado por:/)
-  assert.match(paginaUno, /Agente Prueba - Agente de Seguro/)
-  assert.match(paginaUno, /Telef\. 0981 123 456/)
+  assert.doesNotMatch(paginaUno, /Realizado por:/)
+  assert.match(paginaDosFlex, /Realizado por:/)
+  assert.match(paginaDosFlex, /Agente Prueba - Agente de Seguro/)
+  assert.match(paginaDosFlex, /Telef\. 0981 123 456/)
 })
 
 test('buildMrcOfertaPages muestra el rol real del usuario en el bloque de firma, no "Agente de Seguro" fijo', () => {
@@ -136,14 +138,14 @@ test('buildMrcOfertaPages muestra el rol real del usuario en el bloque de firma,
     usuarios: { nombre: 'Nestor Zorrilla', roles: { nombre: 'Jefe de Análisis de Riesgo' } },
   }
 
-  const { paginaUno } = buildMrcOfertaPages({
+  const { paginaDosFlex } = buildMrcOfertaPages({
     cotizacion: cotizacionConRol,
     plan: PLAN_BASE,
     ramo: RAMO_BASE,
     planCoberturas: [],
   })
 
-  assert.match(paginaUno, /Nestor Zorrilla - Jefe de Análisis de Riesgo/)
+  assert.match(paginaDosFlex, /Nestor Zorrilla - Jefe de Análisis de Riesgo/)
 })
 
 test('buildMrcOfertaPages capitaliza roles de sistema en minúscula (ej. "agente" -> "Agente")', () => {
@@ -152,35 +154,35 @@ test('buildMrcOfertaPages capitaliza roles de sistema en minúscula (ej. "agente
     usuarios: { nombre: 'Agente Prueba', roles: { nombre: 'agente' } },
   }
 
-  const { paginaUno } = buildMrcOfertaPages({
+  const { paginaDosFlex } = buildMrcOfertaPages({
     cotizacion: cotizacionRolSistema,
     plan: PLAN_BASE,
     ramo: RAMO_BASE,
     planCoberturas: [],
   })
 
-  assert.match(paginaUno, /Agente Prueba - Agente</)
+  assert.match(paginaDosFlex, /Agente Prueba - Agente</)
 })
 
 test('buildMrcOfertaPages usa "Agente de Seguro" si el usuario no trae rol embebido', () => {
-  const { paginaUno } = buildMrcOfertaPages({
+  const { paginaDosFlex } = buildMrcOfertaPages({
     cotizacion: COTIZACION_BASE,
     plan: PLAN_BASE,
     ramo: RAMO_BASE,
     planCoberturas: [],
   })
 
-  assert.match(paginaUno, /Agente Prueba - Agente de Seguro/)
+  assert.match(paginaDosFlex, /Agente Prueba - Agente de Seguro/)
 })
 
 test('buildMrcOfertaPages omite la línea de teléfono en el bloque de firma si el agente no lo cargó', () => {
-  const { paginaUno } = buildMrcOfertaPages({
+  const { paginaDosFlex } = buildMrcOfertaPages({
     cotizacion: COTIZACION_BASE,
     plan: PLAN_BASE,
     ramo: RAMO_BASE,
     planCoberturas: [],
   })
 
-  assert.match(paginaUno, /Realizado por:/)
-  assert.doesNotMatch(paginaUno, /firma-block__linea">undefined/)
+  assert.match(paginaDosFlex, /Realizado por:/)
+  assert.doesNotMatch(paginaDosFlex, /firma-block__linea">undefined/)
 })

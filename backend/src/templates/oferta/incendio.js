@@ -116,7 +116,7 @@ export function buildIncendioOfertaPages({ cotizacion, plan }) {
 
   const paginaUno = `
     <div class="meta-row">
-      <div>Fecha: ${fmtFecha(cotizacion.fecha || cotizacion.created_at)}</div>
+      <div>Fecha: ${fmtFecha()}</div>
       <div class="plan-name">${escapeHtml(plan.nombre)}</div>
     </div>
     <div class="cliente-banner"><span class="cliente-banner__accent"></span>Sr/a ${escapeHtml(cotizacion.cliente_nombre || 'Asegurado')} — Cotización Nro: ${escapeHtml(cotizacion.numero_cotizacion)}</div>

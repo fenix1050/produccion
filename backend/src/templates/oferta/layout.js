@@ -156,7 +156,7 @@ export const BASE_CSS = `
   }
   .firma-block {
     text-align: right;
-    margin-top: 6mm;
+    margin-top: 14mm;
     font-size: 11px;
     line-height: 1.5;
   }

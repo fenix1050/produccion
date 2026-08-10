@@ -150,7 +150,7 @@ export function buildMrcOfertaPages({ cotizacion, plan, planCoberturas }) {
 
   const paginaUno = `
     <div class="meta-row">
-      <div>Fecha: ${fmtFecha(cotizacion.fecha || cotizacion.created_at)}</div>
+      <div>Fecha: ${fmtFecha()}</div>
       <div class="plan-name">${escapeHtml(plan.nombre)}</div>
     </div>
     <div class="cliente-banner"><span class="cliente-banner__accent"></span>Sr/a ${escapeHtml(cotizacion.cliente_nombre || 'Asegurado')} — Cotización Nro: ${escapeHtml(cotizacion.numero_cotizacion)}</div>
@@ -185,7 +185,7 @@ export function buildMrcOfertaPages({ cotizacion, plan, planCoberturas }) {
     ${(cotizacion.cotizacion_variantes || []).map(renderVariantePlanPago).join('')}
 
     <div class="footer-legal">
-      Vigencia del seguro: 1 año, desde ${fmtFecha(cotizacion.fecha || cotizacion.created_at)}. <br>
+      Vigencia del seguro: 1 año, desde ${fmtFecha()}. <br>
       Este presupuesto es válido por ${cotizacion.vigencia_dias || 30} días. <br>
       Esta cotización no implica aceptación del riesgo, ni el consentimiento de cobertura alguna por parte del
 Asegurado. <br>

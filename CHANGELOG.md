@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.1.36](https://github.com/fenix1050/produccion/compare/v0.1.35...v0.1.36) (2026-08-10)
+
+
+### Features
+
+* **carta-oferta:** mover firma de MRC a la hoja 2 ([#223](https://github.com/fenix1050/produccion/issues/223)) ([a411635](https://github.com/fenix1050/produccion/commit/a4116358296fd9c385dddc117d4f5c869ff09cb3))
+
+
+### Bug Fixes
+
+* **carta-oferta:** evitar que el bloque de firma se corte entre páginas ([#222](https://github.com/fenix1050/produccion/issues/222)) ([599e6fe](https://github.com/fenix1050/produccion/commit/599e6fe95ae4e699bbab3bc1db030cce17b4d5d5))
+* **cotizador:** quitar botón "Agregar cobertura adicional" de Detalle del plan ([#225](https://github.com/fenix1050/produccion/issues/225)) ([3d102a5](https://github.com/fenix1050/produccion/commit/3d102a58e97b25e6f312a3af27bfad42bd94f327))
+* **mrc:** separar Coberturas Principales por defecto de los sublímites ([#226](https://github.com/fenix1050/produccion/issues/226)) ([539c5cf](https://github.com/fenix1050/produccion/commit/539c5cfbdcba628d99d2c5b8d24932183a501794))
+
 ## [0.1.35](https://github.com/fenix1050/produccion/compare/v0.1.34...v0.1.35) (2026-08-10)
 
 

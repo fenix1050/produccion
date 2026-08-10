@@ -2393,6 +2393,7 @@ Quinto de los 10 PRs del plan `admin-module-split` (issue #83/#84 finding #9, di
 **Archivos nuevos.** `backend/src/services/cotizacion.service.ownership.test.js` (14 tests) y `backend/src/controllers/cotizaciones.controller.ownership.test.js` (14 tests), separados del archivo de 900 líneas ya existente (`cotizacion.service.test.js`) para que la matriz quede visible como unidad propia. Mismo patrón de mocking que el resto del repo (`t.mock.module` + import dinámico con `?case=` para cache-busting a nivel de servicio; mock del service + req/res fake a nivel de controller, mismo patrón que `ramos.controller.test.js`).
 
 **Matriz cubierta**, con fixtures `AGENTE_A={id:1,rol:'agente'}`, `AGENTE_B={id:2,rol:'agente'}`, `ADMIN={id:99,rol:'admin'}`, para los 4 endpoints (`obtenerCotizacion`, `actualizarCotizacion`, `generarPdfOferta`, `listarCotizaciones`) en ambas capas (service + controller):
+
 - Dueño (A sobre su propia cotización) → succeeds, comportamiento actual.
 - No-dueño (A sobre cotización de B) → 403; para `actualizarCotizacion` se asertó que `actualizarCotizacionAtomica` (el RPC de escritura) nunca se llama, y para `generarPdfOferta` que `renderOfertaPdf` tampoco — este último no tiene chequeo propio, depende 100% de `verificarPropiedad()`.
 - Admin sobre cotización de otro agente → bypasea el check, succeeds.

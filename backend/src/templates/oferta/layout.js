@@ -159,6 +159,8 @@ export const BASE_CSS = `
     margin-top: 14mm;
     font-size: 11px;
     line-height: 1.5;
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
   .firma-block__linea:first-child { font-weight: 700; color: #1a1a1a; }
   .cols {

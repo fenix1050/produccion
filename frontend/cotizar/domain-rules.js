@@ -286,19 +286,19 @@ export function coberturasDisponibles() {
   return state.coberturasCatalogo.filter((c) => !excluidos.includes(c.codigo))
 }
 
-// true si todavía queda al menos un código de `catalogoDisponible` que no llegó a su límite de
-// repetición (ver LIMITE_REPETICION_COBERTURA_MRC) — usado para deshabilitar tanto el "+ Agregar
-// cobertura" del selector libre (Datos) como el "Agregar cobertura adicional" de "Detalle del
-// plan" una vez que ya se cargó el máximo de coberturas disponibles para el plan.
+// true si todavía queda lugar para otra línea de cobertura adicional — usado para deshabilitar
+// tanto el "+ Agregar cobertura" del selector libre (Datos) como el "Agregar cobertura
+// adicional" de "Detalle del plan" una vez alcanzada la capacidad máxima. La capacidad total es
+// la suma de los límites de repetición de todo `catalogoDisponible` (ver
+// LIMITE_REPETICION_COBERTURA_MRC) — se compara contra el total de líneas ya creadas, no solo
+// contra las que ya tienen un código elegido, porque una fila vacía ("Seleccioná una
+// cobertura...") también ocupa un lugar y sin este chequeo el botón se podía seguir clickeando
+// para crear filas vacías sin límite.
 export function quedanCoberturasAdicionalesPorAgregar(catalogoDisponible) {
-  const conteo = new Map()
-  for (const l of state.coberturasAdicionales) {
-    if (!l.codigo) continue
-    conteo.set(l.codigo, (conteo.get(l.codigo) || 0) + 1)
-  }
-  return catalogoDisponible.some((c) => {
+  const capacidadTotal = catalogoDisponible.reduce((acc, c) => {
     const limite =
       LIMITE_REPETICION_COBERTURA_MRC[c.codigo] ?? LIMITE_REPETICION_COBERTURA_MRC_DEFAULT
-    return (conteo.get(c.codigo) || 0) < limite
-  })
+    return acc + limite
+  }, 0)
+  return state.coberturasAdicionales.length < capacidadTotal
 }

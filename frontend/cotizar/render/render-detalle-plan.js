@@ -1,9 +1,14 @@
 import { auth } from '../../shared/api.js'
 import { escapeHtml } from '../../shared/dom.js'
-import { fmtGsInput } from '../../shared/format.js'
+import { fmtGsInput, fmtMonto, unidadMoneda } from '../../shared/format.js'
 import { state } from '../state.js'
-import { FRANQUICIA_OPCIONES, RAMOS_CON_AJUSTES } from '../constants.js'
-import { franquiciaValorPorDefecto } from '../domain-rules.js'
+import { FRANQUICIA_OPCIONES, RAMOS_CON_AJUSTES, ICON_TAG } from '../constants.js'
+import {
+  franquiciaValorPorDefecto,
+  monedaEfectiva,
+  formaPagoSeleccionada,
+  capitalTotalAsegurado,
+} from '../domain-rules.js'
 import { idParaCampo } from './render-campos.js'
 
 // Bloque "Suma Asegurada / Costo Contado / Costo Financiado" — mismo formato que la pantalla
@@ -118,6 +123,86 @@ export function renderAjustesDescuentoRecargo(plan) {
       <div class="resumen-sistema__ajustes">
         ${renderAjusteField('descuento', 'Descuento', plan)}
         ${renderAjusteField('recargo', 'Recargo', plan)}
+      </div>
+    </div>
+  `
+}
+
+// Bloque "Suma Asegurada / Costo Contado / Costo Financiado" — mismo formato que la pantalla
+// del sistema de escritorio real. A diferencia del resto de "Detalle del plan" (que sigue la
+// forma de pago elegida en las pills), este bloque siempre muestra Contado y el financiado a
+// través de Cobrador en simultáneo, sin importar cuál esté seleccionada.
+// Card único del sidebar de "Detalle del plan" — reemplaza los 2 cards separados que había
+// antes (resumen Contado/Financiado + Ajustes) por un único "Resumen de la cotización" con
+// secciones separadas por líneas finas, terminando en el botón de "Emitir carta oferta" (antes
+// vivía en una barra fija al pie de la pantalla — ver decisión de rediseño, 2026-07-22).
+// El bloque "Financiado" refleja la forma de pago realmente elegida en las pills de "Datos"
+// (formaPagoSeleccionada()) — antes quedaba hardcodeada a Cobrador sin importar la selección
+// real, algo que Análisis de Riesgo confirmó como bug (Ajuste MC.xlsx, ítem #4). Si el agente
+// eligió Contado, no hay "Financiado" que mostrar aparte (Cuota=0 por regla de negocio).
+export function renderResumenCotizacion(plan) {
+  const variante = state.preview?.variantes?.[0]
+  const contado = variante?.formasPago.find((f) => f.codigo === 'contado')
+  const formaSeleccionada = formaPagoSeleccionada()
+  const financiado = formaSeleccionada?.codigo !== 'contado' ? formaSeleccionada : null
+  const sumaAsegurada = capitalTotalAsegurado()
+  const moneda = monedaEfectiva(plan)
+  const unidad = unidadMoneda(moneda)
+
+  return `
+    <div class="resumen-sistema">
+      <div class="resumen-sistema__block">
+        <div class="resumen-sistema__title">Resumen de la cotización</div>
+        <div class="resumen-sistema__total-label">Suma asegurada total</div>
+        <div class="resumen-sistema__total-value">${fmtMonto(sumaAsegurada, moneda)} <em>${unidad}</em></div>
+      </div>
+      ${
+        contado
+          ? `
+        <div class="resumen-sistema__divider"></div>
+        <div class="resumen-sistema__block">
+          <div class="resumen-sistema__block-title">Pago contado</div>
+          <div class="resumen-sistema__row">
+            <span>Costo total</span>
+            <span>${fmtMonto(contado.premio, moneda)} <em>${unidad}</em></span>
+          </div>
+        </div>
+      `
+          : ''
+      }
+      ${
+        financiado
+          ? `
+        <div class="resumen-sistema__divider"></div>
+        <div class="resumen-sistema__block">
+          <div class="resumen-sistema__block-title">Financiado</div>
+          <div class="resumen-sistema__row">
+            <span>Inicial</span>
+            <span>${fmtMonto(financiado.inicial, moneda)} <em>${unidad}</em></span>
+          </div>
+          <div class="resumen-sistema__row">
+            <span>${financiado.cantidad_cuotas} cuotas de</span>
+            <span>${fmtMonto(financiado.cuota, moneda)} <em>${unidad}</em></span>
+          </div>
+          <div class="resumen-sistema__subdivider"></div>
+          <div class="resumen-sistema__row resumen-sistema__row--stacked">
+            <span>Premio financiado</span>
+            <div>
+              <div>${fmtMonto(financiado.premio, moneda)} <em>${unidad}</em></div>
+              <small>Inicial ${unidad} ${fmtMonto(financiado.inicial, moneda)}</small>
+            </div>
+          </div>
+        </div>
+      `
+          : ''
+      }
+      ${renderAjustesDescuentoRecargo(plan)}
+      <div class="resumen-sistema__spacer"></div>
+      <div class="resumen-sistema__cta-wrap">
+        <button class="resumen-sistema__cta" data-action="emitir-carta" ${state.emitiendoCarta ? 'disabled' : ''}>
+          ${ICON_TAG} ${state.emitiendoCarta ? 'Generando…' : state.editandoId ? 'Guardar cambios' : 'Emitir carta oferta'}
+        </button>
+        <div class="resumen-sistema__hint--center">Se generará la carta oferta con el detalle del plan seleccionado.</div>
       </div>
     </div>
   `

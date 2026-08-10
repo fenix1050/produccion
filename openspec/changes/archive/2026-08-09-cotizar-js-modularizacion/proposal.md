@@ -39,24 +39,24 @@ Pure move incremental, un módulo (o par de módulos) por PR, en orden del grafo
 
 ## Affected Areas
 
-| Area | Impact | Description |
-|------|--------|-------------|
-| `frontend/cotizar/cotizar.js` | Modified | 2514 → ~bootstrap delgado |
-| `frontend/cotizar/{state,constants,domain-rules,body-builder,actions,events}.js` | New | Módulos por responsabilidad |
-| `frontend/cotizar/render/*.js` | New | 4 módulos de render |
-| `frontend/cotizar/index.html` | Unchanged | Un solo `<script type="module">`, el grafo ES resuelve el orden |
-| Backend / migraciones / specs | Unchanged | Fuera de alcance |
+| Area                                                                             | Impact    | Description                                                     |
+| -------------------------------------------------------------------------------- | --------- | --------------------------------------------------------------- |
+| `frontend/cotizar/cotizar.js`                                                    | Modified  | 2514 → ~bootstrap delgado                                       |
+| `frontend/cotizar/{state,constants,domain-rules,body-builder,actions,events}.js` | New       | Módulos por responsabilidad                                     |
+| `frontend/cotizar/render/*.js`                                                   | New       | 4 módulos de render                                             |
+| `frontend/cotizar/index.html`                                                    | Unchanged | Un solo `<script type="module">`, el grafo ES resuelve el orden |
+| Backend / migraciones / specs                                                    | Unchanged | Fuera de alcance                                                |
 
 ## Risks
 
-| Risk | Likelihood | Mitigation |
-|------|------------|------------|
-| CodeQL `js/unvalidated-dynamic-method-call` marca dispatchers | Med | `armarRiesgoDatos` y `camposEspecificosParaRamo` se mueven verbatim como `switch`/`case` literal; NO convertir a dispatch table por objeto (precedente PR #104) |
-| Sin test suite de frontend: una regresión no la atrapa CI | High | Verificación en vivo con Playwright por PR, cubriendo los branches de ramo reales |
-| Diff > 400 líneas por PR (`render-datos.js`, trío `armarRiesgoDatos*`) | High | `sdd-tasks` forecast High; slicing más fino que 1 módulo = 1 PR, igual que admin (PR6/PR7 combinaron o partieron dominios) |
-| `renderLivePanel` se invoca directo desde `actions.js` (parche de DOM, no vía `renderApp`) | Med | Mantener export explícito y verificar el panel en vivo tras mover `render-cotizacion-vivo.js` |
-| Ciclo de imports accidental (caso real en admin PR7) | Med | Respetar la dirección del grafo; si aparece ciclo, mover la función compartida al módulo de menor nivel |
-| `codegraph_explore` roto en este proyecto (SQLite corrupto) | Low | Trabajar con Read/Glob directo; `codegraph index` queda fuera de alcance |
+| Risk                                                                                       | Likelihood | Mitigation                                                                                                                                                      |
+| ------------------------------------------------------------------------------------------ | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| CodeQL `js/unvalidated-dynamic-method-call` marca dispatchers                              | Med        | `armarRiesgoDatos` y `camposEspecificosParaRamo` se mueven verbatim como `switch`/`case` literal; NO convertir a dispatch table por objeto (precedente PR #104) |
+| Sin test suite de frontend: una regresión no la atrapa CI                                  | High       | Verificación en vivo con Playwright por PR, cubriendo los branches de ramo reales                                                                               |
+| Diff > 400 líneas por PR (`render-datos.js`, trío `armarRiesgoDatos*`)                     | High       | `sdd-tasks` forecast High; slicing más fino que 1 módulo = 1 PR, igual que admin (PR6/PR7 combinaron o partieron dominios)                                      |
+| `renderLivePanel` se invoca directo desde `actions.js` (parche de DOM, no vía `renderApp`) | Med        | Mantener export explícito y verificar el panel en vivo tras mover `render-cotizacion-vivo.js`                                                                   |
+| Ciclo de imports accidental (caso real en admin PR7)                                       | Med        | Respetar la dirección del grafo; si aparece ciclo, mover la función compartida al módulo de menor nivel                                                         |
+| `codegraph_explore` roto en este proyecto (SQLite corrupto)                                | Low        | Trabajar con Read/Glob directo; `codegraph index` queda fuera de alcance                                                                                        |
 
 ## Rollback Plan
 

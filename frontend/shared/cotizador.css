@@ -1763,7 +1763,12 @@ button {
   gap: 6px;
 }
 
-.coberturas-adicionales label {
+/* D8 (coberturas-adicionales-redesign): scoped a hijo directo — la card nueva de abajo trae
+   <label> anidados (wrapper del checkbox, label sr-only del monto) que no deben heredar esto.
+   Verificado que el único elemento hoy alcanzado por el selector viejo (descendiente) es el
+   <label id="coberturas-adicionales-label"> del título de grupo, que sigue siendo hijo directo
+   — sin cambio visual sobre el markup en uso hasta que la Unit 3 cablee la card nueva. */
+.coberturas-adicionales > label {
   font-size: 12px;
   font-weight: 600;
   color: var(--tajy-text-body);
@@ -1822,6 +1827,213 @@ button {
   }
 
   .cobertura-adicional-checkbox-row__monto {
+    width: 100%;
+  }
+}
+
+/* ---- Card nueva de "Coberturas adicionales" (coberturas-adicionales-redesign, Unit 1/3) ----
+   Reemplaza en Unit 3 tanto .cobertura-adicional-row* (selector libre) como
+   .cobertura-adicional-checkbox-row* (modo checkbox) de arriba con un único skin — ver design.md
+   sección 5. Hasta que render-datos.js emita estas clases (Unit 3), este bloque es CSS muerto:
+   no hay ningún nodo en el DOM que lo use, cero riesgo visual sobre el markup actual. Los
+   bloques viejos de arriba se borran recién en Unit 3 junto con el cutover, no acá. */
+.cobertura-adicional-card {
+  display: grid;
+  grid-template-columns: auto auto 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 4px;
+}
+
+.cobertura-adicional-card + .cobertura-adicional-card {
+  border-top: 1px solid var(--tajy-border-light);
+}
+
+.cobertura-adicional-card:hover {
+  background: var(--tajy-bg);
+}
+
+.cobertura-adicional-card.is-locked {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.cobertura-adicional-card__check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--tajy-border);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.cobertura-adicional-card__check--estatico {
+  cursor: default;
+}
+
+.cobertura-adicional-card__check:has(input:checked) {
+  border-color: var(--tajy-red);
+}
+
+.cobertura-adicional-card__check:has(input:focus-visible) {
+  box-shadow: 0 0 0 3px var(--tajy-red-soft);
+}
+
+.cobertura-adicional-card__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--tajy-red);
+  transform: scale(0);
+  transition: transform 0.15s ease;
+}
+
+.cobertura-adicional-card__check--estatico.is-filled .cobertura-adicional-card__dot,
+.cobertura-adicional-card__check input:checked + .cobertura-adicional-card__dot {
+  transform: scale(1);
+}
+
+.cobertura-adicional-card__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--tajy-radius-lg);
+  background: var(--tajy-pink);
+  color: var(--tajy-red-a11y);
+}
+
+.cobertura-adicional-card__icon svg {
+  width: 19px;
+  height: 19px;
+}
+
+.cobertura-adicional-card.is-locked .cobertura-adicional-card__icon {
+  background: var(--tajy-bg);
+  color: var(--tajy-text-muted);
+}
+
+.cobertura-adicional-card__main {
+  min-width: 0;
+}
+
+.cobertura-adicional-card__nombre {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--tajy-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cobertura-adicional-card__sub {
+  font-size: 12px;
+  color: var(--tajy-text-muted);
+}
+
+.cobertura-adicional-card__field {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  width: 190px;
+}
+
+.cobertura-adicional-card__estatico {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.cobertura-adicional-card__estatico-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--tajy-text-muted);
+}
+
+.cobertura-adicional-card__estatico-valor {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--tajy-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.cobertura-adicional-card__input {
+  border: 1.5px solid var(--tajy-red);
+  border-radius: var(--tajy-radius-sm);
+  padding: 9px 10px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  width: 100%;
+}
+
+.cobertura-adicional-card__input:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--tajy-red-soft);
+}
+
+.cobertura-adicional-card__accion {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--tajy-radius-sm);
+  color: var(--tajy-red-a11y);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.cobertura-adicional-card__accion:hover {
+  background: var(--tajy-pink);
+}
+
+.cobertura-adicional-card__lock {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  color: var(--tajy-text-muted);
+  cursor: default;
+}
+
+.coberturas-adicionales > .btn-outline.is-locked {
+  border-color: var(--tajy-border);
+  color: var(--tajy-text-muted);
+  cursor: not-allowed;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cobertura-adicional-card__dot {
+    transition: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .cobertura-adicional-card {
+    grid-template-columns: auto auto 1fr;
+    row-gap: 10px;
+  }
+
+  .cobertura-adicional-card__field {
+    grid-column: 1 / -1;
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .cobertura-adicional-card__input {
+    flex: 1 1 auto;
+  }
+
+  .cobertura-adicional-card .cobertura-adicional-card__quitar {
+    grid-column: 1 / -1;
     width: 100%;
   }
 }

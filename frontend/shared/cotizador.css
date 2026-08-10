@@ -1782,8 +1782,8 @@ button {
 
 /* ---- Card de "Coberturas adicionales" (coberturas-adicionales-redesign) ----
    Skin único para el selector libre y el modo checkbox de render-datos.js — ver design.md
-   sección 5. Reemplaza los bloques viejos .cobertura-adicional-row*/-checkbox-row* (borrados
-   en el cutover de Unit 3, junto con este comentario). */
+   sección 5. Reemplaza los bloques viejos .cobertura-adicional-row / .cobertura-adicional-checkbox-row
+   (borrados en el cutover de Unit 3, junto con este comentario). */
 .cobertura-adicional-card {
   display: grid;
   grid-template-columns: auto auto 1fr auto auto;
@@ -1886,7 +1886,7 @@ button {
   align-items: center;
   justify-content: flex-end;
   gap: 10px;
-  width: 190px;
+  width: 215px;
 }
 
 .cobertura-adicional-card__estatico {

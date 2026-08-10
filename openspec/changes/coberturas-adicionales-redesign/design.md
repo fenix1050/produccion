@@ -97,18 +97,28 @@ only by the card's grid placement.
 
 ### 2.4 Field zone — three mutually exclusive states
 
-| State   | Predicate                                           | Markup                                                                                                                                     |
-| ------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| Locked  | no coverage selected (unchecked / empty `<select>`) | static block + `<span class="cobertura-adicional-card__lock" title="Elegí una cobertura para cargar la suma asegurada">{ICON_LOCK}</span>` |
-| Static  | selected, id ∉ edit set                             | static block + `<button data-action="editar-monto-cobertura" data-linea-id>{ICON_PENCIL}</button>`                                         |
-| Editing | selected, id ∈ edit set                             | the money `<input>` + `<button data-action="cerrar-edicion-monto-cobertura" data-linea-id>{ICON_CHECK}</button>`                           |
+| State   | Predicate                                           | Markup                                                                                                                                                                                                             |
+| ------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Locked  | no coverage selected (unchecked / empty `<select>`) | static block + `<span class="cobertura-adicional-card__lock" title="Elegí una cobertura para cargar la suma asegurada">{ICON_LOCK}</span>`                                                                         |
+| Static  | selected, id ∉ edit set                             | static block + `<button data-action="editar-monto-cobertura" data-linea-id>{ICON_PENCIL}</button>`                                                                                                                 |
+| Editing | selected, id ∈ edit set                             | the money `<input>` (own block, no persistent label) + `<button data-action="cerrar-edicion-monto-cobertura" data-linea-id>{ICON_PENCIL}</button>` — same icon that opens editing, per Kevin's 2026-08-11 feedback |
 
-Static block (per RESOLVED #2 — **always the dash, never the stored value**):
+Static block (re-resolved 2026-08-10/11 — shows the real formatted value when set, "—" only when empty; see spec.md "Static View Shows the Real Amount When Set"):
 
 ```html
 <div class="cobertura-adicional-card__estatico">
   <span class="cobertura-adicional-card__estatico-label">Suma asegurada</span>
-  <span class="cobertura-adicional-card__estatico-valor">—</span>
+  <span class="cobertura-adicional-card__estatico-valor">Gs. 100.000.000</span>
+  <!-- or "—" when sumaAsegurada is empty -->
+</div>
+```
+
+Editing block (2026-08-11 — the persistent label was dropped; the input alone is the whole
+block, with the placeholder inside, matching the originally-approved mockup):
+
+```html
+<div class="cobertura-adicional-card__estatico cobertura-adicional-card__estatico--editando">
+  <input class="cobertura-adicional-card__input" placeholder="Suma asegurada (Gs.)" ... />
 </div>
 ```
 
@@ -320,8 +330,10 @@ pipeline, backend, schema, migrations.
   `"Listo, cerrar edición de {nombre}"` (icon-only buttons).
 - Padlock `<span>` carries `title` + `aria-hidden="true"`; the reason is also in the visible
   `__sub` line, so it is not tooltip-only.
-- **Known a11y cost of RESOLVED #2:** the static view exposes "—" to assistive tech even when a value
-  is stored. Not mitigated by design — it is the product decision. Logged in risks.
+- **Superseded a11y note:** an earlier revision of RESOLVED #2 hid the stored value behind "—" for
+  every row, which would have exposed "—" to assistive tech even when a value was stored. That rule
+  was reversed (2026-08-10, second round) — the static view now announces the real formatted amount,
+  so this a11y cost no longer applies.
 
 ## 8. Verification strategy
 
@@ -329,7 +341,8 @@ No automated tests exist for this markup and none are added (proposal, out of sc
 MRC-NORMAL, at 1440 / 768 / 480:
 
 1. Checkbox role (`test@test.com`, agente): check → row unlocks, dot fills, edit mode auto-opens and
-   is focused; type an amount; close; static shows "—"; reopen → real value present.
+   is focused; type an amount; close; static shows the formatted value (`Gs. 100.000.000`); reopen →
+   same real value present in the input.
 2. Free-selector role: add row (locked, padlock), choose coverage → unlock + auto-open; "Quitar"
    removes; add button shows lock chrome at capacity (6 rows).
 3. Amount reaches the calculation: live panel prima/`Capital total asegurado` change after typing.
@@ -337,10 +350,10 @@ MRC-NORMAL, at 1440 / 768 / 480:
 
 ## 9. Risks / assumptions
 
-| Item                            | Note                                                                                                                                                                                         |
-| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| D9 — second call site gone      | Assumption that PR #225 removal is intentional and permanent. If the button returns, the chrome must be applied there too.                                                                   |
-| Amount permanently hidden       | Highest product risk (MRC 3-coverage minimum, agents can no longer scan which rows are filled). Mitigated only by auto-open. Kevin resolved this explicitly.                                 |
-| D3 deviation from mockup        | Extra confirm button while editing. Needs a visual OK from Kevin at review time.                                                                                                             |
-| Deleting the two old CSS blocks | Any other selector reaching into `.cobertura-adicional-row`/`-checkbox-row` outside these two renderers would break — grep confirms only `cotizador.css` + `render-datos.js` reference them. |
-| Mobile regression               | No visual tooling; the 480px block is a rewrite, not a port. Playwright at 3 widths in the same commit.                                                                                      |
+| Item                                       | Note                                                                                                                                                                                                                                                                                                                                 |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| D9 — second call site gone                 | Assumption that PR #225 removal is intentional and permanent. If the button returns, the chrome must be applied there too.                                                                                                                                                                                                           |
+| ~~Amount permanently hidden~~ — superseded | Original risk no longer applies: Kevin re-resolved amount visibility on 2026-08-10 (second round) — static view now shows the real formatted value (`Gs. 100.000.000`) when set, "—" only when empty. Agents can scan filled rows again by design, not just via auto-open. See spec.md "Static View Shows the Real Amount When Set". |
+| D3 deviation from mockup                   | Extra confirm button while editing. Needs a visual OK from Kevin at review time.                                                                                                                                                                                                                                                     |
+| Deleting the two old CSS blocks            | Any other selector reaching into `.cobertura-adicional-row`/`-checkbox-row` outside these two renderers would break — grep confirms only `cotizador.css` + `render-datos.js` reference them.                                                                                                                                         |
+| Mobile regression                          | No visual tooling; the 480px block is a rewrite, not a port. Playwright at 3 widths in the same commit.                                                                                                                                                                                                                              |

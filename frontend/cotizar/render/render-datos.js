@@ -1,6 +1,6 @@
 import { auth } from '../../shared/api.js'
 import { escapeHtml } from '../../shared/dom.js'
-import { fmtGsInput, unidadMoneda } from '../../shared/format.js'
+import { fmtGsInput, fmtGsConPrefijo, unidadMoneda } from '../../shared/format.js'
 import { ICON_PENCIL, ICON_LOCK, ICON_SUBLIMITE_GENERICO } from '../../shared/nav-icons.js'
 import { state } from '../state.js'
 import {
@@ -137,8 +137,10 @@ export function camposObjetoRiesgo(plan) {
 // Zona de campo (slot derecho) de la card de "Coberturas adicionales" — 3 estados mutuamente
 // excluyentes (design.md sección 2.4):
 //  - locked: sin cobertura elegida todavía → placeholder "—" + candado inerte
-//  - static (no locked, no editing): placeholder "—" + lápiz — el valor real NUNCA se muestra
-//    acá, aunque sumaAsegurada ya tenga monto (regla confirmada por Kevin, requirement 3)
+//  - static (no locked, no editing): "Gs. 100.000.000" si sumaAsegurada tiene monto, "—" si
+//    todavía no — el valor real SÍ se muestra acá (Kevin revirtió la regla de "siempre oculto"
+//    el 2026-08-10, tras confirmar que el caso que reportó como bug era en realidad el valor
+//    real de una cobertura ya cargada, mostrado como se esperaba)
 //  - editing: input real (mismo id/atributos de siempre) + botón de confirmar
 function campoMontoCobertura({ locked, editing, lineaId, sumaAsegurada, nombreAccesible }) {
   // La etiqueta "Suma asegurada" nunca desaparece — en edición se reemplaza solo el valor de
@@ -160,7 +162,7 @@ function campoMontoCobertura({ locked, editing, lineaId, sumaAsegurada, nombreAc
         value="${fmtGsInput(sumaAsegurada)}"
       />
     `
-    : `<span class="cobertura-adicional-card__estatico-valor">—</span>`
+    : `<span class="cobertura-adicional-card__estatico-valor">${sumaAsegurada ? escapeHtml(fmtGsConPrefijo(sumaAsegurada)) : '—'}</span>`
 
   const bloque = `
     <div class="cobertura-adicional-card__estatico">

@@ -2383,3 +2383,23 @@ Quinto de los 10 PRs del plan `admin-module-split` (issue #83/#84 finding #9, di
 **De paso — coberturas adicionales en modo checkbox, misma fila.** El input de "Suma asegurada" del modo checkbox (roles sin `puede_agregar_cobertura_libre`) aparecía en una línea nueva debajo del checkbox al tildarlo, empujando las filas siguientes hacia abajo. Cambiado a la misma fila (label a la izquierda, input de 180px a la derecha) en `frontend/shared/cotizador.css`, con fallback a columna en ≤480px.
 
 **Verificado.** 223/223 tests backend en verde. Verificado en vivo con Playwright (MRC, plan SEGUCOOP, Contado): panel muestra "Costo (sin IVA)" = 1.048.000 Gs., igual a la Prima cruda (RPF=0 en Contado); pills en el orden Contado → Cobrador → Boca de Cobranza → Tarjeta de Crédito.
+
+## 65. Issue #188 — matriz de tests de aislamiento horizontal (IDOR) en cotizaciones (2026-08-10), sin PR abierto todavía
+
+**Origen.** Auditoría estática del 2026-08-02 (issue #188, severidad media): el control de ownership de cotizaciones existe en el código (`verificarPropiedad()` en `cotizacion.service.js`) y funciona, pero no había ningún test que lo demostrara explícitamente — una regresión futura de ese control podía reabrir un acceso cruzado entre agentes sin que CI lo detectara.
+
+**Sin cambios de comportamiento.** Solo se agregó cobertura de tests, no se tocó código de producción.
+
+**Archivos nuevos.** `backend/src/services/cotizacion.service.ownership.test.js` (14 tests) y `backend/src/controllers/cotizaciones.controller.ownership.test.js` (14 tests), separados del archivo de 900 líneas ya existente (`cotizacion.service.test.js`) para que la matriz quede visible como unidad propia. Mismo patrón de mocking que el resto del repo (`t.mock.module` + import dinámico con `?case=` para cache-busting a nivel de servicio; mock del service + req/res fake a nivel de controller, mismo patrón que `ramos.controller.test.js`).
+
+**Matriz cubierta**, con fixtures `AGENTE_A={id:1,rol:'agente'}`, `AGENTE_B={id:2,rol:'agente'}`, `ADMIN={id:99,rol:'admin'}`, para los 4 endpoints (`obtenerCotizacion`, `actualizarCotizacion`, `generarPdfOferta`, `listarCotizaciones`) en ambas capas (service + controller):
+
+- Dueño (A sobre su propia cotización) → succeeds, comportamiento actual.
+- No-dueño (A sobre cotización de B) → 403; para `actualizarCotizacion` se asertó que `actualizarCotizacionAtomica` (el RPC de escritura) nunca se llama, y para `generarPdfOferta` que `renderOfertaPdf` tampoco — este último no tiene chequeo propio, depende 100% de `verificarPropiedad()`.
+- Admin sobre cotización de otro agente → bypasea el check, succeeds.
+- Cotización inexistente → 404, mismo comportamiento actual.
+- `listarCotizaciones` no usa `verificarPropiedad()` (filtra distinto): se asertó directamente que el `agenteId` pasado a `cotizacionesRepository.findCotizaciones` es `usuario.id` para un agente y `undefined` para admin.
+
+**Validación de que la matriz realmente detecta la regresión que el issue pide prevenir** (hecha y revertida en la misma sesión, sin dejar huella en el código): se comentó temporalmente el chequeo dentro de `verificarPropiedad()` (early `return`) y se corrió la suite completa — fallaron exactamente los 3 casos "no-dueño" de `cotizacion.service.ownership.test.js` (`obtenerCotizacion`, `generarPdfOferta`, `actualizarCotizacion`), 248/251 en verde. Revertido; `git diff backend/src/services/cotizacion.service.js` quedó sin cambios.
+
+**Verificado.** 251/251 tests backend en verde (223 existentes + 28 nuevos). Lint (`npx eslint` sobre los 2 archivos nuevos) sin errores. Rama `tests/cotizaciones-aislamiento-horizontal-188`, PR pendiente de abrir.

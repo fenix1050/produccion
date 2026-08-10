@@ -14,7 +14,6 @@ import {
   RAMOS_UI,
   RAMO_ICONOS,
   RAMOS_CON_CALCULO,
-  PLANES_VIDA_AP_CALCULABLES,
   CLIENT_FIELDS,
   CIUDADES,
   FRANQUICIA_OPCIONES,
@@ -23,7 +22,6 @@ import {
   MOTIVO_BLOQUEO_ID,
   DEBOUNCE_MS,
   CODIGOS_COBERTURA_EXCLUIDOS_BASE,
-  PORCENTAJE_VENTANILLA_SOBRE_CAJA_FUERTE,
   LIMITE_REPETICION_COBERTURA_MRC,
   LIMITE_REPETICION_COBERTURA_MRC_DEFAULT,
   SUBLIMITE_ICONOS,
@@ -33,167 +31,27 @@ import {
   ORDEN_FORMAS_PAGO,
   COTIZADOR_VERSION,
 } from './constants.js'
+import {
+  planEsCalculable,
+  franquiciaValorPorDefecto,
+  franquiciasPorCoberturaParaBody,
+  monedaEfectiva,
+  monedaCotizacionActual,
+  sumaObjetoRiesgo,
+  sugerenciaInspeccion,
+  descuentosParaBody,
+  recargosParaBody,
+  sublimitesFijosMrc,
+} from './domain-rules.js'
 
 // Cotizador Tajy — App Shell + Datos + Resultado (Fase 6, alcance MRC plan Normal).
 // Recreación en Vanilla JS del handoff de diseño original (mockup ya migrado y eliminado
 // tras la implementación de "Diseño 2" en frontend/cotizar).
 
-// Criterio de "plan calculable" (RPF/tasas confirmados) según el ramo — MRC e Incendio usan
-// prima_tecnica_minima; Vida-AP no maneja ese piso (decisión de Kevin) y usa la lista fija de
-// planes con calculador implementado.
-function planEsCalculable(ramoNombre, plan) {
-  if (!plan) return false
-  if (ramoNombre === 'vida-ap') return PLANES_VIDA_AP_CALCULABLES.includes(plan.nombre)
-  return plan.prima_tecnica_minima != null
-}
-
-function franquiciaValorPorDefecto(franquiciaDefaultMonto) {
-  if (!franquiciaDefaultMonto) return 'sin_deducible'
-  const match = FRANQUICIA_OPCIONES.find((o) => o.monto === franquiciaDefaultMonto)
-  return match ? match.valor : 'sin_deducible'
-}
-
-// Traduce el mapa de selección en UI (codigo -> valor de FRANQUICIA_OPCIONES) al mapa
-// codigo -> monto que espera el backend (riesgo_datos.franquicias_por_cobertura).
-function franquiciasPorCoberturaParaBody() {
-  const resultado = {}
-  for (const [codigo, valor] of Object.entries(state.franquiciasPorCobertura)) {
-    const opcion = FRANQUICIA_OPCIONES.find((o) => o.valor === valor)
-    resultado[codigo] = opcion ? opcion.monto : null
-  }
-  return resultado
-}
-
-// Moneda efectiva de la cotización según el plan elegido — MAQUINARIA BASICO queda fijo en USD
-// (cierra el gap de formato de la migración 013, ver spec cotizacion-moneda#Legacy USD-only
-// plan), los 3 planes nuevos de mecánica `objeto_riesgo` permiten elegir Gs./USD (selector, ver
-// renderMonedaSelector), y el resto de los planes/ramos (MRC, Edificio y Contenido, Vida-AP)
-// sigue fijo en Gs. — no se ofrece selector ahí en esta pasada.
-function monedaEfectiva(plan) {
-  if (plan?.nombre === 'MAQUINARIA BASICO') return 'USD'
-  if (plan?.tipo_mecanica === 'objeto_riesgo') return state.data.moneda || 'PYG'
-  return 'PYG'
-}
-
-// Plan actualmente elegido — helper repetido en varios puntos de render (panel en vivo,
-// resultado, resumen) que hoy resuelven `state.planes.find(...)` a mano; se centraliza acá para
-// que `monedaCotizacionActual()` (usada por los displays de montos) no duplique la búsqueda.
-function planActual() {
-  return state.planes.find((p) => p.id === state.planId)
-}
-
-// Moneda del plan actualmente elegido — ver monedaEfectiva(). Los displays de montos ya
-// calculados (panel en vivo, resumen de la cotización, coberturas) usan esta función en vez de
-// asumir Gs. siempre, para no repetir el gap de formato de la migración 013 (Maquinaria Básico
-// mostrado con fmtGs pese a cotizar en USD — ver cotizacion-moneda#Legacy USD-only plan).
-function monedaCotizacionActual() {
-  return monedaEfectiva(planActual())
-}
-
 function selectMoneda(moneda) {
   state.data.moneda = moneda
   renderApp()
   scheduleCalculate()
-}
-
-// Suma de los 4 objetos de riesgo declarados (mecánica `objeto_riesgo`) — usada tanto para
-// `capital_asegurado` como para la sugerencia no bloqueante de con/sin Inspección.
-function sumaObjetoRiesgo() {
-  return OBJETOS_RIESGO_CAMPOS.reduce(
-    (acc, { stateKey }) => acc + (Number(state.data[stateKey]) || 0),
-    0
-  )
-}
-
-// Sugerencia de plan con/sin Inspección según la suma declarada — puramente informativa para
-// el agente. La validación real (bloqueante, 422) la hace el backend (ver
-// incendio-umbral-inspeccion#Threshold validated on the backend, source of truth); acá solo se
-// avisa cuando el plan elegido probablemente no sea el correcto para esa suma, sin bloquear nada.
-// Devuelve `null` si no aplica (Hipotecario, umbral todavía no confirmado, sin datos declarados,
-// o si el umbral está en una moneda distinta a la cotización — no se convierte en el frontend).
-function sugerenciaInspeccion(plan) {
-  if (!plan || plan.tipo_mecanica !== 'objeto_riesgo' || plan.requiere_inspeccion == null) {
-    return null
-  }
-  if (plan.umbral_inspeccion_monto == null) return null
-
-  const suma = sumaObjetoRiesgo()
-  if (suma <= 0) return null
-
-  const moneda = monedaEfectiva(plan)
-  if (plan.umbral_inspeccion_moneda && plan.umbral_inspeccion_moneda !== moneda) return null
-
-  const superaUmbral = suma >= plan.umbral_inspeccion_monto
-  if (superaUmbral === plan.requiere_inspeccion) return null
-
-  return superaUmbral
-    ? 'La suma declarada alcanza o supera el umbral de inspección — este plan puede requerir "Incendio con Inspección" (el backend valida al guardar).'
-    : 'La suma declarada está por debajo del umbral de inspección — podés cotizar bajo "Incendio sin Inspección" (el backend valida al guardar).'
-}
-
-// Traduce el descuento/recargo cargado en "Detalle del plan" (state.data.descuentoMonto /
-// state.data.descuentoPorcentaje — dos campos fijos, uno en Gs. y otro en %, en vez de un input
-// + selector) al array que espera el body de POST /cotizaciones/calcular y POST /cotizaciones
-// (ver ajusteSchema en mrc.schema.js / incendio.schema.js: requiere `descripcion`, y monto O
-// porcentaje). El tope real (plan.descuento_maximo / plan.recargo_maximo) lo aplica el backend
-// (sumarAjustes) — acá solo se arma el ajuste crudo, sin clampear. Si el agente cargó los dos
-// campos a la vez, se prioriza el monto en Gs. (caso borde, no bloqueamos con validación extra).
-function ajustesParaBody(prefijo, descripcion) {
-  if (!RAMOS_CON_AJUSTES.includes(state.ramoId)) return []
-  const monto = Number(state.data[`${prefijo}Monto`]) || 0
-  if (monto > 0) return [{ descripcion, monto }]
-  const porcentaje = Number(state.data[`${prefijo}Porcentaje`]) || 0
-  if (porcentaje > 0) return [{ descripcion, porcentaje }]
-  return []
-}
-
-function descuentosParaBody() {
-  return ajustesParaBody('descuento', 'Descuento aplicado por el agente')
-}
-
-function recargosParaBody() {
-  return ajustesParaBody('recargo', 'Recargo aplicado por el agente')
-}
-
-// Sublímite "Robo valores ventanilla" calculado en vivo — no vive en plan_coberturas (a
-// diferencia de los sublímites fijos del plan) porque depende de un monto que el agente recién
-// carga en esta cotización, no de un default del plan. Devuelve null si todavía no se cargó
-// "Valores en caja fuerte" (no hay nada que auto-vincular).
-function sublimiteVentanillaCalculado() {
-  const capitalCajaFuerte = state.coberturasAdicionales
-    .filter((l) => l.codigo === 'robo_caja_registradora')
-    .reduce((acc, l) => acc + (Number(l.sumaAsegurada) || 0), 0)
-  if (capitalCajaFuerte <= 0) return null
-  const catalogo = state.coberturasCatalogo.find((c) => c.codigo === 'robo_valores_ventanilla')
-  return {
-    codigo: 'robo_valores_ventanilla',
-    nombre: catalogo?.nombre ?? 'Robo valores ventanilla',
-    monto: Math.round(capitalCajaFuerte * PORCENTAJE_VENTANILLA_SOBRE_CAJA_FUERTE),
-  }
-}
-
-// Sublímites de MRC fijos por defecto — leídos de `plan_coberturas.incluida_por_defecto` del
-// plan elegido (WU6, 2026-07-17), en vez de la vieja constante hardcodeada SUBLIMITES_FIJOS_MRC.
-// El agente no los elige ni les cambia el monto, así que se muestran aparte en el panel
-// "Sublímites" (ver renderSublimitesFijosMrc), no como fila editable/quitable en "Coberturas
-// adicionales". Excluye explícitamente Incendio Edificio/Contenido: esas 2 no viven en
-// `plan_coberturas` (se cotizan por Capital Edificio/Contenido, campo propio del formulario),
-// pero se filtran igual por defensividad ante un dato inesperado.
-function sublimitesFijosMrc() {
-  const fijosDelPlan = state.planCoberturas
-    .filter(
-      (pc) =>
-        pc.incluida_por_defecto &&
-        !CODIGOS_COBERTURA_EXCLUIDOS_BASE.includes(pc.coberturas_catalogo?.codigo)
-    )
-    .map((pc) => ({
-      codigo: pc.coberturas_catalogo?.codigo,
-      nombre: pc.coberturas_catalogo?.nombre ?? pc.coberturas_catalogo?.codigo,
-      monto: pc.monto,
-    }))
-    .filter((s) => s.codigo)
-  const ventanilla = sublimiteVentanillaCalculado()
-  return ventanilla ? [...fijosDelPlan, ventanilla] : fijosDelPlan
 }
 
 let debounceTimer = null

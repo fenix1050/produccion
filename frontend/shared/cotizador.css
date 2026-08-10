@@ -2124,7 +2124,9 @@ button {
 .admin-modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(26, 26, 26, 0.5);
+  background: rgba(17, 24, 34, 0.54);
+  backdrop-filter: blur(10px) saturate(0.88);
+  -webkit-backdrop-filter: blur(10px) saturate(0.88);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2154,8 +2156,37 @@ button {
   margin-top: 18px;
 }
 
+/* Modal de progreso — variante translúcida/glass (mockup de Kevin): fondo con
+   degradé semitransparente + glow "aurora" difuminado detrás del título, en vez
+   del panel sólido plano que usa el resto de los modales admin-modal. */
 .progreso-carta-modal {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
   width: 420px;
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.96), rgba(248, 249, 251, 0.91));
+  border: 1px solid rgba(255, 255, 255, 0.76);
+  border-radius: 22px;
+  box-shadow:
+    0 24px 70px rgba(14, 21, 32, 0.2),
+    0 4px 14px rgba(14, 21, 32, 0.08);
+  animation: progreso-modal-in 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.progreso-carta-modal::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  top: -125px;
+  left: 10%;
+  width: 80%;
+  height: 190px;
+  opacity: 0.72;
+  background:
+    radial-gradient(circle at 34% 52%, rgba(216, 19, 46, 0.46), transparent 48%),
+    radial-gradient(circle at 70% 56%, rgba(255, 137, 112, 0.34), transparent 47%);
+  filter: blur(28px);
+  pointer-events: none;
 }
 
 .progreso-track {
@@ -2168,8 +2199,9 @@ button {
 
 .progreso-fill {
   height: 100%;
-  background: var(--tajy-red);
+  background: linear-gradient(90deg, #aa0f25, var(--tajy-red), #f05265);
   border-radius: inherit;
+  box-shadow: 0 0 16px rgba(216, 19, 46, 0.35);
   transition: width 280ms ease;
 }
 
@@ -2199,7 +2231,7 @@ button {
 }
 
 .progreso-step--completado:not(:last-child)::after {
-  background: var(--tajy-green-fg);
+  background: rgba(20, 108, 60, 0.42);
 }
 
 .progreso-step__marker {
@@ -2216,6 +2248,10 @@ button {
   border-radius: 50%;
   font-size: 11px;
   font-weight: 700;
+  transition:
+    background 220ms ease,
+    border-color 220ms ease,
+    box-shadow 220ms ease;
 }
 
 .progreso-step__label {
@@ -2229,7 +2265,8 @@ button {
 
 .progreso-step--activo .progreso-step__marker {
   background: var(--tajy-pink);
-  border-color: var(--tajy-red-soft);
+  border-color: rgba(216, 19, 46, 0.26);
+  box-shadow: 0 0 0 5px rgba(216, 19, 46, 0.06);
 }
 
 .progreso-step--completado {
@@ -2245,6 +2282,8 @@ button {
 .progreso-step__check {
   font-size: 13px;
   line-height: 1;
+  display: inline-block;
+  animation: progreso-check-in 280ms cubic-bezier(0.2, 0.9, 0.3, 1.35) both;
 }
 
 .progreso-step--error .progreso-step__marker {
@@ -2259,6 +2298,7 @@ button {
   border-radius: var(--tajy-radius-lg);
   font-size: 12.5px;
   line-height: 1.5;
+  animation: progreso-resultado-in 240ms ease both;
 }
 
 .progreso-resultado strong {
@@ -2281,6 +2321,47 @@ button {
   color: var(--tajy-red-a11y);
   background: var(--tajy-pink);
   border: 1px solid var(--tajy-red-soft);
+}
+
+@keyframes progreso-modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes progreso-check-in {
+  from {
+    opacity: 0;
+    transform: scale(0.35);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes progreso-resultado-in {
+  from {
+    opacity: 0;
+    transform: translateY(7px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progreso-carta-modal,
+  .progreso-step__check,
+  .progreso-resultado {
+    animation: none;
+  }
 }
 
 @media (max-width: 480px) {

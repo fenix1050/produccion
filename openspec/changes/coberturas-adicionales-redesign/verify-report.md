@@ -1,133 +1,145 @@
 ```yaml
 schema: gentle-ai.verify-result/v1
-evidence_revision: sha256:42940d527f8a59488c9da2a336b2a3e6c7b1d94ca2d854854674e7f995899d78
-verdict: fail
-blockers: 2
-critical_findings: 2
-requirements: 5/6
-scenarios: 7/14
+evidence_revision: sha256:062367622c7d90ea4a42eccdb0ddbb1446c52b1fae00dbdadc399d16451a4fda
+verdict: pass
+blockers: 0
+critical_findings: 0
+requirements: 6/6
+scenarios: 13/13
 test_command: npm test --prefix backend
 test_exit_code: 0
-test_output_hash: sha256:2245c10e6c33ac885afee7feff3388fb14aa4d5bac588ef3a482a12ee035c939
+test_output_hash: sha256:c8e6d45327309d111d7aad6188f018aa7732e3eb4693f91388a5449a538c7837
 build_command: node --check frontend/cotizar/render/render-datos.js && node --check frontend/cotizar/actions.js && node --check frontend/cotizar/events.js && node --check frontend/cotizar/constants.js && node --check frontend/cotizar/state.js && node --check frontend/shared/nav-icons.js
 build_exit_code: 0
 build_output_hash: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
 ```
 
-# Verification Report
+# Verification Report — Run 3 (final)
 
 **Change**: `coberturas-adicionales-redesign`
-**Mode**: post-merge verification against `main` (working tree clean, HEAD `c926a18`)
+**Mode**: post-merge verification against `main`, HEAD `ef090f0` (PR #237)
 **Artifact store**: hybrid (Engram + OpenSpec)
-**Artifacts read**: spec (`specs/coberturas-adicionales-ui/spec.md` + Engram #444), tasks (`tasks.md` + Engram #446), apply-progress (Engram #447)
-**Verdict**: FAIL — 2 CRITICAL, 5 WARNING, 4 SUGGESTION. No code defect found; both CRITICALs are artifact/evidence gaps that block a clean `sdd-archive`.
+**Artifacts read**: spec (`specs/coberturas-adicionales-ui/spec.md` + Engram #444), tasks (`tasks.md` + Engram #446), apply-progress (Engram #447), prior reports (`verify-report-run1.md`, `verify-report-run2.md` + Engram #449), `design.md`, `proposal.md`
+**Verdict**: **PASS** — 0 CRITICAL, 0 WARNING, 4 SUGGESTION. Archive-ready.
 
-## Scope of evidence
+## Run history
 
-- Merged commits present on `main`, in order: `f6da9e7` (PR #230), `18e769c` (PR #231), `c926a18` (PR #232).
-- Aggregate diff `f6da9e7~1..c926a18`: 13 files, +1203 / -105.
-- Backend suite: `npm test --prefix backend` gives 251 pass / 0 fail / 37 suites, `duration_ms 4046`, exit 0.
-- The change is frontend-only; the backend suite covers zero of its scenarios. It is a regression guard, not spec evidence.
-- This project has no automated frontend test suite. The spec Non-Requirements authorize Playwright/manual verification instead, so manual evidence is admissible here.
+| Run | HEAD      | Verdict | Envelope counts            | Blockers                                                               |
+| --- | --------- | ------- | -------------------------- | ---------------------------------------------------------------------- |
+| 1   | `c926a18` | fail    | req 5/6, scn 7/14          | C1 spec required a nonexistent button; C2 free-selector never run live |
+| 2   | `f71f074` | fail    | req 3/6, scn 10/13         | N1/N2/N3 — three scenarios without runtime evidence                    |
+| 3   | `ef090f0` | pass    | req **6/6**, scn **13/13** | none                                                                   |
+
+Run 1's bytes are preserved verbatim at `verify-report-run1.md`. Run 2's bytes were lost before any commit; `verify-report-run2.md` holds a provenance-labelled reconstruction from its Engram record (#449). Neither prior report was overwritten by this run.
+
+## What changed since run 2
+
+`ef090f0` (PR #237, squash) touched exactly one file — `tasks.md`, +4/-3 — closing the three evidence gaps N1/N2/N3. **Zero production bytes changed**, confirmed by `git show --stat`. The implementation being verified is byte-identical to the one run 2 already inspected, so this run re-validates the evidence, not the code.
 
 ## Task completeness
 
-| Phase                     | Tasks | Complete | Notes                                                                                        |
-| ------------------------- | ----- | -------- | -------------------------------------------------------------------------------------------- |
-| 1 Foundation              | 3     | 3/3      | `COBERTURA_ICONOS`, icon constants, `coberturasAdicionalesEditando` Set all present          |
-| 2 Edit-mode state machine | 7     | 7/7      | actions/events/body-builder verified in source                                               |
-| 3 Card markup             | 6     | 6/6      | `cardCoberturaAdicional()` plus both renderers rewritten                                     |
-| 4 CSS                     | 5     | 5/5      | new block added, old blocks and malformed comment deleted, `> label` scoping, reduced-motion |
-| 5 Verification            | 5     | 2/5      | 5.2, 5.3, 5.5 unchecked                                                                      |
-| Total                     | 26    | 23/26    | all code tasks done; only verification tasks pending                                         |
+| Phase                     | Tasks  | Complete  | Notes                                                                                     |
+| ------------------------- | ------ | --------- | ----------------------------------------------------------------------------------------- |
+| 1 Foundation              | 3      | 3/3       | `COBERTURA_ICONOS`, icon constants, `coberturasAdicionalesEditando` Set                   |
+| 2 Edit-mode state machine | 7      | 7/7       | actions/events/body-builder verified in source                                            |
+| 3 Card markup             | 6      | 6/6       | `cardCoberturaAdicional()` plus both renderers rewritten                                  |
+| 4 CSS                     | 5      | 5/5       | new block added, old blocks and malformed comment deleted, `> label` scoping              |
+| 5 Verification            | 6      | 6/6       | 5.3 and 5.5 now checked with dated live runs; 5.6 added and checked (add-button capacity) |
+| **Total**                 | **27** | **27/27** | zero unchecked tasks                                                                      |
 
 ## Spec compliance matrix
 
-6 requirements / 14 scenarios in `specs/coberturas-adicionales-ui/spec.md`.
+Authoritative counts from `specs/coberturas-adicionales-ui/spec.md`: **6 requirements, 13 scenarios** (R1 2, R2 2, R3 4, R4 2, R5 1, R6 2).
 
-| #    | Requirement / Scenario                                         | Code evidence                                                                                                            | Runtime evidence                                                          | Status                                |
-| ---- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------- | ------------------------------------- |
-| R1.1 | Unmarked row shows dimmed lock instead of pencil               | `render-datos.js:172-174` inert `__lock` span; `cotizador.css:1816` `.is-locked{opacity:.55}`                            | Task 5.1 (Playwright, 1440/768/480)                                       | PASS                                  |
-| R1.2 | Checking fills the radio indicator                             | `render-datos.js:345-351`; `cotizador.css:1852-1864` dot scale 0 to 1                                                    | Task 5.1                                                                  | PASS                                  |
-| R2.1 | Selector and Quitar persist in free mode                       | `render-datos.js:295-303` select plus `__quitar`; add button `:327`                                                      | none, task 5.2 unchecked                                                  | UNTESTED                              |
-| R2.2 | Row-level lock identical in selector mode                      | `render-datos.js:281` `locked = !l.codigo`, same `campoMontoCobertura()`                                                 | none, task 5.2 unchecked                                                  | UNTESTED                              |
-| R3.1 | Amount set and not editing shows formatted value, not the dash | `render-datos.js:168` ternary on `sumaAsegurada` with `fmtGsConPrefijo`                                                  | contradicted: task 5.1 recorded "static shows dash" (pre-revert behavior) | UNTESTED                              |
-| R3.2 | Amount empty and not editing shows the dash                    | same line, falsy branch                                                                                                  | Task 5.1                                                                  | PASS                                  |
-| R3.3 | Pencil opens editable input with focus, caret at end           | editing branch `:148-163`; `focusMontoCobertura()` uses `focus({preventScroll:true})` plus `setSelectionRange(len,len)`  | Task 5.1 ("reopen shows real value")                                      | PASS                                  |
-| R3.4 | Preview and Detalle del plan match the stored value            | `sumaAsegurada` never mutated by edit-mode code; `render-detalle-plan.js` has zero diff in the whole change              | none, tasks 5.3/5.5 unchecked                                             | UNTESTED (risk nil by construction)   |
-| R4.1 | Checking an empty-amount coverage auto-opens the input         | `actions.js` `toggleCoberturaAdicionalPorCodigo` adds to the Set when `!linea.sumaAsegurada`, then `focusMontoCobertura` | Task 5.1                                                                  | PASS                                  |
-| R4.2 | Coverage that already has an amount does not force edit mode   | same guard, only adds when falsy                                                                                         | Task 5.1 partial                                                          | PASS (see W2, scenario text is stale) |
-| R5.1 | Capacity reached in Datos disables with title                  | `render-datos.js:327` `is-locked` plus `disabled title="Ya agregaste el máximo…"` plus `ICON_LOCK`                       | none, task 5.2 unchecked                                                  | UNTESTED                              |
-| R5.2 | Capacity reached in Detalle del plan shows identical chrome    | no such button exists; removed in PR #225, single `add-cobertura-linea` call site repo-wide                              | n/a                                                                       | NOT MET (by design)                   |
-| R6.1 | Read-only Detalle del plan card unaffected                     | `SUBLIMITE_ICONOS` byte-identical (diff is additions below the map); `render-detalle-plan.js:313` still reads it         | none, task 5.5 unchecked                                                  | UNTESTED (risk nil by construction)   |
-| R6.2 | Adicionales cards show the 6 new dedicated icons               | `constants.js:190-198` all 6 codes; `render-datos.js:213` lookup with generic fallback                                   | Task 5.1                                                                  | PASS                                  |
+| #    | Requirement / Scenario                             | Code evidence (re-inspected this run)                                                                   | Runtime evidence                                            | Status |
+| ---- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- | ------ |
+| R1.1 | Unmarked row shows dimmed lock instead of pencil   | `render-datos.js:171-173` inert `__lock` span with `title`; `.is-locked` chrome in `cotizador.css`      | Task 5.1 (Playwright, 1440/768/480)                         | PASS   |
+| R1.2 | Checking fills the radio indicator                 | checkbox-mode `__check`/`__dot` markup + CSS dot scale 0 to 1                                           | Task 5.1                                                    | PASS   |
+| R2.1 | Selector and "Quitar" persist in free mode         | `render-datos.js:296-305` per-row `<select>` + `__quitar` button; add button at `:327`                  | Task 5.2 (temp Analista de Riesgo user, 2026-08-11)         | PASS   |
+| R2.2 | Row-level lock identical in selector mode          | `render-datos.js:281` `locked = !l.codigo`, same `campoMontoCobertura()` as checkbox mode               | Task 5.2 (row locked with padlock before choosing coverage) | PASS   |
+| R3.1 | Amount set, not editing shows the formatted value  | `render-datos.js:168` ternary `sumaAsegurada ? fmtGsConPrefijo(...) : dash`                             | Task 5.1 (`Gs. 100.000.000`) and 5.2 (`Gs. 25.000.000`)     | PASS   |
+| R3.2 | Amount empty, not editing shows the dash           | same line, falsy branch                                                                                 | Task 5.1                                                    | PASS   |
+| R3.3 | Pencil opens editable input, focus, caret at end   | editing branch `:148-163`; `focusMontoCobertura()` `focus({preventScroll:true})` + `setSelectionRange`  | Tasks 5.1 and 5.2 (reopen showed the real value)            | PASS   |
+| R3.4 | Preview and Detalle del plan match the static view | `sumaAsegurada` never mutated by edit-mode code; `render-detalle-plan.js` zero diff over the change     | **Task 5.3** — full MRC-NORMAL quote, real computed totals  | PASS   |
+| R4.1 | Checking an empty-amount coverage auto-opens input | `actions.js:170`/`:197` add to the Set only when `!sumaAsegurada`, then `focusMontoCobertura`           | Tasks 5.1 and 5.2 (auto-open with focus)                    | PASS   |
+| R4.2 | Coverage that already has an amount is not forced  | same guard, only adds on falsy                                                                          | Task 5.1                                                    | PASS   |
+| R5.1 | Capacity reached in Datos disables with title      | `render-datos.js:327` `is-locked` + `disabled` + explanatory `title` + `ICON_LOCK`                      | **Task 5.6** — free-selector run at the 6-coverage cap      | PASS   |
+| R6.1 | Read-only Detalle del plan card unaffected         | `constants.js` diff has **zero deletion lines**, so `SUBLIMITE_ICONOS` is byte-identical                | **Task 5.5** — 4 "Coberturas incluidas" cards, icons intact | PASS   |
+| R6.2 | Adicionales cards show the 6 new dedicated icons   | `constants.js` `COBERTURA_ICONOS` spreads `SUBLIMITE_ICONOS` + all 6 codes; lookup in `render-datos.js` | Task 5.1                                                    | PASS   |
 
-Compliance: 7 PASS, 6 UNTESTED, 1 NOT MET.
+**Compliance: 13/13 scenarios PASS, 6/6 requirements complete. 0 UNTESTED, 0 FAILING, 0 NOT MET.**
 
-## Late product decisions versus shipped code
+### The three run-2 gaps, closed
 
-The five decisions that were re-resolved late in the session, each checked against merged bytes:
+- **N1, R3.4 (task 5.3)**: a full MRC-NORMAL quote (`test@test.com`) with every required field filled reached "Detalle del plan"; "Resumen de la cotización" showed a real computed "Suma asegurada total" of 720.000.000 Gs. and "Costo total" of 1.571.000 Gs. The calculation path demonstrably consumed the amounts entered through the redesigned cards.
+- **N2, R5.1 (task 5.6, new)**: a temporary Analista de Riesgo user added rows in free-selector mode until the catalog's 6-coverage capacity was reached; "+ Agregar cobertura" then rendered `disabled`, with class `is-locked` and the explanatory `title`. This is the redesigned chrome rendered live, not just the Node-level logic check from 2026-08-10.
+- **N3, R6.1 (task 5.5)**: the same full-quote run rendered the 4 read-only "Coberturas incluidas" cards (Incendio de edificio, Incendio Contenido, Robo contenido, Valores en tránsito) with their icons intact. Re-confirmed statically this run: `render-detalle-plan.js` has **zero diff** across `f6da9e7~1..HEAD`, and the `constants.js` diff contains no deletion lines.
 
-| Decision (last resolution)                                                              | Shipped code                                                                                                                             | Match |
-| --------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ----- |
-| Static view shows the real formatted amount; dash only when empty                       | `render-datos.js:168`                                                                                                                    | YES   |
-| Edit state has no persistent "Suma asegurada" label; placeholder lives inside the input | `render-datos.js:150-163`, editing branch emits only an `.sr-only` label plus `placeholder="Suma asegurada (Gs.)"`                       | YES   |
-| Confirm/close uses the same pencil icon as open                                         | `render-datos.js:178-190`, one `ICON_PENCIL` button, only `data-action` differs                                                          | YES   |
-| Add-button lock chrome only in `render-datos.js`                                        | single call site confirmed repo-wide                                                                                                     | YES   |
-| `#btn-ver-detalle` and `#tab-detalle-plan` use `aria-disabled`, not native `disabled`   | `actions.js` `syncAvanceButtons` (native `disabled` lines deleted), `render-shell.js:93`, `render-datos.js:558`, guard at `events.js:96` | YES   |
+All temporary QA users created for these runs (ids 29-33) were deleted immediately after use.
 
-Both bugs recorded in apply-progress are fixed in the merged bytes: no malformed comment remains in `cotizador.css`, and the oval-circle inheritance is neutralised by `.coberturas-adicionales .cobertura-adicional-card__check { min-height: 20px }` at `cotizador.css:1836`.
+## Independent re-checks performed this run
+
+| Check                                                    | Result                                                                                      |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `data-action="add-cobertura-linea"` call sites repo-wide | exactly 1 emit (`render-datos.js:327`) + 1 handler (`events.js:110`), matching the fixed R5 |
+| `render-detalle-plan.js` diff `f6da9e7~1..HEAD`          | empty                                                                                       |
+| `constants.js` deletion lines over the change            | 0, so `SUBLIMITE_ICONOS` is byte-identical                                                  |
+| `COBERTURA_ICONOS` contents                              | spreads `SUBLIMITE_ICONOS` + exactly the 6 codes named in R6                                |
+| Working tree                                             | only `CLAUDE.md` and `docs/ESTADO_PROYECTO.md` modified, user-owned, unrelated, untouched   |
+
+## Test and build evidence
+
+| Command                     | Exit | Result                                                       |
+| --------------------------- | ---- | ------------------------------------------------------------ |
+| `npm test --prefix backend` | 0    | **251 pass / 0 fail / 0 skipped**, 37 suites, 4018 ms        |
+| `node --check` (6 modules)  | 0    | no syntax errors, empty output                               |
+| Frontend test suite         | n/a  | none exists in this project, per the spec's Non-Requirements |
+| Coverage                    | n/a  | no coverage tool configured for this suite                   |
+
+The change is frontend-only; the backend suite covers none of its scenarios and stands as a regression guard, not spec evidence. Spec compliance rests on the Playwright/manual runs recorded in `tasks.md` Phase 5, which the spec's Non-Requirements explicitly authorize as the verification method for this change.
+
+`npm run format:check` was deliberately not used as a signal: per apply-progress, `core.autocrlf=true` on this machine makes Prettier flag the whole repo locally while the real blobs are LF and CI-clean.
+
+## Design coherence
+
+| Decision                                             | Followed? | Evidence                                                |
+| ---------------------------------------------------- | --------- | ------------------------------------------------------- |
+| D3, no `focusout` close path, Enter/Escape only      | Yes       | `events.js:145` keydown handler, no focusout listener   |
+| D4, edit Set cleared on ramo/plan change and prefill | Yes       | `actions.js:317`, `:377`, `body-builder.js` prefill     |
+| D6, preload marks open without stealing focus        | Yes       | `actions.js:79` adds ids, no `focusMontoCobertura` call |
+| D8, `.coberturas-adicionales > label` scoping        | Yes       | `cotizador.css`, zero visual change on live markup      |
+| D9, single add-button call site                      | Yes       | verified repo-wide this run                             |
+
+No design deviation found.
+
+## Strict TDD
+
+Strict TDD Mode is enabled globally, but this change ships zero test files: it is frontend-only, the project has no frontend test runner, and the spec's Non-Requirements explicitly waive automated tests in favour of Playwright verification. There is therefore no TDD Cycle Evidence table in apply-progress and none is expected; RED/GREEN/TRIANGULATE/SAFETY-NET are not applicable.
+
+- **Assertion Quality Audit**: no test files were created or modified by this change, so there are no assertions to audit. No tautologies, ghost loops, or smoke-only tests could be introduced.
+- **Test layer distribution for this change**: Unit 0, Integration 0, E2E 0 committed (manual Playwright runs only, not committed to the repo).
+- **Changed-file coverage**: skipped, no coverage tool detected for this suite.
+- **Quality metrics**: linter and type checker are not configured for the frontend; `node --check` served as the syntax gate and passed on all 6 touched modules.
 
 ## Issues
 
 ### CRITICAL
 
-C1 — Requirement 5 in `spec.md` mandates behavior the code intentionally does not implement.
-`spec.md:89-103` requires the lock chrome "consistently in both `render-datos.js` (Datos step) and `render-detalle-plan.js` (Detalle del plan step)" and carries a dedicated scenario "Capacity reached in Detalle del plan". That button was removed in PR #225; `tasks.md:50` states the opposite (`render-datos.js` only, no task for `render-detalle-plan.js`, per D9). Code follows tasks.md, so the spec is the stale artifact. `sdd-archive` merges delta specs into `openspec/specs/`, so archiving as-is would enshrine a permanently unmet requirement in the authoritative spec set. Requirement 5 and its second scenario must be rewritten to a single call site before archive.
-
-C2 — Three Phase 5 verification tasks are unchecked; free-selector mode has zero runtime evidence.
-`tasks.md` 5.2, 5.3 and 5.5 are unchecked. Task 5.2 is the only evidence source for Requirement 2 in full (both scenarios) plus R5.1. That entire render mode (`renderCoberturasAdicionales`, roles with `puede_agregar_cobertura_libre`) was rewritten and never exercised live because no credentials for such a role were available. The change was merged with the gap open. The remedy is evidence, not code: obtain a `puede_agregar_cobertura_libre` login and run 5.2/5.3/5.5, or have Kevin spot-check.
+None.
 
 ### WARNING
 
-W1 — Task 5.1 recorded live assertion contradicts the shipped behavior of Requirement 3. Task 5.1 is checked with the assertion "static shows the dash; reopen shows real value", which is the superseded always-hidden rule. The final code shows the real value in the static view. The requirement that changed most (R3, revised twice by Kevin) therefore has no runtime evidence matching its final form. Kevin's five rounds of visual feedback are informal evidence that he saw the final rendering, but no artifact records an assertion for it.
-
-W2 — `spec.md:87` (R4, scenario 2) still cites the superseded rule: "the static — view is shown per the visibility rule above", which directly contradicts the rewritten Requirement 3 five lines earlier. The code is correct; the spec sentence is stale.
-
-W3 — `tasks.md:48` (task 3.4) is checked but describes the opposite of what shipped: "Static field state always renders — placeholder, never the stored value". The merged code renders the stored value when present.
-
-W4 — The Engram spec artifact (#444) is out of sync with the OpenSpec file. It still titles Requirement 3 "Static View Never Shows the Stored Amount (critical, resolved by Kevin)" and describes 12 scenarios; the file now has 14 and the opposite rule. In hybrid mode both copies must agree, or a later phase reading only Engram will act on the reverted rule.
-
-W5 — The Engram tasks artifact (#446) records a pre-merge world: "Unit 3 … NOT pushed, PR NOT opened" and "PR #231 open", while all three PRs are merged. The same staleness exists in the `tasks.md` work-unit table at line 25.
+None.
 
 ### SUGGESTION
 
-S1 — `ICON_CHECK_SMALL` (`frontend/shared/nav-icons.js:60`) is dead code. It was added by task 1.2 for the confirm-edit button; that button now reuses `ICON_PENCIL`, and the constant has no remaining reference anywhere under `frontend/`.
+- **S1**: `ICON_CHECK_SMALL` (`frontend/shared/nav-icons.js:60`) is dead code. Added by task 1.2 for the confirm-edit button, which now reuses `ICON_PENCIL`; zero references remain under `frontend/`.
+- **S2**: three code comments still describe the superseded always-hidden rule and will mislead the next reader: `state.js:44-48`, the header comment of `habilitarEdicionMontoCobertura` (`actions.js:205-209`), and the keydown comment at `events.js:140-144`. Only `render-datos.js:137-146` documents the final rule correctly.
+- **S3**: `cotizador.css:1796-1799` still says the new block replaces the old blocks "borrados en el cutover de Unit 3, junto con este comentario". The blocks were deleted; the comment survived and now describes a state that no longer exists.
+- **S4**: Requirement 3 at `spec.md:47` embeds change-session narrative about the 2026-08-10 re-resolution. Useful now, but it reads as noise once merged into the durable `openspec/specs/` domain; consider trimming to the rule itself at archive time.
 
-S2 — Three code comments still describe the superseded always-hidden rule and will mislead the next reader: `state.js:44-46`, the header comment of `habilitarEdicionMontoCobertura` in `actions.js`, and the keydown comment at `events.js:141`. Only `render-datos.js:137-146` documents the final rule correctly.
-
-S3 — `cotizador.css:1796-1799` says the new block "Reemplaza los bloques viejos … (borrados en el cutover de Unit 3, junto con este comentario)". The blocks were deleted but the comment survived, so it now describes a state that no longer exists.
-
-S4 — Requirement 3 at `spec.md:47` embeds change-session narrative ("re-resolved by Kevin, 2026-08-10, second round …"). Useful now, but it reads as noise once merged into the durable `openspec/specs/` domain; consider trimming to the rule itself at archive time.
-
-## Design coherence
-
-`design.md` exists and is referenced by section number throughout the shipped comments (2.2/2.3/2.4, D3, D4, D6, D8, D9). Spot checks all hold: no `focusout` close path (D3), edit Set cleared on `selectRamo`/`selectPlan`/prefill (D4), auto-open without focus steal in `preagregarCoberturasPrincipalesFijasMrc` (D6), `> label` scoping (D8), single add-button call site (D9). No design deviation found.
-
-## Test and build evidence
-
-| Command                     | Exit | Result                                                 |
-| --------------------------- | ---- | ------------------------------------------------------ |
-| `npm test --prefix backend` | 0    | 251 pass, 0 fail, 37 suites, 4046 ms                   |
-| Frontend test suite         | n/a  | none exists in this project, per spec Non-Requirements |
-| Coverage                    | n/a  | no coverage tool configured for this suite             |
-
-`npm run format:check` was deliberately not used as a signal: per apply-progress, `core.autocrlf=true` on this machine makes Prettier flag the entire repo locally while the actual blobs are LF and CI-clean.
-
-## Strict TDD
-
-Strict TDD Mode is enabled globally, but this change ships zero test files: it is frontend-only, the project has no frontend runner, and the spec Non-Requirements explicitly waive automated tests in favour of Playwright verification. There is therefore no TDD Cycle Evidence table in apply-progress and none is expected; RED/GREEN/TRIANGULATE/SAFETY-NET are not applicable. Assertion Quality Audit: no test files created or modified by this change, so there are no assertions to audit. Test layer distribution for the change: Unit 0, Integration 0, E2E 0 (manual Playwright runs only, not committed).
+None of the four block archive. S4 is the only one `sdd-archive` itself would naturally address.
 
 ## Final verdict
 
-FAIL — blocked for archive by C1 (spec requires an intentionally absent button) and C2 (three unchecked verification tasks, free-selector mode never run live). Implementation quality itself is clean: every code task is done, every late product decision matches the shipped bytes, both recorded bugs are fixed, and 251/251 backend tests pass. Remediation is artifact editing plus one live verification pass; no production code change is indicated.
+**PASS** — every requirement and every scenario in the spec now has both code evidence and runtime evidence; all 27 tasks are checked; 251/251 backend tests pass; every design decision holds; and no production byte changed since the run-2 inspection. The change is **ready for `sdd-archive`**. Four cosmetic suggestions remain and are explicitly non-blocking.

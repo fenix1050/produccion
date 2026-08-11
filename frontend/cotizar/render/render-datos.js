@@ -1,7 +1,12 @@
 import { auth } from '../../shared/api.js'
 import { escapeHtml } from '../../shared/dom.js'
 import { fmtGsInput, fmtGsConPrefijo, unidadMoneda } from '../../shared/format.js'
-import { ICON_PENCIL, ICON_LOCK, ICON_SUBLIMITE_GENERICO } from '../../shared/nav-icons.js'
+import {
+  ICON_PENCIL,
+  ICON_LOCK,
+  ICON_SUBLIMITE_GENERICO,
+  ICON_X_CIRCLE,
+} from '../../shared/nav-icons.js'
 import { state } from '../state.js'
 import {
   CIUDADES,
@@ -224,14 +229,12 @@ function cardCoberturaAdicional({
     <div class="${clases}" ${lineaId ? `data-linea-id="${lineaId}"` : ''}>
       ${checkHtml}
       <span class="cobertura-adicional-card__icon">${icono}</span>
-      <div class="cobertura-adicional-card__main">
-        ${mainHtml}
-        <span class="cobertura-adicional-card__sub">${sub}</span>
-      </div>
+      <div class="cobertura-adicional-card__main">${mainHtml}</div>
       <div class="cobertura-adicional-card__field">
         ${campoMontoCobertura({ locked, editing, lineaId, sumaAsegurada, nombreAccesible })}
       </div>
       ${trailingHtml || ''}
+      <span class="cobertura-adicional-card__sub">${sub}</span>
     </div>
   `
 }
@@ -300,7 +303,11 @@ export function renderCoberturasAdicionales(catalogoDisponible) {
         </select>
       `
 
-      const trailingHtml = `<button type="button" class="btn-outline cobertura-adicional-card__quitar" data-action="remove-cobertura-linea" data-linea-id="${l.id}">Quitar</button>`
+      // Botón ícono (mismo patrón que el lápiz de edición) en vez del pill de texto "Quitar"
+      // que tenía antes: en el ancho fijo de 560px del formulario ese pill le robaba ~50px al
+      // <select>, que quedaba truncando nombres largos ("Valores en trár…") — Kevin lo reportó
+      // como bug visual 2026-08-11. El nombre "Quitar" se conserva como aria-label.
+      const trailingHtml = `<button type="button" class="cobertura-adicional-card__quitar" data-action="remove-cobertura-linea" data-linea-id="${l.id}" aria-label="Quitar ${escapeHtml(nombreAccesible)}">${ICON_X_CIRCLE}</button>`
 
       return cardCoberturaAdicional({
         modifier: 'libre',

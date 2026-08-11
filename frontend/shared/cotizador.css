@@ -1814,12 +1814,29 @@ button {
    Skin único para el selector libre y el modo checkbox de render-datos.js — ver design.md
    sección 5. Reemplaza los bloques viejos .cobertura-adicional-row / .cobertura-adicional-checkbox-row
    (borrados en el cutover de Unit 3, junto con este comentario). */
+/* 2 filas: fila 1 son los controles (check/ícono/select/monto/acciones), que deben compartir
+   una misma línea vertical; fila 2 es solo el caption ("Cobertura"/"Sublímite"), debajo del
+   select. Antes el caption vivía DENTRO de .main junto al select, así que el grid centraba el
+   bloque select+caption como una sola pieza de 2 líneas — eso corría el select ~11px más arriba
+   que el input/lápiz/quitar (que no tienen caption debajo). Kevin lo reportó 2026-08-11. */
 .cobertura-adicional-card {
   display: grid;
   grid-template-columns: auto auto minmax(0, 1fr) auto auto;
+  grid-template-rows: auto auto;
   align-items: center;
-  gap: 10px;
+  column-gap: 10px;
+  row-gap: 2px;
   padding: 14px 4px;
+}
+
+.cobertura-adicional-card__check,
+.cobertura-adicional-card__icon {
+  grid-row: 1 / 3;
+}
+
+.cobertura-adicional-card__sub {
+  grid-column: 3;
+  grid-row: 2;
 }
 
 .cobertura-adicional-card + .cobertura-adicional-card {
@@ -2023,6 +2040,26 @@ button {
   cursor: default;
 }
 
+/* Botón ícono "Quitar" — mismo tamaño/patrón que __accion (lápiz). Reemplaza el pill de texto
+   (.btn-outline) que le robaba ~50px al <select> del modo libre en el formulario de 560px fijo
+   (.datos-view__form-inner), truncando nombres de cobertura largos. */
+.cobertura-adicional-card__quitar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--tajy-radius-sm);
+  color: var(--tajy-red-a11y);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.cobertura-adicional-card__quitar:hover {
+  background: var(--tajy-pink);
+}
+
 .coberturas-adicionales > .btn-outline.is-locked {
   border-color: var(--tajy-border);
   color: var(--tajy-text-muted);
@@ -2049,7 +2086,7 @@ button {
 
   .cobertura-adicional-card .cobertura-adicional-card__quitar {
     grid-column: 1 / -1;
-    width: 100%;
+    justify-self: end;
   }
 }
 

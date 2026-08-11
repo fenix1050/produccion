@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.38](https://github.com/fenix1050/produccion/compare/v0.1.37...v0.1.38) (2026-08-11)
+
+
+### Bug Fixes
+
+* **cotizador:** contraste WCAG AA en cards bloqueadas de coberturas adicionales ([#241](https://github.com/fenix1050/produccion/issues/241)) ([1a22ef8](https://github.com/fenix1050/produccion/commit/1a22ef80f592d2b40e5d41538b2987fb8b191774))
+* **cotizador:** evitar que Tab scrollee el app-shell entero ([#243](https://github.com/fenix1050/produccion/issues/243)) ([31aa293](https://github.com/fenix1050/produccion/commit/31aa2930badb7bf8eff91d95b736e958ae925b74))
+
 ## [0.1.37](https://github.com/fenix1050/produccion/compare/v0.1.36...v0.1.37) (2026-08-11)
 
 

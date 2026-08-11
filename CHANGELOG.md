@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.39](https://github.com/fenix1050/produccion/compare/v0.1.38...v0.1.39) (2026-08-11)
+
+
+### Bug Fixes
+
+* **cotizador:** alinear coberturas adicionales del selector libre ([#244](https://github.com/fenix1050/produccion/issues/244)) ([3690a0f](https://github.com/fenix1050/produccion/commit/3690a0f4099dd9d86a992a084df5e0601daea05d))
+
 ## [0.1.38](https://github.com/fenix1050/produccion/compare/v0.1.37...v0.1.38) (2026-08-11)
 
 

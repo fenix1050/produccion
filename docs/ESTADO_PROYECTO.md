@@ -2477,3 +2477,11 @@ Blur acceptance is deferred and deduplicated per line. This lets the browser fin
 ## 69. MRC — outline icons for additional coverages (2026-08-11)
 
 The six MRC additional-coverage icons now use a shared 24px outline system: cube for content theft, truck for theft in transit, safe for cash-register theft, cracked glass, shield with check for civil liability, and flame for furniture/equipment fire. This replaces the mixed filled glyphs with distinct, optically balanced symbols aligned with the approved visual guide. No markup, CSS, interaction, mapping, or business rules changed.
+
+## 70. MRC — compact segmented header navigation (2026-08-11)
+
+The existing two-tab header control, `Datos` and `Detalle del plan`, now uses a compact light-gray rounded segmented container. The active tab is white with a subtle elevation and accessible Tajy red text; the inactive tab remains muted and dark. The control retains visible keyboard focus, disables only its visual hover response when `aria-disabled="true"`, and removes its transition under `prefers-reduced-motion`.
+
+At widths of 480px and below, only headers containing this tab control wrap it beneath the cotización subtitle and give both tabs equal available width. This preserves the existing two-tab control and mobile tap targets without affecting the separate three-step progress indicator. No markup, IDs, data attributes, ARIA state, rendering synchronization, plan locking, calculation, API, backend, or Supabase behavior changed.
+
+Verification was limited to the repository Prettier check scoped to `frontend/shared/cotizador.css` and `docs/ESTADO_PROYECTO.md`; it reported code-style issues in both files. No services, browser tests, installs, or Git mutations were run for this visual-only change.

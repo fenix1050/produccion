@@ -849,25 +849,51 @@ button {
 }
 
 .tabs {
-  display: flex;
-  gap: 8px;
+  display: inline-flex;
+  gap: 2px;
+  max-width: 100%;
+  padding: 3px;
+  background: #f1f1f3;
+  border: 1px solid #e5e5e7;
+  border-radius: 11px;
 }
 
 .tab-btn {
-  border: 1.5px solid var(--tajy-border);
-  background: #fff;
-  color: #555;
-  padding: 9px 16px;
-  border-radius: var(--tajy-radius-sm);
+  min-height: 38px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--tajy-text-body);
+  padding: 8px 13px;
+  border-radius: 7px;
   font-size: 13px;
   font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
   cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease;
+}
+
+.tab-btn:not([aria-disabled='true']):hover {
+  background: rgba(255, 255, 255, 0.58);
+  color: var(--tajy-ink);
+}
+
+.tab-btn:focus-visible {
+  position: relative;
+  z-index: 1;
+  outline: 2px solid var(--tajy-red-a11y);
+  outline-offset: 2px;
 }
 
 .tab-btn--active {
-  border-color: var(--tajy-red);
-  background: var(--tajy-pink);
+  border-color: rgba(0, 0, 0, 0.04);
+  background: #fff;
   color: var(--tajy-red-a11y);
+  box-shadow: 0 1px 3px rgba(26, 26, 26, 0.14);
 }
 
 /* Antes usaba el atributo disabled nativo, que saca el botón del orden de tabulación —
@@ -880,6 +906,27 @@ button {
 .tab-btn[aria-disabled='true'] {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tab-btn {
+    transition: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .main-header:has(.tabs) {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .main-header:has(.tabs) .tabs {
+    width: 100%;
+  }
+
+  .main-header:has(.tabs) .tab-btn {
+    flex: 1;
+  }
 }
 
 .plan-row {

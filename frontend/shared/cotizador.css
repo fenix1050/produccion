@@ -1816,6 +1816,14 @@ button {
   cursor: pointer;
 }
 
+/* En modo checkbox este círculo es un <label> real (para asociar el input) anidado dentro del
+   <div class="field field--span2"> que envuelve "Coberturas adicionales" — hereda por
+   especificidad ".field label { min-height: 32px }" (pensada para las etiquetas normales de
+   campo) y se estira a óvalo. Se re-scopea con más especificidad para pisarla. */
+.coberturas-adicionales .cobertura-adicional-card__check {
+  min-height: 20px;
+}
+
 .cobertura-adicional-card__check--estatico {
   cursor: default;
 }

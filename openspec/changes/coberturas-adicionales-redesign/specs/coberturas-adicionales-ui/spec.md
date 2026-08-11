@@ -84,23 +84,17 @@ The system MUST automatically open edit mode when a coverage is checked (checkbo
 
 - GIVEN a coverage row with a previously stored amount
 - WHEN the agent (re)checks or selects it
-- THEN edit mode is not forced open; the static "—" view is shown per the visibility rule above
+- THEN edit mode is not forced open; the static view shows the formatted amount per the visibility rule above
 
-### Requirement: Add-Button Lock Chrome in Both Call Sites
+### Requirement: Add-Button Lock Chrome
 
-The "+ Agregar cobertura" / "Agregar cobertura adicional" button MUST show lock chrome (disabled state with explanatory `title`) whenever `quedanCoberturasAdicionalesPorAgregar(...)` is false, consistently in both `render-datos.js` (Datos step) and `render-detalle-plan.js` (Detalle del plan step).
+The "+ Agregar cobertura" button in `render-datos.js` (Datos step) MUST show lock chrome (disabled state with explanatory `title`) whenever `quedanCoberturasAdicionalesPorAgregar(...)` is false. `render-detalle-plan.js` has no such button — its own "Agregar cobertura adicional" button was removed in PR #225 (2026-08-07), before this change started, so there is only one call site to cover.
 
 #### Scenario: Capacity reached in Datos
 
 - GIVEN all catalog coverages are already used at their repetition limit
 - WHEN the "Datos" step renders
 - THEN the add button in `render-datos.js` is disabled with a `title` explaining the limit
-
-#### Scenario: Capacity reached in Detalle del plan
-
-- GIVEN the same capacity condition as above
-- WHEN "Detalle del plan" renders
-- THEN the add button in `render-detalle-plan.js` shows the identical disabled/locked chrome
 
 ### Requirement: Dedicated Icons for Previously Icon-less Coverages
 

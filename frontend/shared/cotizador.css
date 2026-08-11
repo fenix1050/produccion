@@ -103,6 +103,9 @@
 html,
 body {
   height: 100%;
+  /* clip en vez de hidden: hidden sigue siendo scrollable por el navegador
+     (ej. auto-scroll al enfocar un elemento con Tab), clip no. */
+  overflow: clip;
 }
 
 body {
@@ -110,7 +113,6 @@ body {
   font-family: 'Public Sans', system-ui, sans-serif;
   color: var(--tajy-ink);
   background: var(--tajy-bg);
-  overflow: hidden;
 }
 
 button {
@@ -145,7 +147,9 @@ button {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  overflow: hidden;
+  /* clip y no hidden: hidden deja el shell como scroll container, y el navegador
+     puede scrollearlo solo al enfocar con Tab un elemento fuera de vista. */
+  overflow: clip;
 }
 
 /* App-shell topbar — "Diseño 2" (aprobado por Kevin el 2026-07-21, mockup
@@ -474,6 +478,13 @@ button {
   display: flex;
   flex-direction: column;
   padding: 22px 0;
+  /* El nav completo (9 ramos + gestión + footer de confianza) mide más que el alto
+     disponible en viewports bajos. Sin esto desbordaba en visible, estirando .app-body
+     y .app-shell, y volviendo scrolleable al documento entero: al tabular hasta un
+     campo fuera de vista el navegador scrolleaba ese contenedor y el shell se corría
+     completo. Contener el scroll acá deja el layout fijo. */
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .sidebar__brand {
@@ -1043,6 +1054,12 @@ button {
   flex: 1;
   padding: 0 36px 16px;
   overflow: auto;
+  /* Establece el bloque contenedor de los .sr-only que hay adentro (los checkbox
+     ocultos de "Coberturas adicionales" son position:absolute). Sin esto resolvían
+     contra el ICB, escapaban a este overflow y quedaban en coordenadas de documento
+     muy por debajo del viewport: al tabular hasta uno, el navegador scrolleaba la
+     ventana entera y el shell de 100vh se corría dejando el fondo gris a la vista. */
+  position: relative;
 }
 
 .datos-view__form-inner {

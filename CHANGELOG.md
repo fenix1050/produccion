@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.39](https://github.com/fenix1050/produccion/compare/v0.1.38...v0.1.39) (2026-08-11)
+
+
+### Bug Fixes
+
+* **cotizador:** alinear coberturas adicionales del selector libre ([#244](https://github.com/fenix1050/produccion/issues/244)) ([3690a0f](https://github.com/fenix1050/produccion/commit/3690a0f4099dd9d86a992a084df5e0601daea05d))
+* **cotizador:** compact segmented tabs for MRC header navigation ([#248](https://github.com/fenix1050/produccion/issues/248)) ([43a5e98](https://github.com/fenix1050/produccion/commit/43a5e9871c8fce89f7357862bf7d822b0ba7df00))
+* **cotizador:** improve MRC coverage card UX ([#246](https://github.com/fenix1050/produccion/issues/246)) ([9797c15](https://github.com/fenix1050/produccion/commit/9797c15f934e294beecdc64fb259ba6c0e4faf20))
+
 ## [0.1.38](https://github.com/fenix1050/produccion/compare/v0.1.37...v0.1.38) (2026-08-11)
 
 

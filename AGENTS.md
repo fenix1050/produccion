@@ -1,6 +1,6 @@
 # AGENTS.md — Cotizador Aseguradora Tajy
 
-Este archivo es el contexto de arranque para Codex en este repositorio. Léelo completo antes de tocar código. El detalle completo de arquitectura, schema SQL y reglas de negocio está en `docs/PLAN_DESARROLLO.md` — este archivo es un resumen operativo, no lo reemplaza. El estado real de avance (qué está implementado, decisiones tomadas y por qué, pendientes abiertos) está en `docs/ESTADO_PROYECTO.md`.
+Este archivo es el contexto de arranque para agentes de IA (Claude Code, Codex, OpenCode y similares) en este repositorio. Léelo completo antes de tocar código. El detalle completo de arquitectura, schema SQL y reglas de negocio está en `docs/PLAN_DESARROLLO.md` — este archivo es un resumen operativo, no lo reemplaza. El estado real de avance (qué está implementado, decisiones tomadas y por qué, pendientes abiertos) está en `docs/ESTADO_PROYECTO.md`.
 
 ## Qué es este proyecto
 
@@ -45,12 +45,15 @@ Es un proyecto **independiente**, separado de otros sistemas de Tajy (Siniestros
 
 docs/PLAN_DESARROLLO.md  -- arquitectura completa, schema SQL, motor de cálculo por ramo
 docs/ESTADO_PROYECTO.md  -- estado real de avance: qué está hecho, decisiones y por qué, pendientes
-AGENTS.md                -- este archivo
+AGENTS.md                -- este archivo (contexto multi-agente)
+CLAUDE.md                -- mismo contenido, específico para Claude Code
 ```
 
 **Regla de arquitectura no negociable:** el frontend NUNCA habla directo con Supabase. Todo pasa por la API Express, que valida con Zod antes de tocar la base — mismo patrón que gestion-tajy y Siniestros Tajy.
 
 ## Metodología: desarrollo por fases
+
+**Última actualización:** 2026-07-24.
 
 Este proyecto se construye **fase por fase**, en este orden fijo (detalle completo de cada una en la sección 10 de `PLAN_DESARROLLO.md`):
 
@@ -63,38 +66,31 @@ Este proyecto se construye **fase por fase**, en este orden fijo (detalle comple
 7. Vida y Accidentes Personales
 8. Deploy
 
-**Reglas para Codex:**
+**Reglas para cualquier agente de IA que trabaje en este repo:**
 
 - No adelantar trabajo de una fase futura aunque parezca rápido de hacer — cada fase se cierra completa antes de pasar a la siguiente, salvo que Kevin pida explícitamente saltar.
 - Al empezar una sesión, decir en qué fase se está y qué falta de esa fase antes de escribir código.
 - Al terminar una tarea de la fase actual, marcarla como hecha (editar el checklist de este archivo) y decir qué queda pendiente de la fase.
 - Si una tarea de la fase actual depende de un pendiente de la sección 11 de `PLAN_DESARROLLO.md` que todavía no está confirmado (ej. RPF de Incendio en Fase 6), avisar y proponer seguir con otra tarea de la misma fase mientras se confirma — no bloquear todo el trabajo por un solo dato faltante.
 - No mezclar código de dos fases en el mismo commit/PR cuando se pueda evitar — facilita revisar el avance real.
+- Cuando termines una tarea: marcá el checklist de fase correspondiente como hecho, y registrá el detalle completo (qué se hizo, por qué, cómo se verificó) como una entrada nueva en `docs/ESTADO_PROYECTO.md` — no en este archivo. Actualizá el resumen de "Estado actual del proyecto" de acá abajo solo si cambió la fase activa o el próximo paso.
+- No intentes adivinar, si no sabes algo pregunta.
+- Cuando encuentres una suposición errónea, o una mejora posible para este archivo, sugerila explícitamente en la sesión.
 
 ## Estado actual del proyecto
 
-**Cambio de prioridad (2026-07-10):** el cliente pidió priorizar **MRC, Incendio y Vida/AP** por sobre Auto. Fase 2 de Auto queda **pausada tal cual está** (no se revierte, no se sigue tocando). Hogar y TRO no fueron pedidos todavía — quedan en fase futura, no se suman a este bloque aunque compartan esqueleto con MRC/Incendio.
+**Cambio de prioridad (2026-07-10):** el cliente pidió priorizar **MRC, Incendio y Vida/AP** por sobre Auto. Fase 2 de Auto queda **pausada tal cual está** (no se revierte, no se sigue tocando). Hogar y TRO no fueron pedidos todavía — quedan en fase futura.
 
-Estamos en **Fase 6/7 (activa)** — orden interno: **MRC primero**, después Incendio, después Vida/AP:
+**Fase 6/7 cerrada a nivel de negocio.** MRC opera end-to-end (calculador, frontend, Carta Oferta en PDF). Incendio y Vida/AP tienen catálogo y calculador completos — a Vida/AP le falta el template de Carta Oferta (pendiente de texto oficial). Panel admin, historial y el rediseño visual completo ya están commiteados y verificados en vivo.
 
-- [x] Schema completo de la base de datos para MRC/Incendio/Vida-AP (ver sección 4 de PLAN_DESARROLLO.md), incluyendo el campo `tipo_aplicacion` (`cobertura` vs `sublimite`) en `cotizacion_coberturas` — migración 011 aplicada contra Supabase real (2026-07-10)
-- [x] Catálogo de coberturas de MRC (migración 012, 2026-07-10) — tasas reales de "Version 01 - Calculo Varios.xlsx" + textos legales confirmados contra el sistema de escritorio.
-- [x] Catálogo de coberturas de Incendio (migración 013, 2026-07-10) — fuentes: 4 cotizaciones reales de Incendio ya emitidas (GT S.A., Distribuidora Múltiples Productos, COFUDEP, Robin Hut Heil) + pestaña INCENDIO de "Version 01 - Calculo Varios.xlsx" (confirma que el plan simple reutiliza `rubros_actividad.tasa_edificio/tasa_contenido`, ya cargado en la 012) + plan "Maquinaria Básico" dictado por Kevin (tasa fija 0,7%, RPF confirmado). Pendiente de Incendio: RPF de "Incendio - Edificio y Contenido" (no confirmado en ninguna fuente), nombre exacto de ese plan en el sistema de escritorio, columna de moneda/tope máximo asegurable para modelar el plan Maquinaria Básico en USD (schema no la tiene todavía), y texto legal completo de las cláusulas "a prorrata"/"cobranza"/"inventario no presentado" (solo se confirmó la frase, no el texto completo).
-- [x] Fix de fiabilidad (migración 014, 2026-07-10): plan `INCENDIO - EDIFICIO Y CONTENIDO` marcado `activo = FALSE` hasta confirmar su RPF — detectado en review-reliability de la migración 013, evita que quede seleccionable desde la API sin forma de pago configurada.
-- [x] Catálogo de coberturas de Vida y Accidentes Personales (migración 015, 2026-07-12, con fix de fiabilidad en la migración 016) — fuente principal: manual `M-08OP-GT-01 v.02` (con texto extraíble, a diferencia del de Incendio/Hogar/Comercio/TRO), que da tasas oficiales ("tasas obligatorias") para los 5 sub-productos del ramo → 7 planes (Protección de Préstamos Cooperativas/Mercado General, Protección Familiar, Accidentes Personales Cooperativo/Privado, Vida Directivos y Empleados, Aportes y Ahorros), 11 coberturas y 44 filas de tarifa en `tarifas_generico` (JSONB — este ramo no usa `tasas_cobertura_ramo` porque la misma cobertura tiene tasas distintas por plan). Textos/exclusiones de AP confirmados contra 2 cotizaciones reales (ALKA Construcciones, Floriano Kochhan Hoffmann). Los Excels de Vida Colectivo/AP (motor más granular, tabla de mortalidad SISPY 2017) NO se usaron para esta carga — quedan de referencia para el calculador. **Cierra Fase 6/7** — ver `docs/ESTADO_PROYECTO.md` sección 12 para el detalle completo y los pendientes.
-- [x] `mrc.calculator.js` implementado end-to-end para el plan `MULTIRRIESGO COMERCIO - NORMAL` (único con RPF/prima técnica mínima confirmados) — prima por línea de cobertura (Edificio/Contenido) con piso en `prima_tecnica_minima`, mismo motor de RPF/IVA/Premio/Cuota que Auto. `COMERCIO PROTECCION TOTAL` corta con error 422 explicativo al cotizar (sin RPF confirmado todavía).
-- [x] Flujo de cotización en el frontend (`/frontend/cotizar`, Vanilla JS) conectado a MRC: sidebar con los 5 ramos reales (MRC/Incendio/Vida-AP disponibles, Auto en pausa, Hogar "próximamente"), panel de cotización en vivo con selección explícita de forma de pago (Contado/Cobrador/Boca de Cobranza/Tarjeta) que se conserva al pasar a Detalle del plan. La Carta Oferta de MRC ya se genera en PDF; Incendio y Vida-AP siguen pendientes de template.
-- [x] Panel admin — Fase 5 / WU5 completo (MVP): `frontend/admin/admin.js` con las 4 secciones (Usuarios, Coberturas por plan, Tasas, Planes), auth JWT propio, mismo patrón "valor fijo + Editar" en toda la SPA. Verificado end-to-end en navegador (login real, toggle/edición de `plan_coberturas`, alta desde catálogo con exclusión de ya agregadas).
-- [x] Coberturas adicionales de MRC repetibles con badge cobertura/sublímite (2026-07-13) — solo Incendio Edificio/Contenido quedan fijos por defecto; el resto (incluidos los 4 sublímites reales: murallas, granizo, agua, equipos electrónicos) lo agrega el agente como líneas explícitas, pudiendo repetir la misma cobertura con distinta suma asegurada (confirmado contra "Version 01 - Calculo Varios.xlsx", hoja MRC/DATOS). Cada línea tarifica de verdad con `tasas_cobertura_ramo` y suma a la prima. Nuevo endpoint `GET /ramos/:id/coberturas-catalogo` (catálogo completo del ramo, distinto de `GET /planes/:id/coberturas`). Cierra el pendiente de "UI para tildar cobertura vs. sublímite".
-- [x] **Carta Oferta en PDF** (2026-07-14/15): implementada para MRC con Puppeteer + template HTML, replicando branding Tajy (rojo `#d8132e`, footer con datos reales). Layout dinámico 3/3 con fallback automático al layout balanceado si no entra en A4. Incendio y Vida-AP quedan sin template todavía (pendientes de texto oficial de Carta Oferta).
-- [x] **Tope de descuento/recargo por usuario** (2026-07-19): cada usuario admin puede tener un tope propio (`usuarios.descuento_maximo_pct` / `recargo_maximo_pct`) más restrictivo que el plan. Si usuario y plan se contradicen, gana el más restrictivo (`MIN`). Enforcement real en `mrc.calculator.js` e `incendio.calculator.js`. No aplicado a `auto.calculator.js` (Fase 2 pausada).
-- [x] **Permisos parciales del panel admin por sección** (2026-07-19): antes era todo-o-nada (`rol='admin'`), ahora cada usuario puede tener permisos individuales: `puede_gestionar_usuarios`, `puede_editar_coberturas`, `puede_editar_planes` (adicional a `puede_editar_tasas` ya existente). El sidebar del admin solo muestra secciones para las que el usuario tiene permiso. Acceso a rutas sin permiso devuelve 403.
-- [x] **Editor de tasas por Tipo de Riesgo** (2026-07-19): nuevo endpoint `PUT /admin/rubros-actividad/:id` para editar `rubros_actividad.tasa_edificio` / `tasa_contenido` directamente desde el panel admin, sin migración SQL. Visible solo para MRC/Incendio (la tabla es compartida entre ambos). Editorial con UPDATE directo (sin versionado, a diferencia de `tasas_cobertura_ramo`).
-- [x] **WU6 cerrado** (2026-07-17): frontend `cotizar.js` refactorizado para leer sublímites fijos de `plan_coberturas` en vez de constante hardcodeada. Verificado que prima de MRC Normal no cambió. Efecto colateral: "Murallas/Cercos" (Gs. 1.000.000) ahora visible en el resumen de Sublímites (ya estaba en la base, la constante vieja no la reflejaba — Kevin confirmó el monto como correcto).
-- [x] **Bugfix — usuarios en panel admin sin respuesta** (2026-07-19): botones "Editar"/"Resetear password"/"Desactivar" no hacían nada porque comparaban string (`el.dataset.id`) vs number (`usuarios.id SERIAL`) con `===` estricto. Corregido con `Number()` en el dispatcher. Verificado en vivo.
-- [ ] Calculadores `incendio.js` / `vida-ap.js` con la tasa como parámetro configurable (sin hardcodear) — RPF de Incendio y Vida/AP ya confirmado (plano, igual a MRC). Falta solo la lógica de cálculo en sí (pendiente #10, sección 11 de PLAN_DESARROLLO.md)
+**El detalle de cada cambio (qué se hizo, por qué, cómo se verificó) vive únicamente en `docs/ESTADO_PROYECTO.md`, en orden cronológico por sección numerada — no se repite acá para no desincronizarse.** Antes de asumir el estado de una feature, revisar ahí la sección más reciente que la mencione.
 
-**Fase 1 de Auto (schema base, importador de tasas) sigue como estaba** — no se retoma hasta que se reactive esa fase.
+**Próximo paso confirmado con Kevin:** revisar/commitear el template de Incendio, agregar el de Vida/AP (requiere texto oficial), cerrar cambios abiertos con verificación/archivo formal si se pide, o retomar Fase 2 (Auto) si se pide.
+
+## Versionado y despliegue automáticos (agregado 2026-08-02)
+
+- **`release-please`** (`.github/workflows/release-please.yml`, `release-please-config.json`, `release-type: simple`) corre en cada push a `main`: abre/actualiza un PR de release, y al mergearlo genera tag (`vX.Y.Z`), entrada en `CHANGELOG.md` y release de GitHub. Es rutina de CI — no requiere acción manual salvo mergear ese PR. `backend/package.json` no se actualiza por este mecanismo (queda en `0.1.0`); no confundir esa versión con el tag real del repo.
+- **`.github/workflows/deploy-backend.yml`** despliega el backend automáticamente a la VPS en cada push a `main` (`reset --hard`, no `merge --ff-only`). Esto reemplaza el flujo anterior de redeploy manual — verificar este workflow antes de asumir que un cambio de backend no llegó a producción.
 
 ## Reglas de negocio clave para Auto (resumen — detalle completo en sección 5 de PLAN_DESARROLLO.md)
 
@@ -135,13 +131,15 @@ Contado: Inicial = Premio completo, Cuota = 0
 
 ## Pendientes activos que pueden afectar el código
 
-- **RPF de Incendio y Vida/AP**: ✅ confirmado (2026-07-13, migración 023) — RPF plano, igual para todos los planes, no varía por cuotas. Cargado en `plan_formas_pago`. **Falta:** escribir `incendio.calculator.js` / `vida-ap.calculator.js` (lógica de cálculo, no datos).
-- **Calculadores `incendio.js` / `vida-ap.js`**: bloqueados solo por el tiempo de implementación, todos los datos están confirmados.
-- **Templates de Carta Oferta para Incendio y Vida/AP**: pendientes de texto oficial de cada ramo. MRC ya implementado y funcionando.
-- **RPF de "COMERCIO PROTECCION TOTAL"** (MRC): no confirmado — plan desactivado (`activo = FALSE`) desde migración 022 (2026-07-13), no aparece en selector. Se reactivaría al confirmar RPF.
-- **Plan Básico de Auto** (Fase 1/2, pausada): no implementado — tasa única fija 1,64% vs. tarifación por capital. Pendiente #4 de sección 11 de `PLAN_DESARROLLO.md`, no bloqueante.
-- **Auto individual (Fase 1/2, pausada)**: schema y calculador listos, pero fase pausada por prioridad del cliente. No se retoma hasta que se reactive.
-- **RLS en Supabase**: 29 tablas de `public` tienen RLS deshabilitado (ver `docs/ESTADO_PROYECTO.md` sección 7). Hoy no es explotable (frontend nunca habla directo con Supabase), pero queda como deuda técnica — requiere decisión de Kevin antes de actuar.
+Lista corta de lo que un cambio de código puede pisar sin querer. El detalle completo de cada uno (y otros pendientes menores) está en `docs/ESTADO_PROYECTO.md` sección 8 y sección 31 — no se repite acá.
+
+- **Template de Carta Oferta para Vida/AP**: no existe todavía (falta texto oficial). El de Incendio ya está (`backend/src/templates/oferta/incendio.js`, ver `docs/ESTADO_PROYECTO.md` sección 34). El calculador de Vida/AP SÍ está completo y testeado — no asumir que está "pendiente" sin verificar `backend/src/calculators/`.
+- **RPF de "COMERCIO PROTECCION TOTAL"** (MRC): no confirmado — plan desactivado (`activo = FALSE`), no aparece en el selector.
+- **Auto individual (Fase 1/2)**: pausado por prioridad del cliente, no tocar hasta que se reactive.
+- ~~RLS en Supabase: 30 tablas de `public` sin RLS~~ — **resuelto 2026-07-30.** Activado en las 34 tablas marcadas CRITICAL (migración `046_enable_rls_public_tables.sql`, aplicada contra Supabase real), sin policies (default-deny para anon/authenticated). Backend usa `SUPABASE_SERVICE_KEY` (service_role, bypasea RLS) y no hay ningún cliente Supabase en el frontend, así que no rompió nada — advisor de seguridad en 0 CRITICAL, 154/154 tests backend en verde.
+- **Migraciones 043/044 (rubro_actividad_ramo + tasas de Incendio por rubro) YA APLICADAS contra Supabase real (2026-07-29)**: el filtro por `ramo_id` ya funciona a nivel de datos. El backend ya exige `ramo_id` en el código y ya está mergeado a `main` (PR #38/#39), junto con el frontend que lo envía. **Falta confirmar que el backend de la VPS (`api.cotizador.lat`) fue redesplegado a mano con este código** — no hay CD automático para el backend, y Vercel sí auto-despliega el frontend en cada push a `main`, así que hay una ventana en la que ambos lados pueden estar desincronizados en producción. Verificación en vivo 9.3 (cotizar rubros nuevos sin 422) ya completada contra un entorno de QA — pendiente confirmar contra la VPS real.
+- **Clamp de `tasa_minima` en ~176/184 rubros nuevos de Incendio**: Kevin confirmó "apliquemos tal cual" — se acepta que el calculador clampee la tasa efectiva al mínimo histórico del pivot en vez de usar el desglose 40/60 para la mayoría de los rubros nuevos (no produce error, solo puede distorsionar la prima). Ajustable después por `UPDATE` sobre `tipos_riesgo_incendio.tasa_minima` sin cambio de código, rubro por rubro, si en el uso real aparecen primas raras.
+- **Follow-up `DROP COLUMN rubros_actividad.grupo`**: la columna queda legacy de solo lectura desde el cambio `incendio-tasas-por-rubro` (reemplazada por `rubro_actividad_ramo`), pero no se borra en ese cambio — pendiente de un DROP explícito más adelante, una vez confirmado que ningún código la lee.
 
 ## Al empezar una sesión nueva
 
@@ -150,7 +148,7 @@ Contado: Inicial = Premio completo, Cuota = 0
 3. Revisar la sección 11 de `docs/PLAN_DESARROLLO.md` (pendientes) por si hay novedades.
 4. Confirmar en qué fase estamos antes de avanzar a la siguiente.
 
-# Flujo recomendado
+## Flujo recomendado
 
 Todo agente debe:
 
@@ -159,5 +157,5 @@ Todo agente debe:
 - preferir reutilización
 - documentar cambios relevantes
 - mantener consistencia entre frontend y backend
-- consultar CodeGraph antes de navegar archivos manualmente
-- consultar Engram para recuperar decisiones previas
+- consultar CodeGraph antes de navegar archivos manualmente (si está disponible)
+- consultar Engram para recuperar decisiones previas (si está disponible)

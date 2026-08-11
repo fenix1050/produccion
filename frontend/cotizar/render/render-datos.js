@@ -176,8 +176,14 @@ function campoMontoCobertura({ locked, editing, lineaId, sumaAsegurada, nombreAc
   // Mismo ícono de lápiz para abrir y cerrar la edición (Kevin: "quiero utilizar el lápiz para
   // representar la edición del monto", en vez del check rojo previo) — solo cambia la acción.
   const accion = editing
-    ? { action: 'cerrar-edicion-monto-cobertura', label: `Listo, cerrar edición de ${escapeHtml(nombreAccesible)}` }
-    : { action: 'editar-monto-cobertura', label: `Editar suma asegurada de ${escapeHtml(nombreAccesible)}` }
+    ? {
+        action: 'cerrar-edicion-monto-cobertura',
+        label: `Listo, cerrar edición de ${escapeHtml(nombreAccesible)}`,
+      }
+    : {
+        action: 'editar-monto-cobertura',
+        label: `Editar suma asegurada de ${escapeHtml(nombreAccesible)}`,
+      }
 
   return `
     ${bloque}

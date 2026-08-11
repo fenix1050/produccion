@@ -859,6 +859,18 @@ button {
   color: var(--tajy-red-a11y);
 }
 
+/* Antes usaba el atributo disabled nativo, que saca el botón del orden de tabulación —
+   combinado con la lista de 6 checkboxes de "Coberturas adicionales" (coberturas-adicionales-
+   redesign), tabular hasta el final del formulario se quedaba sin nada enfocable, el foco caía
+   a <body> y el siguiente Tab terminaba en el botón hamburguesa del sidebar (invisible en
+   escritorio, real en ≤1024px), abriendo el cajón encima del formulario. aria-disabled mantiene
+   el botón en el orden de tabulación (evita el salto) sin permitir la acción — ver el guard en
+   events.js y aplicarAriaBloqueo()/syncAvanceButtons() en actions.js. */
+.tab-btn[aria-disabled='true'] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .plan-row {
   margin-bottom: 8px;
 }
@@ -1167,7 +1179,8 @@ button {
   cursor: pointer;
 }
 
-.btn-primary:disabled {
+.btn-primary:disabled,
+.btn-primary[aria-disabled='true'] {
   opacity: 0.5;
   cursor: not-allowed;
 }

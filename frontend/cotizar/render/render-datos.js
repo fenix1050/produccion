@@ -540,12 +540,16 @@ export function renderDatosView(ramo) {
               ).join('')}
               ${camposEspecificos}
             </div>
+            <!-- Sin atributo disabled nativo a propósito (solo aria-disabled) — ver el comentario
+                 de .tab-btn[aria-disabled] en cotizador.css: sacarlo del orden de tabulación hacía
+                 que, al llegar acá tabulando, el foco se perdiera y saltara al botón hamburguesa
+                 del sidebar en ≤1024px. El guard real está en el click handler de events.js. -->
             <button
               id="btn-ver-detalle"
               class="btn-primary form-cta"
               data-action="show-tab"
               data-view="result"
-              ${puedeAvanzarADetalle() ? '' : `disabled title="Corregí el capital declarado antes de avanzar — ver el mensaje de alerta" aria-disabled="true" aria-describedby="${MOTIVO_BLOQUEO_ID}"`}
+              ${puedeAvanzarADetalle() ? '' : `title="Corregí el capital declarado antes de avanzar — ver el mensaje de alerta" aria-disabled="true" aria-describedby="${MOTIVO_BLOQUEO_ID}"`}
             >Ver detalle completo →</button>
           </div>
         </div>

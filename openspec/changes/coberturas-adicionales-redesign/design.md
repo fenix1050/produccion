@@ -12,7 +12,7 @@ Today `renderCoberturasAdicionales` (free selector) and `renderCoberturasAdicion
 (checkbox mode) each emit their own row markup and each own a CSS block
 (`.cobertura-adicional-row*`, `.cobertura-adicional-checkbox-row*`), duplicated again inside two
 `@media (max-width: 480px)` blocks. The mockup gives both modes the same skin, so the design
-collapses the *skin* into a single private renderer and keeps only the genuinely different parts
+collapses the _skin_ into a single private renderer and keeps only the genuinely different parts
 (identity control, trailing action) as slots.
 
 ```
@@ -57,8 +57,13 @@ collapse to zero-width when absent, so both modes share one grid definition.
 
 ```html
 <label class="cobertura-adicional-card__check">
-  <input type="checkbox" class="sr-only"
-         data-action="toggle-cobertura-checkbox" data-codigo="{codigo}" {checked} />
+  <input
+    type="checkbox"
+    class="sr-only"
+    data-action="toggle-cobertura-checkbox"
+    data-codigo="{codigo}"
+    {checked}
+  />
   <span class="cobertura-adicional-card__dot" aria-hidden="true"></span>
   <span class="sr-only">{nombre}</span>
 </label>
@@ -72,11 +77,14 @@ The filled dot is pure CSS (`:checked + .__dot { transform: scale(1) }`), matchi
 
 ### 2.3 Free-selector identity control
 
-The row's "selected" concept is *"a coverage code is chosen"*, not a checkbox. The dot renders in
+The row's "selected" concept is _"a coverage code is chosen"_, not a checkbox. The dot renders in
 the same slot as a **non-interactive state indicator**:
 
 ```html
-<span class="cobertura-adicional-card__check cobertura-adicional-card__check--estatico" aria-hidden="true">
+<span
+  class="cobertura-adicional-card__check cobertura-adicional-card__check--estatico"
+  aria-hidden="true"
+>
   <span class="cobertura-adicional-card__dot"></span>
 </span>
 ```
@@ -89,11 +97,11 @@ only by the card's grid placement.
 
 ### 2.4 Field zone — three mutually exclusive states
 
-| State | Predicate | Markup |
-|---|---|---|
-| Locked | no coverage selected (unchecked / empty `<select>`) | static block + `<span class="cobertura-adicional-card__lock" title="Elegí una cobertura para cargar la suma asegurada">{ICON_LOCK}</span>` |
-| Static | selected, id ∉ edit set | static block + `<button data-action="editar-monto-cobertura" data-linea-id>{ICON_PENCIL}</button>` |
-| Editing | selected, id ∈ edit set | the money `<input>` + `<button data-action="cerrar-edicion-monto-cobertura" data-linea-id>{ICON_CHECK}</button>` |
+| State   | Predicate                                           | Markup                                                                                                                                     |
+| ------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Locked  | no coverage selected (unchecked / empty `<select>`) | static block + `<span class="cobertura-adicional-card__lock" title="Elegí una cobertura para cargar la suma asegurada">{ICON_LOCK}</span>` |
+| Static  | selected, id ∉ edit set                             | static block + `<button data-action="editar-monto-cobertura" data-linea-id>{ICON_PENCIL}</button>`                                         |
+| Editing | selected, id ∈ edit set                             | the money `<input>` + `<button data-action="cerrar-edicion-monto-cobertura" data-linea-id>{ICON_CHECK}</button>`                           |
 
 Static block (per RESOLVED #2 — **always the dash, never the stored value**):
 
@@ -137,15 +145,17 @@ they do today — the dash is display-only.
 ## 4. Decisions (ADR-style)
 
 ### D1 — Shared row renderer instead of two parallel card implementations
+
 **Decision.** One private `cardCoberturaAdicional(opts)`; the two exported renderers become
 opts builders.
 **Rationale.** The two modes are already drifting (the 2026-08-07 `flex-direction: row` fix landed
 in only one of them). One skin = one CSS block + one mobile block instead of four.
 **Rejected.** (a) Copy the card markup into both renderers — cheapest diff, but institutionalizes
-the drift the mockup is trying to remove. (b) Unify the two *modes* into one fixed list — explicitly
+the drift the mockup is trying to remove. (b) Unify the two _modes_ into one fixed list — explicitly
 out of scope (Kevin: same mechanics).
 
 ### D2 — Hidden native `<input type="checkbox">` behind the radio-style dot
+
 **Decision.** Keep a real checkbox, `.sr-only`, with today's `data-action`/`data-codigo`.
 **Rationale.** Zero changes in `events.js` for the toggle (`target.checked` still works), free
 keyboard/AT support, `:checked`-driven CSS, no JS-managed ARIA.
@@ -153,10 +163,11 @@ keyboard/AT support, `:checked`-driven CSS, no JS-managed ARIA.
 key handling, for no visual gain.
 
 ### D3 — Explicit close button + Enter/Escape, **not** `focusout`, to leave edit mode
+
 **Decision.** Edit mode closes on the confirm icon-button, on `Enter`, or on `Escape`. There is no
 `focusout` auto-close.
 **Rationale.** `renderApp()` replaces `#app.innerHTML`. A `focusout`-triggered re-render destroys
-the node the user is clicking *before* its `click` fires, so clicking another row's pencil while
+the node the user is clicking _before_ its `click` fires, so clicking another row's pencil while
 editing would be swallowed — a known class of bug in this codebase's full-innerHTML render model.
 The mockup's `focusout` was safe only because it is a standalone page with no shared re-render.
 **Consequence.** One extra icon-button visible while editing (same 30px slot the pencil occupies) —
@@ -166,6 +177,7 @@ approved. Escape closes without reverting: the value is already committed on eve
 the interaction order-dependent and hard to verify.
 
 ### D4 — Edit-open state as a `Set` on `state`, cleared at every reset site
+
 **Decision.** `state.coberturasAdicionalesEditando = new Set()`. `.clear()` in `selectRamo`
 (`actions.js:255`), `selectPlan` (`actions.js:314`) and in the `cargarParaEditar` prefill;
 `.delete(id)` in `removeCoberturaLinea` and in the un-check branch of
@@ -177,11 +189,13 @@ existing `coberturasAdicionales = []` sites keeps the invariant "edit set ⊆ cu
 with "empty and closed", and would reopen the row on every re-render after clearing the field.
 
 ### D5 — Copy the 6-line inline-edit pattern; do not import `admin/inline-edit.js`
+
 Confirmed from the proposal and re-verified: `frontend/admin/inline-edit.js` imports admin's
 `renderApp` from `./render/shell.js`; importing it into the cotizador drags the admin module graph
 in and re-renders the wrong app. Duplicating ~6 lines is the correct trade.
 
 ### D6 — Focus restoration is explicit, and suppressed on the preload path
+
 **Decision.** `focusMontoCobertura(id)` after `renderApp()`: `focus({ preventScroll: true })` +
 `setSelectionRange(len, len)`. Called from the pencil action, from the check/select auto-open — but
 **not** from `preagregarCoberturasPrincipalesFijasMrc()`.
@@ -189,6 +203,7 @@ in and re-renders the wrong app. Duplicating ~6 lines is the correct trade.
 runs without user intent; stealing focus there would yank the agent out of the plan selector.
 
 ### D7 — New `COBERTURA_ICONOS` map; `SUBLIMITE_ICONOS` byte-identical
+
 `constants.js` exports `COBERTURA_ICONOS = { ...SUBLIMITE_ICONOS, incendio_mobiliario_equipos,
 robo_contenido, robo_caja_registradora, robo_transito, cristales, responsabilidad_civil }`. Only the
 new card reads it; the read-only `.cobertura-card` and the live panel keep reading
@@ -200,6 +215,7 @@ text; the mockup's paths are Boxicons-derived and carry over. Card sizing (19px)
 which overrides the width/height attributes.
 
 ### D8 — Scope the group-title CSS selector before adding nested labels
+
 `.coberturas-adicionales label { font-size:12px; font-weight:600 }` is a descendant selector. The new
 card contains `<label>` elements (the checkbox wrapper, the `sr-only` amount label), which would
 inherit it. Change it to `.coberturas-adicionales > label` — a 2-character diff that keeps the group
@@ -207,6 +223,7 @@ title styled and stops the bleed. (Same class of specificity trap as the 2026-07
 `.admin-valor-fijo span` incident.)
 
 ### D9 — Lock chrome on the add button: one call site, not two
+
 RESOLVED #4 asks for lock chrome in `render-datos.js` **and** `render-detalle-plan.js`. Verified
 against the current tree: the "Agregar cobertura adicional" button of "Detalle del plan" **no longer
 exists** — it was removed in `3d102a5` (PR #225, 2026-08-07). `add-cobertura-linea` now has exactly
@@ -222,14 +239,14 @@ New block replaces **both** `.cobertura-adicional-row*` and `.cobertura-adiciona
 
 Token mapping mockup → repo (**no new tokens**):
 
-| Mockup | Repo | Note |
-|---|---|---|
-| `--tajy-radius-sm: 8px` | `--tajy-radius-sm` | identical |
-| `--tajy-radius-md: 10px` (icon avatar) | `--tajy-radius-lg` (10px) | repo `--tajy-radius-md` is 9px |
-| `--tajy-red-soft` @ 0.1 | `--tajy-red-soft` (0.25) | focus ring only; stronger ring accepted |
-| `--tajy-bg-alt` (locked avatar bg) | `--tajy-bg` | token does not exist in repo |
-| `--tajy-white` | `#fff` / transparent | card sits on the already-white panel |
-| `--tajy-shadow-card` | none | rows are separated by `--tajy-border-light`, not elevated |
+| Mockup                                 | Repo                      | Note                                                      |
+| -------------------------------------- | ------------------------- | --------------------------------------------------------- |
+| `--tajy-radius-sm: 8px`                | `--tajy-radius-sm`        | identical                                                 |
+| `--tajy-radius-md: 10px` (icon avatar) | `--tajy-radius-lg` (10px) | repo `--tajy-radius-md` is 9px                            |
+| `--tajy-red-soft` @ 0.1                | `--tajy-red-soft` (0.25)  | focus ring only; stronger ring accepted                   |
+| `--tajy-bg-alt` (locked avatar bg)     | `--tajy-bg`               | token does not exist in repo                              |
+| `--tajy-white`                         | `#fff` / transparent      | card sits on the already-white panel                      |
+| `--tajy-shadow-card`                   | none                      | rows are separated by `--tajy-border-light`, not elevated |
 
 Class inventory:
 
@@ -280,16 +297,16 @@ This carries forward the intent of both deleted mobile blocks (amount below the 
 
 ## 6. Integration points
 
-| File | Change |
-|---|---|
-| `render/render-datos.js` | `cardCoberturaAdicional()` + both renderers rewritten; `.is-locked` chrome on the add button |
-| `render/render-detalle-plan.js` | **no change** (see D9) — read-only `.cobertura-card` and its icons untouched |
-| `shared/cotizador.css` | new card block; delete 2 old blocks + their 2 mobile blocks; `> label` scoping (D8) |
-| `shared/nav-icons.js` | 6 coverage icons + `ICON_PENCIL`, `ICON_LOCK`, `ICON_CHECK_SMALL` (house Boxicons style) |
-| `cotizar/constants.js` | `COBERTURA_ICONOS` (spread of untouched `SUBLIMITE_ICONOS`) |
-| `cotizar/state.js` | `coberturasAdicionalesEditando: new Set()` + comment |
-| `cotizar/actions.js` | `habilitar/cerrarEdicionMontoCobertura`, `focusMontoCobertura`, Set maintenance in `toggle*`/`update*`/`remove*`/`preagregar*`, `.clear()` at the 2 reset sites + prefill |
-| `cotizar/events.js` | 2 new `data-action` branches; `keydown` on `[data-linea-field="sumaAsegurada"]` for Enter/Escape |
+| File                            | Change                                                                                                                                                                    |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `render/render-datos.js`        | `cardCoberturaAdicional()` + both renderers rewritten; `.is-locked` chrome on the add button                                                                              |
+| `render/render-detalle-plan.js` | **no change** (see D9) — read-only `.cobertura-card` and its icons untouched                                                                                              |
+| `shared/cotizador.css`          | new card block; delete 2 old blocks + their 2 mobile blocks; `> label` scoping (D8)                                                                                       |
+| `shared/nav-icons.js`           | 6 coverage icons + `ICON_PENCIL`, `ICON_LOCK`, `ICON_CHECK_SMALL` (house Boxicons style)                                                                                  |
+| `cotizar/constants.js`          | `COBERTURA_ICONOS` (spread of untouched `SUBLIMITE_ICONOS`)                                                                                                               |
+| `cotizar/state.js`              | `coberturasAdicionalesEditando: new Set()` + comment                                                                                                                      |
+| `cotizar/actions.js`            | `habilitar/cerrarEdicionMontoCobertura`, `focusMontoCobertura`, Set maintenance in `toggle*`/`update*`/`remove*`/`preagregar*`, `.clear()` at the 2 reset sites + prefill |
+| `cotizar/events.js`             | 2 new `data-action` branches; `keydown` on `[data-linea-field="sumaAsegurada"]` for Enter/Escape                                                                          |
 
 Unchanged by construction: `domain-rules.js` (`coberturasDisponibles`,
 `quedanCoberturasAdicionalesPorAgregar`, `sublimitesFijosMrc`), `armarRiesgoDatosMrc`, the preview
@@ -320,10 +337,10 @@ MRC-NORMAL, at 1440 / 768 / 480:
 
 ## 9. Risks / assumptions
 
-| Item | Note |
-|---|---|
-| D9 — second call site gone | Assumption that PR #225 removal is intentional and permanent. If the button returns, the chrome must be applied there too. |
-| Amount permanently hidden | Highest product risk (MRC 3-coverage minimum, agents can no longer scan which rows are filled). Mitigated only by auto-open. Kevin resolved this explicitly. |
-| D3 deviation from mockup | Extra confirm button while editing. Needs a visual OK from Kevin at review time. |
+| Item                            | Note                                                                                                                                                                                         |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D9 — second call site gone      | Assumption that PR #225 removal is intentional and permanent. If the button returns, the chrome must be applied there too.                                                                   |
+| Amount permanently hidden       | Highest product risk (MRC 3-coverage minimum, agents can no longer scan which rows are filled). Mitigated only by auto-open. Kevin resolved this explicitly.                                 |
+| D3 deviation from mockup        | Extra confirm button while editing. Needs a visual OK from Kevin at review time.                                                                                                             |
 | Deleting the two old CSS blocks | Any other selector reaching into `.cobertura-adicional-row`/`-checkbox-row` outside these two renderers would break — grep confirms only `cotizador.css` + `render-datos.js` reference them. |
-| Mobile regression | No visual tooling; the 480px block is a rewrite, not a port. Playwright at 3 widths in the same commit. |
+| Mobile regression               | No visual tooling; the 480px block is a rewrite, not a port. Playwright at 3 widths in the same commit.                                                                                      |

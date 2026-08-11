@@ -2,14 +2,14 @@
 
 ## Review Workload Forecast
 
-| Field | Value |
-|-------|-------|
-| Estimated changed lines | ~550-650 (additions ~350-400, deletions ~200-250, mostly CSS) |
-| 400-line budget risk | High |
-| Chained PRs recommended | Yes |
-| Suggested split | PR1 (foundation+state) → PR2 (CSS addition) → PR3 (render cutover + CSS cleanup + verification) |
-| Delivery strategy | ask-on-risk |
-| Chain strategy | pending — ask Kevin: stacked-to-main or feature-branch-chain |
+| Field                   | Value                                                                                           |
+| ----------------------- | ----------------------------------------------------------------------------------------------- |
+| Estimated changed lines | ~550-650 (additions ~350-400, deletions ~200-250, mostly CSS)                                   |
+| 400-line budget risk    | High                                                                                            |
+| Chained PRs recommended | Yes                                                                                             |
+| Suggested split         | PR1 (foundation+state) → PR2 (CSS addition) → PR3 (render cutover + CSS cleanup + verification) |
+| Delivery strategy       | ask-on-risk                                                                                     |
+| Chain strategy          | pending — ask Kevin: stacked-to-main or feature-branch-chain                                    |
 
 Decision needed before apply: Yes
 Chained PRs recommended: Yes
@@ -18,11 +18,11 @@ Chain strategy: pending
 
 ### Suggested Work Units
 
-| Unit | Goal | Likely PR | Focused test command | Runtime harness | Rollback boundary |
-|------|------|-----------|----------------------|-----------------|-------------------|
-| 1 | Icons, `COBERTURA_ICONOS`, edit-mode Set + actions/events wiring (dead code, no caller yet) | PR 1 | Manual: `state.coberturasAdicionalesEditando` toggles via new actions in console | N/A — unused until Unit 3 wires markup | Revert `constants.js`/`nav-icons.js`/`state.js`/`actions.js`/`events.js` additions; no callers exist yet |
-| 2 | New `.cobertura-adicional-card` CSS block + media query + D8 scoping (old blocks untouched, unused classes) | PR 2 | Visual no-op check: existing checkbox/selector rows render byte-identical | N/A — new classes unreferenced by any renderer yet | Revert new CSS block; zero visual dependency |
-| 3 | `render-datos.js` cutover to `cardCoberturaAdicional()` + delete old CSS blocks + Playwright verification | PR 3 | Playwright suite (Phase 5 below) | Real cotizador run, MRC-NORMAL, `test@test.com` + a `puede_agregar_cobertura_libre` role, 1440/768/480px | `git revert` single PR restores old renderers + old CSS |
+| Unit | Goal                                                                                                        | Likely PR | Focused test command                                                             | Runtime harness                                                                                          | Rollback boundary                                                                                        |
+| ---- | ----------------------------------------------------------------------------------------------------------- | --------- | -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| 1    | Icons, `COBERTURA_ICONOS`, edit-mode Set + actions/events wiring (dead code, no caller yet)                 | PR 1      | Manual: `state.coberturasAdicionalesEditando` toggles via new actions in console | N/A — unused until Unit 3 wires markup                                                                   | Revert `constants.js`/`nav-icons.js`/`state.js`/`actions.js`/`events.js` additions; no callers exist yet |
+| 2    | New `.cobertura-adicional-card` CSS block + media query + D8 scoping (old blocks untouched, unused classes) | PR 2      | Visual no-op check: existing checkbox/selector rows render byte-identical        | N/A — new classes unreferenced by any renderer yet                                                       | Revert new CSS block; zero visual dependency                                                             |
+| 3    | `render-datos.js` cutover to `cardCoberturaAdicional()` + delete old CSS blocks + Playwright verification   | PR 3      | Playwright suite (Phase 5 below)                                                 | Real cotizador run, MRC-NORMAL, `test@test.com` + a `puede_agregar_cobertura_libre` role, 1440/768/480px | `git revert` single PR restores old renderers + old CSS                                                  |
 
 ## Phase 1: Foundation (icons, constants, state)
 

@@ -36,7 +36,7 @@ The "Coberturas adicionales" block (MRC only) renders as raw form rows — a bar
 
 **Lock semantics (resolved).** Two distinct, consistent uses of one predicate each:
 
-1. Row-level lock = *amount not editable yet* — the row has no coverage selected (unchecked in checkbox mode, empty `<select>` in selector mode). Dimmed padlock replaces the pencil. Identical rule in both modes.
+1. Row-level lock = _amount not editable yet_ — the row has no coverage selected (unchecked in checkbox mode, empty `<select>` in selector mode). Dimmed padlock replaces the pencil. Identical rule in both modes.
 2. Add-affordance lock = `!quedanCoberturasAdicionalesPorAgregar(...)`. Cosmetic swap of the existing `disabled + title`, applied in `render-datos.js` **and** `render-detalle-plan.js` together so the two buttons stay consistent.
 
 Capacity never locks an individual row (limit is 1 per code), so no per-row capacity state is invented.
@@ -49,26 +49,26 @@ Capacity never locks an individual row (limit is 1 per code), so no per-row capa
 
 ## Affected Areas
 
-| Area | Impact | Description |
-|------|--------|-------------|
-| `frontend/cotizar/render/render-datos.js` | Modified | Card markup for both modes |
-| `frontend/cotizar/render/render-detalle-plan.js` | Modified | Lock chrome on add button only |
-| `frontend/shared/cotizador.css` | Modified | New card classes + mobile rules |
-| `frontend/shared/nav-icons.js` | Modified | 6 new SVG constants |
-| `frontend/cotizar/constants.js` | Modified | New `COBERTURA_ICONOS` map |
-| `frontend/cotizar/state.js` | Modified | Edit-mode `Set` (reset at both `coberturasAdicionales = []` sites) |
-| `frontend/cotizar/actions.js` | Modified | Enable/cancel edit + focus |
-| `frontend/cotizar/events.js` | Modified | New `data-action` entries |
+| Area                                             | Impact   | Description                                                        |
+| ------------------------------------------------ | -------- | ------------------------------------------------------------------ |
+| `frontend/cotizar/render/render-datos.js`        | Modified | Card markup for both modes                                         |
+| `frontend/cotizar/render/render-detalle-plan.js` | Modified | Lock chrome on add button only                                     |
+| `frontend/shared/cotizador.css`                  | Modified | New card classes + mobile rules                                    |
+| `frontend/shared/nav-icons.js`                   | Modified | 6 new SVG constants                                                |
+| `frontend/cotizar/constants.js`                  | Modified | New `COBERTURA_ICONOS` map                                         |
+| `frontend/cotizar/state.js`                      | Modified | Edit-mode `Set` (reset at both `coberturasAdicionales = []` sites) |
+| `frontend/cotizar/actions.js`                    | Modified | Enable/cancel edit + focus                                         |
+| `frontend/cotizar/events.js`                     | Modified | New `data-action` entries                                          |
 
 ## Risks
 
-| Risk | Likelihood | Mitigation |
-|------|------------|------------|
-| Event wiring breaks | Low | Delegation is `data-*`-based; keep `data-action`/`data-linea-id`/`data-linea-field`/`data-money`/`data-codigo` on the interactive nodes |
-| Amount hidden behind pencil → agents skip it, MRC 3-coverage minimum fails | Med | Auto-open edit mode on rows with empty amount. Static view always shows the "—" placeholder, never the stored value (Kevin, resolved) — the amount is only visible while actively editing |
-| Mobile regression (no visual tooling) | Med | Port `@media (max-width: 480px)` rules in the same commit; Playwright at 3 widths |
-| Edit `Set` leaks across quotes | Med | Clear it at both reset sites (`actions.js:255`, `actions.js:314`) |
-| Focus loss on pencil toggle | Med | Explicit focus + caret-at-end after `renderApp()` |
+| Risk                                                                       | Likelihood | Mitigation                                                                                                                                                                                |
+| -------------------------------------------------------------------------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Event wiring breaks                                                        | Low        | Delegation is `data-*`-based; keep `data-action`/`data-linea-id`/`data-linea-field`/`data-money`/`data-codigo` on the interactive nodes                                                   |
+| Amount hidden behind pencil → agents skip it, MRC 3-coverage minimum fails | Med        | Auto-open edit mode on rows with empty amount. Static view always shows the "—" placeholder, never the stored value (Kevin, resolved) — the amount is only visible while actively editing |
+| Mobile regression (no visual tooling)                                      | Med        | Port `@media (max-width: 480px)` rules in the same commit; Playwright at 3 widths                                                                                                         |
+| Edit `Set` leaks across quotes                                             | Med        | Clear it at both reset sites (`actions.js:255`, `actions.js:314`)                                                                                                                         |
+| Focus loss on pencil toggle                                                | Med        | Explicit focus + caret-at-end after `renderApp()`                                                                                                                                         |
 
 ## Rollback Plan
 

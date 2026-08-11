@@ -72,14 +72,27 @@ function preagregarCoberturasPrincipalesFijasMrc() {
   const nuevas = coberturasPrincipalesFijasMrc()
     .filter((c) => !codigosExistentes.has(c.codigo))
     .map((c) => ({ id: idLinea(), codigo: c.codigo, sumaAsegurada: '' }))
-  if (nuevas.length) state.coberturasAdicionales = [...state.coberturasAdicionales, ...nuevas]
+  if (nuevas.length) {
+    state.coberturasAdicionales = [...state.coberturasAdicionales, ...nuevas]
+    // Se marcan abiertas (sin monto todavía) pero SIN robar el foco (D6): esta precarga corre
+    // sin intención directa del agente, a diferencia del toggle/select manual.
+    for (const l of nuevas) state.coberturasAdicionalesEditando.add(l.id)
+  }
 }
 
 // El botón "Ver detalle completo" y la pestaña "Detalle del plan" viven fuera del subárbol que
-// renderLivePanel() actualiza — sin esto quedaban con el estado `disabled` del último render
+// renderLivePanel() actualiza — sin esto quedaban con el estado bloqueado del último render
 // completo (ej. mientras el capital todavía era insuficiente) y nunca se desbloqueaban al llegar
 // a un cálculo válido. Se actualizan acá directo sobre el DOM en vez de un renderApp() completo,
 // para no perder el foco/cursor de los inputs mientras el agente sigue tipeando.
+//
+// No se usa el atributo `disabled` nativo (solo `aria-disabled`, ver aplicarAriaBloqueo) —
+// `disabled` saca el elemento del orden de tabulación, y con la lista de checkboxes de
+// "Coberturas adicionales" (coberturas-adicionales-redesign) justo antes de este botón, tabular
+// hasta acá con el formulario incompleto se quedaba sin nada enfocable, el foco caía a <body> y
+// el siguiente Tab terminaba en el botón hamburguesa del sidebar en pantallas ≤1024px, abriendo
+// el cajón encima del formulario. El guard real que impide la acción con `aria-disabled="true"`
+// está en el click handler de events.js.
 export function syncAvanceButtons() {
   const habilitado = puedeAvanzarADetalle()
   const title = habilitado
@@ -88,14 +101,12 @@ export function syncAvanceButtons() {
 
   const boton = document.getElementById('btn-ver-detalle')
   if (boton) {
-    boton.disabled = !habilitado
     boton.title = title
     aplicarAriaBloqueo(boton, habilitado)
   }
 
   const tab = document.getElementById('tab-detalle-plan')
   if (tab) {
-    tab.disabled = !habilitado
     tab.title = title
     aplicarAriaBloqueo(tab, habilitado)
   }
@@ -136,6 +147,7 @@ export function addCoberturaLinea() {
 
 export function removeCoberturaLinea(id) {
   state.coberturasAdicionales = state.coberturasAdicionales.filter((l) => l.id !== id)
+  state.coberturasAdicionalesEditando.delete(id)
   renderApp()
   scheduleCalculate()
 }
@@ -146,12 +158,26 @@ export function removeCoberturaLinea(id) {
 // que sí permite el flujo libre — simplificación a propósito para este modo restringido).
 export function toggleCoberturaAdicionalPorCodigo(codigo, marcado) {
   if (marcado) {
-    if (!state.coberturasAdicionales.some((l) => l.codigo === codigo)) {
-      state.coberturasAdicionales.push({ id: idLinea(), codigo, sumaAsegurada: '' })
+    let linea = state.coberturasAdicionales.find((l) => l.codigo === codigo)
+    if (!linea) {
+      linea = { id: idLinea(), codigo, sumaAsegurada: '' }
+      state.coberturasAdicionales.push(linea)
     }
-  } else {
-    state.coberturasAdicionales = state.coberturasAdicionales.filter((l) => l.codigo !== codigo)
+    // Auto-apertura del modo edición (coberturas-adicionales-redesign, D6): al tildar una
+    // cobertura sin monto cargado todavía, se abre directo el input en vez de dejar el "—"
+    // bloqueado detrás del lápiz — evita un click extra en el caso más común (fila recién
+    // agregada).
+    if (!linea.sumaAsegurada) state.coberturasAdicionalesEditando.add(linea.id)
+    renderApp()
+    scheduleCalculate()
+    if (!linea.sumaAsegurada) focusMontoCobertura(linea.id)
+    return
   }
+
+  for (const l of state.coberturasAdicionales) {
+    if (l.codigo === codigo) state.coberturasAdicionalesEditando.delete(l.id)
+  }
+  state.coberturasAdicionales = state.coberturasAdicionales.filter((l) => l.codigo !== codigo)
   renderApp()
   scheduleCalculate()
 }
@@ -164,9 +190,44 @@ export function updateCoberturaLinea(id, field, value) {
     // Re-renderiza para que las demás filas reflejen el límite por cobertura recién elegida
     // (ver renderCoberturasAdicionales/LIMITE_REPETICION_COBERTURA_MRC) — no se hace en cada
     // tecleo de sumaAsegurada para no perder el foco del input mientras el agente escribe.
+    // Auto-apertura del modo edición (D6, mismo criterio que toggleCoberturaAdicionalPorCodigo):
+    // al elegir una cobertura en el selector libre sin monto cargado todavía, se abre el input.
+    // Al vaciar el <select> ("Seleccioná una cobertura…") se cierra: no tiene sentido editar el
+    // monto de una línea sin cobertura elegida (queda bloqueada con el candado).
+    if (value && !linea.sumaAsegurada) state.coberturasAdicionalesEditando.add(id)
+    else if (!value) state.coberturasAdicionalesEditando.delete(id)
     renderApp()
+    if (value) focusMontoCobertura(id)
   }
   scheduleCalculate()
+}
+
+// Modo edición del campo "Suma asegurada" de una línea de coberturas adicionales
+// (coberturas-adicionales-redesign, D3/D4): fuera de este Set la línea muestra el placeholder
+// "—" en vez del valor guardado. Cierre explícito por botón de confirmar o Enter/Escape — nunca
+// por `focusout` (ver design.md D3: renderApp() reemplaza #app.innerHTML por completo, así que
+// un focusout disparado justo antes del click de otra fila se comería ese click).
+export function habilitarEdicionMontoCobertura(id) {
+  state.coberturasAdicionalesEditando.add(id)
+  renderApp()
+  focusMontoCobertura(id)
+}
+
+export function cerrarEdicionMontoCobertura(id) {
+  state.coberturasAdicionalesEditando.delete(id)
+  renderApp()
+}
+
+// Enfoca el input de "Suma asegurada" de la línea `id` y deja el cursor al final del valor ya
+// cargado — llamado después de renderApp() porque el nodo se recrea en cada render completo.
+// No se llama desde preagregarCoberturasPrincipalesFijasMrc() (ver D6): esa precarga corre sin
+// intención directa del agente, robarle el foco lo sacaría del selector de plan.
+export function focusMontoCobertura(id) {
+  const input = document.getElementById(`cobertura-linea-${id}-suma`)
+  if (!input) return
+  input.focus({ preventScroll: true })
+  const len = input.value.length
+  input.setSelectionRange(len, len)
 }
 
 export async function calcularPreview() {
@@ -253,6 +314,7 @@ export async function selectRamo(nombre) {
   state.coberturasCatalogo = []
   state.planCoberturas = []
   state.coberturasAdicionales = []
+  state.coberturasAdicionalesEditando.clear()
   state.preview = null
   state.previewError = null
   state.formaPagoCodigo = null
@@ -312,6 +374,7 @@ export function selectPlan(planId) {
   state.data.cuotas = plan.cuotas_default ?? null
   state.data.descuentoPorcentaje = plan.descuento_default ?? null
   state.coberturasAdicionales = []
+  state.coberturasAdicionalesEditando.clear()
   renderApp()
   scheduleCalculate()
   if (state.ramoId === 'mrc') {

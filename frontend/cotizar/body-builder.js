@@ -43,6 +43,11 @@ export function prefillDatosDesdeCotizacion(ramoNombre, plan, cotizacion) {
     state.coberturasAdicionales = (rd.coberturas_adicionales || [])
       .filter((c) => c.codigo && !codigosFijos.has(c.codigo))
       .map((c) => ({ id: idLinea(), codigo: c.codigo, sumaAsegurada: c.suma_asegurada }))
+    // Prefill viene de una cotización ya guardada: todas las líneas traen su monto real, así
+    // que arrancan cerradas (coberturas-adicionales-redesign, D4) — sin esto, ids de una pasada
+    // de edición anterior podrían quedar abiertos si alguna vez se reusaran (hoy no pasa, los
+    // ids son UUID por línea, pero el Set debe arrancar limpio en cada carga para editar).
+    state.coberturasAdicionalesEditando.clear()
 
     for (const [codigo, monto] of Object.entries(rd.franquicias_por_cobertura || {})) {
       state.franquiciasPorCobertura[codigo] = franquiciaValorPorDefecto(monto)

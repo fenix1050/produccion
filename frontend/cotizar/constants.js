@@ -9,6 +9,12 @@ import {
   ICON_SUBLIMITE_ELECTRICOS,
   ICON_SUBLIMITE_GRANIZO,
   ICON_SUBLIMITE_MURALLAS,
+  ICON_COBERTURA_MOBILIARIO_EQUIPOS,
+  ICON_COBERTURA_ROBO_CONTENIDO,
+  ICON_COBERTURA_CAJA_REGISTRADORA,
+  ICON_COBERTURA_ROBO_TRANSITO,
+  ICON_COBERTURA_CRISTALES,
+  ICON_COBERTURA_RESPONSABILIDAD_CIVIL,
 } from '../shared/nav-icons.js'
 
 // ---- Metadata de ramos mostrados en el sidebar (8 ramos seedeados en la tabla `ramos`) ----
@@ -172,6 +178,23 @@ export const SUBLIMITE_ICONOS = {
   sublimite_murallas_cercos: ICON_SUBLIMITE_MURALLAS,
   incendio_edificio: ICON_RAMO_HOGAR,
   incendio_contenido: ICON_RAMO_INCENDIO,
+}
+
+// Ícono por código de cobertura para el skin nuevo de "Coberturas adicionales"
+// (coberturas-adicionales-redesign, requirement "Dedicated Icons for Previously Icon-less
+// Coverages"). Spread de SUBLIMITE_ICONOS (byte-idéntico, sin tocarlo) + las 6 coberturas que
+// hoy caen al genérico `ICON_SUBLIMITE_GENERICO` dentro de esa card. Unit 1/3: dead code, sin
+// caller todavía — lo consume `cardCoberturaAdicional()` en render-datos.js recién en Unit 3.
+// El `.cobertura-card` de solo lectura de "Detalle del plan" sigue leyendo SUBLIMITE_ICONOS,
+// no este mapa — no puede regresionar.
+export const COBERTURA_ICONOS = {
+  ...SUBLIMITE_ICONOS,
+  incendio_mobiliario_equipos: ICON_COBERTURA_MOBILIARIO_EQUIPOS,
+  robo_contenido: ICON_COBERTURA_ROBO_CONTENIDO,
+  robo_caja_registradora: ICON_COBERTURA_CAJA_REGISTRADORA,
+  robo_transito: ICON_COBERTURA_ROBO_TRANSITO,
+  cristales: ICON_COBERTURA_CRISTALES,
+  responsabilidad_civil: ICON_COBERTURA_RESPONSABILIDAD_CIVIL,
 }
 
 // Ícono de precio para el footnote de "Detalle del plan" — no vive en nav-icons.js porque

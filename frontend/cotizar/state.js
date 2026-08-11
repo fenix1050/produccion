@@ -41,6 +41,12 @@ const state = {
   // Líneas de coberturas/sublímites adicionales que el agente agrega a mano, más allá de las
   // 2 fijas (Incendio Edificio / Incendio Contenido). Cada línea: { id, codigo, sumaAsegurada }.
   coberturasAdicionales: [],
+  // Ids de línea de `coberturasAdicionales` cuyo campo "Suma asegurada" está en modo edición
+  // (input visible) en el skin nuevo de la card (coberturas-adicionales-redesign). Fuera de este
+  // Set, esa línea muestra el placeholder "—" en vez del valor guardado — puramente de
+  // presentación, `sumaAsegurada` nunca se toca acá. Unit 1/3: sin lectores/escritores todavía
+  // (los llega a usar `actions.js`/`events.js` recién en Unit 2, y `render-datos.js` en Unit 3).
+  coberturasAdicionalesEditando: new Set(),
   // true mientras se guarda la cotización y se genera el PDF, para deshabilitar el botón y
   // evitar doble click (crearía 2 cotizaciones con números correlativos distintos).
   emitiendoCarta: false,

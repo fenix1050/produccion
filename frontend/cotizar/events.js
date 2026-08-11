@@ -12,6 +12,8 @@ import {
   removeCoberturaLinea,
   updateCoberturaLinea,
   toggleCoberturaAdicionalPorCodigo,
+  habilitarEdicionMontoCobertura,
+  cerrarEdicionMontoCobertura,
   selectMoneda,
   selectRamo,
   selectPlan,
@@ -89,6 +91,9 @@ export function registrarEventos() {
   app.addEventListener('click', (e) => {
     const target = resolveActionTarget(e)
     if (!target) return
+    // btn-ver-detalle/tab-detalle-plan usan aria-disabled en vez de disabled nativo (ver
+    // syncAvanceButtons en actions.js) — este es el guard real que bloquea la acción.
+    if (target.getAttribute('aria-disabled') === 'true') return
 
     const action = target.dataset.action
     if (action === 'logout') cerrarSesion()
@@ -106,6 +111,10 @@ export function registrarEventos() {
     else if (action === 'remove-cobertura-linea') removeCoberturaLinea(target.dataset.lineaId)
     else if (action === 'toggle-cobertura-checkbox')
       toggleCoberturaAdicionalPorCodigo(target.dataset.codigo, target.checked)
+    else if (action === 'editar-monto-cobertura')
+      habilitarEdicionMontoCobertura(target.dataset.lineaId)
+    else if (action === 'cerrar-edicion-monto-cobertura')
+      cerrarEdicionMontoCobertura(target.dataset.lineaId)
     else if (action === 'emitir-carta') emitirCartaOferta()
     else if (action === 'cerrar-modal-progreso-carta') cerrarModalProgresoCarta()
     else if (action === 'reintentar-carta') emitirCartaOferta()
@@ -126,6 +135,19 @@ export function registrarEventos() {
       const modalAbierto = app.querySelector('.progreso-carta-modal')
       if (modalAbierto) atraparFoco(e, modalAbierto)
     }
+  })
+
+  // Enter/Escape cierran el modo edición del monto de una línea de coberturas adicionales
+  // (coberturas-adicionales-redesign, D3) — no hay cierre por `focusout` (ver el comentario de
+  // habilitarEdicionMontoCobertura/cerrarEdicionMontoCobertura en actions.js). Escape no revierte
+  // nada: el valor ya quedó guardado en cada tecleo (updateCoberturaLinea), la línea solo pasa a
+  // mostrar el placeholder "—" en vez del input.
+  app.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== 'Escape') return
+    const target = e.target.closest('[data-linea-id][data-linea-field="sumaAsegurada"]')
+    if (!target) return
+    e.preventDefault()
+    cerrarEdicionMontoCobertura(target.dataset.lineaId)
   })
 
   app.addEventListener('input', (e) => {

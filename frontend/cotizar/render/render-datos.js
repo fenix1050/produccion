@@ -141,35 +141,33 @@ export function camposObjetoRiesgo(plan) {
 //    todavía no — el valor real SÍ se muestra acá (Kevin revirtió la regla de "siempre oculto"
 //    el 2026-08-10, tras confirmar que el caso que reportó como bug era en realidad el valor
 //    real de una cobertura ya cargada, mostrado como se esperaba)
-//  - editing: input real (mismo id/atributos de siempre) + botón de confirmar
+//  - editing: input real con el placeholder "Suma asegurada (Gs.)" adentro, sin la etiqueta
+//    aparte arriba — mismo look que el mockup original (Kevin, 2026-08-11: "al final queda
+//    mejor así"), a diferencia de la etiqueta persistente que se probó antes
 function campoMontoCobertura({ locked, editing, lineaId, sumaAsegurada, nombreAccesible }) {
-  // La etiqueta "Suma asegurada" nunca desaparece — en edición se reemplaza solo el valor de
-  // abajo por un input compacto, no todo el bloque, para que el ancho/alto de la zona no salte
-  // entre estados (pedido de Kevin: "el input debe sentirse como un estado temporal del bloque
-  // de suma asegurada, no como un formulario grande agregado a la fila").
-  const valor = editing
+  const bloque = editing
     ? `
-      <label class="sr-only" for="cobertura-linea-${lineaId}-suma">Suma asegurada de ${escapeHtml(nombreAccesible)} (Gs.)</label>
-      <input
-        class="cobertura-adicional-card__input"
-        id="cobertura-linea-${lineaId}-suma"
-        type="text"
-        inputmode="numeric"
-        data-linea-id="${lineaId}"
-        data-linea-field="sumaAsegurada"
-        data-money="true"
-        placeholder="0"
-        value="${fmtGsInput(sumaAsegurada)}"
-      />
+      <div class="cobertura-adicional-card__estatico cobertura-adicional-card__estatico--editando">
+        <label class="sr-only" for="cobertura-linea-${lineaId}-suma">Suma asegurada de ${escapeHtml(nombreAccesible)} (Gs.)</label>
+        <input
+          class="cobertura-adicional-card__input"
+          id="cobertura-linea-${lineaId}-suma"
+          type="text"
+          inputmode="numeric"
+          data-linea-id="${lineaId}"
+          data-linea-field="sumaAsegurada"
+          data-money="true"
+          placeholder="Suma asegurada (Gs.)"
+          value="${fmtGsInput(sumaAsegurada)}"
+        />
+      </div>
     `
-    : `<span class="cobertura-adicional-card__estatico-valor">${sumaAsegurada ? escapeHtml(fmtGsConPrefijo(sumaAsegurada)) : '—'}</span>`
-
-  const bloque = `
-    <div class="cobertura-adicional-card__estatico">
-      <span class="cobertura-adicional-card__estatico-label">Suma asegurada</span>
-      ${valor}
-    </div>
-  `
+    : `
+      <div class="cobertura-adicional-card__estatico">
+        <span class="cobertura-adicional-card__estatico-label">Suma asegurada</span>
+        <span class="cobertura-adicional-card__estatico-valor">${sumaAsegurada ? escapeHtml(fmtGsConPrefijo(sumaAsegurada)) : '—'}</span>
+      </div>
+    `
 
   if (locked) {
     return `${bloque}<span class="cobertura-adicional-card__lock" title="Elegí una cobertura para cargar la suma asegurada" aria-hidden="true">${ICON_LOCK}</span>`

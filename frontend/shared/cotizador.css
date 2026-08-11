@@ -1894,12 +1894,12 @@ button {
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
-  width: 190px;
+  width: 214px;
 }
 
-/* Bloque "Suma asegurada" — mismo ancho/alineación estático o en edición, para que el input
-   se sienta como un estado temporal de este bloque y no como un formulario ancho aparte
-   (pedido de Kevin, ver campoMontoCobertura en render-datos.js). */
+/* Bloque "Suma asegurada" — 152px en estático (etiqueta + valor). En edición (--editando) se
+   ensancha un poco (176px) para que entre el placeholder "Suma asegurada (Gs.)" del input sin
+   cortarse — mismo look que el mockup original (Kevin, 2026-08-11), sin la etiqueta aparte. */
 .cobertura-adicional-card__estatico {
   display: flex;
   flex-direction: column;
@@ -1907,6 +1907,10 @@ button {
   gap: 2px;
   width: 152px;
   min-width: 0;
+}
+
+.cobertura-adicional-card__estatico--editando {
+  width: 176px;
 }
 
 .cobertura-adicional-card__estatico-label {
@@ -1930,15 +1934,18 @@ button {
 .cobertura-adicional-card__input {
   border: 1.5px solid var(--tajy-red);
   border-radius: var(--tajy-radius-sm);
-  padding: 2px 6px;
+  padding: 9px 10px;
   text-align: right;
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 13px;
   font-family: inherit;
   color: var(--tajy-ink);
   font-variant-numeric: tabular-nums;
   width: 100%;
   background: #fff;
+}
+
+.cobertura-adicional-card__input::placeholder {
+  color: #b6b6b6;
 }
 
 .cobertura-adicional-card__input:focus {

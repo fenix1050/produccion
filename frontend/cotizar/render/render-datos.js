@@ -169,7 +169,7 @@ function campoMontoCobertura({ locked, editing, lineaId, sumaAsegurada, nombreAc
     `
     : `
       <div class="cobertura-adicional-card__estatico">
-        <span class="cobertura-adicional-card__estatico-label">Suma asegurada</span>
+        <span class="cobertura-adicional-card__estatico-label">SUMA ASEGURADA</span>
         <span class="cobertura-adicional-card__estatico-valor">${sumaAsegurada ? escapeHtml(fmtGsConPrefijo(sumaAsegurada)) : '—'}</span>
       </div>
     `
@@ -178,21 +178,13 @@ function campoMontoCobertura({ locked, editing, lineaId, sumaAsegurada, nombreAc
     return `${bloque}<span class="cobertura-adicional-card__lock" title="Elegí una cobertura para cargar la suma asegurada" aria-hidden="true">${ICON_LOCK}</span>`
   }
 
-  // Mismo ícono de lápiz para abrir y cerrar la edición (Kevin: "quiero utilizar el lápiz para
-  // representar la edición del monto", en vez del check rojo previo) — solo cambia la acción.
-  const accion = editing
-    ? {
-        action: 'cerrar-edicion-monto-cobertura',
-        label: `Listo, cerrar edición de ${escapeHtml(nombreAccesible)}`,
-      }
-    : {
-        action: 'editar-monto-cobertura',
-        label: `Editar suma asegurada de ${escapeHtml(nombreAccesible)}`,
-      }
+  if (editing) return bloque
+
+  const label = `Editar suma asegurada de ${escapeHtml(nombreAccesible)}`
 
   return `
     ${bloque}
-    <button type="button" class="cobertura-adicional-card__accion" data-action="${accion.action}" data-linea-id="${lineaId}" aria-label="${accion.label}">${ICON_PENCIL}</button>
+    <button type="button" class="cobertura-adicional-card__accion" data-action="editar-monto-cobertura" data-linea-id="${lineaId}" title="${label}" aria-label="${label}">${ICON_PENCIL}</button>
   `
 }
 

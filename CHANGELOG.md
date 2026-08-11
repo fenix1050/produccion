@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.37](https://github.com/fenix1050/produccion/compare/v0.1.36...v0.1.37) (2026-08-11)
+
+
+### Features
+
+* **cotizador:** cutover del rediseno de Coberturas adicionales (3/3) ([#232](https://github.com/fenix1050/produccion/issues/232)) ([c926a18](https://github.com/fenix1050/produccion/commit/c926a18889d1b7ecc6112d1978f557ed6d0ff610))
+* **cotizador:** fundacion del rediseno de Coberturas adicionales (1/3) ([#230](https://github.com/fenix1050/produccion/issues/230)) ([f6da9e7](https://github.com/fenix1050/produccion/commit/f6da9e7b0481787e27787212ee6c862240f8fbb0))
+* **cotizador:** máquina de estados de edición de monto (Coberturas adicionales) ([#231](https://github.com/fenix1050/produccion/issues/231)) ([18e769c](https://github.com/fenix1050/produccion/commit/18e769ca2bbdd631d7d981d672e021a755c03ab0))
+
 ## [0.1.36](https://github.com/fenix1050/produccion/compare/v0.1.35...v0.1.36) (2026-08-10)
 
 

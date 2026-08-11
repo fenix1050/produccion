@@ -140,6 +140,48 @@ export function scheduleCalculate() {
 // Coberturas adicionales: líneas cobertura/sublímite más allá de Incendio Edificio/Contenido.
 // ---------------------------------------------------------------------------
 
+// A coverage amount is persisted on every keystroke so the live preview stays current. These
+// maps preserve the value at the start of an explicit edit session and defer blur acceptance
+// until the click that moved focus has finished against the current DOM.
+const montosInicialesEdicion = new Map()
+const cierresEdicionMontoPendientes = new Map()
+
+function montoCoberturaValido(linea) {
+  return Number(linea?.sumaAsegurada) > 0
+}
+
+function limpiarSesionEdicionMonto(id) {
+  montosInicialesEdicion.delete(id)
+  const cierrePendiente = cierresEdicionMontoPendientes.get(id)
+  if (cierrePendiente !== undefined) clearTimeout(cierrePendiente)
+  cierresEdicionMontoPendientes.delete(id)
+}
+
+function limpiarSesionesEdicionMonto() {
+  for (const cierrePendiente of cierresEdicionMontoPendientes.values()) {
+    clearTimeout(cierrePendiente)
+  }
+  cierresEdicionMontoPendientes.clear()
+  montosInicialesEdicion.clear()
+}
+
+function focoActual() {
+  const elemento = document.activeElement
+  const monto = elemento?.closest?.('[data-linea-id][data-linea-field="sumaAsegurada"]')
+  return {
+    id: elemento?.id || null,
+    lineaMontoId: monto?.dataset.lineaId || null,
+  }
+}
+
+function restaurarFocoTrasRender(foco) {
+  if (foco.lineaMontoId) {
+    focusMontoCobertura(foco.lineaMontoId)
+    return
+  }
+  if (foco.id) document.getElementById(foco.id)?.focus({ preventScroll: true })
+}
+
 export function addCoberturaLinea() {
   state.coberturasAdicionales.push({ id: idLinea(), codigo: '', sumaAsegurada: '' })
   renderApp() // fila nueva: hace falta re-render completo
@@ -148,6 +190,7 @@ export function addCoberturaLinea() {
 export function removeCoberturaLinea(id) {
   state.coberturasAdicionales = state.coberturasAdicionales.filter((l) => l.id !== id)
   state.coberturasAdicionalesEditando.delete(id)
+  limpiarSesionEdicionMonto(id)
   renderApp()
   scheduleCalculate()
 }
@@ -175,7 +218,10 @@ export function toggleCoberturaAdicionalPorCodigo(codigo, marcado) {
   }
 
   for (const l of state.coberturasAdicionales) {
-    if (l.codigo === codigo) state.coberturasAdicionalesEditando.delete(l.id)
+    if (l.codigo === codigo) {
+      state.coberturasAdicionalesEditando.delete(l.id)
+      limpiarSesionEdicionMonto(l.id)
+    }
   }
   state.coberturasAdicionales = state.coberturasAdicionales.filter((l) => l.codigo !== codigo)
   renderApp()
@@ -202,20 +248,59 @@ export function updateCoberturaLinea(id, field, value) {
   scheduleCalculate()
 }
 
-// Modo edición del campo "Suma asegurada" de una línea de coberturas adicionales
-// (coberturas-adicionales-redesign, D3/D4): fuera de este Set la línea muestra el placeholder
-// "—" en vez del valor guardado. Cierre explícito por botón de confirmar o Enter/Escape — nunca
-// por `focusout` (ver design.md D3: renderApp() reemplaza #app.innerHTML por completo, así que
-// un focusout disparado justo antes del click de otra fila se comería ese click).
+// Insured-sum editing mode for an additional-coverage line.
 export function habilitarEdicionMontoCobertura(id) {
+  const linea = state.coberturasAdicionales.find((l) => l.id === id)
+  if (!linea) return
+  if (!state.coberturasAdicionalesEditando.has(id)) {
+    montosInicialesEdicion.set(id, linea.sumaAsegurada)
+  }
   state.coberturasAdicionalesEditando.add(id)
   renderApp()
   focusMontoCobertura(id)
 }
 
-export function cerrarEdicionMontoCobertura(id) {
+export function aceptarEdicionMontoCobertura(id) {
+  const linea = state.coberturasAdicionales.find((l) => l.id === id)
+  if (!montoCoberturaValido(linea)) return false
+  const foco = focoActual()
   state.coberturasAdicionalesEditando.delete(id)
+  limpiarSesionEdicionMonto(id)
   renderApp()
+  restaurarFocoTrasRender(foco)
+  return true
+}
+
+export function cancelarEdicionMontoCobertura(id) {
+  const linea = state.coberturasAdicionales.find((l) => l.id === id)
+  if (!linea) return false
+
+  linea.sumaAsegurada = montosInicialesEdicion.get(id) ?? ''
+  if (!montoCoberturaValido(linea)) {
+    renderApp()
+    focusMontoCobertura(id)
+    scheduleCalculate()
+    return false
+  }
+
+  state.coberturasAdicionalesEditando.delete(id)
+  limpiarSesionEdicionMonto(id)
+  renderApp()
+  scheduleCalculate()
+  return true
+}
+
+export function diferirAceptacionMontoCobertura(id) {
+  const cierrePendiente = cierresEdicionMontoPendientes.get(id)
+  if (cierrePendiente !== undefined) clearTimeout(cierrePendiente)
+
+  const cierreDiferido = setTimeout(() => {
+    cierresEdicionMontoPendientes.delete(id)
+    const input = document.getElementById(`cobertura-linea-${id}-suma`)
+    if (input === document.activeElement) return
+    aceptarEdicionMontoCobertura(id)
+  }, 0)
+  cierresEdicionMontoPendientes.set(id, cierreDiferido)
 }
 
 // Enfoca el input de "Suma asegurada" de la línea `id` y deja el cursor al final del valor ya
@@ -315,6 +400,7 @@ export async function selectRamo(nombre) {
   state.planCoberturas = []
   state.coberturasAdicionales = []
   state.coberturasAdicionalesEditando.clear()
+  limpiarSesionesEdicionMonto()
   state.preview = null
   state.previewError = null
   state.formaPagoCodigo = null
@@ -375,6 +461,7 @@ export function selectPlan(planId) {
   state.data.descuentoPorcentaje = plan.descuento_default ?? null
   state.coberturasAdicionales = []
   state.coberturasAdicionalesEditando.clear()
+  limpiarSesionesEdicionMonto()
   renderApp()
   scheduleCalculate()
   if (state.ramoId === 'mrc') {

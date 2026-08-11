@@ -40,18 +40,16 @@ export const ICON_SUBLIMITE_GRANIZO = `<svg width="16" height="16" viewBox="0 0 
 export const ICON_SUBLIMITE_MURALLAS = `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M9 21h12V3H3v18h6zm10-4v2h-6v-6h6v4zM15 5h4v6h-6V5h2zM5 7V5h6v6H5V7zm0 12v-6h6v6H5z"></path></svg>`
 export const ICON_SUBLIMITE_GENERICO = ICON_SHIELD
 
-// ---- Íconos de las 6 coberturas de MRC que antes caían al genérico dentro de "Coberturas
-// adicionales" (coberturas-adicionales-redesign, Unit 1/3 — dead code hasta que la Unit 3
-// cablee `cardCoberturaAdicional()` en render-datos.js) — mismo house style Boxicons filled,
-// viewBox 24x24, fill="currentColor" que el resto de este archivo. Registrados acá y expuestos
-// vía `COBERTURA_ICONOS` en cotizar/constants.js; NO tocan `SUBLIMITE_ICONOS` (el
+// ---- Íconos de las 6 coberturas de MRC mostradas en "Coberturas adicionales" — SVG propios
+// de contorno, con viewBox 24x24 y trazo compartido. Registrados acá y expuestos vía
+// `COBERTURA_ICONOS` en cotizar/constants.js; NO tocan `SUBLIMITE_ICONOS` (el
 // `.cobertura-card` de solo lectura de "Detalle del plan" sigue leyendo ese mapa intacto).
-export const ICON_COBERTURA_MOBILIARIO_EQUIPOS = `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c1.4 2.8-0.1 4-1.3 5.3C9.5 8.5 8.4 10.3 8.4 12.5a3.6 3.6 0 0 0 7.2 0c0-1-0.4-1.9-0.9-2.7-0.1 0.9-0.6 1.5-1.3 1.8 0.4-2-0.6-3.4-1.8-4.5C11 5.7 10.6 3.7 12 2z"></path></svg>`
-export const ICON_COBERTURA_ROBO_CONTENIDO = `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 3 6.5V17.5L12 22l9-4.5V6.5L12 2zm0 2.236 6.382 3.191L12 10.618 5.618 7.427 12 4.236zM5 9.118l6 3v7.646l-6-3V9.118zm8 10.646v-7.646l6-3v7.646l-6 3z"></path></svg>`
-export const ICON_COBERTURA_CAJA_REGISTRADORA = `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M4 8h16l1 12H3L4 8zm2-4h12l1 2H5l1-2zM8 12h2v2H8v-2zm3 0h5v2h-5v-2zM8 15h8v2H8v-2z"></path></svg>`
-export const ICON_COBERTURA_ROBO_TRANSITO = `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 6h11v9H3zM14 9h4l3 3v3h-7V9zM6 18a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm11 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"></path></svg>`
-export const ICON_COBERTURA_CRISTALES = `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 21 9 17 22H7L3 9 12 2Z"></path></svg>`
-export const ICON_COBERTURA_RESPONSABILIDAD_CIVIL = `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12q-1.65 0-2.825-1.175Q8 9.65 8 8t1.175-2.825Q10.35 4 12 4t2.825 1.175Q16 6.35 16 8t-1.175 2.825Q13.65 12 12 12Zm-8 8v-2.8q0-.85.438-1.563.437-.712 1.162-1.087 1.55-.775 3.15-1.163Q10.35 13 12 13t3.25.388q1.6.387 3.15 1.162.725.375 1.163 1.088Q20 16.35 20 17.2V20Z"></path></svg>`
+export const ICON_COBERTURA_MOBILIARIO_EQUIPOS = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13.2 3.5c.2 2.5-1.1 4.1-2.4 5.6-1.4 1.6-2.6 3.1-2.6 5.4a5.8 5.8 0 0 0 5.8 5.8c3.2 0 5.8-2.5 5.8-5.8 0-2.7-1.4-5.1-3.8-7.2.1 1.7-.4 3-1.5 4.1.1-3.3-1.3-5.7-1.3-7.9Z"></path><path d="M13.9 20.1c-1.7 0-2.9-1.2-2.9-2.9 0-1.2.7-2.2 1.9-3.4.1 1 .5 1.8 1.2 2.3.6-.6 1.1-1.6 1.1-2.7.9 1 1.4 2.2 1.4 3.6a3.1 3.1 0 0 1-2.7 3.1Z"></path></svg>`
+export const ICON_COBERTURA_ROBO_CONTENIDO = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-8 4.5v9l8 4.5 8-4.5v-9L12 3Z"></path><path d="m4 7.5 8 4.5 8-4.5M12 12v9"></path></svg>`
+export const ICON_COBERTURA_CAJA_REGISTRADORA = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="14" rx="2"></rect><path d="M16.5 5v14M12 9.5v2.5l1.6 1M17 8.5h1.5"></path><circle cx="12" cy="12" r="2.5"></circle></svg>`
+export const ICON_COBERTURA_ROBO_TRANSITO = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6.5h11v10H3zM14 10h3.3l3.7 3.6v2.9H14z"></path><circle cx="7" cy="18" r="1.5"></circle><circle cx="17" cy="18" r="1.5"></circle></svg>`
+export const ICON_COBERTURA_CRISTALES = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4.5h14v15H5z"></path><path d="m12.2 4.5-1.4 5.5 3.1 1.6-2.5 3.1.7 4.3-2.9-1.4"></path></svg>`
+export const ICON_COBERTURA_RESPONSABILIDAD_CIVIL = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 7 3v5.5c0 4.3-2.7 7.8-7 9.5-4.3-1.7-7-5.2-7-9.5V6l7-3Z"></path><path d="m8.7 12.2 2.2 2.2 4.5-4.7"></path></svg>`
 
 // ---- Íconos de acción del skin nuevo de "Coberturas adicionales" (lápiz editar / candado
 // bloqueado / check chico cerrar edición) — mismo dead-code scope que arriba, D7 del design.

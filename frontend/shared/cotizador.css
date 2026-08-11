@@ -1813,9 +1813,22 @@ button {
   background: var(--tajy-bg);
 }
 
+/* Sin opacity global: bajarle la opacidad al texto rompe el contraste WCAG AA
+   (detectado por el checker de accesibilidad de Vercel, 2026-08-11) aunque los
+   colores base sean legibles. El look "bloqueado" se logra atenuando solo los
+   elementos decorativos (check, ícono) y usando --tajy-text-muted (ya AA) en
+   el texto en vez de --tajy-ink. */
 .cobertura-adicional-card.is-locked {
-  opacity: 0.55;
   cursor: default;
+}
+
+.cobertura-adicional-card.is-locked .cobertura-adicional-card__check {
+  opacity: 0.55;
+}
+
+.cobertura-adicional-card.is-locked .cobertura-adicional-card__nombre,
+.cobertura-adicional-card.is-locked .cobertura-adicional-card__estatico-valor {
+  color: var(--tajy-text-muted);
 }
 
 .cobertura-adicional-card__check {

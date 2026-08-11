@@ -1,7 +1,12 @@
 import { auth } from '../../shared/api.js'
 import { escapeHtml } from '../../shared/dom.js'
 import { fmtGsInput, fmtGsConPrefijo, unidadMoneda } from '../../shared/format.js'
-import { ICON_PENCIL, ICON_LOCK, ICON_SUBLIMITE_GENERICO, ICON_X_CIRCLE } from '../../shared/nav-icons.js'
+import {
+  ICON_PENCIL,
+  ICON_LOCK,
+  ICON_SUBLIMITE_GENERICO,
+  ICON_X_CIRCLE,
+} from '../../shared/nav-icons.js'
 import { state } from '../state.js'
 import {
   CIUDADES,

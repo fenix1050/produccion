@@ -1,6 +1,7 @@
 import { auth } from '../../shared/api.js'
 import { escapeHtml } from '../../shared/dom.js'
-import { fmtGsInput, unidadMoneda } from '../../shared/format.js'
+import { fmtGsInput, fmtGsConPrefijo, unidadMoneda } from '../../shared/format.js'
+import { ICON_PENCIL, ICON_LOCK, ICON_SUBLIMITE_GENERICO } from '../../shared/nav-icons.js'
 import { state } from '../state.js'
 import {
   CIUDADES,
@@ -10,6 +11,7 @@ import {
   RAMOS_CON_CALCULO,
   CLIENT_FIELDS,
   MOTIVO_BLOQUEO_ID,
+  COBERTURA_ICONOS,
 } from '../constants.js'
 import {
   monedaEfectiva,
@@ -132,6 +134,108 @@ export function camposObjetoRiesgo(plan) {
   `
 }
 
+// Zona de campo (slot derecho) de la card de "Coberturas adicionales" — 3 estados mutuamente
+// excluyentes (design.md sección 2.4):
+//  - locked: sin cobertura elegida todavía → placeholder "—" + candado inerte
+//  - static (no locked, no editing): "Gs. 100.000.000" si sumaAsegurada tiene monto, "—" si
+//    todavía no — el valor real SÍ se muestra acá (Kevin revirtió la regla de "siempre oculto"
+//    el 2026-08-10, tras confirmar que el caso que reportó como bug era en realidad el valor
+//    real de una cobertura ya cargada, mostrado como se esperaba)
+//  - editing: input real con el placeholder "Suma asegurada (Gs.)" adentro, sin la etiqueta
+//    aparte arriba — mismo look que el mockup original (Kevin, 2026-08-11: "al final queda
+//    mejor así"), a diferencia de la etiqueta persistente que se probó antes
+function campoMontoCobertura({ locked, editing, lineaId, sumaAsegurada, nombreAccesible }) {
+  const bloque = editing
+    ? `
+      <div class="cobertura-adicional-card__estatico cobertura-adicional-card__estatico--editando">
+        <label class="sr-only" for="cobertura-linea-${lineaId}-suma">Suma asegurada de ${escapeHtml(nombreAccesible)} (Gs.)</label>
+        <input
+          class="cobertura-adicional-card__input"
+          id="cobertura-linea-${lineaId}-suma"
+          type="text"
+          inputmode="numeric"
+          data-linea-id="${lineaId}"
+          data-linea-field="sumaAsegurada"
+          data-money="true"
+          placeholder="Suma asegurada (Gs.)"
+          value="${fmtGsInput(sumaAsegurada)}"
+        />
+      </div>
+    `
+    : `
+      <div class="cobertura-adicional-card__estatico">
+        <span class="cobertura-adicional-card__estatico-label">Suma asegurada</span>
+        <span class="cobertura-adicional-card__estatico-valor">${sumaAsegurada ? escapeHtml(fmtGsConPrefijo(sumaAsegurada)) : '—'}</span>
+      </div>
+    `
+
+  if (locked) {
+    return `${bloque}<span class="cobertura-adicional-card__lock" title="Elegí una cobertura para cargar la suma asegurada" aria-hidden="true">${ICON_LOCK}</span>`
+  }
+
+  // Mismo ícono de lápiz para abrir y cerrar la edición (Kevin: "quiero utilizar el lápiz para
+  // representar la edición del monto", en vez del check rojo previo) — solo cambia la acción.
+  const accion = editing
+    ? {
+        action: 'cerrar-edicion-monto-cobertura',
+        label: `Listo, cerrar edición de ${escapeHtml(nombreAccesible)}`,
+      }
+    : {
+        action: 'editar-monto-cobertura',
+        label: `Editar suma asegurada de ${escapeHtml(nombreAccesible)}`,
+      }
+
+  return `
+    ${bloque}
+    <button type="button" class="cobertura-adicional-card__accion" data-action="${accion.action}" data-linea-id="${lineaId}" aria-label="${accion.label}">${ICON_PENCIL}</button>
+  `
+}
+
+// Skin único de "Coberturas adicionales" (coberturas-adicionales-redesign) — reemplaza el
+// markup crudo que tenían el selector libre y el modo checkbox por una misma card (design.md
+// sección 1-2): icono de COBERTURA_ICONOS, indicador circular en el slot de identidad (mode-
+// specific, ver 2.2/2.3), zona de campo con los 3 estados de campoMontoCobertura(), y un slot
+// final opcional ("Quitar", solo en modo libre). `modifier` es solo un modificador de ancho de
+// columna vía CSS (`--libre`/`--fija`), sin efecto de comportamiento.
+function cardCoberturaAdicional({
+  modifier,
+  locked,
+  editing,
+  lineaId,
+  codigo,
+  sub,
+  checkHtml,
+  mainHtml,
+  trailingHtml,
+  sumaAsegurada,
+  nombreAccesible,
+}) {
+  const icono = COBERTURA_ICONOS[codigo] || ICON_SUBLIMITE_GENERICO
+  const clases = [
+    'cobertura-adicional-card',
+    `cobertura-adicional-card--${modifier}`,
+    locked ? 'is-locked' : '',
+    editing ? 'is-editing' : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+
+  return `
+    <div class="${clases}" ${lineaId ? `data-linea-id="${lineaId}"` : ''}>
+      ${checkHtml}
+      <span class="cobertura-adicional-card__icon">${icono}</span>
+      <div class="cobertura-adicional-card__main">
+        ${mainHtml}
+        <span class="cobertura-adicional-card__sub">${sub}</span>
+      </div>
+      <div class="cobertura-adicional-card__field">
+        ${campoMontoCobertura({ locked, editing, lineaId, sumaAsegurada, nombreAccesible })}
+      </div>
+      ${trailingHtml || ''}
+    </div>
+  `
+}
+
 // Sección "Coberturas adicionales": líneas cobertura/sublímite más allá de Incendio Edificio/
 // Contenido. `catalogoDisponible` ya viene sin las 2 fijas y sin sublimite_cctv (ver
 // coberturasDisponibles()).
@@ -171,30 +275,47 @@ export function renderCoberturasAdicionales(catalogoDisponible) {
   // no duplicar ids en el DOM. Los <label> son visualmente ocultos (.sr-only): el layout ya
   // usa el placeholder como pista visual y agregar 2 labels visibles por fila no entra.
   const filas = state.coberturasAdicionales
-    .map(
-      (l) => `
-    <div class="cobertura-adicional-row" data-linea-id="${l.id}">
-      <label class="sr-only" for="cobertura-linea-${l.id}-codigo">Cobertura de la línea</label>
-      <select class="field-input" id="cobertura-linea-${l.id}-codigo" data-linea-id="${l.id}" data-linea-field="codigo">
-        <option value="">Seleccioná una cobertura…</option>
-        ${opciones(l.codigo)}
-      </select>
-      <label class="sr-only" for="cobertura-linea-${l.id}-suma">Suma asegurada de la línea (Gs.)</label>
-      <input
-        class="field-input"
-        id="cobertura-linea-${l.id}-suma"
-        type="text"
-        inputmode="numeric"
-        data-linea-id="${l.id}"
-        data-linea-field="sumaAsegurada"
-        data-money="true"
-        placeholder="Suma asegurada (Gs.)"
-        value="${fmtGsInput(l.sumaAsegurada)}"
-      />
-      <button type="button" class="btn-outline cobertura-adicional-row__quitar" data-action="remove-cobertura-linea" data-linea-id="${l.id}">Quitar</button>
-    </div>
-  `
-    )
+    .map((l) => {
+      const catalogado = catalogoDisponible.find((c) => c.codigo === l.codigo)
+      const nombreAccesible = catalogado ? catalogado.nombre : 'la cobertura'
+      const locked = !l.codigo
+      const editing = state.coberturasAdicionalesEditando.has(l.id)
+      const sub = l.codigo
+        ? catalogado?.categoria === 'Sublímites'
+          ? 'Sublímite'
+          : 'Cobertura'
+        : 'Elegí una cobertura para cargar la suma asegurada'
+
+      const checkHtml = `
+        <span class="cobertura-adicional-card__check cobertura-adicional-card__check--estatico ${l.codigo ? 'is-filled' : ''}" aria-hidden="true">
+          <span class="cobertura-adicional-card__dot"></span>
+        </span>
+      `
+
+      const mainHtml = `
+        <label class="sr-only" for="cobertura-linea-${l.id}-codigo">Cobertura de la línea</label>
+        <select class="field-input" id="cobertura-linea-${l.id}-codigo" data-linea-id="${l.id}" data-linea-field="codigo">
+          <option value="">Seleccioná una cobertura…</option>
+          ${opciones(l.codigo)}
+        </select>
+      `
+
+      const trailingHtml = `<button type="button" class="btn-outline cobertura-adicional-card__quitar" data-action="remove-cobertura-linea" data-linea-id="${l.id}">Quitar</button>`
+
+      return cardCoberturaAdicional({
+        modifier: 'libre',
+        locked,
+        editing,
+        lineaId: l.id,
+        codigo: l.codigo,
+        sub,
+        checkHtml,
+        mainHtml,
+        trailingHtml,
+        sumaAsegurada: l.sumaAsegurada,
+        nombreAccesible,
+      })
+    })
     .join('')
 
   const quedanCoberturasPorAgregar = quedanCoberturasAdicionalesPorAgregar(catalogoDisponible)
@@ -203,7 +324,7 @@ export function renderCoberturasAdicionales(catalogoDisponible) {
     <div class="coberturas-adicionales" role="group" aria-labelledby="coberturas-adicionales-label">
       <label id="coberturas-adicionales-label">Coberturas adicionales</label>
       ${filas}
-      <button type="button" class="btn-outline" data-action="add-cobertura-linea" ${quedanCoberturasPorAgregar ? '' : 'disabled title="Ya agregaste el máximo de coberturas disponibles"'}>+ Agregar cobertura</button>
+      <button type="button" class="btn-outline${quedanCoberturasPorAgregar ? '' : ' is-locked'}" data-action="add-cobertura-linea" ${quedanCoberturasPorAgregar ? '' : 'disabled title="Ya agregaste el máximo de coberturas disponibles"'}>${quedanCoberturasPorAgregar ? '' : `${ICON_LOCK} `}+ Agregar cobertura</button>
     </div>
   `
 }
@@ -218,31 +339,31 @@ export function renderCoberturasAdicionalesCheckbox(catalogoDisponible) {
     .map((c) => {
       const linea = state.coberturasAdicionales.find((l) => l.codigo === c.codigo)
       const marcado = Boolean(linea)
-      return `
-    <div class="cobertura-adicional-checkbox-row">
-      <label class="field-checkbox-label">
-        <input type="checkbox" data-action="toggle-cobertura-checkbox" data-codigo="${escapeHtml(c.codigo)}" ${marcado ? 'checked' : ''} />
-        ${escapeHtml(c.nombre)}${c.categoria === 'Sublímites' ? ' · Sublímite' : ''}
-      </label>
-      ${
-        marcado
-          ? `
-        <label class="sr-only" for="cobertura-linea-${linea.id}-suma">Suma asegurada de ${escapeHtml(c.nombre)} (Gs.)</label>
-        <input
-          class="field-input cobertura-adicional-checkbox-row__monto"
-          id="cobertura-linea-${linea.id}-suma"
-          type="text"
-          inputmode="numeric"
-          data-linea-id="${linea.id}"
-          data-linea-field="sumaAsegurada"
-          data-money="true"
-          placeholder="Suma asegurada (Gs.)"
-          value="${fmtGsInput(linea.sumaAsegurada)}"
-        />`
-          : ''
-      }
-    </div>
-  `
+      const editing = marcado && state.coberturasAdicionalesEditando.has(linea.id)
+      const sub = c.categoria === 'Sublímites' ? 'Sublímite' : 'Cobertura'
+
+      const checkHtml = `
+        <label class="cobertura-adicional-card__check">
+          <input type="checkbox" class="sr-only" data-action="toggle-cobertura-checkbox" data-codigo="${escapeHtml(c.codigo)}" ${marcado ? 'checked' : ''} />
+          <span class="cobertura-adicional-card__dot" aria-hidden="true"></span>
+          <span class="sr-only">${escapeHtml(c.nombre)}</span>
+        </label>
+      `
+
+      const mainHtml = `<span class="cobertura-adicional-card__nombre">${escapeHtml(c.nombre)}</span>`
+
+      return cardCoberturaAdicional({
+        modifier: 'fija',
+        locked: !marcado,
+        editing,
+        lineaId: linea?.id,
+        codigo: c.codigo,
+        sub,
+        checkHtml,
+        mainHtml,
+        sumaAsegurada: linea?.sumaAsegurada,
+        nombreAccesible: c.nombre,
+      })
     })
     .join('')
 
@@ -425,12 +546,16 @@ export function renderDatosView(ramo) {
               ).join('')}
               ${camposEspecificos}
             </div>
+            <!-- Sin atributo disabled nativo a propósito (solo aria-disabled) — ver el comentario
+                 de .tab-btn[aria-disabled] en cotizador.css: sacarlo del orden de tabulación hacía
+                 que, al llegar acá tabulando, el foco se perdiera y saltara al botón hamburguesa
+                 del sidebar en ≤1024px. El guard real está en el click handler de events.js. -->
             <button
               id="btn-ver-detalle"
               class="btn-primary form-cta"
               data-action="show-tab"
               data-view="result"
-              ${puedeAvanzarADetalle() ? '' : `disabled title="Corregí el capital declarado antes de avanzar — ver el mensaje de alerta" aria-disabled="true" aria-describedby="${MOTIVO_BLOQUEO_ID}"`}
+              ${puedeAvanzarADetalle() ? '' : `title="Corregí el capital declarado antes de avanzar — ver el mensaje de alerta" aria-disabled="true" aria-describedby="${MOTIVO_BLOQUEO_ID}"`}
             >Ver detalle completo →</button>
           </div>
         </div>

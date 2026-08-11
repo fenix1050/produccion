@@ -81,10 +81,18 @@ function preagregarCoberturasPrincipalesFijasMrc() {
 }
 
 // El botón "Ver detalle completo" y la pestaña "Detalle del plan" viven fuera del subárbol que
-// renderLivePanel() actualiza — sin esto quedaban con el estado `disabled` del último render
+// renderLivePanel() actualiza — sin esto quedaban con el estado bloqueado del último render
 // completo (ej. mientras el capital todavía era insuficiente) y nunca se desbloqueaban al llegar
 // a un cálculo válido. Se actualizan acá directo sobre el DOM en vez de un renderApp() completo,
 // para no perder el foco/cursor de los inputs mientras el agente sigue tipeando.
+//
+// No se usa el atributo `disabled` nativo (solo `aria-disabled`, ver aplicarAriaBloqueo) —
+// `disabled` saca el elemento del orden de tabulación, y con la lista de checkboxes de
+// "Coberturas adicionales" (coberturas-adicionales-redesign) justo antes de este botón, tabular
+// hasta acá con el formulario incompleto se quedaba sin nada enfocable, el foco caía a <body> y
+// el siguiente Tab terminaba en el botón hamburguesa del sidebar en pantallas ≤1024px, abriendo
+// el cajón encima del formulario. El guard real que impide la acción con `aria-disabled="true"`
+// está en el click handler de events.js.
 export function syncAvanceButtons() {
   const habilitado = puedeAvanzarADetalle()
   const title = habilitado
@@ -93,14 +101,12 @@ export function syncAvanceButtons() {
 
   const boton = document.getElementById('btn-ver-detalle')
   if (boton) {
-    boton.disabled = !habilitado
     boton.title = title
     aplicarAriaBloqueo(boton, habilitado)
   }
 
   const tab = document.getElementById('tab-detalle-plan')
   if (tab) {
-    tab.disabled = !habilitado
     tab.title = title
     aplicarAriaBloqueo(tab, habilitado)
   }

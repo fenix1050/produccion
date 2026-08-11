@@ -90,7 +90,7 @@ export function renderHeader(ramo) {
             class="tab-btn ${state.view === 'result' ? 'tab-btn--active' : ''}"
             data-action="show-tab"
             data-view="result"
-            ${bloqueado ? `disabled title="Corregí el capital declarado antes de avanzar — ver el mensaje de alerta" aria-disabled="true" aria-describedby="${MOTIVO_BLOQUEO_ID}"` : ''}
+            ${bloqueado ? `title="Corregí el capital declarado antes de avanzar — ver el mensaje de alerta" aria-disabled="true" aria-describedby="${MOTIVO_BLOQUEO_ID}"` : ''}
           >Detalle del plan</button>
         </div>
       `

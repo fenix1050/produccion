@@ -42,27 +42,33 @@ The system MUST apply the same card visual language to free-selector mode withou
 - WHEN the card renders
 - THEN the row shows the same dimmed padlock as an unchecked checkbox row (identical rule, both modes)
 
-### Requirement: Static View Never Shows the Stored Amount
+### Requirement: Static View Shows the Real Amount When Set
 
-The static (non-editing) view of a coverage row MUST always render the placeholder "—" for the amount field, regardless of whether `sumaAsegurada` already holds a value. The real number MUST be visible only while that row is in edit mode (after clicking the pencil). This is a display-only rule: `state.coberturasAdicionales[].sumaAsegurada` MUST retain its real value at all times and continue to flow unchanged into the live preview, the calculation request, and the read-only "Detalle del plan" card.
+The static (non-editing) view of a coverage row MUST render the stored `sumaAsegurada`, formatted with a "Gs." prefix and thousands separators (via `fmtGsConPrefijo`), whenever it holds a value. It MUST render the placeholder "—" only when `sumaAsegurada` is genuinely empty. This requirement supersedes an earlier "always hidden" rule from the same change (re-resolved by Kevin, 2026-08-10, second round — the earlier rule caused a real stored amount to look like an unexpected default when revealed via the pencil). This is still a pure display rule: `state.coberturasAdicionales[].sumaAsegurada` MUST retain its real value at all times and continue to flow unchanged into the live preview, the calculation request, and the read-only "Detalle del plan" card — nothing about persistence or calculation changes.
 
 #### Scenario: Amount already set, row not being edited
 
-- GIVEN a coverage row with `sumaAsegurada` already populated (e.g. from a loaded quote)
+- GIVEN a coverage row with `sumaAsegurada` already populated (e.g. from a loaded quote or a previously confirmed edit)
 - WHEN the row is rendered outside edit mode
-- THEN the amount field shows "—", not the stored formatted value
+- THEN the amount field shows the formatted value (e.g. "Gs. 100.000.000"), not "—"
 
-#### Scenario: Entering edit mode reveals the real value
+#### Scenario: Amount not yet set, row not being edited
+
+- GIVEN a coverage row with an empty `sumaAsegurada`
+- WHEN the row is rendered outside edit mode
+- THEN the amount field shows "—"
+
+#### Scenario: Entering edit mode shows the real value in an editable input
 
 - GIVEN a coverage row with a stored `sumaAsegurada`
 - WHEN the agent clicks the pencil
 - THEN the input switches to edit mode and displays the real, editable value with focus and caret at end
 
-#### Scenario: Preview and Detalle del plan are unaffected by the hiding rule
+#### Scenario: Preview and Detalle del plan match the static view
 
-- GIVEN a coverage row whose static view shows "—"
+- GIVEN a coverage row whose static view shows a formatted amount or "—"
 - WHEN the live preview or "Detalle del plan" is rendered
-- THEN both reflect the actual stored `sumaAsegurada`, never the "—" placeholder
+- THEN both reflect the same actual stored `sumaAsegurada` — there is no longer a hiding discrepancy to reconcile
 
 ### Requirement: Auto-Open Edit Mode When Amount Is Missing
 

@@ -859,6 +859,18 @@ button {
   color: var(--tajy-red-a11y);
 }
 
+/* Antes usaba el atributo disabled nativo, que saca el botón del orden de tabulación —
+   combinado con la lista de 6 checkboxes de "Coberturas adicionales" (coberturas-adicionales-
+   redesign), tabular hasta el final del formulario se quedaba sin nada enfocable, el foco caía
+   a <body> y el siguiente Tab terminaba en el botón hamburguesa del sidebar (invisible en
+   escritorio, real en ≤1024px), abriendo el cajón encima del formulario. aria-disabled mantiene
+   el botón en el orden de tabulación (evita el salto) sin permitir la acción — ver el guard en
+   events.js y aplicarAriaBloqueo()/syncAvanceButtons() en actions.js. */
+.tab-btn[aria-disabled='true'] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .plan-row {
   margin-bottom: 8px;
 }
@@ -1167,7 +1179,8 @@ button {
   cursor: pointer;
 }
 
-.btn-primary:disabled {
+.btn-primary:disabled,
+.btn-primary[aria-disabled='true'] {
   opacity: 0.5;
   cursor: not-allowed;
 }
@@ -1765,26 +1778,12 @@ button {
 
 /* D8 (coberturas-adicionales-redesign): scoped a hijo directo — la card nueva de abajo trae
    <label> anidados (wrapper del checkbox, label sr-only del monto) que no deben heredar esto.
-   Verificado que el único elemento hoy alcanzado por el selector viejo (descendiente) es el
-   <label id="coberturas-adicionales-label"> del título de grupo, que sigue siendo hijo directo
-   — sin cambio visual sobre el markup en uso hasta que la Unit 3 cablee la card nueva. */
+   El único elemento alcanzado por este selector es el <label id="coberturas-adicionales-label">
+   del título de grupo, que sigue siendo hijo directo. */
 .coberturas-adicionales > label {
   font-size: 12px;
   font-weight: 600;
   color: var(--tajy-text-body);
-}
-
-.cobertura-adicional-row {
-  display: grid;
-  grid-template-columns: 1.4fr 1fr auto;
-  gap: 8px;
-  align-items: center;
-}
-
-.cobertura-adicional-row__quitar {
-  padding: 9px 12px;
-  font-size: 11.5px;
-  white-space: nowrap;
 }
 
 .coberturas-adicionales > .btn-outline {
@@ -1794,52 +1793,13 @@ button {
   font-size: 12.5px;
 }
 
-/* Modo checkbox de "Coberturas adicionales" (roles sin puede_agregar_cobertura_libre, ver
-   renderCoberturasAdicionalesCheckbox en cotizar.js) — cada fila es un checkbox y, si está
-   tildado, su input de monto debajo. */
-.cobertura-adicional-checkbox-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 8px 0;
-}
-
-.cobertura-adicional-checkbox-row + .cobertura-adicional-checkbox-row {
-  border-top: 1px solid var(--tajy-border);
-}
-
-.cobertura-adicional-checkbox-row .field-checkbox-label {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.cobertura-adicional-checkbox-row__monto {
-  flex: 0 0 auto;
-  width: 180px;
-}
-
-/* Angosto: el monto ya no entra al lado del label sin apretar demasiado — pasa debajo,
-   mismo criterio que el resto de .field-row en breakpoints chicos. */
-@media (max-width: 480px) {
-  .cobertura-adicional-checkbox-row {
-    flex-wrap: wrap;
-  }
-
-  .cobertura-adicional-checkbox-row__monto {
-    width: 100%;
-  }
-}
-
-/* ---- Card nueva de "Coberturas adicionales" (coberturas-adicionales-redesign, Unit 1/3) ----
-   Reemplaza en Unit 3 tanto .cobertura-adicional-row* (selector libre) como
-   .cobertura-adicional-checkbox-row* (modo checkbox) de arriba con un único skin — ver design.md
-   sección 5. Hasta que render-datos.js emita estas clases (Unit 3), este bloque es CSS muerto:
-   no hay ningún nodo en el DOM que lo use, cero riesgo visual sobre el markup actual. Los
-   bloques viejos de arriba se borran recién en Unit 3 junto con el cutover, no acá. */
+/* ---- Card de "Coberturas adicionales" (coberturas-adicionales-redesign) ----
+   Skin único para el selector libre y el modo checkbox de render-datos.js — ver design.md
+   sección 5. Reemplaza los bloques viejos .cobertura-adicional-row / .cobertura-adicional-checkbox-row
+   (borrados en el cutover de Unit 3, junto con este comentario). */
 .cobertura-adicional-card {
   display: grid;
-  grid-template-columns: auto auto 1fr auto auto;
+  grid-template-columns: auto auto minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 10px;
   padding: 14px 4px;
@@ -1867,6 +1827,14 @@ button {
   border: 2px solid var(--tajy-border);
   border-radius: 50%;
   cursor: pointer;
+}
+
+/* En modo checkbox este círculo es un <label> real (para asociar el input) anidado dentro del
+   <div class="field field--span2"> que envuelve "Coberturas adicionales" — hereda por
+   especificidad ".field label { min-height: 32px }" (pensada para las etiquetas normales de
+   campo) y se estira a óvalo. Se re-scopea con más especificidad para pisarla. */
+.coberturas-adicionales .cobertura-adicional-card__check {
+  min-height: 20px;
 }
 
 .cobertura-adicional-card__check--estatico {
@@ -1938,15 +1906,24 @@ button {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 10px;
-  width: 190px;
+  gap: 8px;
+  width: 214px;
 }
 
+/* Bloque "Suma asegurada" — 152px en estático (etiqueta + valor). En edición (--editando) se
+   ensancha un poco (176px) para que entre el placeholder "Suma asegurada (Gs.)" del input sin
+   cortarse — mismo look que el mockup original (Kevin, 2026-08-11), sin la etiqueta aparte. */
 .cobertura-adicional-card__estatico {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   gap: 2px;
+  width: 152px;
+  min-width: 0;
+}
+
+.cobertura-adicional-card__estatico--editando {
+  width: 176px;
 }
 
 .cobertura-adicional-card__estatico-label {
@@ -1961,6 +1938,10 @@ button {
   font-weight: 700;
   color: var(--tajy-ink);
   font-variant-numeric: tabular-nums;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .cobertura-adicional-card__input {
@@ -1968,8 +1949,16 @@ button {
   border-radius: var(--tajy-radius-sm);
   padding: 9px 10px;
   text-align: right;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--tajy-ink);
   font-variant-numeric: tabular-nums;
   width: 100%;
+  background: #fff;
+}
+
+.cobertura-adicional-card__input::placeholder {
+  color: #b6b6b6;
 }
 
 .cobertura-adicional-card__input:focus {
@@ -2025,11 +2014,7 @@ button {
   .cobertura-adicional-card__field {
     grid-column: 1 / -1;
     width: 100%;
-    justify-content: space-between;
-  }
-
-  .cobertura-adicional-card__input {
-    flex: 1 1 auto;
+    justify-content: flex-start;
   }
 
   .cobertura-adicional-card .cobertura-adicional-card__quitar {
@@ -2055,9 +2040,9 @@ button {
   }
 }
 
-/* Fallback móvil: el layout de .cobertura-card y .cobertura-adicional-row asume espacio
-   horizontal de escritorio (columnas fijas + 1fr); en viewports angostos (ej. 375px) se
-   colapsan a una disposición más vertical para que el nombre/monto no queden apretados. */
+/* Fallback móvil: el layout de .cobertura-card asume espacio horizontal de escritorio
+   (columnas fijas + 1fr); en viewports angostos (ej. 375px) se colapsa a una disposición más
+   vertical para que el nombre/monto no queden apretados. */
 @media (max-width: 480px) {
   .cobertura-card {
     grid-template-columns: 40px 1fr;
@@ -2094,14 +2079,6 @@ button {
     grid-column: 2;
     grid-row: 3;
     text-align: left;
-  }
-
-  .cobertura-adicional-row {
-    grid-template-columns: 1fr;
-  }
-
-  .cobertura-adicional-row__quitar {
-    width: 100%;
   }
 }
 

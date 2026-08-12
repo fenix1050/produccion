@@ -874,7 +874,8 @@ button {
     background-color 160ms ease,
     border-color 160ms ease,
     box-shadow 160ms ease,
-    color 160ms ease;
+    color 160ms ease,
+    transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .tab-btn:not([aria-disabled='true']):hover {
@@ -894,6 +895,7 @@ button {
   background: #fff;
   color: var(--tajy-red-a11y);
   box-shadow: 0 1px 3px rgba(26, 26, 26, 0.14);
+  transform: translateY(-1px);
 }
 
 /* Antes usaba el atributo disabled nativo, que saca el botón del orden de tabulación —

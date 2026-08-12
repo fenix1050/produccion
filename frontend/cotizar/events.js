@@ -21,6 +21,7 @@ import {
   selectPlan,
   emitirCartaOferta,
   cerrarModalProgresoCarta,
+  feedbackAvanceBloqueado,
 } from './actions.js'
 
 // ---------------------------------------------------------------------------
@@ -95,7 +96,10 @@ export function registrarEventos() {
     if (!target) return
     // btn-ver-detalle/tab-detalle-plan usan aria-disabled en vez de disabled nativo (ver
     // syncAvanceButtons en actions.js) — este es el guard real que bloquea la acción.
-    if (target.getAttribute('aria-disabled') === 'true') return
+    if (target.getAttribute('aria-disabled') === 'true') {
+      feedbackAvanceBloqueado(target)
+      return
+    }
 
     const action = target.dataset.action
     if (action === 'logout') cerrarSesion()

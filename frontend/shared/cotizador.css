@@ -141,6 +141,115 @@ button {
   animation: fadeIn 0.2s ease;
 }
 
+/* Transición direccional entre las tabs "Datos" / "Detalle del plan" (renderApp() en
+   render-shell.js envuelve el panel en .view-transition--avanza|--retrocede solo cuando el
+   render fue disparado por un cambio real de state.view, no en cada re-render por tipeo) —
+   se apoya en .panel ya existente en vez de reemplazarlo. */
+@keyframes viewSlideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(18px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes viewSlideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-18px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* display: contents — el wrapper solo existe para que el selector descendiente de abajo
+   alcance a .panel; sin esto es un <div> de bloque metido entre .main (flex) y .datos-view
+   (flex:1, overflow:hidden), lo que rompe la cadena de altura acotada de la que depende el
+   scroll interno de .datos-view__form/.resultado-view (bug real: editar una cotización larga
+   desde historial, ir a "Detalle del plan" y volver perdía el scroll — reportado por Kevin,
+   2026-08-12). display: contents saca el wrapper del árbol de layout sin sacarlo del árbol
+   del DOM, así el selector CSS sigue funcionando pero .datos-view vuelve a ser flex-child
+   directo de .main. */
+.view-transition--avanza,
+.view-transition--retrocede {
+  display: contents;
+}
+
+.view-transition--avanza .panel {
+  animation: viewSlideInRight 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.view-transition--retrocede .panel {
+  animation: viewSlideInLeft 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .view-transition--avanza .panel,
+  .view-transition--retrocede .panel {
+    animation: none;
+  }
+}
+
+/* Feedback al hacer click en un tab/botón bloqueado (aria-disabled) — antes no pasaba nada
+   visible y el agente no entendía por qué no avanzaba (ver feedbackAvanceBloqueado() en
+   actions.js). El motivo real ya se muestra en el panel "Cotización en vivo"
+   (.live-summary__error/.live-summary__pending, id=MOTIVO_BLOQUEO_ID); acá solo se resalta. */
+@keyframes shake {
+  10%,
+  90% {
+    transform: translateX(-1px);
+  }
+
+  20%,
+  80% {
+    transform: translateX(2px);
+  }
+
+  30%,
+  50%,
+  70% {
+    transform: translateX(-4px);
+  }
+
+  40%,
+  60% {
+    transform: translateX(4px);
+  }
+}
+
+.shake {
+  animation: shake 0.36s ease;
+}
+
+.motivo-bloqueo--flash {
+  animation: motivoBloqueoFlash 0.9s ease;
+}
+
+@keyframes motivoBloqueoFlash {
+  0%,
+  100% {
+    box-shadow: none;
+  }
+
+  25% {
+    box-shadow: 0 0 0 3px var(--tajy-red-soft);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shake,
+  .motivo-bloqueo--flash {
+    animation: none;
+  }
+}
+
 /* ---- App shell ---- */
 
 .app-shell {

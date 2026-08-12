@@ -11,7 +11,7 @@ import {
   RAMOS_CON_AJUSTES,
   ICON_TAG,
   RAMOS_CON_CALCULO,
-  SUBLIMITE_ICONOS,
+  COBERTURA_ICONOS,
 } from '../constants.js'
 import {
   franquiciaValorPorDefecto,
@@ -41,8 +41,9 @@ export function renderFranquiciaSelect(cobertura) {
   ).join('')
 
   return `
-    <div class="cobertura-row__franquicia-label">Franquicia</div>
-    <select class="cobertura-row__franquicia" data-franquicia-cobertura="${cobertura.codigo}" aria-label="Franquicia">${opciones}</select>
+    <label class="cobertura-row__franquicia-label">Franquicia
+      <select class="cobertura-row__franquicia" data-franquicia-cobertura="${cobertura.codigo}" aria-label="Franquicia">${opciones}</select>
+    </label>
   `
 }
 
@@ -294,7 +295,7 @@ function renderResultadoCompleto(ramo, plan, planLabel) {
               <button class="link-button" data-action="show-tab" data-view="form">${ICON_ARROW_LEFT_ROUND} Cambiar datos</button>
             </div>
             <div class="coberturas-section">
-              <div class="coberturas-section__title">Coberturas incluidas</div>
+              <h2 class="coberturas-section__title">Coberturas incluidas</h2>
               <div class="coberturas-lista">
                 ${[...coberturas]
                   // Los sub-límites fijos del plan no van en este listado de "Coberturas incluidas"
@@ -306,14 +307,13 @@ function renderResultadoCompleto(ramo, plan, planLabel) {
                       (b.tipo_aplicacion === 'sublimite' ? 1 : 0)
                   )
                   .map((c) => {
-                    const esSublimite = c.tipo_aplicacion === 'sublimite'
                     return `
                     <div class="cobertura-card">
-                      <div class="cobertura-card__status ${esSublimite ? 'cobertura-card__status--warning' : ''}">${esSublimite ? '!' : '✓'}</div>
-                      <div class="cobertura-card__icon">${SUBLIMITE_ICONOS[c.codigo] || ICON_SUBLIMITE_GENERICO}</div>
+                      <div class="cobertura-card__status" aria-hidden="true">✓</div>
+                      <div class="cobertura-card__icon" aria-hidden="true">${COBERTURA_ICONOS[c.codigo] || ICON_SUBLIMITE_GENERICO}</div>
                       <div class="cobertura-card__main">
-                        <div class="cobertura-card__name">${escapeHtml(c.nombre)}</div>
-                        ${renderFranquiciaSelect(c)}
+                        <h3 class="cobertura-card__name">${escapeHtml(c.nombre)}</h3>
+                        <div class="cobertura-card__franquicia">${renderFranquiciaSelect(c)}</div>
                       </div>
                       <div class="cobertura-card__monto">
                         <span>Suma asegurada</span>

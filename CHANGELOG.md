@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.41](https://github.com/fenix1050/produccion/compare/v0.1.40...v0.1.41) (2026-08-12)
+
+
+### Bug Fixes
+
+* **cotizador:** reorganizar y ajustar espaciados de MRC ([#251](https://github.com/fenix1050/produccion/issues/251)) ([48425da](https://github.com/fenix1050/produccion/commit/48425da3252b3928e9aa40734b2d748ecc465574))
+* scroll del cotizador MRC y estilo de cláusula en Carta Oferta ([#253](https://github.com/fenix1050/produccion/issues/253)) ([0bdb9ed](https://github.com/fenix1050/produccion/commit/0bdb9ed99cc35c01c604e6fbb3e806f4f3777cb8))
+
 ## [0.1.40](https://github.com/fenix1050/produccion/compare/v0.1.39...v0.1.40) (2026-08-12)
 
 

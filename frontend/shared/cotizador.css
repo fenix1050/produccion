@@ -1118,6 +1118,10 @@ button {
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
 }
 
+.datos-view__form-inner--coberturas {
+  margin-top: 16px;
+}
+
 .exclusiones-card {
   width: 320px;
   flex-shrink: 0;
@@ -1165,7 +1169,7 @@ button {
 }
 
 .datos-view__form-body {
-  padding: 12px 24px;
+  padding: 4px 24px 12px;
 }
 
 .form-heading__label {
@@ -1200,6 +1204,14 @@ button {
   font-weight: 600;
   color: var(--tajy-text-body);
   min-height: 32px;
+}
+
+/* Las etiquetas de "Datos del asegurado"/coberturas son de una sola línea a los anchos
+   soportados (no hay riesgo de desalinear inputs entre columnas por wrap a 2 líneas como en
+   otras pantallas que reusan .field), así que acá no necesitan la reserva de 32px pensada para
+   ese caso — dejaba un hueco vacío grande entre la etiqueta y el input (Kevin, 2026-08-12). */
+.datos-view .field label {
+  min-height: 18px;
 }
 
 .field-checkbox-label {
@@ -1289,7 +1301,11 @@ button {
   border-radius: var(--tajy-radius-xl);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
   margin: 8px 36px 16px 0;
-  padding: 16px 24px;
+  padding: 14px 24px;
+  /* auto (no scroll) a propósito: no hay overflow real la mayoría de las veces, pero cuando el
+     contenido no entra (viewport bajo, muchas coberturas/sublímites) este panel necesita poder
+     scrollear internamente sin tocar .app-shell — ver el comentario de .sidebar sobre por qué
+     el documento entero NO debe ser el scroll container (rompía el foco por teclado). */
   overflow: auto;
 }
 
@@ -1302,7 +1318,7 @@ button {
   letter-spacing: 0.06em;
   color: var(--tajy-text-muted);
   font-weight: 700;
-  margin-bottom: 14px;
+  margin-bottom: 10px;
 }
 
 .live-summary__dot {
@@ -1361,7 +1377,7 @@ button {
 }
 
 .forma-pago-row {
-  margin-bottom: 18px;
+  margin-bottom: 14px;
 }
 
 .forma-pago-row__label {
@@ -1418,13 +1434,13 @@ button {
 .live-summary__divider {
   height: 1px;
   background: var(--tajy-border-light);
-  margin: 20px 0;
+  margin: 14px 0;
 }
 
 .live-summary__rows {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   font-size: 12.5px;
 }
 
@@ -1447,7 +1463,7 @@ button {
 
 .live-summary__rows--dashed .live-summary__row {
   border-bottom: 1px dashed var(--tajy-border-light);
-  padding-bottom: 8px;
+  padding-bottom: 6px;
 }
 
 .live-summary__rows--dashed .live-summary__row:last-child {
@@ -1473,7 +1489,7 @@ button {
   /* #bbb sobre blanco no llegaba a 3:1 (falla WCAG AA). Reusa el mismo gris
      "muted" ya corregido en el token de arriba, no un color nuevo. */
   color: var(--tajy-text-muted);
-  margin-top: 18px;
+  margin-top: 12px;
   line-height: 1.5;
 }
 
@@ -1716,11 +1732,10 @@ button {
 
 .cobertura-card {
   display: grid;
-  grid-template-columns: 19px 38px 1fr auto;
-  column-gap: 16px;
-  row-gap: 6px;
+  grid-template-columns: 19px 38px minmax(0, 1fr) minmax(170px, auto);
+  column-gap: 14px;
   align-items: center;
-  padding: 14px 24px;
+  padding: 12px 18px;
 }
 
 .coberturas-lista .cobertura-card:not(:last-child) {
@@ -1728,8 +1743,6 @@ button {
 }
 
 .cobertura-card__status {
-  grid-column: 1;
-  grid-row: 1 / 4;
   width: 19px;
   height: 19px;
   border-radius: 50%;
@@ -1740,17 +1753,9 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  align-self: center;
-}
-
-.cobertura-card__status--warning {
-  background: var(--tajy-pink);
-  color: var(--tajy-red-a11y);
 }
 
 .cobertura-card__icon {
-  grid-column: 2;
-  grid-row: 1 / 4;
   width: 38px;
   height: 38px;
   border-radius: var(--tajy-radius-md);
@@ -1759,30 +1764,29 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  align-self: center;
 }
 
 .cobertura-card__main {
-  display: contents;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  min-width: 0;
 }
 
 .cobertura-card__name {
-  grid-column: 3;
-  grid-row: 1;
+  margin: 0;
   font-weight: 700;
   font-size: 15px;
   color: var(--tajy-ink);
 }
 
 .cobertura-card__monto {
-  display: contents;
+  align-self: start;
+  min-width: 0;
+  text-align: right;
 }
 
 .cobertura-card__monto span {
-  grid-column: 4;
-  grid-row: 2;
-  align-self: center;
-  text-align: right;
   white-space: nowrap;
   font-size: 11px;
   font-weight: 700;
@@ -1792,10 +1796,7 @@ button {
 }
 
 .cobertura-card__monto div {
-  grid-column: 4;
-  grid-row: 3;
-  align-self: center;
-  text-align: right;
+  margin-top: 12px;
   white-space: nowrap;
   font-family: var(--tajy-font-mono);
   font-size: 16px;
@@ -2154,52 +2155,53 @@ button {
   }
 }
 
-/* Fallback móvil: el layout de .cobertura-card asume espacio horizontal de escritorio
-   (columnas fijas + 1fr); en viewports angostos (ej. 375px) se colapsa a una disposición más
-   vertical para que el nombre/monto no queden apretados. */
+/* Fallback móvil: mantiene la jerarquía de la fila, pero apila el selector y el monto para que
+   no compitan con el nombre de la cobertura en viewports angostos. */
 @media (max-width: 480px) {
   .cobertura-card {
-    grid-template-columns: 40px 1fr;
-    grid-template-rows: auto auto auto;
+    grid-template-columns: 19px 36px minmax(0, 1fr);
+    grid-template-areas:
+      'status icon main'
+      '. monto monto';
     column-gap: 12px;
-    row-gap: 4px;
+    row-gap: 10px;
     padding: 12px 16px;
   }
 
   .cobertura-card__status {
-    grid-column: 1;
-    grid-row: 1;
+    grid-area: status;
   }
 
   .cobertura-card__icon {
-    grid-column: 1;
-    grid-row: 2 / 4;
+    grid-area: icon;
     width: 32px;
     height: 32px;
   }
 
-  .cobertura-card__name {
-    grid-column: 2;
-    grid-row: 1;
+  .cobertura-card__main {
+    grid-area: main;
+    grid-template-columns: 1fr;
+    gap: 8px;
   }
 
-  .cobertura-card__monto span {
-    grid-column: 2;
-    grid-row: 2;
+  .cobertura-card__monto {
+    grid-area: monto;
     text-align: left;
   }
 
   .cobertura-card__monto div {
-    grid-column: 2;
-    grid-row: 3;
-    text-align: left;
+    margin-top: 4px;
+  }
+
+  .cobertura-card__franquicia {
+    width: 100%;
   }
 }
 
 .cobertura-row__franquicia-label {
-  grid-column: 3;
-  grid-row: 2;
-  align-self: center;
+  display: flex;
+  align-items: center;
+  gap: 10px;
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
@@ -2208,24 +2210,39 @@ button {
 }
 
 .cobertura-row__franquicia {
-  grid-column: 3;
-  grid-row: 3;
+  display: block;
+  flex: 0 1 280px;
   font-size: 13.5px;
   font-weight: 600;
   color: var(--tajy-text-dark);
-  border: 1.5px solid var(--tajy-border);
+  border: 1px solid var(--tajy-border);
   border-radius: var(--tajy-radius-sm);
-  padding: 9px 12px;
+  padding: 6px 10px;
   background: #fff;
   cursor: pointer;
-  width: 100%;
-  max-width: 320px;
+  width: 280px;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .cobertura-row__franquicia:hover,
 .cobertura-row__franquicia:focus {
   border-color: var(--tajy-red);
   outline: none;
+}
+
+@media (max-width: 480px) {
+  .cobertura-row__franquicia-label {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .cobertura-row__franquicia {
+    flex-basis: auto;
+    width: 100%;
+    max-width: none;
+  }
 }
 
 .resumen-sistema {

@@ -321,7 +321,6 @@ export function renderCoberturasAdicionales(catalogoDisponible) {
 
   return `
     <div class="coberturas-adicionales" role="group" aria-labelledby="coberturas-adicionales-label">
-      <label id="coberturas-adicionales-label">Coberturas adicionales</label>
       ${filas}
       <button type="button" class="btn-outline${quedanCoberturasPorAgregar ? '' : ' is-locked'}" data-action="add-cobertura-linea" ${quedanCoberturasPorAgregar ? '' : 'disabled title="Ya agregaste el máximo de coberturas disponibles"'}>${quedanCoberturasPorAgregar ? '' : `${ICON_LOCK} `}+ Agregar cobertura</button>
     </div>
@@ -368,24 +367,26 @@ export function renderCoberturasAdicionalesCheckbox(catalogoDisponible) {
 
   return `
     <div class="coberturas-adicionales coberturas-adicionales--checkbox" role="group" aria-labelledby="coberturas-adicionales-label">
-      <label id="coberturas-adicionales-label">Coberturas adicionales</label>
       ${filas || '<div class="empty-state__subtitle">No hay coberturas adicionales disponibles para este plan.</div>'}
     </div>
   `
 }
 
 function camposEspecificosMrc() {
+  return camposEdificioContenido()
+}
+
+// "Coberturas adicionales" de MRC en su propia card, separada de "Datos del asegurado"
+// (Kevin, 2026-08-12: mezclar ambas bajo el mismo heading confundía al escanear el formulario).
+function coberturasAdicionalesMrc() {
   const puedeAgregarLibre = auth.getUsuario()?.puede_agregar_cobertura_libre !== false
-  return `
-    ${camposEdificioContenido()}
-    <div class="field field--span2">
-      ${
-        puedeAgregarLibre
-          ? renderCoberturasAdicionales(coberturasDisponibles())
-          : renderCoberturasAdicionalesCheckbox(coberturasDisponibles())
-      }
-    </div>
-  `
+  return puedeAgregarLibre
+    ? renderCoberturasAdicionales(coberturasDisponibles())
+    : renderCoberturasAdicionalesCheckbox(coberturasDisponibles())
+}
+
+export function seccionCoberturasAdicionales(ramo) {
+  return ramo.nombre === 'mrc' ? coberturasAdicionalesMrc() : ''
 }
 
 function camposEspecificosIncendio(plan) {
@@ -525,6 +526,22 @@ export function renderDatosView(ramo) {
     ? camposEspecificosParaRamo(ramo, plan)
     : camposEspecificosParaRamo({ nombre: null }, null)
 
+  const coberturasAdicionales = esCalculable ? seccionCoberturasAdicionales(ramo) : ''
+
+  // Sin atributo disabled nativo a propósito (solo aria-disabled) — ver el comentario
+  // de .tab-btn[aria-disabled] en cotizador.css: sacarlo del orden de tabulación hacía
+  // que, al llegar acá tabulando, el foco se perdiera y saltara al botón hamburguesa
+  // del sidebar en ≤1024px. El guard real está en el click handler de events.js.
+  const botonVerDetalle = `
+    <button
+      id="btn-ver-detalle"
+      class="btn-primary form-cta"
+      data-action="show-tab"
+      data-view="result"
+      ${puedeAvanzarADetalle() ? '' : `title="Corregí el capital declarado antes de avanzar — ver el mensaje de alerta" aria-disabled="true" aria-describedby="${MOTIVO_BLOQUEO_ID}"`}
+    >Ver detalle completo →</button>
+  `
+
   return `
     <div class="datos-view panel">
       <div class="datos-view__form">
@@ -545,19 +562,26 @@ export function renderDatosView(ramo) {
               ).join('')}
               ${camposEspecificos}
             </div>
-            <!-- Sin atributo disabled nativo a propósito (solo aria-disabled) — ver el comentario
-                 de .tab-btn[aria-disabled] en cotizador.css: sacarlo del orden de tabulación hacía
-                 que, al llegar acá tabulando, el foco se perdiera y saltara al botón hamburguesa
-                 del sidebar en ≤1024px. El guard real está en el click handler de events.js. -->
-            <button
-              id="btn-ver-detalle"
-              class="btn-primary form-cta"
-              data-action="show-tab"
-              data-view="result"
-              ${puedeAvanzarADetalle() ? '' : `title="Corregí el capital declarado antes de avanzar — ver el mensaje de alerta" aria-disabled="true" aria-describedby="${MOTIVO_BLOQUEO_ID}"`}
-            >Ver detalle completo →</button>
+            ${coberturasAdicionales ? '' : botonVerDetalle}
           </div>
         </div>
+        ${
+          coberturasAdicionales
+            ? `
+        <div class="datos-view__form-inner datos-view__form-inner--coberturas">
+          <div class="form-heading">
+            <div class="form-heading__label" id="coberturas-adicionales-label">Coberturas adicionales</div>
+          </div>
+          <div class="datos-view__form-body">
+            <div class="field-grid">
+              <div class="field field--span2">${coberturasAdicionales}</div>
+            </div>
+            ${botonVerDetalle}
+          </div>
+        </div>
+        `
+            : ''
+        }
       </div>
       <div class="live-summary" id="live-summary">${renderLivePanelContent()}</div>
     </div>

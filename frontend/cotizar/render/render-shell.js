@@ -129,6 +129,28 @@ export function renderRamoNoDisponible(ramo) {
 // Render
 // ---------------------------------------------------------------------------
 
+// Paneles con scroll propio (`.datos-view__form` y `.live-summary`, ver comentario de
+// cotizador.css línea ~2400) que `app.innerHTML = ...` recrea desde cero en cada render: sin
+// esto, el navegador los repinta con scrollTop 0 y cualquier renderApp() disparado desde una
+// interacción dentro de esos paneles (ej. blur al aceptar la suma asegurada de una cobertura
+// adicional) manda al agente de vuelta arriba del todo.
+const SELECTORES_SCROLL_PRESERVADO = ['.datos-view__form', '.live-summary']
+
+function capturarScrollPaneles() {
+  return SELECTORES_SCROLL_PRESERVADO.map((selector) => ({
+    selector,
+    top: app.querySelector(selector)?.scrollTop ?? null,
+  }))
+}
+
+function restaurarScrollPaneles(scrolls) {
+  for (const { selector, top } of scrolls) {
+    if (top === null) continue
+    const el = app.querySelector(selector)
+    if (el) el.scrollTop = top
+  }
+}
+
 export function renderApp() {
   const ramo = state.ramoId ? ramoInfo(state.ramoId) : null
 
@@ -143,6 +165,8 @@ export function renderApp() {
     contenido = renderResultadoView(ramo)
   }
 
+  const scrolls = capturarScrollPaneles()
+
   app.innerHTML = `
     ${renderTopbar(ramo)}
     <div class="app-body">
@@ -156,6 +180,8 @@ export function renderApp() {
     </div>
     ${renderModalProgresoCarta()}
   `
+
+  restaurarScrollPaneles(scrolls)
 }
 
 // ---------------------------------------------------------------------------

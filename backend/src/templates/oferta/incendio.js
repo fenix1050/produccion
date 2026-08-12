@@ -150,8 +150,8 @@ export function buildIncendioOfertaPages({ cotizacion, plan }) {
       Este presupuesto es válido por ${cotizacion.vigencia_dias || 30} días. <br>
       Esta cotización no implica aceptación del riesgo, ni el consentimiento de cobertura alguna por parte del
 Asegurado. <br>
-      La compañía se reserva el derecho de realizar la inspección para el seguro, y la exigencia de medidas
-de seguridad y adecuaciones que surjan de la misma.
+      <strong style="color:#d8132e;">La compañía se reserva el derecho de realizar la inspección para el seguro, y la exigencia de medidas
+de seguridad y adecuaciones que surjan de la misma.</strong>
     </div>
     <div class="pie-agente">
       <div class="agente-linea">

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.40](https://github.com/fenix1050/produccion/compare/v0.1.39...v0.1.40) (2026-08-12)
+
+
+### Bug Fixes
+
+* **cotizador:** quitar textos redundantes del panel de cotización en vivo ([#249](https://github.com/fenix1050/produccion/issues/249)) ([066d833](https://github.com/fenix1050/produccion/commit/066d833ad465eacbeda760163c6c063802e10183))
+
 ## [0.1.39](https://github.com/fenix1050/produccion/compare/v0.1.38...v0.1.39) (2026-08-11)
 
 

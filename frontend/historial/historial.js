@@ -485,29 +485,31 @@ function renderCuerpoModalDetalle(m) {
         const formasHtml = (v.cotizacion_plan_pago ?? [])
           .map(
             (fp) => `
-        <tr>
-          <td>${escapeHtml(fp.formas_pago?.nombre_display ?? '—')}</td>
-          <td>${fmtDetalle(fp.premio_total)}</td>
-          <td>${fmtDetalle(fp.monto_inicial)}</td>
-          <td>${fmtDetalle(fp.monto_cuota)}</td>
-        </tr>
+        <article class="historial-detalle__pago">
+          <div class="historial-detalle__pago-nombre">${escapeHtml(fp.formas_pago?.nombre_display ?? '—')}</div>
+          <dl class="historial-detalle__pago-montos">
+            <div><dt>Premio total</dt><dd>${fmtDetalle(fp.premio_total)}</dd></div>
+            <div><dt>Inicial</dt><dd>${fmtDetalle(fp.monto_inicial)}</dd></div>
+            <div><dt>Cuota</dt><dd>${fmtDetalle(fp.monto_cuota)}</dd></div>
+          </dl>
+        </article>
       `
           )
           .join('')
         return `
-        <div class="historial-detalle__grupo">
-          <div class="historial-detalle__grupo-titulo">
-            ${v.tipo_franquicia === 'con_franquicia' ? 'Con franquicia' : 'Sin franquicia'} — Prima ${fmtDetalle(v.prima)}
+        <section class="historial-detalle__variante">
+          <div class="historial-detalle__variante-cabecera">
+            <div>
+              <div class="historial-detalle__eyebrow">Alternativa</div>
+              <h3>${v.tipo_franquicia === 'con_franquicia' ? 'Con franquicia' : 'Sin franquicia'}</h3>
+            </div>
+            <div class="historial-detalle__prima">
+              <span>Prima</span>
+              <strong>${fmtDetalle(v.prima)}</strong>
+            </div>
           </div>
-          <div class="historial-detalle__tabla-scroll">
-            <table class="admin-table admin-table--nested">
-              <thead>
-                <tr><th>Forma de pago</th><th>Premio total</th><th>Inicial</th><th>Cuota</th></tr>
-              </thead>
-              <tbody>${formasHtml || '<tr><td colspan="4">Sin planes de pago cargados.</td></tr>'}</tbody>
-            </table>
-          </div>
-        </div>
+          <div class="historial-detalle__pagos">${formasHtml || '<p class="historial-detalle__vacio">Sin planes de pago cargados.</p>'}</div>
+        </section>
       `
       })
       .join('')
@@ -515,40 +517,52 @@ function renderCuerpoModalDetalle(m) {
     const coberturasHtml = (d.cotizacion_coberturas ?? [])
       .map(
         (c) => `
-      <tr>
-        <td>${escapeHtml(c.nombre_snapshot)}</td>
-        <td>${c.monto != null ? fmtDetalle(c.monto) : '—'}</td>
-        <td>${c.franquicia != null ? fmtDetalle(c.franquicia) : '—'}</td>
-      </tr>
+      <article class="historial-detalle__cobertura">
+        <h3>${escapeHtml(c.nombre_snapshot)}</h3>
+        <dl>
+          <div><dt>Monto asegurado</dt><dd>${c.monto != null ? fmtDetalle(c.monto) : '—'}</dd></div>
+          <div><dt>Franquicia</dt><dd>${c.franquicia != null ? fmtDetalle(c.franquicia) : '—'}</dd></div>
+        </dl>
+      </article>
     `
       )
       .join('')
 
     cuerpo = `
-      <div class="historial-detalle__grupo">
-        <div class="historial-detalle__grupo-titulo">Datos generales</div>
-        <div>Cliente: ${escapeHtml(d.cliente_nombre ?? '—')}</div>
-        <div>Contacto: ${escapeHtml(d.cliente_contacto ?? '—')}</div>
-        <div>Fecha: ${fmtFecha(d.created_at)}</div>
-        <div>Estado: ${escapeHtml(d.estado ?? '—')}</div>
-        <div>Moneda: ${escapeHtml(monedaDetalle)}</div>
-      </div>
-      ${variantesHtml}
+      <div class="historial-detalle">
+        <section class="historial-detalle__resumen" aria-labelledby="historial-detalle-resumen">
+          <div class="historial-detalle__resumen-cliente">
+            <div class="historial-detalle__eyebrow">Cliente</div>
+            <h2 id="historial-detalle-resumen">${escapeHtml(d.cliente_nombre ?? '—')}</h2>
+            <p>${escapeHtml(d.cliente_contacto ?? 'Sin contacto registrado')}</p>
+          </div>
+          <dl class="historial-detalle__datos">
+            <div><dt>Fecha</dt><dd>${fmtFecha(d.created_at)}</dd></div>
+            <div><dt>Estado</dt><dd>${crearBadge(d.estado ?? '—', ESTADO_BADGE[d.estado] ?? 'neutral')}</dd></div>
+            <div><dt>Moneda</dt><dd>${escapeHtml(monedaDetalle)}</dd></div>
+          </dl>
+        </section>
+        <section class="historial-detalle__seccion" aria-labelledby="historial-detalle-pagos">
+          <div class="historial-detalle__seccion-cabecera">
+            <div class="historial-detalle__eyebrow">Condiciones</div>
+            <h2 id="historial-detalle-pagos">Formas de pago</h2>
+          </div>
+          ${variantesHtml || '<p class="historial-detalle__vacio">Sin variantes de cotización cargadas.</p>'}
+        </section>
       ${
         coberturasHtml
           ? `
-        <div class="historial-detalle__grupo">
-          <div class="historial-detalle__grupo-titulo">Coberturas</div>
-          <div class="historial-detalle__tabla-scroll">
-            <table class="admin-table admin-table--nested">
-              <thead><tr><th>Cobertura</th><th>Monto</th><th>Franquicia</th></tr></thead>
-              <tbody>${coberturasHtml}</tbody>
-            </table>
+        <section class="historial-detalle__seccion" aria-labelledby="historial-detalle-coberturas">
+          <div class="historial-detalle__seccion-cabecera">
+            <div class="historial-detalle__eyebrow">Protección</div>
+            <h2 id="historial-detalle-coberturas">Coberturas</h2>
           </div>
-        </div>
+          <div class="historial-detalle__coberturas">${coberturasHtml}</div>
+        </section>
       `
           : ''
       }
+      </div>
     `
   }
 
@@ -560,7 +574,7 @@ function renderModalDetalle() {
   const row = m.row
 
   return `
-    <div class="admin-modal-backdrop" data-action="cerrar-modal-backdrop">
+    <div class="admin-modal-backdrop historial-modal-detalle-backdrop" data-action="cerrar-modal-backdrop">
       <div class="admin-modal historial-modal-detalle" data-stop-propagation="true" role="dialog" aria-modal="true" aria-labelledby="historial-modal-title">
         <div class="admin-modal__title" id="historial-modal-title">Cotización ${escapeHtml(row?.numero_cotizacion ?? '')}</div>
         ${renderCuerpoModalDetalle(m)}

@@ -28,6 +28,23 @@ export function mostrarBanner(tipo, texto) {
   renderApp()
 }
 
+// Click en un tab/botón bloqueado (aria-disabled) — el guard real vive en events.js, que
+// ahora llama esto en vez de ignorar el click en silencio. Sacude el control y resalta el
+// motivo real, que ya vive en el panel "Cotización en vivo" (ver MOTIVO_BLOQUEO_ID) pero es
+// fácil de pasar por alto porque queda fuera del tab que el agente está mirando.
+export function feedbackAvanceBloqueado(target) {
+  target.classList.remove('shake')
+  void target.offsetWidth
+  target.classList.add('shake')
+
+  const motivo = document.getElementById(MOTIVO_BLOQUEO_ID)
+  if (!motivo) return
+  motivo.classList.remove('motivo-bloqueo--flash')
+  void motivo.offsetWidth
+  motivo.classList.add('motivo-bloqueo--flash')
+  motivo.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+}
+
 export function setView(view) {
   state.view = view
   if (view === 'result') state.planBloqueado = true

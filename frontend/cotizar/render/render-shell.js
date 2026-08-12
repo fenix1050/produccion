@@ -136,16 +136,33 @@ export function renderRamoNoDisponible(ramo) {
 // adicional) manda al agente de vuelta arriba del todo.
 const SELECTORES_SCROLL_PRESERVADO = ['.datos-view__form', '.live-summary']
 
+// Recuerda la última tab renderada para distinguir "cambié de tab" (anima con slide
+// direccional) de "renderApp() se disparó por otra razón dentro de la misma tab" (ej. tildar
+// una cobertura adicional) — en ese segundo caso .panel sigue con su fadeIn de siempre, sin
+// slide. Vive fuera de `state` a propósito: es un detalle de presentación de esta transición,
+// no algo que el resto de la app necesite leer ni persistir.
+let vistaPrevia = null
+
+// Último scrollTop conocido de cada panel, sobrevive aunque el panel no exista en el DOM del
+// render actual (ej. mientras se ve "Detalle del plan", .datos-view__form no existe). Antes
+// capturarScrollPaneles() solo guardaba lo que encontraba en el render inmediatamente
+// anterior, así que el scroll sobrevivía un re-render dentro de la misma tab (ej. tildar una
+// cobertura adicional) pero se perdía en un viaje de ida y vuelta entre tabs — bug real en una
+// cotización larga editada desde historial, reportado por Kevin, 2026-08-12. Este objeto es el
+// cache persistente que le falta a ese caso.
+const scrollsConocidos = {}
+
 function capturarScrollPaneles() {
-  return SELECTORES_SCROLL_PRESERVADO.map((selector) => ({
-    selector,
-    top: app.querySelector(selector)?.scrollTop ?? null,
-  }))
+  for (const selector of SELECTORES_SCROLL_PRESERVADO) {
+    const el = app.querySelector(selector)
+    if (el) scrollsConocidos[selector] = el.scrollTop
+  }
 }
 
-function restaurarScrollPaneles(scrolls) {
-  for (const { selector, top } of scrolls) {
-    if (top === null) continue
+function restaurarScrollPaneles() {
+  for (const selector of SELECTORES_SCROLL_PRESERVADO) {
+    const top = scrollsConocidos[selector]
+    if (top === undefined) continue
     const el = app.querySelector(selector)
     if (el) el.scrollTop = top
   }
@@ -159,13 +176,19 @@ export function renderApp() {
     contenido = renderEmptyState()
   } else if (ramo.estado === 'pausa' || ramo.estado === 'proximamente') {
     contenido = renderRamoNoDisponible(ramo)
-  } else if (state.view === 'form') {
-    contenido = renderDatosView(ramo)
   } else {
-    contenido = renderResultadoView(ramo)
+    const claseTransicion =
+      vistaPrevia && vistaPrevia !== state.view
+        ? state.view === 'result'
+          ? 'view-transition--avanza'
+          : 'view-transition--retrocede'
+        : ''
+    const vista = state.view === 'form' ? renderDatosView(ramo) : renderResultadoView(ramo)
+    contenido = claseTransicion ? `<div class="${claseTransicion}">${vista}</div>` : vista
   }
+  vistaPrevia = ramo ? state.view : null
 
-  const scrolls = capturarScrollPaneles()
+  capturarScrollPaneles()
 
   app.innerHTML = `
     ${renderTopbar(ramo)}
@@ -181,7 +204,7 @@ export function renderApp() {
     ${renderModalProgresoCarta()}
   `
 
-  restaurarScrollPaneles(scrolls)
+  restaurarScrollPaneles()
 }
 
 // ---------------------------------------------------------------------------

@@ -79,12 +79,11 @@ function renderLivePanelBody() {
     <div class="live-summary__sub">${
       fp.cuota_sin_iva
         ? `${unidad} / mes · ${fmtMonto(fp.cuota_sin_iva, moneda)} ${unidad} cuota sin IVA`
-        : `${unidad} · ${fmtMonto(fp.premio_sin_iva, moneda)} ${unidad} premio total sin IVA`
+        : ''
     }</div>
     <div class="live-summary__divider"></div>
     ${renderCuotasSelect()}
     <div class="live-summary__rows">
-      <div class="live-summary__row"><span>Forma de pago</span><span>${escapeHtml(fp.nombre_display)}</span></div>
       <div class="live-summary__row"><span>Cuotas</span><span>Inicial + ${fp.cantidad_cuotas} cuotas</span></div>
       <div class="live-summary__row"><span>Coberturas</span><span>${coberturasCount} incluidas</span></div>
       ${capitalTotal > 0 ? `<div class="live-summary__row"><span>Capital total asegurado</span><span>${fmtMonto(capitalTotal, moneda)} ${unidad}</span></div>` : ''}

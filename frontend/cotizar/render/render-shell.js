@@ -1,12 +1,7 @@
 import { escapeHtml, renderBanner } from '../../shared/dom.js'
 import { renderSidebarFooter, renderTopbar as renderTopbarShell } from '../../shared/sidebar.js'
 import { state, app } from '../state.js'
-import {
-  RAMOS_UI,
-  RAMO_ICONOS,
-  MOTIVO_BLOQUEO_ID,
-  PASOS_EMISION_CARTA,
-} from '../constants.js'
+import { RAMOS_UI, RAMO_ICONOS, MOTIVO_BLOQUEO_ID, PASOS_EMISION_CARTA } from '../constants.js'
 import { puedeAvanzarADetalle } from '../domain-rules.js'
 import { renderResultadoView } from './render-detalle-plan.js'
 import { renderDatosView } from './render-datos.js'

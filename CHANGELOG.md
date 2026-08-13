@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.43](https://github.com/fenix1050/produccion/compare/v0.1.42...v0.1.43) (2026-08-13)
+
+
+### Features
+
+* tema oscuro completo del cotizador ([#257](https://github.com/fenix1050/produccion/issues/257)) ([b75cbb2](https://github.com/fenix1050/produccion/commit/b75cbb257cdf370095cdf9f71b260686476f0268))
+
 ## [0.1.42](https://github.com/fenix1050/produccion/compare/v0.1.41...v0.1.42) (2026-08-13)
 
 

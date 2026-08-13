@@ -132,7 +132,7 @@ export function renderTopbar({ sidebarAbierta, breadcrumb, active }) {
           aria-expanded="${sidebarAbierta}"
         >${ICON_MENU}</button>
         <img class="topbar__logo topbar__logo--light" src="../login/assets/logo-rojo-con-negro.svg" alt="Aseguradora Tajy" />
-        <img class="topbar__logo topbar__logo--dark" src="../../logo/logo-dark.png" alt="Aseguradora Tajy" />
+        <img class="topbar__logo topbar__logo--dark" src="../logo/logo-dark.png" alt="Aseguradora Tajy" />
         <div class="topbar__brand-text">
           <div class="topbar__brand-sub">Sistema de Cotización de Pólizas</div>
         </div>

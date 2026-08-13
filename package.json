@@ -17,7 +17,7 @@
     "prepare": "husky"
   },
   "allowScripts": {
-    "puppeteer@24.43.1": true
+    "puppeteer@25.6.0": true
   },
   "overrides": {
     "brace-expansion": "^5.0.8",

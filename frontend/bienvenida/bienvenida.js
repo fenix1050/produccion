@@ -10,6 +10,7 @@ import {
   ICON_RAMO_INCENDIO,
   ICON_RAMO_VIDA_AP,
   ICON_RAMO_HOGAR,
+  ICON_RAMO_TRANSPORTE,
   ICON_SUBLIMITE_GENERICO,
 } from '../shared/nav-icons.js'
 
@@ -35,7 +36,7 @@ const RAMOS_UI = [
   { nombre: 'vida-ap', label: 'Vida y Accidentes Personales' },
   { nombre: 'hogar', label: 'Multirriesgo Hogar' },
   { nombre: 'tro', label: 'Todo Riesgo Operativo' },
-  { nombre: 'transporte', label: 'Transporte de Mercadería' },
+  { nombre: 'transporte', label: 'Transporte de Mercaderías' },
 ]
 
 const RAMO_ICONOS = {
@@ -46,7 +47,7 @@ const RAMO_ICONOS = {
   'vida-ap': ICON_RAMO_VIDA_AP,
   hogar: ICON_RAMO_HOGAR,
   tro: ICON_SUBLIMITE_GENERICO,
-  transporte: ICON_SUBLIMITE_GENERICO,
+  transporte: ICON_RAMO_TRANSPORTE,
 }
 
 const ESTADO_LABEL = {

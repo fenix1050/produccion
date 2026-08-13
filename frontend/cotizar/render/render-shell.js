@@ -5,7 +5,6 @@ import {
   RAMOS_UI,
   RAMO_ICONOS,
   MOTIVO_BLOQUEO_ID,
-  COTIZADOR_VERSION,
   PASOS_EMISION_CARTA,
 } from '../constants.js'
 import { puedeAvanzarADetalle } from '../domain-rules.js'
@@ -63,7 +62,6 @@ export function renderSidebar() {
       <div class="sidebar__footer">
         <div class="sidebar__section-label">Gestión</div>
         ${renderSidebarFooter('cotizar')}
-        <div class="sidebar__credit">Powered by <strong>Kevin Ruiz Diaz</strong> v${COTIZADOR_VERSION}</div>
       </div>
     </div>
   `

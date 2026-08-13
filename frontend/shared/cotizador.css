@@ -43,6 +43,31 @@
   --tajy-radius-md: 9px;
   --tajy-radius-lg: 10px;
   --tajy-radius-xl: 14px;
+  /* Radio "pill" (cápsula). Existe en ambos temas para que theme-dark.css pueda
+     usarlo sin hardcodear 999px en cada override de chip. */
+  --tajy-radius-pill: 999px;
+
+  /* Tokens de tema — agregados para soportar dark mode (frontend/shared/theme-dark.css).
+     En light quedan como equivalentes "planos" de lo que ya se usaba hardcodeado
+     (#fff, sin sombra/gradiente extra); en dark theme-dark.css los redefine. */
+  --tajy-surface: #fff;
+  --tajy-surface-alt: #f9f8f6;
+  --tajy-elevated: #fff;
+  --tajy-input-bg: #fff;
+  --tajy-chip-bg: #f4f3f1;
+  --tajy-border-strong: #ccc;
+  --tajy-text-disabled: #aaa;
+  --tajy-red-hover: #b8102a;
+  --tajy-red-active: #a20e25;
+  --tajy-warning: #b8860b;
+  --tajy-danger: #c0132e;
+  --tajy-info: #2563a8;
+  --tajy-gradient-app: var(--tajy-bg);
+  --tajy-gradient-card: none;
+  --tajy-gradient-primary: var(--tajy-red);
+  --tajy-shadow-card: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --tajy-shadow-accent: none;
+  --tajy-shadow-accent-strong: none;
 }
 
 /* Sistema de breakpoints (documentado una sola vez acá — el proyecto no usa
@@ -292,8 +317,18 @@ button {
 .topbar__logo {
   height: 32px;
   /* Reserva el ancho antes de que el SVG cargue (evita el layout shift que
-     reportaba Vercel Speed Insights). Ratio real del asset: 206.2 / 156. */
+     reportaba Vercel Speed Insights). Ratio real del asset: 206.2 / 156 (SVG claro) y
+     1441 / 1091 (PNG oscuro, logo-dark.png) — casi idéntico (1.322 vs 1.321), así que
+     el mismo aspect-ratio sirve para ambos sin saltos al cambiar de tema. */
   aspect-ratio: 206.2 / 156;
+}
+
+/* Dos <img> en el markup (ver renderTopbar en shared/sidebar.js), alternados por CSS
+   según data-theme en vez de por JS: así el logo cambia al instante al togglear el
+   tema, sin depender de que algo dispare un re-render del topbar. Tema claro (default,
+   sin atributo o data-theme="light"): el SVG rojo/negro de siempre. */
+.topbar__logo--dark {
+  display: none;
 }
 
 .topbar__brand-text {

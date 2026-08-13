@@ -17,6 +17,7 @@ import {
 } from './nav-icons.js'
 import { auth } from './api.js'
 import { escapeHtml } from './dom.js'
+import { APP_VERSION } from './version.js'
 
 function renderSidebarNavLinks(active) {
   const links = []
@@ -52,8 +53,16 @@ function renderSidebarNavLinks(active) {
 // active: 'cotizar' | 'historial' | 'configuracion' | 'admin' | null
 // El bloque de perfil del agente vive ahora en el topbar (renderTopbarUser) — ya no se
 // duplica acá abajo del sidebar (pedido de Kevin al migrar a "Diseño 2").
+// The credit line used to be appended by cotizar/render/render-shell.js only, so historial,
+// configuracion and admin ended their sidebar at the trust block — leaving a large empty gap
+// above it in dark mode, where the decorative dot texture is visible. Rendering it here gives
+// all four pages the same footer from one place.
 export function renderSidebarFooter(active) {
-  return `${renderSidebarNavLinks(active)}${renderTrustFooter()}`
+  return `${renderSidebarNavLinks(active)}${renderTrustFooter()}${renderSidebarCredit()}`
+}
+
+function renderSidebarCredit() {
+  return `<div class="sidebar__credit">Powered by <strong>Kevin Ruiz Diaz</strong> v${APP_VERSION}</div>`
 }
 
 // Bloque de usuario del topbar ("Diseño 2" — mockup docs/mockups/diseno-2-app-shell.html):
@@ -75,8 +84,14 @@ export function renderTopbarUser(active) {
   const inicial = nombreAgente.trim().charAt(0).toUpperCase() || 'A'
   const mostrarAccesoAdmin = auth.tieneAccesoAdmin() && active !== 'admin'
 
+  // renderThemeToggleButton/bindThemeToggleOnce viven en frontend/shared/theme.js,
+  // cargado como script clásico (no módulo) desde el <head> por el snippet anti-FOUC —
+  // se acceden vía window, mismo patrón que window.API_BASE_URL de config.js, porque
+  // este archivo (sidebar.js) sí es un módulo ES y theme.js necesita ejecutar antes de
+  // los stylesheets, cosa que un módulo (diferido por el navegador) no garantiza.
   return `
     <div class="topbar__user">
+      ${typeof window.renderThemeToggleButton === 'function' ? window.renderThemeToggleButton() : ''}
       <button class="topbar__bell" type="button" aria-label="Notificaciones">${ICON_BELL}</button>
       <div class="topbar__user-menu-wrap">
         <button class="topbar__user-trigger" type="button" data-action="toggle-user-menu" aria-haspopup="true" aria-expanded="false">
@@ -116,7 +131,8 @@ export function renderTopbar({ sidebarAbierta, breadcrumb, active }) {
           aria-label="Abrir menú"
           aria-expanded="${sidebarAbierta}"
         >${ICON_MENU}</button>
-        <img class="topbar__logo" src="../login/assets/logo-rojo-con-negro.svg" alt="Aseguradora Tajy" />
+        <img class="topbar__logo topbar__logo--light" src="../login/assets/logo-rojo-con-negro.svg" alt="Aseguradora Tajy" />
+        <img class="topbar__logo topbar__logo--dark" src="../../logo/logo-dark.png" alt="Aseguradora Tajy" />
         <div class="topbar__brand-text">
           <div class="topbar__brand-sub">Sistema de Cotización de Pólizas</div>
         </div>
@@ -156,3 +172,7 @@ function bindTopbarUserMenuOnce() {
   })
 }
 bindTopbarUserMenuOnce()
+
+if (typeof window.bindThemeToggleOnce === 'function') {
+  window.bindThemeToggleOnce()
+}

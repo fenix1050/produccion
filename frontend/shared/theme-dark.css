@@ -1,0 +1,732 @@
+/* Tema oscuro — Cotizador Tajy.
+   Se activa vía atributo `data-theme="dark"` en <html> (ver frontend/shared/theme.js),
+   NO por `prefers-color-scheme` en el stylesheet: las custom properties de :root no
+   funcionan dentro de @media en este codebase (mismo motivo que el sistema de
+   breakpoints documentado en cotizador.css), así que prefers-color-scheme solo se lee
+   una vez en JS como fallback inicial cuando no hay preferencia guardada.
+
+   Redefine acá los tokens --tajy-* / --badge-* de cotizador.css/badge.css para dark, y
+   agrega overrides puntuales de componentes que tenían colores hardcodeados (no vía
+   var) y por eso no heredan el cambio de tokens solos. */
+
+html[data-theme='dark'] {
+  /* Radios — el mockup dark usa una escala más redondeada que la del tema claro
+     (8/9/10/14). La spec del autor pide 10/12/18/20/999, y en la referencia las
+     cards se ven claramente más redondeadas que con la escala clara. Se redefinen
+     acá (no en :root) para no cambiar el tema claro. */
+  --tajy-radius-sm: 10px;
+  --tajy-radius-md: 12px;
+  --tajy-radius-lg: 18px;
+  --tajy-radius-xl: 20px;
+  --tajy-radius-pill: 999px;
+
+  /* fondos — hexes exactos de la paleta del autor del mockup.
+     OJO con la jerarquía: el texto de lineamientos dice "sidebar más oscura que el
+     contenido", pero la paleta explícita del MISMO autor dice lo contrario
+     (--bg-app #070B12 es el más oscuro, --bg-sidebar #0B1018 el más claro, y
+     --bg-header #0A0F17 en el medio). Manda la paleta de hexes: --tajy-bg es el
+     fondo del ÁREA DE CONTENIDO/app, y el sidebar lleva su propio override
+     (#0b1018) más abajo. Un pase anterior tenía esto invertido. */
+  /* Neutralización del tinte azul (pedido de Kevin 2026-08-13, con captura de
+     referencia): la paleta original del mockup era azulada (#070B12 = 7 puntos de
+     azul sobre el rojo), y en pantalla real la card se leía claramente celeste-grisácea
+     en vez de negra. Se llevan los fondos del ÁREA DE CONTENIDO a gris neutro
+     casi-negro, conservando la MISMA jerarquía de luminosidad entre niveles.
+     El sidebar NO entra acá: mantiene su #0b1018 azulado, ya validado contra la
+     referencia del sidebar en la iteración anterior. */
+  --tajy-bg: #050507;
+  --tajy-surface: #0e0e12;
+  --tajy-surface-alt: #121216;
+  --tajy-elevated: #16161b;
+  --tajy-input-bg: #0a0a0d;
+  /* Equivalente OPACO de `.field-input` (rgba(6,6,8,.92) compuesto sobre el gradiente de
+     la card): el override de autofill necesita un box-shadow inset sólido — uno
+     translúcido dejaría pasar el azul que pinta Chrome por debajo — y con
+     --tajy-input-bg (#0a0a0d) el campo autocompletado quedaba 3 puntos más claro que el
+     escrito a mano. */
+  --tajy-input-bg-autofill: #070709;
+  --tajy-chip-bg: #111115;
+
+  /* texto — mismo criterio que los fondos: la escala original era gris AZULADO
+     (#b6c0cc lleva 12 puntos de azul sobre el rojo), lo que en la referencia se lee
+     gris neutro. Se conserva la misma escala de luminosidad, solo se saca el tinte. */
+  --tajy-ink: #f5f5f7;
+  --tajy-text-dark: #f5f5f7;
+  --tajy-text-body: #bfbfc5;
+  --tajy-text-muted: #86868d;
+  --tajy-text-secondary: #bfbfc5;
+  --tajy-text-disabled: #66666c;
+
+  /* bordes */
+  /* Mismo motivo que los fondos: el borde de los inputs (--tajy-border) era el azul
+     más perceptible dentro de la card. --tajy-border-light queda azulado a propósito:
+     lo usa el borde del sidebar, que no cambia. */
+  --tajy-border: #2b2b31;
+  --tajy-border-light: #1c2634;
+  --tajy-border-strong: #35353d;
+  --tajy-border-accent: rgba(255, 42, 61, 0.35);
+
+  /* rojo */
+  --tajy-red: #ff2a3d;
+  --tajy-red-hover: #ff4052;
+  --tajy-red-active: #e61f34;
+  --tajy-red-a11y: #ff4052;
+  --tajy-pink: rgba(255, 42, 61, 0.12);
+  --tajy-pink-strong: rgba(255, 42, 61, 0.18);
+  --tajy-maroon-row: rgba(255, 255, 255, 0.03);
+
+  /* estados */
+  --tajy-green-fg: #35b879;
+  --tajy-green-bg: rgba(53, 184, 121, 0.12);
+  --tajy-success: var(--tajy-green-fg);
+  --tajy-warning: #f5b942;
+  --tajy-danger: #ff4d5e;
+  --tajy-info: #5aa9ff;
+
+  /* "Gradiente oscuro y sutil iluminación ambiental" (spec). Historial: un pase tenía
+     radiales azules de alpha 0.15–0.18 que se leían como MANCHAS de color; el pase
+     siguiente los sacó y dejó el fondo perfectamente plano. Punto medio: base plana
+     #070B12 (--bg-app exacto de la paleta) + dos radiales azulados casi imperceptibles
+     (0.05/0.035) — el fondo deja de ser plano sin que se lean como manchas. */
+  /* Los radiales azules eran la otra mitad del tinte que Kevin marcó: se mantienen como
+     iluminación ambiental (el fondo sigue sin ser plano) pero en gris neutro. */
+  --tajy-gradient-app:
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.03), transparent 28%),
+    radial-gradient(circle at bottom right, rgba(255, 255, 255, 0.022), transparent 30%),
+    linear-gradient(180deg, #050507 0%, #08080b 100%);
+  --tajy-gradient-card: linear-gradient(180deg, rgba(16, 16, 19, 0.96) 0%, rgba(10, 10, 13, 0.98) 100%);
+  --tajy-gradient-primary: linear-gradient(180deg, #ff4052 0%, #ff2a3d 100%);
+  --tajy-shadow-soft: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --tajy-shadow-card: 0 12px 30px rgba(0, 0, 0, 0.42);
+  /* Halo rojo de las cards. En la referencia el borde rojo no es una línea plana: tiene
+     un resplandor suave que se derrama hacia afuera y se apoya en un anillo interno de
+     1px que le da filo. Se define como token porque .card, .datos-view__form-inner,
+     .plan-row__box y el resto de superficies de card deben compartirlo exactamente —
+     antes cada una traía su propia sombra y .datos-view__form-inner no traía ninguna,
+     así que la card principal del formulario salía sin efecto. */
+  --tajy-glow-card:
+    inset 0 0 0 1px rgba(255, 42, 61, 0.14), 0 0 22px rgba(255, 42, 61, 0.16),
+    0 0 60px rgba(255, 42, 61, 0.06), 0 10px 30px rgba(0, 0, 0, 0.55);
+  --tajy-shadow-accent: 0 0 0 1px rgba(255, 42, 61, 0.2), 0 0 18px rgba(255, 42, 61, 0.14);
+  --tajy-shadow-accent-strong: 0 0 0 1px rgba(255, 42, 61, 0.28), 0 0 24px rgba(255, 42, 61, 0.18);
+
+  /* tokens de badge.css, también redefinidos acá para que .badge herede dark */
+  --badge-warning-bg: #2e2308;
+  --badge-warning-fg: #f0c169;
+  --badge-info-bg: #0f2033;
+  --badge-info-fg: #7fb7ec;
+  --badge-agent-bg: #2a1416;
+  --badge-agent-fg: #f5b0ac;
+  --badge-neutral-bg: #1c2634;
+  --badge-neutral-fg: #c9c9c9;
+  --badge-purple-bg: #1f172e;
+  --badge-purple-fg: #b79bf0;
+  --badge-teal-bg: #0e2620;
+  --badge-teal-fg: #6fd8cc;
+  --badge-indigo-bg: #171c33;
+  --badge-indigo-fg: #9aa6f2;
+  --badge-amber-bg: #2b2108;
+  --badge-amber-fg: #f0c169;
+  --badge-cyan-bg: #0d2530;
+  --badge-cyan-fg: #7fd4ee;
+  --badge-brown-bg: #251c14;
+  --badge-brown-fg: #d8ab86;
+}
+
+/* ---------------------------------------------------------------------------
+   Overrides de componentes con colores hardcodeados (no var) en cotizador.css —
+   cambiar el token solo no alcanza para estos. Solo se tocan color/background/
+   border/shadow, nunca layout. */
+
+html[data-theme='dark'] body {
+  background: var(--tajy-gradient-app);
+}
+
+/* La referencia muestra el área scrolleable del formulario con scrollbar de track
+   oscuro y thumb gris claro delgado. Sin esto Chromium pinta la scrollbar clara de
+   siempre (no hay ningún ::-webkit-scrollbar en el proyecto, ver cotizador.css).
+   `color-scheme: dark` además pone en oscuro los popups nativos de los <select>. */
+html[data-theme='dark'] {
+  color-scheme: dark;
+  /* Propiedades estándar (se heredan a todos los contenedores scrolleables). Las reglas
+     ::-webkit-scrollbar de abajo quedan como refuerzo para motores que no las soporten. */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.28) #0a0f17;
+}
+
+html[data-theme='dark'] *::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+html[data-theme='dark'] *::-webkit-scrollbar-track {
+  background: #0a0f17;
+}
+
+html[data-theme='dark'] *::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.22);
+  border-radius: 8px;
+  border: 3px solid #0a0f17;
+}
+
+html[data-theme='dark'] *::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.32);
+}
+
+/* Antes usaba background semitransparente + backdrop-filter: blur(10px) — en
+   verificación visual real (captura vía run-cotizador) esa combinación renderizaba
+   .topbar__red-block como un bloque ROJO SÓLIDO opaco en vez de oscuro (el navegador
+   necesita contenido detrás para samplear el blur; acá no hay nada detrás del topbar,
+   así que terminaba pintando basura/fallback). Fondo sólido opaco, sin blur, elimina
+   el bug — visualmente sigue siendo "oscuro y continuo" como pide la referencia. */
+html[data-theme='dark'] .topbar,
+html[data-theme='dark'] .topbar__red-block {
+  background: #0a0f17;
+  border-color: var(--tajy-border-light);
+}
+
+/* Logo preparado a propósito para dark (fondo negro, wordmark "ASEGURADORA" en blanco
+   en vez de negro — sobre el topbar oscuro el logo claro perdía ese texto por completo).
+   Pedido de Kevin 2026-08-13: swap del <img> vía CSS, no del atributo src, para que
+   cambie al instante al togglear el tema sin depender de un re-render. */
+html[data-theme='dark'] .topbar__logo--light {
+  display: none;
+}
+
+html[data-theme='dark'] .topbar__logo--dark {
+  display: block;
+}
+
+/* Bug real encontrado en verificación visual (captura vía run-cotizador): el bloque
+   rojo sólido que seguía viéndose en dark mode NO venía de .topbar__red-block (ya
+   corregido arriba) sino de .topbar__crumb-area — el área del breadcrumb, que ocupa
+   la mayor parte del ancho del topbar — que tiene `background: var(--tajy-red)`
+   hardcodeado en cotizador.css y no estaba cubierto por ningún override dark. Como
+   --tajy-red se redefine a un rojo más brillante (#ff2a3d) en dark, el resultado era
+   una franja roja sólida ocupando casi todo el topbar. */
+html[data-theme='dark'] .topbar__crumb-area {
+  background: transparent;
+}
+
+html[data-theme='dark'] .topbar__crumb-item {
+  color: var(--tajy-text-body);
+}
+
+/* En la referencia el crumb actual ("Nueva cotización") y el separador "›" van en ROJO,
+   no en blanco — el blanco venía de `.topbar__crumb-item--current { color: #fff }` de
+   cotizador.css, pensado para el topbar rojo del tema claro. */
+html[data-theme='dark'] .topbar__crumb-item--current {
+  color: var(--tajy-red-a11y);
+}
+
+html[data-theme='dark'] .topbar__crumb-sep {
+  color: var(--tajy-red);
+}
+
+/* Avatar: en claro es círculo BLANCO con la inicial roja (contrasta contra el topbar
+   rojo). En la referencia dark es al revés: círculo ROJO sólido con la letra blanca. */
+html[data-theme='dark'] .topbar__user-avatar {
+  background: var(--tajy-red);
+  color: #fff;
+}
+
+/* Campana (y el toggle de tema, que comparte .topbar__bell): en la referencia son
+   íconos outline grises sin la píldora circular clara que hereda del tema claro. */
+html[data-theme='dark'] .topbar__bell {
+  background: transparent;
+  color: var(--tajy-text-body);
+}
+
+html[data-theme='dark'] .topbar__bell:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+html[data-theme='dark'] .topbar__user-role,
+html[data-theme='dark'] .topbar__user-chevron {
+  color: var(--tajy-text-muted);
+}
+
+/* .main-header (cabecera "Nueva cotización" / breadcrumb de cada vista) tenía
+   background: #fff y .main-header__subtitle color: #000 hardcodeados —
+   encontrado en verificación visual: quedaba texto blanco (--tajy-ink) sobre
+   fondo blanco, prácticamente invisible en dark. No estaba en la lista original
+   de selectores pero cae dentro del mismo criterio del Paso 6 (hardcoded #fff). */
+/* Con el fondo de la app ya plano (#0a0d14) el --tajy-elevated que tenía acá se leía como
+   una franja claramente más clara cruzando la pantalla; en la referencia la barra de
+   contexto es prácticamente continua con el fondo. */
+/* Con las cards ahora claramente elevadas y redondeadas, dejar la barra de contexto en
+   --tajy-surface (#0e1420, el color de CARD) la hacía leer como una card gigante pegada
+   al borde. En la referencia es continua con el fondo del contenido: --tajy-bg (#070B12)
+   + la línea divisoria fina de abajo. */
+html[data-theme='dark'] .main-header {
+  background: var(--tajy-bg);
+  border-bottom-color: var(--tajy-border-light);
+}
+
+/* "Cotizando Multirriesgo Comercio" (barra de contexto) va en BLANCO en la referencia,
+   no en el gris apagado que se había puesto en un pase anterior. */
+html[data-theme='dark'] .main-header__subtitle {
+  color: var(--tajy-ink);
+}
+
+/* .live-summary (panel "Cotización en vivo") tenía background: #fff hardcodeado,
+   igual que .card — encontrado en la misma verificación visual que .main-header. */
+/* Borde rojo de 1px CLARAMENTE perceptible alrededor de cada card (referencia), no un
+   rojo apenas insinuado: 0.16 de alpha era invisible en captura real. Y sin glow rojo
+   alrededor — la referencia pide borde limpio y nítido. */
+/* El panel "Cotización en vivo" pide MÁS elevación y protagonismo que las cards del
+   formulario (spec), así que lleva sombra más marcada + un halo rojo tenue, no la misma
+   --tajy-shadow-card que .card / .datos-view__form-inner. */
+/* Gradiente y sombra propios del panel (spec), distintos de los de .card: el panel es
+   un punto más claro arriba y su sombra es más marcada. El borde queda en 0.5 y no en
+   el 0.20 de la spec porque a ese alpha no se percibe, y la referencia lo muestra
+   claramente dibujado. */
+/* El gradiente propio del panel quedó FUERA de la neutralización de tokens porque no
+   usa --tajy-gradient-card: seguía en rgba(14,21,33)→rgba(10,16,26), azulado, al lado
+   de cards ya negras. Se mantiene deliberadamente un punto MÁS CLARO que las cards
+   (el panel pide más protagonismo, criterio original), pero ahora en gris neutro. */
+html[data-theme='dark'] .live-summary {
+  background: linear-gradient(180deg, rgba(21, 21, 25, 0.96) 0%, rgba(13, 13, 17, 0.98) 100%);
+  border-color: rgba(255, 42, 61, 0.5);
+  box-shadow:
+    0 14px 36px rgba(0, 0, 0, 0.42),
+    0 0 20px rgba(255, 42, 61, 0.1);
+}
+
+/* .live-summary__pending ("Completá los datos del riesgo para ver la prima.", y también
+   el "Calculando…") tenía `color: #000` hardcodeado sobre `background: var(--tajy-bg)`
+   en cotizador.css. En dark eso es negro sobre casi-negro: ~1.05:1 de contraste, texto
+   literalmente invisible. Bug preexistente, no introducido por la neutralización — con
+   el #070b12 anterior daba igual de ilegible. */
+html[data-theme='dark'] .live-summary__pending {
+  color: var(--tajy-text-body);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+/* El halo rojo al 0.08 de la spec es lo bastante tenue como para no pelearse con el
+   "borde limpio" de la referencia: se lee como profundidad, no como glow. */
+html[data-theme='dark'] .card {
+  background: var(--tajy-gradient-card);
+  border-color: rgba(255, 42, 61, 0.5);
+  box-shadow: var(--tajy-glow-card);
+}
+
+/* Encabezado del panel: punto y texto "COTIZACIÓN EN VIVO" / "SUBLÍMITES INCLUIDOS"
+   en ROJO. El punto venía en verde (--tajy-green-fg) y los labels en gris. */
+html[data-theme='dark'] .live-summary__label {
+  color: var(--tajy-red-a11y);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+html[data-theme='dark'] .live-summary__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--tajy-red);
+  box-shadow: 0 0 10px rgba(255, 42, 61, 0.5);
+}
+
+/* Bug real encontrado en verificación visual: ".datos-view" (contenedor de toda la
+   columna de formulario) y ".datos-view__form-inner" (la card "Datos del asegurado"
+   en sí, distinta de ".card" — usa su propia clase) tenían background: #fff
+   hardcodeado en cotizador.css y no estaban cubiertas por ningún override de dark,
+   así que la card quedaba blanca encima del resto ya oscuro. */
+html[data-theme='dark'] .datos-view {
+  background: var(--tajy-bg);
+}
+
+/* Faltaba el box-shadow: sin él heredaba la sombra gris del tema claro
+   (0 4px 14px rgba(0,0,0,.06)) y la card principal del formulario era la ÚNICA
+   superficie de card sin el halo rojo de la referencia. */
+html[data-theme='dark'] .datos-view__form-inner {
+  background: var(--tajy-gradient-card);
+  border-color: rgba(255, 42, 61, 0.5);
+  box-shadow: var(--tajy-glow-card);
+}
+
+/* .form-heading__label tenía color: #000 hardcodeado. El título de la card ("Datos del
+   asegurado", "Coberturas adicionales") va en ROJO bold. */
+html[data-theme='dark'] .form-heading__label {
+  color: var(--tajy-red-a11y);
+}
+
+/* La divisoria bajo el título va GRIS CLARO, no roja (Kevin 2026-08-13, contra su
+   captura de referencia). Un pase anterior la había puesto roja asumiendo que
+   acompañaba al título; en la referencia el único rojo de la card es el borde. */
+html[data-theme='dark'] .form-heading {
+  border-bottom-color: rgba(255, 255, 255, 0.18);
+}
+
+/* Mismo bug de fondo blanco hardcodeado que .datos-view__form-inner, encontrado al
+   revisar el resto de cards del formulario MRC en la misma verificación visual:
+   .plan-row__box ("Plan a presentar") y .stepper (fila 1-2-3) tenían background: #fff
+   sin cubrir en dark. */
+html[data-theme='dark'] .plan-row__box {
+  background: var(--tajy-gradient-card);
+  border-color: rgba(255, 42, 61, 0.5);
+  box-shadow: var(--tajy-glow-card);
+}
+
+html[data-theme='dark'] .stepper {
+  background: transparent;
+}
+
+/* Mismo criterio que .form-heading: título en rojo, divisoria gris clara. */
+html[data-theme='dark'] .card__title {
+  background: var(--tajy-elevated);
+  color: var(--tajy-red-a11y);
+  border-bottom-color: rgba(255, 255, 255, 0.18);
+}
+
+/* .tabs / .tab-btn tienen border-radius hardcodeado (11px / 7px) en cotizador.css, así
+   que NO los alcanzó el cambio de tokens de radio. Con las cards a 18-20px quedaban
+   visiblemente menos redondeados que todo lo demás. */
+html[data-theme='dark'] .tabs {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--tajy-border-light);
+  border-radius: var(--tajy-radius-xl);
+}
+
+html[data-theme='dark'] .tab-btn {
+  border-radius: var(--tajy-radius-sm);
+}
+
+html[data-theme='dark'] .tab-btn--active {
+  background: transparent;
+  border: 2px solid var(--tajy-red);
+  color: var(--tajy-red);
+  box-shadow: none;
+}
+
+/* El círculo de paso inactivo trae border rgba(0,0,0,0.15) — negro sobre fondo oscuro,
+   o sea invisible. La spec pide rgba(255,255,255,0.12). */
+html[data-theme='dark'] .stepper__circle {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.12);
+  color: var(--tajy-text-secondary);
+}
+
+/* El color va repetido acá a propósito: la regla de arriba tiene la misma especificidad
+   que ésta y le ganaría al "color: #fff" que .stepper__circle--active trae de
+   cotizador.css, dejando el número del paso activo en gris sobre el rojo. */
+html[data-theme='dark'] .stepper__circle--active {
+  background: var(--tajy-gradient-primary);
+  box-shadow: 0 0 16px rgba(255, 42, 61, 0.24);
+  border-color: transparent;
+  color: #fff;
+}
+
+/* Chips de forma de pago: en la referencia son PÍLDORAS (999px) con fondo --bg-chip
+   (#111927) y borde fino; el activo va relleno rojo sólido con texto blanco bold.
+   cotizador.css los deja en 20px, que a 30px de alto no llega a leerse como cápsula. */
+html[data-theme='dark'] .plan-pill {
+  background: var(--tajy-chip-bg);
+  border: 1px solid var(--tajy-border);
+  border-radius: var(--tajy-radius-pill);
+  color: var(--tajy-text-secondary);
+}
+
+/* Mismo caso que el stepper: sin este color, el gris de .plan-pill de arriba se impone
+   y "Contado" queda con texto gris sobre el gradiente rojo. */
+html[data-theme='dark'] .plan-pill--active {
+  background: var(--tajy-gradient-primary);
+  box-shadow: 0 0 16px rgba(255, 42, 61, 0.2);
+  border-color: rgba(255, 42, 61, 0.45);
+  color: #fff;
+}
+
+html[data-theme='dark'] .field-input {
+  /* Un pelo más oscuro que la card y translúcido, que es lo que hunde el campo dejando
+     ver el gradiente por detrás. Era rgba(9,15,25,0.92) — azulado y hardcodeado, así
+     que quedó fuera de la neutralización de tokens; los inputs seguían celestes dentro
+     de una card ya negra. */
+  background: rgba(6, 6, 8, 0.92);
+  /* --border-default (#223042) exacto de la paleta, en vez del rgba blanco al 0.08
+     que se había puesto a ojo. Gris translúcido, NUNCA rojo en reposo (el rojo es
+     solo el estado de foco, regla de abajo). */
+  border: 1px solid var(--tajy-border);
+  color: var(--tajy-ink);
+}
+
+html[data-theme='dark'] .field-input:focus {
+  border-color: rgba(255, 42, 61, 0.45) !important;
+  box-shadow: 0 0 0 3px rgba(255, 42, 61, 0.12), 0 0 14px rgba(255, 42, 61, 0.12);
+}
+
+/* Autocompletado del navegador. Chrome pinta los campos autocompletados con su propio
+   color de fondo (azul desaturado bajo `color-scheme: dark`, declarado más arriba en
+   este archivo) usando una capa interna que `background` NO puede sobrescribir: por eso
+   un campo escrito a mano y autocompletado se veía celeste dentro de una card ya negra,
+   mientras que en las verificaciones automatizadas salía negro (Playwright escribe con
+   .fill(), que no dispara autofill).
+   El único override que Chrome respeta es un box-shadow inset gigante, que tapa esa capa
+   desde adentro; `-webkit-text-fill-color` hace lo propio con el color del texto, que
+   `color` tampoco alcanza. El delay de la transición es el truco estándar para que el
+   fondo no vuelva a pintarse en el frame siguiente.
+   Se aplica a todos los inputs de la app, no solo a .field-input: los formularios de
+   login, historial y admin sufren exactamente lo mismo. */
+html[data-theme='dark'] input:-webkit-autofill,
+html[data-theme='dark'] input:-webkit-autofill:hover,
+html[data-theme='dark'] input:-webkit-autofill:focus,
+html[data-theme='dark'] input:-webkit-autofill:active,
+html[data-theme='dark'] textarea:-webkit-autofill,
+html[data-theme='dark'] select:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 1000px var(--tajy-input-bg-autofill) inset !important;
+  box-shadow: 0 0 0 1000px var(--tajy-input-bg-autofill) inset !important;
+  -webkit-text-fill-color: var(--tajy-ink) !important;
+  caret-color: var(--tajy-ink);
+  transition: background-color 600000s 0s, color 600000s 0s;
+}
+
+/* El foco tiene que seguir dibujando su halo rojo aunque el campo esté autocompletado:
+   la regla de arriba usa box-shadow para tapar el fondo, así que sin esto el halo de
+   foco quedaba pisado por el inset. Se combinan ambos en una sola declaración. */
+html[data-theme='dark'] .field-input:-webkit-autofill:focus {
+  -webkit-box-shadow:
+    0 0 0 1000px var(--tajy-input-bg-autofill) inset,
+    0 0 0 3px rgba(255, 42, 61, 0.12),
+    0 0 14px rgba(255, 42, 61, 0.12) !important;
+  box-shadow:
+    0 0 0 1000px var(--tajy-input-bg-autofill) inset,
+    0 0 0 3px rgba(255, 42, 61, 0.12),
+    0 0 14px rgba(255, 42, 61, 0.12) !important;
+}
+
+/* Jerarquía tipográfica del precio (spec): peso 800, tracking ancho y dígitos de ancho
+   fijo. tabular-nums es lo que evita que el número "baile" al recalcularse en vivo. */
+html[data-theme='dark'] .live-summary__price,
+html[data-theme='dark'] .resultado-hero__price {
+  /* La spec pide 3rem (48px), pero el panel deja 272px útiles y a ese tamaño el número
+     solo ya mide ~219px: el "Gs." se cae a la línea de abajo. Midiendo la referencia, el
+     precio ahí son ~36px pero dentro de un panel de 314px útiles, o sea que el tamaño
+     absoluto de la spec no es transportable a este ancho. 32px mantiene la proporción
+     precio/panel de la referencia y deja margen hasta importes de 10 dígitos. */
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 14px rgba(255, 42, 61, 0.18);
+}
+
+/* --bg-sidebar #0B1018 exacto: NO es var(--tajy-bg) (ese ahora es --bg-app #070B12,
+   el fondo del área de contenido, que es el más oscuro de los tres según la paleta). */
+html[data-theme='dark'] .sidebar {
+  background: #0b1018;
+  border-right-color: var(--tajy-border-light);
+  position: relative;
+}
+
+html[data-theme='dark'] .sidebar__brand,
+html[data-theme='dark'] .sidebar__nav,
+html[data-theme='dark'] .sidebar__footer {
+  position: relative;
+  z-index: 1;
+}
+
+html[data-theme='dark'] .nav-item--active {
+  border-left: 1px solid rgba(255, 42, 61, 0.35);
+  box-shadow: 0 0 14px rgba(255, 42, 61, 0.1);
+}
+
+/* Ítem de ramo activo del sidebar. El fondo rojo translúcido y el texto rojo bold ya
+   venían de .ramo-row--activa (cotizador.css); faltaban los dos detalles de la
+   referencia: el BORDE rojo sutil de la caja y el ícono metido en un cuadradito
+   redondeado rojo. Ambos se hacen con box-shadow (inset para el borde, spread para el
+   cuadradito) en vez de border/width para NO mover el layout del sidebar. */
+/* Ojo con el cambio de radios: .ramo-row mide 36px de alto y usa --tajy-radius-lg. Con
+   lg=18px quedaba una CÁPSULA perfecta, y la referencia muestra un rect redondeado, no
+   una píldora. Se clampea a --tajy-radius-md (12px) solo para esta fila. */
+html[data-theme='dark'] .ramo-row {
+  border-radius: var(--tajy-radius-md);
+}
+
+html[data-theme='dark'] .ramo-row--activa {
+  background: rgba(255, 42, 61, 0.06);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 42, 61, 0.35),
+    0 0 14px rgba(255, 42, 61, 0.1);
+}
+
+html[data-theme='dark'] .ramo-row--activa .ramo-row__icon {
+  background: rgba(255, 42, 61, 0.18);
+  border-radius: 5px;
+  box-shadow:
+    0 0 0 5px rgba(255, 42, 61, 0.18),
+    inset 0 0 0 1px rgba(255, 42, 61, 0.35);
+}
+
+/* Footer del sidebar: en la referencia "Kevin Ruiz Diaz" va en ROJO bold, el resto del
+   "Powered by ... v1.0.1" en gris chico. */
+html[data-theme='dark'] .sidebar__credit strong {
+  color: var(--tajy-red-a11y);
+}
+
+/* Textura decorativa de puntos (dark only, CSS puro — sin imagen/SVG). En la
+   referencia aprobada por Kevin NO es una grilla pareja de borde a borde dentro del
+   sidebar — son puntos rojizos que irradian desde 2 esquinas de la pantalla completa
+   (arriba-derecha, cerca del topbar/campana, y abajo-izquierda, zona baja del
+   sidebar) y se desvanecen hacia el centro. Se posicionan sobre .app-shell (que ya
+   tenía overflow:clip en cotizador.css, position:relative se agrega abajo) en vez
+   de .sidebar. */
+html[data-theme='dark'] .app-shell {
+  /* .app-shell no tenía position propio en cotizador.css (solo display/height/
+     overflow) — sin esto los ::before/::after de abajo se posicionaban contra el
+     initial containing block en vez de contra .app-shell, y overflow:clip no los
+     recortaba correctamente. */
+  position: relative;
+}
+
+/* z-index alto a propósito: .topbar y .app-body (sidebar + contenido) son opacos y
+   cubren el 100% del área de .app-shell sin huecos, así que si los puntos quedaran
+   DETRÁS (z-index menor) jamás se verían — no hay ningún gap transparente en el
+   layout donde asomar. Van ENCIMA de todo como una textura decorativa flotante
+   (pointer-events:none evita que tapen clicks), igual que en la referencia. */
+/* La spec dice literalmente "ondas de puntos", no una nube uniforme: en la referencia
+   los puntos forman ARCOS concéntricos que barren desde la esquina, bandas curvas
+   separadas por espacios vacíos, densas pegadas al borde y disipándose hacia el centro.
+   Se logra con DOS máscaras compuestas por intersección sobre la misma grilla de puntos:
+     1. `repeating-radial-gradient` centrado EN la esquina → alterna bandas visibles/
+        ocultas, que es lo que produce los arcos.
+     2. `radial-gradient` de desvanecimiento → apaga las bandas hacia el centro.
+   `mask-composite: intersect` (estándar) / `-webkit-mask-composite: source-in` hacen
+   que solo se pinte donde ambas máscaras son opacas. */
+html[data-theme='dark'] .app-shell::before,
+html[data-theme='dark'] .app-shell::after {
+  content: '';
+  position: absolute;
+  /* Grilla de 12px con punto de 1.3px: en la referencia los puntos son finos y juntos.
+     El período de banda de los arcos (abajo) SIEMPRE tiene que ser múltiplo exacto de
+     estos 12px — cuando no lo es, la banda bate contra la grilla y sale moiré en vez
+     de arcos. */
+  background-image: radial-gradient(rgba(255, 60, 78, 0.6) 1.3px, transparent 1.3px);
+  background-size: 12px 12px;
+  pointer-events: none;
+  z-index: 5;
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+}
+
+/* Esquina superior derecha: es el campo prominente de la referencia — ocupa ~28% del
+   ancho y baja ~22% del alto, así que se superpone con la campana/avatar del topbar y
+   llega detrás de los tabs "Datos / Detalle del plan". La máscara se ancla EN la esquina
+   (`at 100% 0%`), no en el centro de la caja: la densidad tiene que ser máxima pegada al
+   borde y desvanecerse hacia el centro-izquierda. Antes la máscara era `circle` centrada,
+   lo que dejaba lo más denso a media caja y el resultado quedaba casi invisible. */
+html[data-theme='dark'] .app-shell::before {
+  top: 0;
+  right: 0;
+  width: 30%;
+  height: 24%;
+  /* El tamaño explícito `ellipse 100% 100%` es necesario: sin él el radio por defecto es
+     `farthest-corner`, la elipse cubre la caja entera y el degradado nunca llega a
+     transparente dentro de ella — se veía un RECTÁNGULO de puntos con bordes rectos en
+     vez de un campo que se desvanece. */
+  -webkit-mask-image:
+    repeating-radial-gradient(circle at 100% 0%, black 0 24px, transparent 24px 48px),
+    radial-gradient(ellipse 100% 100% at 100% 0%, black 0%, rgba(0, 0, 0, 0.5) 42%, transparent 78%);
+  mask-image:
+    repeating-radial-gradient(circle at 100% 0%, black 0 24px, transparent 24px 48px),
+    radial-gradient(ellipse 100% 100% at 100% 0%, black 0%, rgba(0, 0, 0, 0.5) 42%, transparent 78%);
+}
+
+/* Esquina inferior izquierda: mismo efecto, más chico, a la altura de "Cerrar sesión" /
+   "Tu información está segura", desbordando un poco hacia la derecha del sidebar. */
+html[data-theme='dark'] .app-shell::after {
+  bottom: 0;
+  left: 0;
+  width: 23%;
+  height: 20%;
+  -webkit-mask-image:
+    repeating-radial-gradient(circle at 0% 100%, black 0 24px, transparent 24px 48px),
+    radial-gradient(ellipse 100% 100% at 0% 100%, black 0%, rgba(0, 0, 0, 0.5) 42%, transparent 78%);
+  mask-image:
+    repeating-radial-gradient(circle at 0% 100%, black 0 24px, transparent 24px 48px),
+    radial-gradient(ellipse 100% 100% at 0% 100%, black 0%, rgba(0, 0, 0, 0.5) 42%, transparent 78%);
+}
+
+/* Bug real encontrado en verificación visual de Historial en dark mode: el header
+   sticky de la tabla (.admin-table th, definido en admin/admin.css pero reusado acá
+   vía .historial-tabla-scroll .admin-table) tiene background: #fff hardcodeado para
+   que tape las filas al hacer scroll — sin override quedaba una franja blanca sólida
+   encima de filas oscuras. */
+html[data-theme='dark'] .admin-table th {
+  background: var(--tajy-elevated);
+  color: var(--tajy-text-muted);
+}
+
+/* Mismo hallazgo: el modal de "Detalles" de Historial reusa .admin-modal
+   (admin/admin.css) que tiene background: #fff hardcodeado — se veía como un panel
+   blanco flotando sobre el resto de la app ya oscura. */
+html[data-theme='dark'] .admin-modal {
+  background: var(--tajy-gradient-card);
+  border: 1px solid rgba(255, 42, 61, 0.16);
+  box-shadow: var(--tajy-shadow-card);
+}
+
+/* Dentro de ese modal, .historial-detalle__resumen usa un gradient que termina en
+   #fff, y .historial-detalle__variante / .historial-detalle__pago tienen
+   background: #fff hardcodeado directo — las 3 quedaban como bloques blancos sobre
+   el modal ya oscurecido arriba. */
+html[data-theme='dark'] .historial-detalle__resumen {
+  background: linear-gradient(125deg, var(--tajy-pink), var(--tajy-surface-alt) 68%);
+}
+
+html[data-theme='dark'] .historial-detalle__variante,
+html[data-theme='dark'] .historial-detalle__pago {
+  background: var(--tajy-surface-alt);
+}
+
+/* Bug reportado por Kevin con captura (2026-08-12): el input de "Suma asegurada (Gs.)"
+   dentro de cada card de "Coberturas adicionales" (.cobertura-adicional-card__input,
+   cotizador.css) tiene background: #fff hardcodeado — con el borde rojo (correcto, indica
+   cobertura activa) pero fondo blanco sólido y placeholder gris claro, casi ilegible sobre
+   el resto de la pantalla ya oscura. El check/dot/ícono de la misma card ya usan var(--tajy-*)
+   y heredan el tema solos — solo el input necesitaba override. */
+html[data-theme='dark'] .cobertura-adicional-card__input {
+  background: var(--tajy-input-bg);
+  color: var(--tajy-ink);
+}
+
+html[data-theme='dark'] .cobertura-adicional-card__input::placeholder {
+  color: var(--tajy-text-muted);
+}
+
+/* ---------------------------------------------------------------------------
+   Vista "Detalle del plan" (.resultado-view y su contenido). Encontrado en la
+   verificación visual de este pase: TODA la vista quedaba en BLANCO en dark mode —
+   .resultado-view, .resultado-hero, .plan-info-card, .coberturas-lista y
+   .resumen-sistema tienen `background: #fff` hardcodeado en cotizador.css y ninguna
+   estaba cubierta por un override dark. Como el color de texto sí cambiaba a
+   --tajy-ink (#f5f7fa), el resultado era texto blanco sobre fondo blanco: la pestaña
+   entera se leía vacía. Mismo criterio y mismos tokens que las cards de la pestaña
+   "Datos" (borde rojo 1px + gradiente de card), para que las dos pestañas se vean
+   como el mismo sistema. */
+html[data-theme='dark'] .resultado-view {
+  background: var(--tajy-bg);
+}
+
+html[data-theme='dark'] .resultado-hero,
+html[data-theme='dark'] .plan-info-card,
+html[data-theme='dark'] .coberturas-lista,
+html[data-theme='dark'] .resumen-sistema {
+  background: var(--tajy-gradient-card);
+  border-color: rgba(255, 42, 61, 0.5);
+  box-shadow: var(--tajy-glow-card);
+}
+
+/* Badge "neutral" de .plan-info-card: #f1f0ee / #555 hardcodeados (gris claro sobre
+   gris oscuro = ilegible en dark). Se pasa al chip oscuro de la paleta. */
+html[data-theme='dark'] .plan-info-card__badge--neutral {
+  background: var(--tajy-chip-bg);
+  color: var(--tajy-text-secondary);
+}
+
+/* Select de franquicia de cada cobertura: mismo `background: #fff` hardcodeado que el
+   input de suma asegurada ya corregido más arriba. */
+html[data-theme='dark'] .cobertura-row__franquicia {
+  background: var(--tajy-input-bg);
+  border-color: var(--tajy-border);
+  color: var(--tajy-ink);
+}

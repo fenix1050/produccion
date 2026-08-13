@@ -4,13 +4,25 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Cotizador Tajy — Ingresar</title>
+    <script>
+      ;(function () {
+        try {
+          var t =
+            localStorage.getItem('tajy-theme') ||
+            (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+          document.documentElement.setAttribute('data-theme', t)
+        } catch (e) {}
+      })()
+    </script>
     <link rel="icon" href="../shared/logo/favicon.ico" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="stylesheet" href="./login.css" />
+    <link rel="stylesheet" href="../shared/theme-dark.css" />
   </head>
   <body>
     <main id="app" class="login-shell"></main>
     <script src="../shared/config.js"></script>
+    <script src="../shared/theme.js"></script>
     <script type="module" src="./login.js"></script>
   </body>
 </html>

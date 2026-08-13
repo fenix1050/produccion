@@ -94,7 +94,11 @@ html[data-theme='dark'] {
     radial-gradient(circle at top left, rgba(255, 255, 255, 0.03), transparent 28%),
     radial-gradient(circle at bottom right, rgba(255, 255, 255, 0.022), transparent 30%),
     linear-gradient(180deg, #050507 0%, #08080b 100%);
-  --tajy-gradient-card: linear-gradient(180deg, rgba(16, 16, 19, 0.96) 0%, rgba(10, 10, 13, 0.98) 100%);
+  --tajy-gradient-card: linear-gradient(
+    180deg,
+    rgba(16, 16, 19, 0.96) 0%,
+    rgba(10, 10, 13, 0.98) 100%
+  );
   --tajy-gradient-primary: linear-gradient(180deg, #ff4052 0%, #ff2a3d 100%);
   --tajy-shadow-soft: 0 8px 24px rgba(0, 0, 0, 0.35);
   --tajy-shadow-card: 0 12px 30px rgba(0, 0, 0, 0.42);
@@ -452,7 +456,9 @@ html[data-theme='dark'] .field-input {
 
 html[data-theme='dark'] .field-input:focus {
   border-color: rgba(255, 42, 61, 0.45) !important;
-  box-shadow: 0 0 0 3px rgba(255, 42, 61, 0.12), 0 0 14px rgba(255, 42, 61, 0.12);
+  box-shadow:
+    0 0 0 3px rgba(255, 42, 61, 0.12),
+    0 0 14px rgba(255, 42, 61, 0.12);
 }
 
 /* Autocompletado del navegador. Chrome pinta los campos autocompletados con su propio
@@ -477,7 +483,9 @@ html[data-theme='dark'] select:-webkit-autofill {
   box-shadow: 0 0 0 1000px var(--tajy-input-bg-autofill) inset !important;
   -webkit-text-fill-color: var(--tajy-ink) !important;
   caret-color: var(--tajy-ink);
-  transition: background-color 600000s 0s, color 600000s 0s;
+  transition:
+    background-color 600000s 0s,
+    color 600000s 0s;
 }
 
 /* El foco tiene que seguir dibujando su halo rojo aunque el campo esté autocompletado:
@@ -515,7 +523,6 @@ html[data-theme='dark'] .resultado-hero__price {
 html[data-theme='dark'] .sidebar {
   background: #0b1018;
   border-right-color: var(--tajy-border-light);
-  position: relative;
 }
 
 html[data-theme='dark'] .sidebar__brand,
@@ -578,11 +585,8 @@ html[data-theme='dark'] .app-shell {
   position: relative;
 }
 
-/* z-index alto a propósito: .topbar y .app-body (sidebar + contenido) son opacos y
-   cubren el 100% del área de .app-shell sin huecos, así que si los puntos quedaran
-   DETRÁS (z-index menor) jamás se verían — no hay ningún gap transparente en el
-   layout donde asomar. Van ENCIMA de todo como una textura decorativa flotante
-   (pointer-events:none evita que tapen clicks), igual que en la referencia. */
+/* La textura se pinta sobre los fondos del shell, pero detrás de sus bloques de contenido:
+   así se conserva en los espacios libres sin cubrir texto ni controles interactivos. */
 /* La spec dice literalmente "ondas de puntos", no una nube uniforme: en la referencia
    los puntos forman ARCOS concéntricos que barren desde la esquina, bandas curvas
    separadas por espacios vacíos, densas pegadas al borde y disipándose hacia el centro.
@@ -603,9 +607,16 @@ html[data-theme='dark'] .app-shell::after {
   background-image: radial-gradient(rgba(255, 60, 78, 0.6) 1.3px, transparent 1.3px);
   background-size: 12px 12px;
   pointer-events: none;
-  z-index: 5;
+  z-index: 0;
   -webkit-mask-composite: source-in;
   mask-composite: intersect;
+}
+
+html[data-theme='dark'] .topbar > *,
+html[data-theme='dark'] .sidebar > *,
+html[data-theme='dark'] .main > * {
+  position: relative;
+  z-index: 1;
 }
 
 /* Esquina superior derecha: es el campo prominente de la referencia — ocupa ~28% del
@@ -728,5 +739,298 @@ html[data-theme='dark'] .plan-info-card__badge--neutral {
 html[data-theme='dark'] .cobertura-row__franquicia {
   background: var(--tajy-input-bg);
   border-color: var(--tajy-border);
+  color: var(--tajy-ink);
+}
+
+/* ---------------------------------------------------------------------------
+   Acceso: login y bienvenida. Mantienen el tema claro existente; estas reglas solo
+   convierten las dos puertas de entrada al lenguaje oscuro compartido de la app. */
+
+[data-theme-icon] {
+  display: none;
+}
+
+html[data-theme='light'] [data-theme-icon='moon'],
+html:not([data-theme]) [data-theme-icon='moon'],
+html[data-theme='dark'] [data-theme-icon='sun'] {
+  display: inline-flex;
+}
+
+html[data-theme='dark'] .login-shell {
+  --login-split-bottom: 42.142857vw;
+  --login-split-run: 32.5vh;
+  background:
+    radial-gradient(circle at 16% 86%, rgba(255, 42, 61, 0.08), transparent 30%),
+    linear-gradient(180deg, #050a14 0%, #070b16 100%);
+  color: var(--tajy-ink);
+}
+
+html[data-theme='dark'] .login-diagonal {
+  inset: 0;
+  width: auto;
+  height: auto;
+  overflow: hidden;
+  background:
+    radial-gradient(
+      ellipse 58% 70% at 76% 42%,
+      rgba(255, 42, 61, 0.3) 0%,
+      rgba(255, 42, 61, 0.11) 44%,
+      transparent 72%
+    ),
+    linear-gradient(90deg, #170309 40%, #5b0a19 62%, #7a0d1f 80%, #4f0813 100%);
+  clip-path: polygon(
+    calc(var(--login-split-bottom) + var(--login-split-run)) 0,
+    100% 0,
+    100% 100%,
+    var(--login-split-bottom) 100%
+  );
+}
+
+html[data-theme='dark'] .login-diagonal::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: #ff2a3d;
+  clip-path: polygon(
+    calc(var(--login-split-bottom) + var(--login-split-run) - 1px) 0,
+    calc(var(--login-split-bottom) + var(--login-split-run) + 1px) 0,
+    calc(var(--login-split-bottom) + 1px) 100%,
+    calc(var(--login-split-bottom) - 1px) 100%
+  );
+  filter: drop-shadow(0 0 5px rgba(255, 42, 61, 0.68));
+}
+
+/* Los SVG decorativos traen opacidades bajas (pensadas para fondo claro) que
+   sobre el negro desaparecen. Se cambia el archivo por su variante para fondo
+   oscuro, que ya trae subidas las opacidades y el resplandor horneado adentro.
+   NO usar filtros CSS acá: estos elementos están animados, y un filtro sobre un
+   elemento animado se recalcula en cada frame (medido: 43 -> 28 fps). */
+html[data-theme='dark'] .login-decoration--wave-lower,
+html[data-theme='dark'] .login-decoration--wave-upper {
+  content: url('assets/particles-wave-red-glow.svg');
+}
+
+html[data-theme='dark'] .login-decoration--wave-lower {
+  bottom: -150px;
+  left: -190px;
+  width: min(70vw, 820px);
+  opacity: 0.72;
+}
+
+html[data-theme='dark'] .login-decoration--wave-upper {
+  opacity: 0.6;
+}
+
+/* La constelación ya es un canvas que dibuja su propio halo por sprite, así que
+   acá no va ningún filtro: sería recalcularlo 60 veces por segundo sobre un
+   elemento que cambia en cada frame. */
+html[data-theme='dark'] .login-decoration--constellation {
+  opacity: 0.72;
+}
+
+html[data-theme='dark'] .login-card {
+  background: linear-gradient(150deg, rgba(22, 22, 27, 0.94), rgba(10, 10, 13, 0.9));
+  border: 1px solid rgba(255, 42, 61, 0.32);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.045),
+    0 0 32px rgba(255, 42, 61, 0.1),
+    0 24px 64px rgba(0, 0, 0, 0.5);
+  /* Sin backdrop-filter a propósito: el card ya es 90–94% opaco, así que el
+     desenfoque de atrás no se ve, pero obliga a recalcularlo cada vez que algo
+     se mueve detrás — y acá siempre hay partículas moviéndose. Costaba ~11 fps. */
+}
+
+html[data-theme='dark'] .login-card:hover {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 0 38px rgba(255, 42, 61, 0.14),
+    0 28px 68px rgba(0, 0, 0, 0.56);
+}
+
+html[data-theme='dark'] .login-card__tab {
+  background: var(--tajy-red);
+  box-shadow: 0 0 18px rgba(255, 42, 61, 0.45);
+}
+
+html[data-theme='dark'] .login-card__logo--light,
+html[data-theme='dark'] .bv-header__logo--light {
+  display: none;
+}
+
+html[data-theme='dark'] .login-card__logo--dark,
+html[data-theme='dark'] .bv-header__logo--dark {
+  display: block;
+}
+
+html[data-theme='dark'] .login-card__title,
+html[data-theme='dark'] .login-field label {
+  color: var(--tajy-ink);
+}
+
+html[data-theme='dark'] .login-card__subtitle,
+html[data-theme='dark'] .login-card__footer,
+html[data-theme='dark'] .login-forgot a {
+  color: var(--tajy-text-secondary);
+}
+
+html[data-theme='dark'] .login-card__error {
+  background: rgba(255, 42, 61, 0.1);
+  border-color: rgba(255, 42, 61, 0.28);
+  color: #ff9aa4;
+}
+
+html[data-theme='dark'] .login-field input {
+  background: var(--tajy-input-bg);
+  border-color: var(--tajy-border);
+  color: var(--tajy-ink);
+}
+
+html[data-theme='dark'] .login-field input::placeholder {
+  color: var(--tajy-text-muted);
+}
+
+html[data-theme='dark'] .login-field input:focus {
+  border-color: var(--tajy-red);
+  box-shadow:
+    0 0 0 3px rgba(255, 42, 61, 0.12),
+    0 0 16px rgba(255, 42, 61, 0.1);
+}
+
+html[data-theme='dark'] .login-field__icon {
+  color: var(--tajy-text-muted);
+}
+
+html[data-theme='dark'] .login-field__toggle {
+  color: var(--tajy-text-muted);
+}
+
+html[data-theme='dark'] .login-field__toggle:hover,
+html[data-theme='dark'] .login-field__toggle:focus-visible {
+  background: rgba(255, 255, 255, 0.055);
+  color: var(--tajy-ink);
+}
+
+html[data-theme='dark'] .login-forgot a:hover {
+  color: var(--tajy-ink);
+}
+
+html[data-theme='dark'] .login-submit {
+  background: var(--tajy-gradient-primary);
+  box-shadow: 0 8px 20px rgba(255, 42, 61, 0.22);
+}
+
+html[data-theme='dark'] .login-submit:hover:not(:disabled) {
+  background: var(--tajy-red-hover);
+  box-shadow: 0 10px 24px rgba(255, 42, 61, 0.32);
+}
+
+html[data-theme='dark'] .login-theme-toggle,
+html[data-theme='dark'] .bv-theme-toggle {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(14, 14, 18, 0.84);
+  color: var(--tajy-text-secondary);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28);
+}
+
+html[data-theme='dark'] .login-theme-toggle:hover,
+html[data-theme='dark'] .bv-theme-toggle:hover {
+  border-color: rgba(255, 42, 61, 0.45);
+  background: var(--tajy-surface-alt);
+  color: var(--tajy-ink);
+  box-shadow: 0 8px 24px rgba(255, 42, 61, 0.14);
+}
+
+@media (max-width: 640px) {
+  html[data-theme='dark'] .login-shell {
+    --login-split-bottom: clamp(108px, 30vw, 192px);
+    --login-split-run: min(32vh, 44vw);
+  }
+}
+
+html[data-theme='dark'] .bv-shell {
+  background:
+    radial-gradient(circle at 10% 90%, rgba(255, 42, 61, 0.11), transparent 30%),
+    radial-gradient(circle at 87% 8%, rgba(255, 42, 61, 0.08), transparent 26%),
+    var(--tajy-gradient-app);
+}
+
+/* Misma variante para fondo oscuro que usa el login: opacidades subidas y
+   resplandor horneado dentro del SVG, sin filtros CSS. */
+html[data-theme='dark'] .bv-decoration--wave-lower,
+html[data-theme='dark'] .bv-decoration--wave-upper {
+  content: url('assets/particles-wave-red-glow.svg');
+}
+
+html[data-theme='dark'] .bv-decoration--wave-lower {
+  opacity: 0.72;
+}
+
+html[data-theme='dark'] .bv-decoration--wave-upper {
+  opacity: 0.5;
+}
+
+/* Sin filtro: la constelación ya es un canvas que dibuja su propio halo. Más
+   tenue que en el login porque acá compite con el contenido, no lo acompaña. */
+html[data-theme='dark'] .bv-decoration--constellation {
+  opacity: 0.45;
+}
+
+html[data-theme='dark'] .bv-container {
+  z-index: 2;
+}
+
+html[data-theme='dark'] .bv-header__saludo,
+html[data-theme='dark'] .bv-subtitle,
+html[data-theme='dark'] .bv-card__desc,
+html[data-theme='dark'] .bv-placeholder__text,
+html[data-theme='dark'] .bv-volver {
+  color: var(--tajy-text-secondary);
+}
+
+html[data-theme='dark'] .bv-header__saludo b,
+html[data-theme='dark'] .bv-title,
+html[data-theme='dark'] .bv-card__title,
+html[data-theme='dark'] .bv-ramo-row__label,
+html[data-theme='dark'] .bv-placeholder__title {
+  color: var(--tajy-ink);
+}
+
+/* Borde tintado de rojo y halo tenue en reposo, como en el diseño de referencia:
+   con el borde neutro las tarjetas se perdían contra el fondo casi negro. */
+html[data-theme='dark'] .bv-card,
+html[data-theme='dark'] .bv-ramo-row {
+  background: var(--tajy-gradient-card);
+  border-color: rgba(255, 42, 61, 0.3);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 0 26px rgba(255, 42, 61, 0.07),
+    0 8px 24px rgba(0, 0, 0, 0.28);
+}
+
+html[data-theme='dark'] .bv-card:hover,
+html[data-theme='dark'] .bv-ramo-row--disponible:hover {
+  border-color: rgba(255, 42, 61, 0.55);
+  box-shadow: var(--tajy-shadow-accent);
+}
+
+html[data-theme='dark'] .bv-card__icon {
+  background: var(--tajy-pink);
+  color: var(--tajy-red);
+}
+
+html[data-theme='dark'] .bv-card__arrow {
+  color: var(--tajy-text-muted);
+}
+
+html[data-theme='dark'] .bv-ramo-row__icon,
+html[data-theme='dark'] .bv-placeholder__icon,
+html[data-theme='dark'] .bv-ramo-row__badge--pausa,
+html[data-theme='dark'] .bv-ramo-row__badge--proximamente {
+  background: var(--tajy-chip-bg);
+  color: var(--tajy-text-secondary);
+}
+
+html[data-theme='dark'] .bv-volver:hover {
   color: var(--tajy-ink);
 }

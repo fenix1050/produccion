@@ -1,7 +1,7 @@
 import { api, auth } from '../shared/api.js'
 import { escapeHtml } from '../shared/dom.js'
+import { initConstellationFx, initLoginFx } from '../shared/fx.js'
 import { logger } from '../shared/logger.js'
-import { initLoginFx } from '../login/login-fx.js'
 import {
   ICON_ARROW_LEFT,
   ICON_CLOCK,
@@ -58,12 +58,14 @@ const ESTADO_LABEL = {
 
 const app = document.getElementById('app')
 
+if (typeof window.bindThemeToggleOnce === 'function') {
+  window.bindThemeToggleOnce()
+}
+
 const state = {
   view: 'welcome',
   ramosActivos: [],
 }
-
-let destroyFx = null
 
 function ramoActivo(nombre) {
   return state.ramosActivos.find((r) => r.nombre === nombre) || null
@@ -77,20 +79,28 @@ function ramoInfo(nombre) {
 }
 
 function render() {
-  if (destroyFx) {
-    destroyFx.forEach((fn) => fn())
-    destroyFx = null
-  }
-
   const usuario = auth.getUsuario()
   const nombre = usuario?.nombre || usuario?.email || 'agente'
 
   app.innerHTML = `
-    <canvas id="fx-canvas-bg"></canvas>
+    <canvas class="bv-fx" id="bv-fx-particulas" aria-hidden="true"></canvas>
+    <img class="bv-decoration bv-decoration--wave bv-decoration--wave-lower" src="../shared/assets/particles-wave-red.svg" alt="" aria-hidden="true" />
+    <img class="bv-decoration bv-decoration--wave bv-decoration--wave-upper" src="../shared/assets/particles-wave-red.svg" alt="" aria-hidden="true" />
+    <canvas class="bv-decoration bv-decoration--constellation" id="bv-fx-constelacion" aria-hidden="true"></canvas>
     <div class="bv-container">
       <header class="bv-header">
-        <img class="bv-header__logo" src="./assets/logo-rojo-con-negro.svg" alt="Aseguradora Tajy" />
-        <div class="bv-header__saludo">Hola, <b>${escapeHtml(nombre)}</b></div>
+        <div class="bv-header__brand">
+          <img class="bv-header__logo bv-header__logo--light" src="./assets/logo-rojo-con-negro.svg" alt="Aseguradora Tajy" />
+          <img class="bv-header__logo bv-header__logo--dark" src="../../logo/logo-dark.png" alt="Aseguradora Tajy" />
+        </div>
+        <div class="bv-header__actions">
+          <div class="bv-header__saludo">Hola, <b>${escapeHtml(nombre)}</b></div>
+          ${
+            typeof window.renderThemeToggleButton === 'function'
+              ? window.renderThemeToggleButton({ className: 'bv-theme-toggle' })
+              : ''
+          }
+        </div>
       </header>
       <main class="bv-fade">
         ${state.view === 'welcome' ? renderWelcome() : ''}
@@ -101,13 +111,48 @@ function render() {
   `
 
   bindEvents()
+  mountFx()
+}
+
+// Mismo lenguaje visual que el login: campo de partículas enlazadas de fondo y
+// constelación animada, ambas con halo en tema oscuro. render() reconstruye todo
+// el innerHTML al cambiar de vista, así que hay que destruir los efectos viejos
+// o quedan animando contra canvas que ya no están en el documento.
+let destroyFx = []
+
+function destroyBvFx() {
+  destroyFx.forEach((destroy) => destroy())
+  destroyFx = []
+}
+
+function mountFx() {
+  destroyBvFx()
+
+  const shell = document.querySelector('.bv-shell') || app
+  const canvasParticulas = app.querySelector('#bv-fx-particulas')
+  const canvasConstelacion = app.querySelector('#bv-fx-constelacion')
+
+  if (!canvasParticulas || !canvasConstelacion) return
+
+  const oscuro = document.documentElement.getAttribute('data-theme') === 'dark'
+
+  const constelacion = initConstellationFx(canvasConstelacion, {
+    glow: oscuro ? 11 : 0,
+  })
+
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+    destroyFx = [constelacion]
+    return
+  }
 
   destroyFx = [
-    initLoginFx(document.getElementById('fx-canvas-bg'), app, {
-      particleCount: 40,
-      particleColor: '216, 19, 46',
-      particleAlpha: 0.3,
-      linkAlpha: 0.08,
+    constelacion,
+    initLoginFx(canvasParticulas, shell, {
+      particleCount: 70,
+      particleColor: oscuro ? '255, 42, 61' : '216, 19, 46',
+      particleAlpha: oscuro ? 0.45 : 0.3,
+      linkAlpha: oscuro ? 0.17 : 0.09,
+      glow: oscuro ? 8 : 0,
     }),
   ]
 }
@@ -233,3 +278,9 @@ async function init() {
 }
 
 init()
+
+// El color y el alpha de las partículas se resuelven al montar el canvas, así que
+// un cambio de tema en caliente los dejaría con la paleta anterior.
+document.addEventListener('tajy-theme-change', mountFx)
+
+window.addEventListener('pagehide', destroyBvFx)

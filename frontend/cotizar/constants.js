@@ -4,6 +4,7 @@ import {
   ICON_RAMO_INCENDIO,
   ICON_RAMO_VIDA_AP,
   ICON_RAMO_HOGAR,
+  ICON_RAMO_TRANSPORTE,
   ICON_SUBLIMITE_GENERICO,
   ICON_SUBLIMITE_AGUA,
   ICON_SUBLIMITE_ELECTRICOS,
@@ -34,12 +35,12 @@ export const RAMOS_UI = [
   { nombre: 'vida-ap', code: 'VA', label: 'Vida y Accidentes Personales', estado: 'disponible' },
   { nombre: 'hogar', code: 'MH', label: 'Multirriesgo Hogar', estado: 'proximamente' },
   { nombre: 'tro', code: 'TR', label: 'Todo Riesgo Operativo', estado: 'proximamente' },
-  { nombre: 'transporte', code: 'TM', label: 'Transporte de Mercadería', estado: 'proximamente' },
+  { nombre: 'transporte', code: 'TM', label: 'Transporte de Mercaderías', estado: 'proximamente' },
 ]
 
 // Íconos por ramo — se usan tanto en el badge de la vista Datos (form-heading__badge)
 // como en el nav del sidebar (.ramo-row__icon), Diseño 2 (docs/mockups/diseno-2-app-shell.html).
-// Auto-Flota/TRO/Transporte no tienen ícono propio diseñado todavía — usan el genérico.
+// Auto-Flota y TRO no tienen ícono propio diseñado todavía — usan el genérico (escudo).
 export const RAMO_ICONOS = {
   auto: ICON_RAMO_AUTO,
   'auto-flota': ICON_SUBLIMITE_GENERICO,
@@ -48,7 +49,7 @@ export const RAMO_ICONOS = {
   'vida-ap': ICON_RAMO_VIDA_AP,
   hogar: ICON_RAMO_HOGAR,
   tro: ICON_SUBLIMITE_GENERICO,
-  transporte: ICON_SUBLIMITE_GENERICO,
+  transporte: ICON_RAMO_TRANSPORTE,
 }
 
 // Ramos con calculador real conectado en esta pasada (ver CLAUDE.md — MRC primero, luego
@@ -217,7 +218,6 @@ export const ICON_PLUS = `<svg width="16" height="16" viewBox="0 0 24 24" fill="
 // los pills de "Forma de pago" del panel en vivo salgan siempre igual (pedido de Kevin 2026-08-07).
 export const ORDEN_FORMAS_PAGO = ['contado', 'cobrador', 'boca_cobranza', 'tarjeta_credito']
 
-// Versión del cotizador mostrada en el topbar y en el pie de página del sidebar (chrome de
-// UI, no viene de la base) — única fuente de verdad para que ambas queden siempre de la mano.
-// Se incrementa a mano cuando haya un cambio visible que valga la pena versionar.
-export const COTIZADOR_VERSION = '1.0.1'
+// La versión mostrada en el pie del sidebar se mudó a shared/version.js (APP_VERSION):
+// historial, configuración y admin también la muestran ahora, y no pueden importar de
+// cotizar/ sin cruzar carpetas de feature.

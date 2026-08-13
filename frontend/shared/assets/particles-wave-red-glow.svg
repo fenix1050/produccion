@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 640" fill="none">
+  <!--
+    Variante para fondos oscuros de particles-wave-red.svg: misma geometría, con
+    las opacidades subidas y el resplandor HORNEADO ADENTRO del archivo.
+
+    El brillo no va como filter CSS a propósito. Un filtro sobre un elemento que
+    además se anima se recalcula en cada frame: medido en el login, esa
+    combinación costaba 43 -> 28 fps. Adentro del SVG se rasteriza una sola vez
+    al decodificar la imagen, y a partir de ahí moverla no cuesta nada.
+
+    Si se edita particles-wave-red.svg, hay que reflejar el cambio acá.
+  -->
+  <defs>
+    <filter id="resplandor" x="-15%" y="-15%" width="130%" height="130%">
+      <feGaussianBlur stdDeviation="5" />
+    </filter>
+    <g id="ola">
+      <g stroke="#ff2a3d" stroke-linecap="round">
+        <path
+          d="M-84 636C66 412 286 294 568 274c150-11 275 12 433 79"
+          stroke-width="3"
+          stroke-dasharray="1 16"
+          opacity=".25"
+        />
+        <path
+          d="M-44 648C99 455 295 356 551 342c147-8 271 17 418 77"
+          stroke-width="3.2"
+          stroke-dasharray="1 15"
+          opacity=".37"
+        />
+        <path
+          d="M5 651C134 489 309 415 540 406c135-5 251 20 382 71"
+          stroke-width="3.4"
+          stroke-dasharray="1 14"
+          opacity=".53"
+        />
+        <path
+          d="M60 646C174 516 327 462 525 457c121-3 225 20 337 61"
+          stroke-width="3.6"
+          stroke-dasharray="1 13"
+          opacity=".71"
+        />
+        <path
+          d="M119 633c97-101 233-149 397-149 102 0 190 20 280 55"
+          stroke-width="3.8"
+          stroke-dasharray="1 12"
+          opacity=".96"
+        />
+      </g>
+      <g fill="#ff2a3d">
+        <circle cx="151" cy="607" r="2.4" opacity="1" />
+        <circle cx="194" cy="551" r="1.8" opacity=".87" />
+        <circle cx="258" cy="505" r="1.5" opacity=".69" />
+        <circle cx="353" cy="465" r="1.4" opacity=".55" />
+        <circle cx="479" cy="444" r="1.2" opacity=".41" />
+        <circle cx="617" cy="454" r="1.1" opacity=".3" />
+      </g>
+    </g>
+  </defs>
+  <use href="#ola" filter="url(#resplandor)" opacity=".6" />
+  <use href="#ola" />
+</svg>

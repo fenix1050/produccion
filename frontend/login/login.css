@@ -13,12 +13,26 @@ body {
 .login-shell {
   min-height: 100vh;
   position: relative;
-  overflow: hidden;
+  isolation: isolate;
+  overflow: clip;
   display: flex;
   align-items: center;
   justify-content: center;
+  box-sizing: border-box;
+  padding: 36px 20px;
   background: #fafafa;
   font-family: 'Inter', system-ui, sans-serif;
+}
+
+.login-fx {
+  position: absolute;
+  display: block;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.login-fx--background {
+  inset: 0;
 }
 
 .login-diagonal {
@@ -30,21 +44,52 @@ body {
   background: #d8132e;
   clip-path: polygon(35% 0, 100% 0, 100% 100%, 0 100%);
   overflow: hidden;
-  z-index: 1;
-}
-
-.login-diagonal canvas {
-  position: absolute;
-  inset: 0;
   pointer-events: none;
-}
-
-#fx-canvas-bg {
-  position: absolute;
-  inset: 0;
   z-index: 0;
-  pointer-events: none;
 }
+
+.login-fx--diagonal {
+  inset: 0;
+}
+
+.login-decoration {
+  position: absolute;
+  z-index: 1;
+  pointer-events: none;
+  user-select: none;
+}
+
+.login-decoration--wave-lower {
+  bottom: -160px;
+  left: -180px;
+  width: min(72vw, 840px);
+  opacity: 0.2;
+}
+
+.login-decoration--wave-upper {
+  top: -180px;
+  right: -190px;
+  width: min(57vw, 700px);
+  opacity: 0.14;
+  transform: rotate(180deg);
+}
+
+.login-decoration--constellation {
+  top: -44px;
+  right: -24px;
+  width: min(42vw, 520px);
+  opacity: 0.18;
+  /* Es un <canvas>, no un <img>: sin esto no tiene alto intrínseco del cual
+     derivar su caja. Debe coincidir con el viewBox de constellation-red.svg. */
+  aspect-ratio: 720 / 520;
+}
+
+/* Las olas quedan fijas A PROPÓSITO. Se probó animarlas con una deriva lenta y
+   costaba entre 9 y 20 fps: son imágenes enormes y semitransparentes que se
+   superponen a los canvas, así que moverlas obliga al compositor a rehacer la
+   mezcla de capas grandes en cada frame. Ni `will-change: transform` lo salvó.
+   El movimiento del fondo lo aportan las partículas y la constelación, que son
+   canvas y cuestan una fracción de eso. */
 
 .login-card {
   position: relative;
@@ -82,6 +127,42 @@ body {
   height: auto;
   margin: 0 auto 20px;
   transition: transform 0.25s ease;
+}
+
+.login-card__logo--dark {
+  display: none;
+}
+
+/* Va abajo a la derecha, fijo: el diseño de referencia no tiene header, y el
+   usuario necesita poder elegir el tema ANTES de entrar — si cae en uno que no
+   puede leer, no debería tener que loguearse para corregirlo. */
+.login-theme-toggle {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 1px solid rgba(25, 25, 25, 0.12);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.88);
+  color: #40444a;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.login-theme-toggle:hover {
+  background: #fff;
+  border-color: rgba(216, 19, 46, 0.32);
+  box-shadow: 0 6px 18px rgba(216, 19, 46, 0.18);
 }
 
 .login-card:hover .login-card__logo {
@@ -146,6 +227,25 @@ body {
     box-shadow 0.2s ease;
 }
 
+.login-field__input-wrap {
+  position: relative;
+}
+
+.login-field__input-wrap input {
+  padding-left: 40px;
+}
+
+.login-field__icon {
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  left: 13px;
+  display: inline-flex;
+  color: #8a8f96;
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
 .login-field input::placeholder {
   color: #a9adb3;
 }
@@ -159,7 +259,8 @@ body {
 .login-field input:focus-visible,
 .login-submit:focus-visible,
 .login-field__toggle:focus-visible,
-.login-forgot a:focus-visible {
+.login-forgot a:focus-visible,
+.login-theme-toggle:focus-visible {
   outline: 2px solid #d8132e;
   outline-offset: 2px;
 }
@@ -257,4 +358,72 @@ body {
   font-size: 10.5px;
   color: #6b6f75;
   margin: 20px 0 0;
+}
+
+@media (max-width: 480px) {
+  .login-shell {
+    align-items: flex-start;
+    padding: 28px 16px;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .login-card {
+    padding: 32px 24px 24px;
+  }
+
+  .login-theme-toggle {
+    right: 14px;
+    bottom: 14px;
+    width: 36px;
+    height: 36px;
+  }
+
+  .login-decoration--wave-lower {
+    bottom: -76px;
+    left: -20px;
+    width: min(100vw, 500px);
+    max-width: 100vw;
+    opacity: 0.2;
+    transform: scale(0.9);
+    transform-origin: bottom left;
+  }
+
+  .login-decoration--wave-upper {
+    top: -18px;
+    right: -12px;
+    width: min(88vw, 360px);
+    max-width: 88vw;
+    opacity: 0.06;
+    transform: rotate(180deg) scale(0.72);
+    transform-origin: center;
+  }
+
+  .login-decoration--constellation {
+    top: 4px;
+    right: -24px;
+    width: min(54vw, 205px);
+    max-width: 54vw;
+    opacity: 0.1;
+    transform: scale(0.78);
+    transform-origin: top right;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-fx {
+    display: none;
+  }
+
+  .login-card,
+  .login-card__logo,
+  .login-theme-toggle,
+  .login-submit {
+    transition: none;
+  }
+
+  .login-card:hover,
+  .login-submit:hover:not(:disabled) {
+    transform: none;
+  }
 }

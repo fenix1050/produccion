@@ -11,29 +11,56 @@ body {
   position: relative;
   min-height: 100vh;
   background: #f7f6f5;
-  overflow: hidden;
+  isolation: isolate;
+  overflow-x: clip;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-#fx-canvas-bg {
+.bv-fx {
   position: absolute;
   inset: 0;
-  width: 100%;
-  height: 100%;
+  z-index: 0;
+  display: block;
   pointer-events: none;
-  -webkit-mask-image: radial-gradient(
-    circle at 88% 8%,
-    rgba(0, 0, 0, 0.55) 0%,
-    rgba(0, 0, 0, 0) 42%
-  );
-  mask-image: radial-gradient(circle at 88% 8%, rgba(0, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0) 42%);
+}
+
+.bv-decoration {
+  position: absolute;
+  z-index: 1;
+  pointer-events: none;
+  user-select: none;
+}
+
+.bv-decoration--wave-lower {
+  bottom: -180px;
+  left: -170px;
+  width: min(72vw, 840px);
+  opacity: 0.24;
+}
+
+.bv-decoration--wave-upper {
+  top: -170px;
+  right: -190px;
+  width: min(52vw, 660px);
+  opacity: 0.12;
+  transform: rotate(180deg);
+}
+
+.bv-decoration--constellation {
+  top: -46px;
+  right: -18px;
+  width: min(42vw, 520px);
+  opacity: 0.16;
+  /* Es un <canvas>, no un <img>: sin esto no tiene alto intrínseco del cual
+     derivar su caja. Debe coincidir con el viewBox de constellation-red.svg. */
+  aspect-ratio: 720 / 520;
 }
 
 .bv-container {
   position: relative;
-  z-index: 1;
+  z-index: 2;
   width: 100%;
   max-width: 1000px;
   margin: 0 auto;
@@ -41,6 +68,8 @@ body {
 }
 
 .bv-header {
+  position: relative;
+  z-index: 3;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -52,6 +81,16 @@ body {
   width: auto;
 }
 
+.bv-header__logo--dark {
+  display: none;
+}
+
+.bv-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
 .bv-header__saludo {
   font-size: 13px;
   color: var(--tajy-text-secondary, #8a8a8a);
@@ -60,6 +99,37 @@ body {
 .bv-header__saludo b {
   color: var(--tajy-ink, #191919);
   font-weight: 700;
+}
+
+.bv-theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--tajy-border, #e8e6e3);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--tajy-ink, #191919);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  cursor: pointer;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    color 0.18s ease;
+}
+
+.bv-theme-toggle:hover {
+  border-color: var(--tajy-red, #d8132e);
+  color: var(--tajy-red, #d8132e);
+  box-shadow: 0 4px 12px rgba(216, 19, 46, 0.12);
+}
+
+.bv-theme-toggle:focus-visible,
+.bv-volver:focus-visible {
+  outline: 2px solid var(--tajy-red, #d8132e);
+  outline-offset: 2px;
 }
 
 @keyframes bvFadeIn {
@@ -300,11 +370,87 @@ body {
 }
 
 @media (max-width: 768px) {
+  html,
+  body {
+    height: auto;
+    min-height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .bv-shell {
+    align-items: flex-start;
+    overflow: visible;
+  }
+
   .bv-grid {
     grid-template-columns: 1fr;
   }
 
   .bv-container {
     padding: 28px 20px 40px;
+  }
+}
+
+@media (max-width: 480px) {
+  .bv-header {
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .bv-header__logo {
+    height: 42px;
+  }
+
+  .bv-header__actions {
+    gap: 10px;
+  }
+
+  .bv-header__saludo {
+    display: none;
+  }
+
+  .bv-decoration--wave-upper {
+    top: -18px;
+    right: -12px;
+    width: min(88vw, 360px);
+    max-width: 88vw;
+    opacity: 0.05;
+    transform: rotate(180deg) scale(0.72);
+    transform-origin: center;
+  }
+
+  .bv-decoration--wave-lower {
+    bottom: -94px;
+    left: -20px;
+    width: min(100vw, 500px);
+    max-width: 100vw;
+    opacity: 0.2;
+    transform: scale(0.9);
+    transform-origin: bottom left;
+  }
+
+  .bv-decoration--constellation {
+    top: -18px;
+    right: -28px;
+    width: min(58vw, 220px);
+    max-width: 58vw;
+    opacity: 0.12;
+    transform: scale(0.78);
+    transform-origin: top right;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bv-fade,
+  .bv-card,
+  .bv-ramo-row--disponible,
+  .bv-theme-toggle {
+    animation: none;
+    transition: none;
+  }
+
+  .bv-card:hover {
+    transform: none;
   }
 }

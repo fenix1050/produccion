@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.42](https://github.com/fenix1050/produccion/compare/v0.1.41...v0.1.42) (2026-08-13)
+
+
+### Bug Fixes
+
+* **cotizador:** transición de tabs, feedback de avance bloqueado y fix de scroll ([#254](https://github.com/fenix1050/produccion/issues/254)) ([2a61d1d](https://github.com/fenix1050/produccion/commit/2a61d1d8f877759a9380686afef9201974219d49))
+* **deps:** actualizar puppeteer a 25.6.0 para eliminar CVE de extract-zip ([#256](https://github.com/fenix1050/produccion/issues/256)) ([99e488c](https://github.com/fenix1050/produccion/commit/99e488cc0bf5543ddb1a5b0ad178675b8bd8e0c3))
+
 ## [0.1.41](https://github.com/fenix1050/produccion/compare/v0.1.40...v0.1.41) (2026-08-12)
 
 

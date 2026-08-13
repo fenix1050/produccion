@@ -93,7 +93,7 @@ function render() {
       <div class="login-card__tab"></div>
       <div class="login-card__logo-wrap">
         <img class="login-card__logo login-card__logo--light" src="./assets/logo-rojo-con-negro.svg" alt="" aria-hidden="true" />
-        <img class="login-card__logo login-card__logo--dark" src="../../logo/logo-dark.png" alt="" aria-hidden="true" />
+        <img class="login-card__logo login-card__logo--dark" src="../logo/logo-dark.png" alt="" aria-hidden="true" />
       </div>
       <h1 class="login-card__title">Bienvenido</h1>
       <p class="login-card__subtitle">Ingresá tus credenciales para continuar</p>

@@ -91,7 +91,7 @@ function render() {
       <header class="bv-header">
         <div class="bv-header__brand">
           <img class="bv-header__logo bv-header__logo--light" src="./assets/logo-rojo-con-negro.svg" alt="Aseguradora Tajy" />
-          <img class="bv-header__logo bv-header__logo--dark" src="../../logo/logo-dark.png" alt="Aseguradora Tajy" />
+          <img class="bv-header__logo bv-header__logo--dark" src="../logo/logo-dark.png" alt="Aseguradora Tajy" />
         </div>
         <div class="bv-header__actions">
           <div class="bv-header__saludo">Hola, <b>${escapeHtml(nombre)}</b></div>

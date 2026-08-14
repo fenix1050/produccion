@@ -761,6 +761,27 @@ html[data-theme='dark'] [data-theme-icon='sun'] {
   display: inline-flex;
 }
 
+/* Mismo gradiente que .login-shell en dark (regla de abajo) para que no haya
+   costura de color visible durante el fade-out del splash hacia el login. */
+html[data-theme='dark'] .app-splash {
+  background:
+    radial-gradient(circle at 16% 86%, rgba(255, 42, 61, 0.08), transparent 30%),
+    linear-gradient(180deg, #050a14 0%, #070b16 100%);
+}
+
+html[data-theme='dark'] .app-splash__logo--light {
+  display: none;
+}
+
+html[data-theme='dark'] .app-splash__logo--dark {
+  display: block;
+}
+
+html[data-theme='dark'] .app-splash__loader {
+  border-color: rgba(255, 42, 61, 0.2);
+  border-top-color: var(--tajy-red);
+}
+
 html[data-theme='dark'] .login-shell {
   --login-split-bottom: 42.142857vw;
   --login-split-run: 32.5vh;

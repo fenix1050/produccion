@@ -180,16 +180,31 @@ async function onSubmit(e) {
   }
 }
 
+// Oculta el splash de carga (index.html) con fade-out. transitionend cubre el
+// caso normal; el setTimeout es respaldo para prefers-reduced-motion, donde la
+// transición queda en `none` y ese evento nunca dispara.
+function hideSplash() {
+  const splash = document.getElementById('app-splash')
+  if (!splash) return
+  splash.classList.add('is-hidden')
+  const quitar = () => splash.remove()
+  splash.addEventListener('transitionend', quitar, { once: true })
+  setTimeout(quitar, 400)
+}
+
 // Si ya hay una sesión activa (cookie httpOnly vigente), evitamos el re-login
 // innecesario. cargarSesion() resuelve contra GET /auth/me — ya no hay token en
-// localStorage para chequear de forma síncrona.
+// localStorage para chequear de forma síncrona. El splash queda visible durante
+// la redirección (no se oculta): así el usuario con sesión va directo de splash
+// a cotizar, sin ver el formulario de login de paso.
 async function init() {
   const usuario = await auth.cargarSesion()
   if (usuario) {
     window.location.href = '../cotizar/'
-  } else {
-    render()
+    return
   }
+  render()
+  hideSplash()
 }
 
 init()

@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.45](https://github.com/fenix1050/produccion/compare/v0.1.44...v0.1.45) (2026-08-14)
+
+
+### Bug Fixes
+
+* **admin:** tema oscuro de botones/badge y reactivación de usuarios ([#263](https://github.com/fenix1050/produccion/issues/263)) ([31f15b9](https://github.com/fenix1050/produccion/commit/31f15b98906d95893aec930a00e989cefa666032))
+* **cotizar:** descartar respuestas fuera de orden del preview en vivo ([#265](https://github.com/fenix1050/produccion/issues/265)) ([37f7c78](https://github.com/fenix1050/produccion/commit/37f7c7820c6ff9ca5e111601ac5f1accf62c63b9))
+
 ## [0.1.44](https://github.com/fenix1050/produccion/compare/v0.1.43...v0.1.44) (2026-08-13)
 
 

@@ -192,13 +192,24 @@ function hideSplash() {
   setTimeout(quitar, 400)
 }
 
+// Piso de permanencia del splash pedido por Kevin: con el chequeo de sesión
+// solo, en conexiones rápidas el splash apenas alcanzaba a mostrarse. Corre en
+// paralelo con cargarSesion() (Promise.all), no en serie después: en una
+// conexión lenta no se le suma este tiempo al de la red, solo actúa de piso
+// cuando la respuesta ya volvió antes de los 2s.
+const SPLASH_DURACION_MINIMA_MS = 2000
+
+function esperar(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
 // Si ya hay una sesión activa (cookie httpOnly vigente), evitamos el re-login
 // innecesario. cargarSesion() resuelve contra GET /auth/me — ya no hay token en
 // localStorage para chequear de forma síncrona. El splash queda visible durante
 // la redirección (no se oculta): así el usuario con sesión va directo de splash
 // a cotizar, sin ver el formulario de login de paso.
 async function init() {
-  const usuario = await auth.cargarSesion()
+  const [usuario] = await Promise.all([auth.cargarSesion(), esperar(SPLASH_DURACION_MINIMA_MS)])
   if (usuario) {
     window.location.href = '../cotizar/'
     return

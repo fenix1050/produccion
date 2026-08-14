@@ -1,5 +1,5 @@
 import { api, auth } from '../shared/api.js'
-import { activarConTeclado, escapeHtml } from '../shared/dom.js'
+import { activarConTeclado, escapeHtml, renderBanner } from '../shared/dom.js'
 import { initConstellationFx, initLoginFx } from '../shared/fx.js'
 import { logger } from '../shared/logger.js'
 import {
@@ -65,6 +65,12 @@ if (typeof window.bindThemeToggleOnce === 'function') {
 const state = {
   view: 'welcome',
   ramosActivos: [],
+  banner: null,
+}
+
+function mostrarBanner(tipo, texto) {
+  state.banner = { tipo, texto }
+  render()
 }
 
 function ramoActivo(nombre) {
@@ -103,6 +109,7 @@ function render() {
         </div>
       </header>
       <main class="bv-fade">
+        ${renderBanner(state.banner)}
         ${state.view === 'welcome' ? renderWelcome() : ''}
         ${state.view === 'ramo' ? renderRamo() : ''}
         ${state.view === 'propuesta' ? renderPropuesta() : ''}
@@ -273,6 +280,7 @@ async function init() {
     state.ramosActivos = await api.get('/ramos')
   } catch (err) {
     logger.error('No se pudo cargar la lista de ramos', err)
+    mostrarBanner('error', 'No se pudo cargar la lista de ramos.')
     state.ramosActivos = []
   }
 

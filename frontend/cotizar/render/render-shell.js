@@ -36,7 +36,34 @@ export function renderTopbar(ramo) {
   })
 }
 
+// Skeleton de la lista de ramos mientras carga GET /ramos (state.loadingRamos, ver init() en
+// actions.js) — mismo layout que .ramo-row (ícono + label) para que no haya salto al llegar
+// la lista real. Cantidad de filas fija (RAMOS_UI.length) en vez de un número mágico.
+function renderSidebarSkeleton() {
+  const rows = RAMOS_UI.map(
+    () => `
+      <div class="ramo-row" aria-hidden="true">
+        <span class="skeleton-circle"></span>
+        <span class="skeleton-text" style="width: 65%"></span>
+      </div>
+    `
+  ).join('')
+
+  return `
+    <div class="sidebar ${state.sidebarAbierta ? 'sidebar--abierta' : ''}">
+      <div class="sidebar__section-label">Cotizar</div>
+      <div class="ramo-list">${rows}</div>
+      <div class="sidebar__footer">
+        <div class="sidebar__section-label">Gestión</div>
+        ${renderSidebarFooter('cotizar')}
+      </div>
+    </div>
+  `
+}
+
 export function renderSidebar() {
+  if (state.loadingRamos) return renderSidebarSkeleton()
+
   const rows = RAMOS_UI.map((base) => {
     const r = ramoInfo(base.nombre)
     const activa = r.nombre === state.ramoId

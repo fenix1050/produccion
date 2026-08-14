@@ -22,6 +22,15 @@ const state = {
   preview: null,
   previewError: null,
   loadingPreview: false,
+  // Flags de carga por sección — alimentan los skeletons del flujo de cotizar (sidebar de
+  // ramos, selector de plan, selector de tipo de riesgo, coberturas adicionales). Mismo
+  // patrón que loadingPreview: true antes del await, false en el finally — ver actions.js
+  // (init/selectRamo/cargarParaEditar/cargarCoberturasCatalogo/cargarPlanCoberturas).
+  loadingRamos: false,
+  loadingPlanes: false,
+  loadingRubros: false,
+  loadingCoberturasCatalogo: false,
+  loadingPlanCoberturas: false,
   // Forma de pago elegida por el agente en el cotizador (sección "Cotización en vivo").
   // Se conserva mientras dure la cotización y es la que después va a mostrarse también
   // en "Detalle del plan" y en la Carta Oferta (cuando se implemente) — ver PLAN_DESARROLLO.md

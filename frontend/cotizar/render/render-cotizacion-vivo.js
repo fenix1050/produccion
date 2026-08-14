@@ -24,6 +24,33 @@ function renderLiveLabel() {
   return `<div class="live-summary__label"><span class="live-summary__dot"></span>Cotización en vivo</div>`
 }
 
+// Skeleton del cuerpo de "Cotización en vivo" mientras se resuelve el PRIMER cálculo (ver
+// renderLivePanelBody) — misma silueta que el contenido real (pills de forma de pago, precio
+// grande, selector de cuotas, filas de detalle) para que no haya salto al llegar el número.
+function renderLivePanelSkeleton() {
+  return `
+    <div aria-hidden="true">
+    <div class="forma-pago-row">
+      <span class="skeleton-text" style="width: 30%"></span>
+      <div class="forma-pago-row__pills">
+        <span class="skeleton-block" style="width: 90px; height: 28px"></span>
+        <span class="skeleton-block" style="width: 90px; height: 28px"></span>
+        <span class="skeleton-block" style="width: 90px; height: 28px"></span>
+      </div>
+    </div>
+    <span class="skeleton-text" style="width: 45%; margin-bottom: 8px"></span>
+    <span class="skeleton-text skeleton-text--lg" style="width: 65%; height: 34px; margin-bottom: 14px"></span>
+    <div class="live-summary__divider"></div>
+    <span class="skeleton-block" style="margin-bottom: 14px"></span>
+    <div class="live-summary__rows">
+      <span class="skeleton-text" style="width: 80%"></span>
+      <span class="skeleton-text" style="width: 70%"></span>
+      <span class="skeleton-text" style="width: 90%"></span>
+    </div>
+    </div>
+  `
+}
+
 function renderLivePanelBody() {
   if (!RAMOS_CON_CALCULO.includes(state.ramoId)) {
     return `
@@ -40,9 +67,27 @@ function renderLivePanelBody() {
   }
 
   if (!state.preview) {
+    // Skeleton solo para el PRIMER cálculo (todavía no hay ningún preview para mostrar) — una
+    // vez que ya existe un preview, el recálculo tras cambiar un campo sigue mostrando el
+    // último monto conocido sin ningún overlay (ver decisión en el resumen de la tarea:
+    // reemplazar esos números por un skeleton en cada tecleo se sentía peor que dejarlos fijos
+    // un instante).
+    if (state.loadingPreview) {
+      // El id de MOTIVO_BLOQUEO_ID tiene que seguir resolviendo a algo con texto real — lo
+      // apuntan aria-describedby de "Ver detalle completo"/"Detalle del plan" mientras
+      // puedeAvanzarADetalle() es false (ver syncAvanceButtons en actions.js), y eso incluye
+      // este primer cálculo. El skeleton en sí queda aria-hidden (ver renderLivePanelSkeleton).
+      return `
+        ${renderLiveLabel()}
+        <div id="${MOTIVO_BLOQUEO_ID}">
+          <span class="sr-only">Calculando la prima…</span>
+          ${renderLivePanelSkeleton()}
+        </div>
+      `
+    }
     return `
       ${renderLiveLabel()}
-      <div class="live-summary__pending" id="${MOTIVO_BLOQUEO_ID}">${state.loadingPreview ? 'Calculando…' : 'Completá los datos del riesgo para ver la prima.'}</div>
+      <div class="live-summary__pending" id="${MOTIVO_BLOQUEO_ID}">Completá los datos del riesgo para ver la prima.</div>
     `
   }
 

@@ -778,7 +778,7 @@ html[data-theme='dark'] .app-splash__logo--dark {
 }
 
 html[data-theme='dark'] .app-splash__loader {
-  border-color: rgba(255, 42, 61, 0.2);
+  border-color: transparent;
   border-top-color: var(--tajy-red);
 }
 

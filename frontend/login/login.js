@@ -196,8 +196,8 @@ function hideSplash() {
 // solo, en conexiones rápidas el splash apenas alcanzaba a mostrarse. Corre en
 // paralelo con cargarSesion() (Promise.all), no en serie después: en una
 // conexión lenta no se le suma este tiempo al de la red, solo actúa de piso
-// cuando la respuesta ya volvió antes de los 2s.
-const SPLASH_DURACION_MINIMA_MS = 2000
+// cuando la respuesta ya volvió antes de los 1.5s.
+const SPLASH_DURACION_MINIMA_MS = 1500
 
 function esperar(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))

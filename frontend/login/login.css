@@ -42,7 +42,7 @@ body {
    puro CSS vía [data-theme], sin depender de un re-render de JS. */
 .app-splash__logo {
   display: block;
-  width: 96px;
+  width: 180px;
   height: auto;
   margin: 0 0 28px;
 }
@@ -56,10 +56,10 @@ body {
    a los X segundos, en una carga lenta el login aparecería antes de estar
    listo, y en una rápida se sentiría una demora artificial. */
 .app-splash__loader {
-  width: 26px;
-  height: 26px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  border: 3px solid rgba(216, 19, 46, 0.18);
+  border: 3px solid transparent;
   border-top-color: #d8132e;
   animation: app-splash-spin 0.8s linear infinite;
 }

@@ -74,6 +74,11 @@ html[data-theme='dark'] {
   --tajy-pink: rgba(255, 42, 61, 0.12);
   --tajy-pink-strong: rgba(255, 42, 61, 0.18);
   --tajy-maroon-row: rgba(255, 255, 255, 0.03);
+  /* --tajy-maroon (#5c0e10, badge.css) es texto casi negro pensado para fondo
+     claro (--tajy-pink opaco). Sobre --tajy-pink translúcido en dark queda
+     maroon-sobre-negro, casi ilegible (badge "Admin" en usuarios) — mismo rojo
+     accesible que ya usa el resto de la UI oscura. */
+  --tajy-maroon: var(--tajy-red-a11y);
 
   /* estados */
   --tajy-green-fg: #35b879;
@@ -1029,6 +1034,12 @@ html[data-theme='dark'] .bv-ramo-row__badge--pausa,
 html[data-theme='dark'] .bv-ramo-row__badge--proximamente {
   background: var(--tajy-chip-bg);
   color: var(--tajy-text-secondary);
+}
+
+/* .btn-outline hardcodea background: #fff (cotizador.css) — en dark queda un botón
+   blanco con letras rojas que rompe contra el resto de la UI casi negra. */
+html[data-theme='dark'] .btn-outline {
+  background: var(--tajy-chip-bg);
 }
 
 html[data-theme='dark'] .bv-volver:hover {

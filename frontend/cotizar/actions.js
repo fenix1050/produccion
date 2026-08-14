@@ -3,7 +3,12 @@ import { getRamos } from '../shared/catalogo.js'
 import { enfocarPrimerElemento } from '../shared/dom.js'
 import { logger } from '../shared/logger.js'
 import { state, app } from './state.js'
-import { RAMOS_CON_CALCULO, MOTIVO_BLOQUEO_ID, DEBOUNCE_MS } from './constants.js'
+import {
+  RAMOS_CON_CALCULO,
+  RAMOS_CON_CARTA_OFERTA,
+  MOTIVO_BLOQUEO_ID,
+  DEBOUNCE_MS,
+} from './constants.js'
 import {
   planEsCalculable,
   puedeAvanzarADetalle,
@@ -516,6 +521,15 @@ let elementoDisparadorModalCarta = null
 // body que calcularPreview — el backend valida y calcula de nuevo antes de persistir.
 export async function emitirCartaOferta() {
   if (state.emitiendoCarta || !state.preview) return
+
+  const ramoEmision = ramoActivo(state.ramoId)
+  if (!RAMOS_CON_CARTA_OFERTA.includes(ramoEmision?.calculador)) {
+    mostrarBanner(
+      'error',
+      `La Carta Oferta de ${ramoEmision?.nombre_display ?? state.ramoId} todavía no está disponible.`
+    )
+    return
+  }
 
   const d = state.data
   const plan = state.planes.find((p) => p.id === state.planId)

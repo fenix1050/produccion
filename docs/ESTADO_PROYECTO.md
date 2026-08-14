@@ -2527,3 +2527,15 @@ Al abrir el PR, el job `quality` (que corre `prettier . --check` sobre todo el r
 Cambios de comportamiento fuera del pedido original, dejados a criterio de Kevin: bienvenida en tema **claro** también quedó con el campo de partículas (antes no tenía ninguno). Deuda pendiente: la geometría de la constelación duplicada en `fx.js` vs. `constellation-red.svg` (comentado en el código). Al login oscuro le faltan ~18 fps para igualar al claro — es el `clip-path` + gradientes + `::after` de `.login-diagonal`, preexistente y no tocado por ser la identidad visual de la pantalla.
 
 **Verificación:** 251/251 tests del backend (vía hook de pre-commit), `eslint` limpio en los archivos tocados, CI del PR (quality/CodeQL/Vercel) en verde. Verificado en vivo con Playwright en ambos temas: toggle cambia y persiste el tema sin borrar el formulario, canvas de constelación sigue animando tras el cambio de tema, con `prefers-reduced-motion` se dibuja un frame y queda quieto (no desaparece), auditoría de animación por grilla confirmando que el fondo ya no se congela en reposo. Mediciones de fps hechas en Chromium headless (render por software) — sirven para comparar entre sí, no como número absoluto de lo que se ve con GPU real.
+
+## 74. Acceso — fix de ruta de logo oscuro 404 en producción (2026-08-13), PR #260 mergeado a `main`
+
+`logo-dark.png` se referenciaba como `../../logo/logo-dark.png` desde `login.js`, `bienvenida.js` y `sidebar.js`, usando rutas relativas desde el directorio `frontend/`. Sin embargo, el archivo solo existía en `<repo>/logo/` (la raíz del repositorio). En Vercel, el Root Directory del proyecto es `frontend/` (confirmado por `scripts/build.sh`, que escribe `shared/config.js` con ruta relativa), así que ese `logo/` de repo-root nunca formó parte del despliegue — la ruta resolvía a `/logo/logo-dark.png` en el sitio real, que no existía, devolviendo 404 en las imágenes del login y bienvenida en tema oscuro.
+
+Se reprodujo localmente sirviendo `frontend/` como raíz (mismo layout que produce Vercel): la imagen daba 404. Se copió el archivo a `frontend/logo/logo-dark.png` (mismo patrón que `logo-rojo-con-negro.svg`: handoff crudo en la raíz del repo, copia de trabajo dentro de `frontend/`) y se corrigieron las tres rutas a `../logo/logo-dark.png`.
+
+Verificado con el mismo servidor simulando la raíz real: la imagen responde 200 y el navegador la carga sin errores (naturalWidth=1441, sin 404s en la consola).
+
+No cambian datos, lógica, backend, Supabase, cálculos, validaciones, estados de interfaz ni tests.
+
+**Verificación:** descarga HTTP 200 de la imagen, sin 404s en consola del navegador.

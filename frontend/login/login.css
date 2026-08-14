@@ -42,7 +42,7 @@ body {
    puro CSS vía [data-theme], sin depender de un re-render de JS. */
 .app-splash__logo {
   display: block;
-  width: 96px;
+  width: 180px;
   height: auto;
   margin: 0 0 28px;
 }

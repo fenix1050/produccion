@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.47](https://github.com/fenix1050/produccion/compare/v0.1.46...v0.1.47) (2026-08-14)
+
+
+### Bug Fixes
+
+* **cotizar:** no gastar correlativo si el ramo no tiene Carta Oferta ([#269](https://github.com/fenix1050/produccion/issues/269)) ([0f8e578](https://github.com/fenix1050/produccion/commit/0f8e578e84dcdb4ce8a4fa26ed6ece4738210b5d))
+
 ## [0.1.46](https://github.com/fenix1050/produccion/compare/v0.1.45...v0.1.46) (2026-08-14)
 
 

@@ -93,6 +93,20 @@ export async function desactivarUsuario(usuarioId) {
   }
 }
 
+export async function reactivarUsuario(usuarioId) {
+  const usuario = state.usuarios.find((u) => u.id === usuarioId)
+  if (!usuario) return
+  if (!confirm(`¿Reactivar a ${usuario.nombre}? Va a poder volver a iniciar sesión.`)) return
+
+  try {
+    await api.put(`/admin/usuarios/${usuarioId}`, { activo: true })
+    mostrarBanner('success', `${usuario.nombre} fue reactivado.`)
+    await cargarUsuarios()
+  } catch (err) {
+    mostrarBanner('error', err.message || 'No se pudo reactivar el usuario.')
+  }
+}
+
 export async function eliminarUsuario(usuarioId) {
   const usuario = state.usuarios.find((u) => u.id === usuarioId)
   if (!usuario) return

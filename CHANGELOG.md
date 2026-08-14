@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.46](https://github.com/fenix1050/produccion/compare/v0.1.45...v0.1.46) (2026-08-14)
+
+
+### Features
+
+* **frontend:** infra de tests (node --test + jsdom) y navegación por teclado del selector de ramo ([#266](https://github.com/fenix1050/produccion/issues/266)) ([9ef6695](https://github.com/fenix1050/produccion/commit/9ef66951ab7423cfeecf55d674a968aa1618f6e9))
+
+
+### Bug Fixes
+
+* **cotizar:** mostrar banner de error en fallas silenciosas de carga ([#268](https://github.com/fenix1050/produccion/issues/268)) ([a36ffde](https://github.com/fenix1050/produccion/commit/a36ffde5bde287fd93f017baa2b6ae9080470c70))
+
 ## [0.1.45](https://github.com/fenix1050/produccion/compare/v0.1.44...v0.1.45) (2026-08-14)
 
 

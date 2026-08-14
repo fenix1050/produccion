@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.44](https://github.com/fenix1050/produccion/compare/v0.1.43...v0.1.44) (2026-08-13)
+
+
+### Bug Fixes
+
+* **acceso:** logo oscuro 404 en producción ([#260](https://github.com/fenix1050/produccion/issues/260)) ([ba9a531](https://github.com/fenix1050/produccion/commit/ba9a531c9d32dc3fc39a1ed02cf797e7843e784e))
+
 ## [0.1.43](https://github.com/fenix1050/produccion/compare/v0.1.42...v0.1.43) (2026-08-13)
 
 

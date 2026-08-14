@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.48](https://github.com/fenix1050/produccion/compare/v0.1.47...v0.1.48) (2026-08-14)
+
+
+### Features
+
+* **login:** agregar splash de carga antes del formulario ([#271](https://github.com/fenix1050/produccion/issues/271)) ([c66fbcc](https://github.com/fenix1050/produccion/commit/c66fbccc1f12ab2ebd2af41b276d95906a0ea82b))
+* **login:** piso de 2s de permanencia para el splash de carga ([#273](https://github.com/fenix1050/produccion/issues/273)) ([8b87755](https://github.com/fenix1050/produccion/commit/8b87755904a94f00703ffd897e99c887dc7dfac2))
+
 ## [0.1.47](https://github.com/fenix1050/produccion/compare/v0.1.46...v0.1.47) (2026-08-14)
 
 

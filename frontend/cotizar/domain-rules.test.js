@@ -24,6 +24,13 @@ const {
   franquiciaValorPorDefecto,
   franquiciasPorCoberturaParaBody,
   ajustesParaBody,
+  sublimiteVentanillaCalculado,
+  sublimitesFijosMrc,
+  coberturasPrincipalesFijasMrc,
+  capitalTotalAsegurado,
+  formasPagoDisponibles,
+  formaPagoSeleccionada,
+  quedanCoberturasAdicionalesPorAgregar,
 } = await import('./domain-rules.js')
 const { armarRiesgoDatos } = await import('./body-builder.js')
 
@@ -377,4 +384,170 @@ test('ajustesParaBody prioriza monto sobre porcentaje y devuelve [] fuera de RAM
   state.ramoId = 'vida-ap'
   state.data = { descuentoMonto: 100000 }
   assert.deepEqual(ajustesParaBody('descuento', 'Descuento aplicado por el agente'), [])
+})
+
+// ---------------------------------------------------------------------------
+// sublimiteVentanillaCalculado / sublimitesFijosMrc / coberturasPrincipalesFijasMrc /
+// capitalTotalAsegurado / formasPagoDisponibles / formaPagoSeleccionada /
+// quedanCoberturasAdicionalesPorAgregar (Tier 2)
+// ---------------------------------------------------------------------------
+
+test('sublimiteVentanillaCalculado devuelve null sin caja fuerte cargada, monto 30% con catálogo', () => {
+  state.coberturasAdicionales = []
+  assert.equal(sublimiteVentanillaCalculado(), null)
+
+  state.coberturasAdicionales = [{ codigo: 'robo_caja_registradora', sumaAsegurada: 1000000 }]
+  state.coberturasCatalogo = [
+    { codigo: 'robo_valores_ventanilla', nombre: 'Robo Valores Ventanilla' },
+  ]
+  assert.deepEqual(sublimiteVentanillaCalculado(), {
+    codigo: 'robo_valores_ventanilla',
+    nombre: 'Robo Valores Ventanilla',
+    monto: 300000,
+  })
+})
+
+test('sublimiteVentanillaCalculado usa nombre fallback sin catálogo cargado', () => {
+  state.coberturasAdicionales = [{ codigo: 'robo_caja_registradora', sumaAsegurada: 500000 }]
+  state.coberturasCatalogo = []
+  const resultado = sublimiteVentanillaCalculado()
+  assert.equal(resultado.nombre, 'Robo valores ventanilla')
+  assert.equal(resultado.monto, 150000)
+})
+
+test('sublimitesFijosMrc filtra por categoría Sublímites y excluye códigos base, Ventanilla al final', () => {
+  state.planCoberturas = [
+    {
+      incluida_por_defecto: true,
+      monto: 5000000,
+      coberturas_catalogo: {
+        codigo: 'sublimite_danos_agua',
+        nombre: 'Daños por Agua',
+        categoria: 'Sublímites',
+      },
+    },
+    {
+      incluida_por_defecto: true,
+      monto: 1000000,
+      coberturas_catalogo: {
+        codigo: 'robo_contenido',
+        nombre: 'Robo Contenido',
+        categoria: 'Coberturas Principales',
+      },
+    },
+    {
+      incluida_por_defecto: true,
+      monto: 2000000,
+      coberturas_catalogo: {
+        codigo: 'incendio_edificio',
+        nombre: 'Incendio Edificio',
+        categoria: 'Sublímites',
+      },
+    },
+  ]
+  state.coberturasAdicionales = [{ codigo: 'robo_caja_registradora', sumaAsegurada: 1000000 }]
+  state.coberturasCatalogo = []
+  const resultado = sublimitesFijosMrc()
+  assert.deepEqual(resultado, [
+    { codigo: 'sublimite_danos_agua', nombre: 'Daños por Agua', monto: 5000000 },
+    { codigo: 'robo_valores_ventanilla', nombre: 'Robo valores ventanilla', monto: 300000 },
+  ])
+})
+
+test('coberturasPrincipalesFijasMrc devuelve solo coberturas por defecto que no son Sublímites', () => {
+  state.planCoberturas = [
+    {
+      incluida_por_defecto: true,
+      coberturas_catalogo: {
+        codigo: 'robo_contenido',
+        nombre: 'Robo Contenido',
+        categoria: 'Coberturas Principales',
+      },
+    },
+    {
+      incluida_por_defecto: true,
+      coberturas_catalogo: {
+        codigo: 'sublimite_danos_agua',
+        nombre: 'Daños por Agua',
+        categoria: 'Sublímites',
+      },
+    },
+    {
+      incluida_por_defecto: false,
+      coberturas_catalogo: {
+        codigo: 'cristales',
+        nombre: 'Cristales',
+        categoria: 'Coberturas Principales',
+      },
+    },
+  ]
+  assert.deepEqual(coberturasPrincipalesFijasMrc(), [
+    { codigo: 'robo_contenido', nombre: 'Robo Contenido' },
+  ])
+})
+
+test('capitalTotalAsegurado suma coberturas que cuentan, excluye sublímites y marcadas false', () => {
+  state.preview = {
+    coberturas: [
+      { tipo_aplicacion: 'principal', monto: 1000000, incluye_en_suma_asegurada_total: true },
+      { tipo_aplicacion: 'sublimite', monto: 500000, incluye_en_suma_asegurada_total: true },
+      { tipo_aplicacion: 'principal', monto: 300000, incluye_en_suma_asegurada_total: false },
+      { tipo_aplicacion: 'principal', monto: 200000 },
+    ],
+  }
+  assert.equal(capitalTotalAsegurado(), 1200000)
+})
+
+test('capitalTotalAsegurado devuelve 0 sin preview', () => {
+  state.preview = null
+  assert.equal(capitalTotalAsegurado(), 0)
+})
+
+// CARACTERIZACIÓN: formasPagoDisponibles ordena según ORDEN_FORMAS_PAGO — un código fuera de esa
+// lista devuelve indexOf -1 y queda primero, en vez de al final.
+test('[CARACTERIZACIÓN] formasPagoDisponibles ordena por ORDEN_FORMAS_PAGO, código desconocido queda primero', () => {
+  state.preview = {
+    variantes: [
+      {
+        formasPago: [
+          { codigo: 'tarjeta_credito' },
+          { codigo: 'contado' },
+          { codigo: 'codigo_desconocido' },
+          { codigo: 'cobrador' },
+        ],
+      },
+    ],
+  }
+  const resultado = formasPagoDisponibles().map((f) => f.codigo)
+  assert.deepEqual(resultado, ['codigo_desconocido', 'contado', 'cobrador', 'tarjeta_credito'])
+})
+
+test('formasPagoDisponibles devuelve [] sin preview', () => {
+  state.preview = null
+  assert.deepEqual(formasPagoDisponibles(), [])
+})
+
+test('formaPagoSeleccionada devuelve la forma elegida en state.formaPagoCodigo o la primera por defecto', () => {
+  state.preview = {
+    variantes: [{ formasPago: [{ codigo: 'contado' }, { codigo: 'cobrador' }] }],
+  }
+  state.formaPagoCodigo = 'cobrador'
+  assert.equal(formaPagoSeleccionada().codigo, 'cobrador')
+
+  state.formaPagoCodigo = 'no_existe'
+  assert.equal(formaPagoSeleccionada().codigo, 'contado')
+})
+
+test('formaPagoSeleccionada devuelve null sin formas disponibles', () => {
+  state.preview = null
+  assert.equal(formaPagoSeleccionada(), null)
+})
+
+test('quedanCoberturasAdicionalesPorAgregar compara la cantidad de líneas contra la capacidad total', () => {
+  const catalogo = [{ codigo: 'robo_contenido' }, { codigo: 'cristales' }]
+  state.coberturasAdicionales = [{ id: '1' }]
+  assert.equal(quedanCoberturasAdicionalesPorAgregar(catalogo), true)
+
+  state.coberturasAdicionales = [{ id: '1' }, { id: '2' }]
+  assert.equal(quedanCoberturasAdicionalesPorAgregar(catalogo), false)
 })

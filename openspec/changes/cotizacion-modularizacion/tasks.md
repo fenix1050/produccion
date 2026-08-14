@@ -41,20 +41,20 @@ Chain strategy: stacked-to-main
 
 ## Phase 3: `domain-rules.js` Tier 2 (PR 2, if budget allows)
 
-- [ ] 3.1 `sublimiteVentanillaCalculado`, `sublimitesFijosMrc`, `coberturasPrincipalesFijasMrc`, `capitalTotalAsegurado`, `formasPagoDisponibles` (`// CARACTERIZACIÓN` codigo outside `ORDEN_FORMAS_PAGO`), `formaPagoSeleccionada`, `quedanCoberturasAdicionalesPorAgregar`.
+- [x] 3.1 `sublimiteVentanillaCalculado`, `sublimitesFijosMrc`, `coberturasPrincipalesFijasMrc`, `capitalTotalAsegurado`, `formasPagoDisponibles` (`// CARACTERIZACIÓN` codigo outside `ORDEN_FORMAS_PAGO`), `formaPagoSeleccionada`, `quedanCoberturasAdicionalesPorAgregar`.
 
 ## Phase 4: `body-builder.test.js` (PR 2)
 
-- [ ] 4.1 Create `frontend/cotizar/body-builder.test.js`: mirror the Phase 1 JSDOM bootstrap + `resetState()` pattern.
-- [ ] 4.2 `armarRiesgoDatos` MRC: fixed sublimits + one valid adicional line, fixed line first.
-- [ ] 4.3 `armarRiesgoDatos` Incendio: MAQUINARIA BASICO omits blank `sublimite_vandalismo_porcentaje`; `objeto_riesgo` zero-fills undeclared objects (`// CARACTERIZACIÓN`); default branch.
-- [ ] 4.4 `armarRiesgoDatos` Vida-AP: omits renta diaria unless flagged; `armarRiesgoDatosVidaAp` edad=`0`→`null` (`// CARACTERIZACIÓN`).
-- [ ] 4.5 `armarRiesgoDatos` default `{}` for `'auto'` — scope barrier proving Auto stays untouched.
-- [ ] 4.6 `prefillDatosDesdeCotizacion`: round-trip vs `armarRiesgoDatos`; mrc franquicias written additively without clearing prior keys (`// CARACTERIZACIÓN`).
-- [ ] 4.7 `idLinea`: uniqueness + fallback path without `crypto.randomUUID`.
+- [x] 4.1 Create `frontend/cotizar/body-builder.test.js`: mirror the Phase 1 JSDOM bootstrap + `resetState()` pattern.
+- [x] 4.2 `armarRiesgoDatos` MRC: fixed sublimits + one valid adicional line, fixed line first.
+- [x] 4.3 `armarRiesgoDatos` Incendio: MAQUINARIA BASICO omits blank `sublimite_vandalismo_porcentaje`; `objeto_riesgo` zero-fills undeclared objects (`// CARACTERIZACIÓN`); default branch.
+- [x] 4.4 `armarRiesgoDatos` Vida-AP: omits renta diaria unless flagged; `armarRiesgoDatosVidaAp` edad=`0`→`null` (`// CARACTERIZACIÓN`).
+- [x] 4.5 `armarRiesgoDatos` default `{}` for `'auto'` — scope barrier proving Auto stays untouched.
+- [x] 4.6 `prefillDatosDesdeCotizacion`: round-trip vs `armarRiesgoDatos`; mrc franquicias written additively without clearing prior keys (`// CARACTERIZACIÓN`).
+- [x] 4.7 `idLinea`: uniqueness + fallback path without `crypto.randomUUID`.
 
 ## Phase 5: Verification & Closeout
 
-- [ ] 5.1 After each PR: `npm run check`; confirm zero production diff via `git diff --stat -- frontend/cotizar/*.js`.
-- [ ] 5.2 `rg "CARACTERIZACION" frontend/cotizar/*.test.js` — confirm all 6 design-listed candidates (plus any new ones) are marked.
-- [ ] 5.3 Update issue #165 per proposal Success Criteria (#1 obsolete, #4 closed, #2/#3 derived to their own changes).
+- [x] 5.1 After each PR: `npm run check`; confirm zero production diff via `git diff --stat -- frontend/cotizar/*.js`.
+- [x] 5.2 `rg "CARACTERIZACION" frontend/cotizar/*.test.js` — confirm all 6 design-listed candidates (plus any new ones) are marked.
+- [x] 5.3 Update issue #165 per proposal Success Criteria (#1 obsolete, #4 closed, #2/#3 derived to their own changes).

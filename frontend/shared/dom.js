@@ -23,6 +23,25 @@ export function renderBanner(banner) {
 }
 
 // ---------------------------------------------------------------------------
+// Accesibilidad por teclado para elementos clicables no nativos (ej. un <div> usado
+// como tarjeta seleccionable, como bv-ramo-row en bienvenida.js) — sin esto, un
+// lector de pantalla o un usuario de teclado no puede llegar ni activar el elemento.
+// ---------------------------------------------------------------------------
+
+const TECLAS_ACTIVACION = new Set(['Enter', ' '])
+
+export function activarConTeclado(el, handler) {
+  if (!el) return
+  if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0')
+  if (!el.hasAttribute('role')) el.setAttribute('role', 'button')
+  el.addEventListener('keydown', (e) => {
+    if (!TECLAS_ACTIVACION.has(e.key)) return
+    e.preventDefault() // la barra espaciadora no debe scrollear la página
+    handler(e)
+  })
+}
+
+// ---------------------------------------------------------------------------
 // Focus trap para modales (role="dialog") — admin.js e historial.js reconstruyen
 // el modal entero en cada renderApp(), así que el trap se resuelve consultando el
 // contenedor vivo en cada evento en vez de guardar referencias a nodos que ya no

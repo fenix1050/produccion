@@ -3,7 +3,8 @@
   "private": true,
   "description": "Sistema de cotizaciones multi-ramo de Aseguradora Tajy",
   "workspaces": [
-    "backend"
+    "backend",
+    "frontend"
   ],
   "scripts": {
     "dev": "npm run dev --workspace=backend",
@@ -12,9 +13,9 @@
     "format:check": "prettier . --check",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "test": "npm test --workspace=backend",
-    "check": "npm run format:check && npm run lint && npm test --workspace=backend",
-    "prepare": "husky"
+    "test": "npm test --workspace=backend && npm test --workspace=frontend",
+    "check": "npm run format:check && npm run lint && npm run test",
+    "prepare": "husky || true"
   },
   "allowScripts": {
     "puppeteer@25.6.0": true

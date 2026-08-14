@@ -452,11 +452,17 @@ export async function selectRamo(nombre) {
   state.preview = null
   state.previewError = null
   state.formaPagoCodigo = null
-  renderApp()
 
   const ramo = ramoActivo(nombre)
-  if (!ramo) return
+  if (!ramo) {
+    renderApp()
+    return
+  }
 
+  // El reset de arriba y este skeleton de planes van en el MISMO render (nada async entre
+  // medio) — separarlos en dos renderApp() consecutivos solo agrega un flash de pantalla
+  // completa sin ningún cambio visible entre uno y otro (bug reportado por Kevin: "al iniciar
+  // el cotizador hace como 3 refresh continuos", 2026-08-14).
   state.loadingPlanes = true
   renderApp()
   try {
@@ -468,7 +474,6 @@ export async function selectRamo(nombre) {
   } finally {
     state.loadingPlanes = false
   }
-  renderApp()
 
   if (RAMOS_CON_CALCULO.includes(nombre)) {
     // Preselecciona el primer plan calculable hoy (RPF/tasas confirmados).
@@ -478,6 +483,8 @@ export async function selectRamo(nombre) {
     state.data.descuentoPorcentaje = planCalculable?.descuento_default ?? null
 
     if (nombre === 'mrc' || nombre === 'incendio') {
+      // Mismo motivo que arriba: "planes cargados" y "skeleton de rubros" van juntos en un
+      // solo render — nada async entre medio.
       state.loadingRubros = true
       renderApp()
       try {
@@ -492,7 +499,9 @@ export async function selectRamo(nombre) {
       } finally {
         state.loadingRubros = false
       }
-      renderApp()
+      // Sin renderApp() acá: el bloque MRC de abajo (cargarCoberturasCatalogo) ya renderiza al
+      // arrancar, y el resto de los ramos cae directo al renderApp() final de la función — nada
+      // queda sin pintar.
     }
 
     if (nombre === 'mrc') {
@@ -640,20 +649,29 @@ export async function init() {
   } finally {
     state.loadingRamos = false
   }
-  renderApp()
 
+  // Sin renderApp() acá entre el fetch de ramos y lo que sigue: las tres ramas de abajo ya
+  // garantizan su propio render mostrando "ramos cargados" combinado con su siguiente estado
+  // (skeleton de planes, o directamente el resultado final) — un render intermedio acá solo
+  // repetía el mismo frame dos veces seguidas sin ningún cambio visible entre uno y otro (bug
+  // reportado por Kevin: "al iniciar el cotizador hace como 3 refresh continuos", 2026-08-14).
   const params = new URLSearchParams(location.search)
   const editarId = params.get('editar')
   if (editarId) {
     await cargarParaEditar(Number(editarId))
-  } else {
-    const ramoParam = params.get('ramo')
-    if (ramoParam) {
-      await selectRamo(ramoParam)
-    }
+    // cargarParaEditar() no garantiza un render final propio (ver su comentario) — hace falta
+    // acá para que la cotización precargada quede pintada.
+    renderApp()
+    return
   }
 
-  renderApp()
+  const ramoParam = params.get('ramo')
+  if (ramoParam) {
+    await selectRamo(ramoParam) // ya renderiza su propio estado final
+    return
+  }
+
+  renderApp() // ramos cargados, sin ?ramo/?editar en la URL
 }
 
 // ---------------------------------------------------------------------------
@@ -695,10 +713,12 @@ export async function cargarParaEditar(id) {
   } finally {
     state.loadingPlanes = false
   }
-  renderApp()
   state.planId = cotizacion.plan_id
 
   if (ramo.nombre === 'mrc' || ramo.nombre === 'incendio') {
+    // "planes cargados" y "skeleton de rubros" van en el MISMO render (nada async entre medio)
+    // — separarlos solo agrega un flash de pantalla completa sin cambio visible (bug reportado
+    // por Kevin: "al iniciar el cotizador hace como 3 refresh continuos", 2026-08-14).
     state.loadingRubros = true
     renderApp()
     try {
@@ -713,7 +733,12 @@ export async function cargarParaEditar(id) {
     } finally {
       state.loadingRubros = false
     }
+    // Este renderApp() sí hace falta: a diferencia de selectRamo(), acá nada más garantiza
+    // pintar el estado final antes de prefillDatosDesdeCotizacion (calcularPreview() más abajo
+    // solo re-renderiza completo si state.view === 'result', que no es el caso en este flujo).
     renderApp()
+  } else {
+    renderApp() // planes cargados, sin bloque de rubros después — hace falta pintarlo acá
   }
 
   if (ramo.nombre === 'mrc') {

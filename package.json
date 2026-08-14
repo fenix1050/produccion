@@ -15,7 +15,7 @@
     "lint:fix": "eslint . --fix",
     "test": "npm test --workspace=backend && npm test --workspace=frontend",
     "check": "npm run format:check && npm run lint && npm run test",
-    "prepare": "husky"
+    "prepare": "husky || true"
   },
   "allowScripts": {
     "puppeteer@25.6.0": true

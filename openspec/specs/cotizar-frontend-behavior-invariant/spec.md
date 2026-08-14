@@ -8,44 +8,122 @@ Per `sdd-spec` Step 2 (`skills/sdd-spec/SKILL.md`), this change has no Capabilit
 
 ## Requirements
 
-### Requirement: Observable Behavior Parity Across the Module Split
+### Requirement: Automated Characterization Coverage of `domain-rules.js`
 
-The system MUST produce identical observable behavior before and after the `cotizar.js` module split, for the 3 ramos with a real calculator (MRC, Incendio, Vida-AP) — the only ramos exercised by `RAMOS_CON_CALCULO`. "Observable" means: rendered DOM/UI, `data-action` attributes emitted, request payloads sent to the backend (`armarRiesgoDatos`/`camposEspecificosParaRamo` output), and console output (no new errors/warnings).
+The system MUST have `node --test` coverage (`domain-rules.test.js`) for `planEsCalculable`, `monedaEfectiva`, `sugerenciaInspeccion`, `datosMinimosCompletos`, `puedeAvanzarADetalle` across MRC/Incendio/Vida-AP branches. Auto individual paths MUST NOT be touched.
 
-No PR in this change SHALL alter business logic, payload shape, DOM structure/classes used by other modules or CSS, or API contract. Each PR is a verbatim (pure-move) relocation of existing functions into a new module plus import/export wiring.
+#### Scenario: `monedaEfectiva` locks MAQUINARIA BASICO to USD
+
+- GIVEN a plan with `nombre === 'MAQUINARIA BASICO'`
+- WHEN `monedaEfectiva(plan)` runs
+- THEN it returns `'USD'` regardless of `state.data.moneda`
+
+#### Scenario: `planEsCalculable` uses fixed catalog for Vida-AP (CARACTERIZACIÓN)
+
+- GIVEN `ramoNombre === 'vida-ap'` and `plan.nombre` not in `PLANES_VIDA_AP_CALCULABLES`
+- WHEN `planEsCalculable('vida-ap', plan)` runs
+- THEN it returns `false` even with a valid `prima_tecnica_minima`
+- AND the assertion carries `// CARACTERIZACIÓN` (ignores `prima_tecnica_minima`, unlike MRC/Incendio — known FE/BE duplication)
+
+#### Scenario: `datosMinimosCompletos` per-ramo branches
+
+- GIVEN each ramo's minimum fields (MRC: rubro/ciudad/capital; MAQUINARIA BASICO: capitalMaquinaria > 0; PROTECCION FAMILIAR: capitalAsegurado > 0)
+- WHEN fields are complete vs incomplete
+- THEN it returns `true` only when that branch's conditions hold
+
+#### Scenario: `puedeAvanzarADetalle` blocks on preview error
+
+- GIVEN `state.ramoId` is in `RAMOS_CON_CALCULO` and `state.previewError` is truthy
+- WHEN `puedeAvanzarADetalle()` runs
+- THEN it returns `false`
+
+### Requirement: Automated Characterization Coverage of `body-builder.js`
+
+The system MUST have `node --test` coverage (`body-builder.test.js`) for the exported `armarRiesgoDatos(plan)`, exercising MRC, Incendio (MAQUINARIA BASICO, `objeto_riesgo`, default), and Vida-AP via `state.ramoId` (private per-ramo builders are not individually exported).
+
+#### Scenario: Incendio `objeto_riesgo` zero-fills undeclared objects (CARACTERIZACIÓN)
+
+- GIVEN `tipo_mecanica === 'objeto_riesgo'`, only some of the 4 `OBJETOS_RIESGO_CAMPOS` filled
+- WHEN `armarRiesgoDatos(plan)` runs
+- THEN every risk-object key is present, defaulting missing/non-numeric values to `0`
+- AND the assertion carries `// CARACTERIZACIÓN` (duplicated in `incendio.calculator.js`)
+
+#### Scenario: MAQUINARIA BASICO omits blank vandalismo sublimit
+
+- GIVEN `sublimiteVandalismoPorcentaje` is `''`/`undefined`
+- WHEN `armarRiesgoDatos(plan)` runs
+- THEN the payload has no `sublimite_vandalismo_porcentaje` key
+
+#### Scenario: MRC includes fixed sublimits and adjustable lines
+
+- GIVEN `sublimitesFijosMrc()` returns one fixed line and one valid adicional line exists
+- WHEN `armarRiesgoDatos(plan)` runs
+- THEN `coberturas_adicionales` contains both, fixed line first
+
+#### Scenario: Vida-AP omits renta diaria unless flagged
+
+- GIVEN an Accidentes Personales plan with `incluyeRentaDiaria` falsy
+- WHEN `armarRiesgoDatos(plan)` runs
+- THEN the payload has no `incluye_renta_diaria`/`suma_renta_diaria` keys
+
+### Requirement: Tests Characterize, They MUST NOT Alter Production Behavior
+
+Tests MUST assert CURRENT behavior of unmodified `domain-rules.js`/`body-builder.js`. No PR SHALL modify any `.js` file under `frontend/cotizar/` other than adding new `*.test.js` files.
+
+#### Scenario: Failing test is fixed by editing the test
+
+- GIVEN a new test fails against current production code
+- WHEN the mismatch is investigated
+- THEN the assertion is corrected; the production file stays byte-identical
+
+### Requirement: Suspicious Behavior MUST Be Marked, Not Fixed
+
+Any assertion documenting a possible bug MUST carry an inline `// CARACTERIZACIÓN` comment, giving the deferred `cotizacion-contrato-fe-be` change a baseline.
+
+#### Scenario: Marker present on every documented duplication
+
+- GIVEN the `monedaEfectiva` USD-lock, `objeto_riesgo` zero-fill, and Vida-AP fixed-catalog assertions
+- WHEN the test file is reviewed
+- THEN each has an adjacent `// CARACTERIZACIÓN` comment
+
+### Requirement: Observable Behavior Parity Across the Module Split (MODIFIED)
+
+The system MUST produce identical observable behavior before/after the `cotizar.js` split, for MRC/Incendio/Vida-AP. "Observable" = rendered DOM/UI, `data-action` attributes, request payloads, console output.
+
+No PR SHALL alter business logic, payload shape, DOM structure/classes, or API contract; each PR is a verbatim relocation. Live Playwright verification remains the mechanism for end-to-end DOM/UI parity; it is now complemented — not replaced — by automated `node --test` characterization coverage of `domain-rules.js`/`body-builder.js` (see ADDED Requirements), which previously had zero automated coverage.
+(Previously: pure-logic verification relied solely on live Playwright checks.)
 
 #### Scenario: MRC quote flow unchanged after split
 
-- GIVEN a user cotiza MRC (plan NORMAL or SEGUCOOP) before the module split
-- AND the same flow is repeated after a PR in this change has landed
-- WHEN the same inputs are entered (risk data, coberturas adicionales, forma de pago)
-- THEN the rendered "Detalle del plan" values (prima, RPF, IVA, premio, cuota) are byte-identical
-- AND the request payload sent to `/cotizaciones/calcular` is structurally identical
-- AND no new browser console errors appear
+- GIVEN a user cotiza MRC before the split, repeated after a PR lands
+- WHEN the same inputs are entered
+- THEN "Detalle del plan" values and the `/cotizaciones/calcular` payload are identical, no new console errors
 
 #### Scenario: Incendio and Vida-AP quote flows unchanged after split
 
-- GIVEN a user cotiza Incendio (HIPOTECARIO, CON INSPECCION, SIN INSPECCION, MAQUINARIA BASICO) or Vida-AP (PROTECCION FAMILIAR, ACCIDENTES PERSONALES with/without renta diaria) before the split
-- WHEN the equivalent flow is repeated after a PR in this change has landed
-- THEN the same branch-specific fields render (per ramo/plan) and the same validation errors trigger for the same out-of-range inputs
-- AND no new browser console errors appear
+- GIVEN a user cotiza Incendio or Vida-AP before the split, repeated after a PR lands
+- WHEN the equivalent flow runs
+- THEN the same fields render and the same validation errors trigger, no new console errors
 
-#### Scenario: Live preview panel (`renderLivePanel`) unaffected by relocation
+#### Scenario: Live preview panel unaffected by relocation
 
-- GIVEN `renderLivePanel` is invoked directly from `actions.js` as a DOM patch (not via `renderApp`)
-- WHEN `render-cotizacion-vivo.js` is extracted in its own PR
-- THEN the live panel ("Cotización en vivo": Costo, Tasa efectiva, Capital total asegurado, forma de pago pills) still updates on every relevant input change
-- AND its values match the pre-split panel exactly
+- GIVEN `renderLivePanel` is invoked from `actions.js` as a DOM patch
+- WHEN `render-cotizacion-vivo.js` is extracted
+- THEN the panel still updates on every relevant change and matches pre-split values
 
-#### Scenario: Event dispatch (`data-action`) unchanged after `registrarEventos()` extraction
+#### Scenario: Event dispatch unchanged after `registrarEventos()` extraction
 
-- GIVEN the 4 top-level listener statements are wrapped into an exported `registrarEventos()` in `events.js`
-- WHEN `cotizar.js` calls `registrarEventos(); init();` as its only bootstrap logic
-- THEN every `data-action` attribute still dispatches to the same handler as before the wrap
-- AND click/submit/change behavior across Datos, Detalle del plan, and Coberturas adicionales is unchanged
+- GIVEN listeners are wrapped into `registrarEventos()` in `events.js`
+- WHEN `cotizar.js` calls `registrarEventos(); init();`
+- THEN every `data-action` dispatches to the same handler as before
+
+#### Scenario: Automated coverage complements, does not replace, Playwright
+
+- GIVEN `npm run check` runs the frontend suite
+- WHEN `domain-rules.test.js`/`body-builder.test.js` pass
+- THEN pure-logic coverage is satisfied; full DOM/UI parity still needs a live Playwright check before merge
 
 ## Non-Requirements (Explicit)
 
 - This spec does NOT define new or modified functional capabilities of MRC, Incendio, Vida-AP, or any ramo calculator. Those existing capability specs (e.g. `mrc-plan-descuento-fijo`, `incendio-planes-objeto-riesgo`, `rpf-por-cuotas`) are unaffected and require no delta.
-- This spec does NOT require new automated frontend tests. Verification is explicitly Playwright-driven, live, per PR (per proposal Risks/Success Criteria) — consistent with the precedent set by `admin-module-split`.
 - Backend behavior, schema, migrations, and API contracts are out of scope and unaffected (proposal "Out of Scope").

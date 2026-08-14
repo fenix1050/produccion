@@ -49,6 +49,10 @@ export function prefillDatosDesdeCotizacion(ramoNombre, plan, cotizacion) {
     // ids son UUID por línea, pero el Set debe arrancar limpio en cada carga para editar).
     state.coberturasAdicionalesEditando.clear()
 
+    // Reasignación completa (no aditiva) — si no se limpia acá, una franquicia elegida en una
+    // cotización cargada previamente queda "fantasma" al cargar otra sin recargar la página
+    // (issue #285, hallado como candidato CARACTERIZACIÓN #8 en cotizacion-modularizacion).
+    state.franquiciasPorCobertura = {}
     for (const [codigo, monto] of Object.entries(rd.franquicias_por_cobertura || {})) {
       state.franquiciasPorCobertura[codigo] = franquiciaValorPorDefecto(monto)
     }

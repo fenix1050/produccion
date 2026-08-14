@@ -232,10 +232,10 @@ test('prefillDatosDesdeCotizacion en mrc restaura los mismos campos que arma arm
   )
 })
 
-// CARACTERIZACIÓN: prefillDatosDesdeCotizacion escribe state.franquiciasPorCobertura de forma
-// aditiva (Object.entries + asignación por clave) — a diferencia de coberturasAdicionales, que se
-// REASIGNA por completo, acá las claves previas de una carga anterior NO se limpian.
-test('[CARACTERIZACIÓN] prefillDatosDesdeCotizacion en mrc no limpia franquiciasPorCobertura previo', () => {
+// Regresión issue #285: prefillDatosDesdeCotizacion reasigna state.franquiciasPorCobertura por
+// completo (igual que coberturasAdicionales) — una franquicia de una carga anterior no debe
+// sobrevivir si la cotización nueva no la trae.
+test('prefillDatosDesdeCotizacion en mrc limpia franquiciasPorCobertura de una carga anterior', () => {
   state.franquiciasPorCobertura = { cristales: '10_800000' }
   const cotizacion = {
     cliente_nombre: 'Ana',
@@ -249,7 +249,6 @@ test('[CARACTERIZACIÓN] prefillDatosDesdeCotizacion en mrc no limpia franquicia
   prefillDatosDesdeCotizacion('mrc', { nombre: 'PLAN COMERCIO' }, cotizacion)
 
   assert.deepEqual(state.franquiciasPorCobertura, {
-    cristales: '10_800000',
     robo_contenido: '10_500000',
   })
 })

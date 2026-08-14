@@ -1,5 +1,5 @@
 import { api, auth } from '../shared/api.js'
-import { escapeHtml } from '../shared/dom.js'
+import { activarConTeclado, escapeHtml } from '../shared/dom.js'
 import { initConstellationFx, initLoginFx } from '../shared/fx.js'
 import { logger } from '../shared/logger.js'
 import {
@@ -249,10 +249,12 @@ function bindEvents() {
     render()
   })
   app.querySelectorAll('[data-action="select-ramo"]').forEach((el) => {
-    el.addEventListener('click', () => {
+    const irARamo = () => {
       const ramo = el.dataset.ramo
       window.location.href = `../cotizar/?ramo=${encodeURIComponent(ramo)}`
-    })
+    }
+    el.addEventListener('click', irARamo)
+    activarConTeclado(el, irARamo)
   })
 }
 

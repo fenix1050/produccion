@@ -56,6 +56,13 @@ export const RAMO_ICONOS = {
 // Incendio, luego Vida-AP).
 export const RAMOS_CON_CALCULO = ['mrc', 'incendio', 'vida-ap']
 
+// Ramos con template de Carta Oferta implementado — debe reflejar exactamente las claves de
+// BUILDERS_POR_CALCULADOR en backend/src/templates/oferta/index.js. Vida-AP es calculable
+// (RAMOS_CON_CALCULO) pero todavía no tiene texto oficial de Carta Oferta confirmado, así que
+// emitirCartaOferta() usa esta lista para no gastar numeración correlativa en un POST que el
+// backend va a rechazar igual en el paso del PDF.
+export const RAMOS_CON_CARTA_OFERTA = ['mrc', 'incendio']
+
 // Nombres de plan cuyo criterio de "calculable" no es prima_tecnica_minima (MRC/Incendio),
 // sino directamente esta lista fija — ver vida-ap.calculator.js (PLANES_NO_IMPLEMENTADOS).
 export const PLANES_VIDA_AP_CALCULABLES = [

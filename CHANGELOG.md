@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.49](https://github.com/fenix1050/produccion/compare/v0.1.48...v0.1.49) (2026-08-14)
+
+
+### Features
+
+* **login:** agrandar logo y afinar loader del splash ([#274](https://github.com/fenix1050/produccion/issues/274)) ([4979db2](https://github.com/fenix1050/produccion/commit/4979db22757bef3ca15ea506e0f8c77c6c50740c))
+
 ## [0.1.48](https://github.com/fenix1050/produccion/compare/v0.1.47...v0.1.48) (2026-08-14)
 
 

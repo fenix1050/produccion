@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.51](https://github.com/fenix1050/produccion/compare/v0.1.50...v0.1.51) (2026-08-14)
+
+
+### Features
+
+* **frontend:** actualizar favicon con set completo multi-dispositivo ([#278](https://github.com/fenix1050/produccion/issues/278)) ([f67e14b](https://github.com/fenix1050/produccion/commit/f67e14bd32039abc0b3021684775011db76a020d))
+
+
+### Bug Fixes
+
+* **cotizar:** evitar renders completos duplicados en el arranque ([#280](https://github.com/fenix1050/produccion/issues/280)) ([9132319](https://github.com/fenix1050/produccion/commit/91323195c2100652c06d14c893dade0bb4ba68d1))
+
 ## [0.1.50](https://github.com/fenix1050/produccion/compare/v0.1.49...v0.1.50) (2026-08-14)
 
 

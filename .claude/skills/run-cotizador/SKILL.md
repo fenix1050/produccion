@@ -25,30 +25,28 @@ timeout 30 bash -c 'until curl -sf http://localhost:3000/api/ramos >/dev/null; d
   skip starting a new one and just use it.
 - Stop with `kill $(cat /tmp/cotizador-backend.pid)` or `pkill -f "node --watch src/server.js"`.
 
-## 2. Serve from the REPO ROOT, not `frontend/` — and CORS needs port 5000
+## 2. Serve from `frontend/` (matches Vercel prod) — and CORS needs port 5000
 
-Two separate gotchas that both bit a past session, stack them:
-
-**Serve root.** Pages reference the shared `logo/` folder (repo root,
-sibling of `frontend/`, NOT inside it — e.g. sidebar logo and favicon
-via `../../logo/logo.png` / `../../logo/favicon.ico` from
-`frontend/cotizar/index.html`). If you `cd frontend && serve .`, the
-server root is `frontend/` and every one of those `../../logo/...`
-requests resolves outside the served root — the browser 404s them
-**silently** (a broken `<img>` doesn't throw a JS error or show in
-`console --errors`, so this is easy to ship without noticing — it did,
-once). Serve the **repo root** instead, and the app lives under
-`/frontend/...`:
+Serve **`frontend/`** as the web root, not the repo root — this mirrors
+`frontend/vercel.json` (`outputDirectory: "."` relative to `frontend/`
+as the Vercel project root), and matches how pages reference assets:
+favicon links (`frontend/*/index.html`) use **absolute** paths like
+`/favicon/manifest.json`, which resolve against `frontend/favicon/`
+only when `frontend/` itself is the served root. Serving the repo root
+instead would resolve `/favicon/...` one level too high and 404
+**silently** (a broken `<link rel="icon">` or `<img>` doesn't throw a
+JS error or show in `console --errors`, so this is easy to ship
+without noticing).
 
 ```bash
-npx --yes serve -l 5000 .   # from the REPO ROOT, not frontend/
+cd frontend && npx --yes serve -l 5000 .
 echo $! > /tmp/cotizador-frontend.pid
-timeout 15 bash -c 'until curl -sf http://localhost:5000/frontend/cotizar/ >/dev/null; do sleep 1; done'
+timeout 15 bash -c 'until curl -sf http://localhost:5000/cotizar/ >/dev/null; do sleep 1; done'
 ```
 
-Page URLs are now `http://localhost:5000/frontend/cotizar/`,
-`http://localhost:5000/frontend/admin/`, etc. — not `/cotizar/`. Sanity
-check after starting: `curl -o /dev/null -w '%{http_code}' http://localhost:5000/logo/logo.png`
+Page URLs are `http://localhost:5000/cotizar/`,
+`http://localhost:5000/admin/`, etc. Sanity check after starting:
+`curl -o /dev/null -w '%{http_code}' http://localhost:5000/favicon/manifest.json`
 must be `200`, not `404`.
 
 **CORS.** `backend/src/app.js` sets
@@ -84,11 +82,11 @@ affected page(s) instead of re-walking the whole app every time:
 
 | Changed path | Test only |
 |---|---|
-| `backend/src/calculators/mrc.calculator.js`, `backend/src/schemas/*mrc*` | MRC flow in `/frontend/cotizar/` (Datos + Detalle del plan) |
+| `backend/src/calculators/mrc.calculator.js`, `backend/src/schemas/*mrc*` | MRC flow in `/cotizar/` (Datos + Detalle del plan) |
 | `backend/src/calculators/incendio*`, `*incendio*` | Incendio flow |
 | `backend/src/templates/*carta-oferta*` | The PDF output for that ramo's Carta Oferta |
 | `frontend/shared/*` (api.js, sidebar, etc.) | Smoke-test every ramo's sidebar nav + one fetch call, since shared code has cross-ramo blast radius |
-| `frontend/admin/*` | `/frontend/admin/` only |
+| `frontend/admin/*` | `/admin/` only |
 | Anything under `backend/migrations/` | Re-run whichever ramo flow reads the changed tables — migrations don't show up in a frontend diff but can silently break a calculator |
 
 If the diff spans more than one ramo or touches `frontend/shared/`,
@@ -119,7 +117,7 @@ npm install playwright --no-save
 npx playwright install chromium   # ~110MB, only needed once per machine
 ```
 
-Then a Node script against `http://localhost:5000/frontend/cotizar/`. Key
+Then a Node script against `http://localhost:5000/cotizar/`. Key
 selectors/behavior discovered by trial:
 
 - Sidebar ramo links are plain text — `page.click('text=Multirriesgo Comercio')`.

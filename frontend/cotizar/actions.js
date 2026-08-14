@@ -60,6 +60,7 @@ export async function cargarCoberturasCatalogo(ramoId) {
     state.coberturasCatalogo = await api.get(`/ramos/${ramoId}/coberturas-catalogo`)
   } catch (err) {
     logger.error('No se pudo cargar el catálogo de coberturas del ramo', err)
+    mostrarBanner('error', 'No se pudo cargar el catálogo de coberturas del ramo.')
     state.coberturasCatalogo = []
   }
 }
@@ -74,6 +75,7 @@ export async function cargarPlanCoberturas(planId) {
     state.planCoberturas = await api.get(`/planes/${planId}/coberturas`)
   } catch (err) {
     logger.error('No se pudo cargar las coberturas fijas del plan', err)
+    mostrarBanner('error', 'No se pudo cargar las coberturas fijas del plan.')
     state.planCoberturas = []
   }
 }
@@ -444,6 +446,7 @@ export async function selectRamo(nombre) {
     state.planes = await api.get(`/ramos/${ramo.id}/planes`)
   } catch (err) {
     logger.error('No se pudieron cargar los planes del ramo', err)
+    mostrarBanner('error', 'No se pudieron cargar los planes del ramo.')
     state.planes = []
   }
 
@@ -462,6 +465,7 @@ export async function selectRamo(nombre) {
         state.rubros = await api.get(`/ramos/rubros-actividad?ramo_id=${ramo.id}`)
       } catch (err) {
         logger.error('No se pudieron cargar los tipos de riesgo', err)
+        mostrarBanner('error', 'No se pudieron cargar los tipos de riesgo.')
         state.rubros = []
       }
     }
@@ -595,6 +599,7 @@ export async function init() {
     state.ramosActivos = await getRamos()
   } catch (err) {
     logger.error('No se pudo cargar la lista de ramos', err)
+    mostrarBanner('error', 'No se pudo cargar la lista de ramos.')
     state.ramosActivos = []
   }
 
@@ -644,6 +649,7 @@ export async function cargarParaEditar(id) {
     state.planes = await api.get(`/ramos/${ramo.id}/planes`)
   } catch (err) {
     logger.error('No se pudieron cargar los planes del ramo', err)
+    mostrarBanner('error', 'No se pudieron cargar los planes del ramo.')
     state.planes = []
   }
   state.planId = cotizacion.plan_id
@@ -656,6 +662,7 @@ export async function cargarParaEditar(id) {
       state.rubros = await api.get(`/ramos/rubros-actividad?ramo_id=${ramo.id}`)
     } catch (err) {
       logger.error('No se pudieron cargar los tipos de riesgo', err)
+      mostrarBanner('error', 'No se pudieron cargar los tipos de riesgo.')
       state.rubros = []
     }
   }

@@ -332,7 +332,15 @@ export function focusMontoCobertura(id) {
   input.setSelectionRange(len, len)
 }
 
+// Token de secuencia: cada llamada a calcularPreview() lo incrementa y guarda el suyo. Si al
+// resolver el fetch el token global ya avanzó, significa que hubo una llamada más nueva (el
+// agente siguió tecleando) — se descarta la respuesta vieja en vez de dejarla pisar el preview
+// más reciente (A3, issue #87: respuestas de red pueden llegar fuera de orden).
+let previewRequestId = 0
+
 export async function calcularPreview() {
+  const requestId = ++previewRequestId
+
   if (!datosMinimosCompletos()) {
     state.preview = null
     state.previewError = null
@@ -360,6 +368,8 @@ export async function calcularPreview() {
 
   try {
     const resultado = await api.post('/cotizaciones/calcular', body)
+    if (requestId !== previewRequestId) return // hubo una llamada más nueva, descartar esta
+
     state.preview = resultado
     state.previewError = null
     // Primera vez que llega un cálculo: default a "Contado" (sin RPF) si el agente
@@ -378,13 +388,17 @@ export async function calcularPreview() {
       }
     }
   } catch (err) {
-    state.preview = null
-    state.previewError = err.message || 'No se pudo calcular la cotización.'
+    if (requestId === previewRequestId) {
+      state.preview = null
+      state.previewError = err.message || 'No se pudo calcular la cotización.'
+    }
   } finally {
-    state.loadingPreview = false
-    renderLivePanel()
-    if (state.view === 'result') renderApp()
-    syncAvanceButtons()
+    if (requestId === previewRequestId) {
+      state.loadingPreview = false
+      renderLivePanel()
+      if (state.view === 'result') renderApp()
+      syncAvanceButtons()
+    }
   }
 }
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.50](https://github.com/fenix1050/produccion/compare/v0.1.49...v0.1.50) (2026-08-14)
+
+
+### Features
+
+* **cotizar:** reemplazar loading por skeletons por sección ([#276](https://github.com/fenix1050/produccion/issues/276)) ([a00504f](https://github.com/fenix1050/produccion/commit/a00504ffe8862b87e08930db98987680b2cc1b18))
+
 ## [0.1.49](https://github.com/fenix1050/produccion/compare/v0.1.48...v0.1.49) (2026-08-14)
 
 

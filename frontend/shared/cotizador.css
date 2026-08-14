@@ -1522,6 +1522,70 @@ button {
   }
 }
 
+/* Utilidad compartida de skeleton — reemplaza el patrón anterior de texto suelto
+   ("Cargando…") o pantalla vacía en el flujo de cotizar (MRC/Incendio/Vida-AP) por bloques
+   que ya ocupan el layout final desde el primer paint, para que cada sección "aparezca" en
+   vez de "saltar" cuando llega su propio dato. Piezas base reusables:
+   `.skeleton-text` (línea de texto, ancho vía inline `style="width: ..."` — mismo patrón que
+   `.progreso-fill` más arriba), `.skeleton-block` (bloque tipo input/card) y `.skeleton-circle`
+   (ícono/indicador circular). Colores: `--tajy-chip-bg` → `--tajy-border-light`, ya definidos
+   para ambos temas (ver theme-dark.css), nada hardcodeado. */
+.skeleton-text,
+.skeleton-block,
+.skeleton-circle {
+  background: linear-gradient(
+    90deg,
+    var(--tajy-chip-bg) 25%,
+    var(--tajy-border-light) 50%,
+    var(--tajy-chip-bg) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-text,
+  .skeleton-block,
+  .skeleton-circle {
+    animation: none;
+  }
+}
+
+.skeleton-text {
+  display: block;
+  height: 12px;
+  width: 100%;
+  border-radius: var(--tajy-radius-sm);
+}
+
+.skeleton-text--lg {
+  height: 18px;
+}
+
+.skeleton-block {
+  display: block;
+  width: 100%;
+  height: 40px;
+  border-radius: var(--tajy-radius-sm);
+}
+
+.skeleton-circle {
+  display: block;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--tajy-radius-pill);
+}
+
 .forma-pago-row {
   margin-bottom: 14px;
 }

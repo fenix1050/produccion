@@ -30,9 +30,20 @@ import { idParaCampo } from './render-campos.js'
 import { renderLivePanelContent } from './render-cotizacion-vivo.js'
 import { renderStepper } from './render-detalle-plan.js'
 
-// Campos "Tipo de Riesgo"/"Ciudad"/capitales del esqueleto MRC — reusado por MRC e Incendio
-// (plan "Edificio y Contenido"), que comparten el mismo motor de tasas por rubro.
-export function camposEdificioContenido(sublimiteField) {
+// Campo "Tipo de Riesgo" (selector de rubro de actividad) — compartido por
+// camposEdificioContenido() y camposObjetoRiesgo(). Mientras GET /ramos/rubros-actividad está
+// en curso (state.loadingRubros, ver selectRamo()/cargarParaEditar() en actions.js) muestra un
+// skeleton del mismo tamaño que el <select> real en vez de un selector vacío ("Seleccioná un
+// tipo de riesgo…" sin opciones todavía, que se veía roto).
+function campoTipoRiesgo() {
+  if (state.loadingRubros) {
+    return `
+      <div class="field">
+        <span class="skeleton-text" style="width: 40%; margin-bottom: 6px"></span>
+        <span class="skeleton-block" aria-hidden="true"></span>
+      </div>
+    `
+  }
   return `
     <div class="field">
       <label for="${idParaCampo('rubroActividad')}">Tipo de Riesgo</label>
@@ -41,6 +52,14 @@ export function camposEdificioContenido(sublimiteField) {
         ${state.rubros.map((r) => `<option value="${escapeHtml(r.nombre)}" ${state.data.rubroActividad === r.nombre ? 'selected' : ''}>${escapeHtml(r.nombre)}</option>`).join('')}
       </select>
     </div>
+  `
+}
+
+// Campos "Tipo de Riesgo"/"Ciudad"/capitales del esqueleto MRC — reusado por MRC e Incendio
+// (plan "Edificio y Contenido"), que comparten el mismo motor de tasas por rubro.
+export function camposEdificioContenido(sublimiteField) {
+  return `
+    ${campoTipoRiesgo()}
     <div class="field">
       <label for="${idParaCampo('ciudad')}">Ciudad</label>
       <select class="field-input" id="${idParaCampo('ciudad')}" data-field="ciudad">
@@ -122,13 +141,7 @@ export function camposObjetoRiesgo(plan) {
   ).join('')
 
   return `
-    <div class="field">
-      <label for="${idParaCampo('rubroActividad')}">Tipo de Riesgo</label>
-      <select class="field-input" id="${idParaCampo('rubroActividad')}" data-field="rubroActividad">
-        <option value="">Seleccioná un tipo de riesgo…</option>
-        ${state.rubros.map((r) => `<option value="${escapeHtml(r.nombre)}" ${state.data.rubroActividad === r.nombre ? 'selected' : ''}>${escapeHtml(r.nombre)}</option>`).join('')}
-      </select>
-    </div>
+    ${campoTipoRiesgo()}
     ${renderMonedaSelector()}
     ${camposCapital}
     ${
@@ -376,9 +389,33 @@ function camposEspecificosMrc() {
   return camposEdificioContenido()
 }
 
+// Skeleton de "Coberturas adicionales" mientras cargan el catálogo del ramo y/o las coberturas
+// fijas del plan (state.loadingCoberturasCatalogo/loadingPlanCoberturas, ver
+// cargarCoberturasCatalogo()/cargarPlanCoberturas() en actions.js) — 3 filas con la misma
+// forma que .cobertura-adicional-card (ícono + nombre + campo) para que la lista real no
+// "salte" de tamaño al llegar.
+function renderCoberturasAdicionalesSkeleton() {
+  const filas = Array.from(
+    { length: 3 },
+    () => `
+      <div class="cobertura-adicional-card" aria-hidden="true">
+        <span class="cobertura-adicional-card__check"></span>
+        <span class="cobertura-adicional-card__icon skeleton-circle" style="width: 38px; height: 38px; border-radius: var(--tajy-radius-lg)"></span>
+        <div class="cobertura-adicional-card__main"><span class="skeleton-text" style="width: 55%"></span></div>
+        <div class="cobertura-adicional-card__field"><span class="skeleton-block"></span></div>
+      </div>
+    `
+  ).join('')
+
+  return `<div class="coberturas-adicionales" role="group">${filas}</div>`
+}
+
 // "Coberturas adicionales" de MRC en su propia card, separada de "Datos del asegurado"
 // (Kevin, 2026-08-12: mezclar ambas bajo el mismo heading confundía al escanear el formulario).
 function coberturasAdicionalesMrc() {
+  if (state.loadingCoberturasCatalogo || state.loadingPlanCoberturas) {
+    return renderCoberturasAdicionalesSkeleton()
+  }
   const puedeAgregarLibre = auth.getUsuario()?.puede_agregar_cobertura_libre !== false
   return puedeAgregarLibre
     ? renderCoberturasAdicionales(coberturasDisponibles())
@@ -491,6 +528,17 @@ export function camposEspecificosParaRamo(ramo, plan) {
 }
 
 export function renderPlanRow() {
+  if (state.loadingPlanes) {
+    return `
+      <div class="plan-row">
+        <div class="plan-row__box">
+          <div class="plan-row__label">Plan a presentar</div>
+          <span class="skeleton-block" aria-hidden="true"></span>
+        </div>
+      </div>
+    `
+  }
+
   const options = state.planes
     .map((p) => {
       const calculable = planEsCalculable(state.ramoId, p)

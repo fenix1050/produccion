@@ -61,13 +61,18 @@ export function setView(view) {
 // sublímites por defecto, no las coberturas principales (Robo contenido, Cristales, etc.).
 // Se usa para poblar el selector de "Coberturas adicionales" con nombre + categoría.
 export async function cargarCoberturasCatalogo(ramoId) {
+  state.loadingCoberturasCatalogo = true
+  renderApp()
   try {
     state.coberturasCatalogo = await api.get(`/ramos/${ramoId}/coberturas-catalogo`)
   } catch (err) {
     logger.error('No se pudo cargar el catálogo de coberturas del ramo', err)
     mostrarBanner('error', 'No se pudo cargar el catálogo de coberturas del ramo.')
     state.coberturasCatalogo = []
+  } finally {
+    state.loadingCoberturasCatalogo = false
   }
+  renderApp()
 }
 
 // Coberturas fijas del PLAN (plan_coberturas + coberturas_catalogo embebido), de donde salen
@@ -76,13 +81,18 @@ export async function cargarCoberturasCatalogo(ramoId) {
 // el agente cambia de plan; un array vacío (plan sin filas en plan_coberturas todavía) no rompe
 // el flujo — sublimitesFijosMrc() simplemente no devuelve filas.
 export async function cargarPlanCoberturas(planId) {
+  state.loadingPlanCoberturas = true
+  renderApp()
   try {
     state.planCoberturas = await api.get(`/planes/${planId}/coberturas`)
   } catch (err) {
     logger.error('No se pudo cargar las coberturas fijas del plan', err)
     mostrarBanner('error', 'No se pudo cargar las coberturas fijas del plan.')
     state.planCoberturas = []
+  } finally {
+    state.loadingPlanCoberturas = false
   }
+  renderApp()
 }
 
 // Agrega una línea vacía de "Coberturas adicionales" por cada Cobertura Principal que el plan
@@ -447,13 +457,18 @@ export async function selectRamo(nombre) {
   const ramo = ramoActivo(nombre)
   if (!ramo) return
 
+  state.loadingPlanes = true
+  renderApp()
   try {
     state.planes = await api.get(`/ramos/${ramo.id}/planes`)
   } catch (err) {
     logger.error('No se pudieron cargar los planes del ramo', err)
     mostrarBanner('error', 'No se pudieron cargar los planes del ramo.')
     state.planes = []
+  } finally {
+    state.loadingPlanes = false
   }
+  renderApp()
 
   if (RAMOS_CON_CALCULO.includes(nombre)) {
     // Preselecciona el primer plan calculable hoy (RPF/tasas confirmados).
@@ -463,6 +478,8 @@ export async function selectRamo(nombre) {
     state.data.descuentoPorcentaje = planCalculable?.descuento_default ?? null
 
     if (nombre === 'mrc' || nombre === 'incendio') {
+      state.loadingRubros = true
+      renderApp()
       try {
         // Cambio "incendio-tasas-por-rubro": filtrado por ramo (rubro_actividad_ramo).
         // Incendio solo usa esta lista para el plan "Edificio y Contenido" (Maquinaria
@@ -472,7 +489,10 @@ export async function selectRamo(nombre) {
         logger.error('No se pudieron cargar los tipos de riesgo', err)
         mostrarBanner('error', 'No se pudieron cargar los tipos de riesgo.')
         state.rubros = []
+      } finally {
+        state.loadingRubros = false
       }
+      renderApp()
     }
 
     if (nombre === 'mrc') {
@@ -609,13 +629,18 @@ export async function init() {
     window.location.href = '../login/'
     return
   }
+  state.loadingRamos = true
+  renderApp()
   try {
     state.ramosActivos = await getRamos()
   } catch (err) {
     logger.error('No se pudo cargar la lista de ramos', err)
     mostrarBanner('error', 'No se pudo cargar la lista de ramos.')
     state.ramosActivos = []
+  } finally {
+    state.loadingRamos = false
   }
+  renderApp()
 
   const params = new URLSearchParams(location.search)
   const editarId = params.get('editar')
@@ -659,16 +684,23 @@ export async function cargarParaEditar(id) {
   state.view = 'form'
   state.planBloqueado = false
 
+  state.loadingPlanes = true
+  renderApp()
   try {
     state.planes = await api.get(`/ramos/${ramo.id}/planes`)
   } catch (err) {
     logger.error('No se pudieron cargar los planes del ramo', err)
     mostrarBanner('error', 'No se pudieron cargar los planes del ramo.')
     state.planes = []
+  } finally {
+    state.loadingPlanes = false
   }
+  renderApp()
   state.planId = cotizacion.plan_id
 
   if (ramo.nombre === 'mrc' || ramo.nombre === 'incendio') {
+    state.loadingRubros = true
+    renderApp()
     try {
       // Cambio "incendio-tasas-por-rubro": el catálogo ahora se filtra por ramo
       // (rubro_actividad_ramo) — cada ramo trae solo sus propios rubros, ya no la
@@ -678,7 +710,10 @@ export async function cargarParaEditar(id) {
       logger.error('No se pudieron cargar los tipos de riesgo', err)
       mostrarBanner('error', 'No se pudieron cargar los tipos de riesgo.')
       state.rubros = []
+    } finally {
+      state.loadingRubros = false
     }
+    renderApp()
   }
 
   if (ramo.nombre === 'mrc') {

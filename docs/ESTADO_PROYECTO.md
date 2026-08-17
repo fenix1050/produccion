@@ -2539,3 +2539,30 @@ Verificado con el mismo servidor simulando la raíz real: la imagen responde 200
 No cambian datos, lógica, backend, Supabase, cálculos, validaciones, estados de interfaz ni tests.
 
 **Verificación:** descarga HTTP 200 de la imagen, sin 404s en consola del navegador.
+
+## 75. Backend — split de `cotizacion.service.js` por capa funcional (2026-08-17), rama `sdd/cotizacion-service-split`
+
+`cotizacion.service.js` había crecido a un archivo monolítico mezclando resolución de contexto, pricing, persistencia, autorización y generación de PDF. Change SDD `cotizacion-service-split` (spec/design/tasks en `openspec/changes/cotizacion-service-split/`) lo dividió en 6 PRs encadenados dentro de la misma rama, cada uno con TDD (RED con tests relocalizados, GREEN con la extracción verbatim) y suite completa corrida entre pasos:
+
+- **PR1** (`2aa17c7`): extrae `umbral-inspeccion.service.js` (`resolverUmbralInspeccion`) y `cotizacion-authorization.service.js` (`verificarPropiedad`) como módulos hoja.
+- **PR2** (`e0be7c1`): extrae `cotizacion-context.service.js` (`validarYResolverContexto` + `resolverContextoRepositorios`), preservando byte-a-byte las claves de cache compartidas con `ramos.service.js` (`catalogoRamo:${ramoId}`).
+- **PR3a** (`867e455`): extrae funciones puras de pricing (`resolverDescuentos`, `resolverTasaRpf`, `resolverCuotas`) a `cotizacion-pricing.service.js`.
+- **PR3b** (`d0c888b`): agrega `construirVariantes` + `resolverTiposFranquicia` al mismo archivo de pricing; confirmado que `auto.calculator.js` queda con diff cero.
+- **PR4** (`c2677e0`): extrae `cotizacion-persistence.service.js` (`armarPayloadDetalle`, `crearCotizacion`, `actualizarCotizacion`, `VENTANA_EDICION_MS`), preservando el payload RPC (`p_cotizacion`/`p_coberturas`/`p_variantes`) hacia `crear_cotizacion_atomica`/`actualizar_cotizacion_atomica`.
+- **PR5 (opcional)**: decisión **no-go** — tras PR4 el barrel quedó en 85 líneas, ya thin (4 funciones públicas + re-exports), así que `generarPdfOferta` se queda en el barrel en vez de moverse a un módulo propio.
+- **Final**: barrel de `cotizacion.service.js` verificado — solo contiene `calcularPreview`, `listarCotizaciones`, `obtenerCotizacion`, `generarPdfOferta` (local), los stubs de Fase 4 (`aceptarCotizacion`, `generarPdfPropuestaFormal`), y re-exports de todos los símbolos relocalizados. Grafo de imports acíclico confirmado (ningún módulo de capa importa de vuelta desde el barrel). `cotizaciones.controller.js` con diff cero contra `main`.
+
+Cada PR requirió un fix de infraestructura de tests no planeado, repetido en 3 ocasiones (PR1, PR3a, PR4): al mover una función a un módulo de specifier estable re-exportado incondicionalmente por el barrel, el binding de ESM se congela en el primer `t.mock.module(...)` registrado para ese módulo — rompiendo mocks posteriores de `tipo-cambio.service.js` y `cotizaciones.repository.js` en `cotizacion.service.ownership.test.js`. Se resolvió extendiendo el patrón existente `contextoRepoState` (bridging de mocks vía estado compartido) a los repos afectados.
+
+Baseline de tests subió de 154 (número original en la documentación) a 251/251 verdes de forma neta-cero en cada PR (tests relocalizados, no perdidos ni duplicados), confirmado repetidamente durante todo el split.
+
+No cambia comportamiento observable: extracción verbatim en todos los PRs, sin lógica nueva ni cambios de contrato con el frontend o Supabase.
+
+**Verificación:** 251/251 tests backend en verde tras cada PR y en el estado final; diff cero de `cotizaciones.controller.js` contra `main`; grep confirma ausencia de imports circulares hacia el barrel; smokes manuales de las 3 tasks deferred (2.7, 3b.6, 4.6) se completaron finalmente vía `/run-cotizador` + Playwright: cotización MRC creada end-to-end, Carta Oferta generada correctamente, sidebar de Auto confirmado "PRÓXIMAMENTE" (Fase 2 pausada, comportamiento esperado).
+
+**Fix de CI post-PR (2026-08-17), PR #290:** el CI (GitHub Actions, sin `.env`) rompió con 5 tests fallando — la suite local venía en verde de pura casualidad porque el `.env` local trae credenciales reales de Supabase, que evitan que `config/supabase.js` tire el `throw` de "Faltan SUPABASE_URL/SUPABASE_SERVICE_KEY", aunque el módulo cargado realmente no debía ser el real sino un mock. Dos causas distintas, ambas expuestas por el split:
+
+1. `cotizacion.service.ownership.test.js` (`actualizarCotizacion — aislamiento horizontal`, 4 tests): el barrel (`cotizacion.service.js`) importa `cotizaciones.repository.js` a nivel de módulo, y esa importación se re-resuelve en CADA `import('./cotizacion.service.js?case=...')` fresco (a diferencia del import de `cotizacion-persistence.service.js`, de specifier estable, que sí queda congelado desde el primer test del archivo). `mockModulosActualizar` nunca registraba su propio `t.mock.module` para ese repository, asumiendo (incorrectamente) que el mock congelado alcanzaba también para la resolución fresca del barrel. Fix: agregar el `t.mock.module` faltante, bridged a través de `contextoRepoState` (mismo patrón ya usado ahí para ramos/coberturas).
+2. `cotizacion-pricing.service.test.js`: diseñado en PR3a para importar el archivo de forma estática SIN mocks (funciones puras, sin dependencia de Supabase) — pero PR3b agregó `construirVariantes` al mismo archivo, que sí importa `ramos.repository.js` a nivel de módulo, rompiendo esa premisa. Fix: `mock.module('../config/supabase.js', ...)` (variante top-level de `node:test`, no ligada a un test individual) antes de un `await import(...)` dinámico del archivo bajo test — intercepta la raíz común de toda la cadena de repositories en un solo lugar, sin perseguir cada import transitivo.
+
+Ambos bugs se reprodujeron localmente forzando `DOTENV_CONFIG_PATH` a un archivo inexistente (sin tocar el `.env` real) y se confirmaron arreglados con 251/251 verde en ese mismo modo — replicando exactamente lo que corre CI.

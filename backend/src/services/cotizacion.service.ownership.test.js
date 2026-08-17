@@ -27,17 +27,76 @@ const COTIZACION_DE_A = { id: 7, agente_id: AGENTE_A.id, ramo_id: 1, plan_id: 10
 
 const ERROR_404 = httpError(404, 'Cotización no encontrada', 'Cotización no encontrada')
 
+// Ver nota equivalente en cotizacion.service.test.js: `node --test` corre cada archivo de test en
+// su propio proceso, así que este archivo tiene su PROPIO punto de congelamiento independiente
+// para el import estático de `cotizacion-context.service.js` (desde el split
+// `cotizacion-service-split`, PR2) — el primer `t.mock.module` de ramos/coberturas de ESTE
+// archivo (acá abajo, en `mockModulosBase`) es el que queda atado para siempre, sin importar qué
+// mockeen `mockModulosActualizar`/`mockModulosPdf` después. Por eso ese primer mock reenvía a
+// `contextoRepoState` en vez de devolver exports fijos.
+//
+// PR4 de `cotizacion-service-split`: el mismo hallazgo aplica ahora también a
+// `cotizaciones.repository.js`, porque `crearCotizacion`/`actualizarCotizacion` viven en
+// `cotizacion-persistence.service.js` — un módulo con specifier ESTABLE que el barrel re-exporta
+// de forma incondicional (`export { crearCotizacion, actualizarCotizacion } from
+// './cotizacion-persistence.service.js'`), así que se evalúa (y su propio `import * as
+// cotizacionesRepository` se congela) en el PRIMER import del barrel de este archivo — que hoy es
+// el primer test de `obtenerCotizacion` (vía `mockModulosBase`), no el de `actualizarCotizacion`.
+// Sin bridging acá, `actualizarCotizacion` quedaría atado para siempre al mock de
+// `obtenerCotizacion` (sin `actualizarCotizacionAtomica`), rompiendo con
+// "TypeError: actualizarCotizacionAtomica is not a function".
+const contextoRepoState = { ramos: {}, coberturas: {}, cotizaciones: {} }
+
+function sincronizarContextoRepoState({ ramos = {}, coberturas = {} } = {}) {
+  contextoRepoState.ramos = ramos
+  contextoRepoState.coberturas = coberturas
+}
+
 function mockModulosBase(t, { findCotizacionById, findCotizaciones, actualizarCotizacionAtomica }) {
-  t.mock.module('../repositories/ramos.repository.js', { namedExports: {} })
-  t.mock.module('../repositories/coberturas.repository.js', { namedExports: {} })
-  t.mock.module('./tipo-cambio.service.js', { namedExports: {} })
-  t.mock.module('../repositories/cotizaciones.repository.js', {
+  t.mock.module('../repositories/ramos.repository.js', {
     namedExports: {
-      findCotizacionById,
-      ...(findCotizaciones ? { findCotizaciones } : {}),
-      ...(actualizarCotizacionAtomica ? { actualizarCotizacionAtomica } : {}),
+      findPlanById: (...args) => contextoRepoState.ramos.findPlanById(...args),
+      findRamoById: (...args) => contextoRepoState.ramos.findRamoById(...args),
+      findFormasPagoDelPlan: (...args) => contextoRepoState.ramos.findFormasPagoDelPlan(...args),
+      findCoberturasByPlanId: (...args) => contextoRepoState.ramos.findCoberturasByPlanId(...args),
     },
   })
+  t.mock.module('../repositories/coberturas.repository.js', {
+    namedExports: {
+      findRubroPorNombre: (...args) => contextoRepoState.coberturas.findRubroPorNombre(...args),
+      findCoberturasCatalogoByRamoId: (...args) =>
+        contextoRepoState.coberturas.findCoberturasCatalogoByRamoId(...args),
+      findTasasCoberturaRamo: (...args) =>
+        contextoRepoState.coberturas.findTasasCoberturaRamo(...args),
+      findTasasRiesgoObjeto: (...args) =>
+        contextoRepoState.coberturas.findTasasRiesgoObjeto(...args),
+    },
+  })
+  t.mock.module('./tipo-cambio.service.js', { namedExports: {} })
+  // Ver nota grande al inicio del archivo (PR4): bridging para que
+  // `cotizacion-persistence.service.js` (congelado en este primer import del barrel) siga viendo
+  // los mocks que registre `mockModulosActualizar` más abajo.
+  t.mock.module('../repositories/cotizaciones.repository.js', {
+    namedExports: {
+      findCotizacionById: (...args) => contextoRepoState.cotizaciones.findCotizacionById(...args),
+      findCotizaciones: (...args) => contextoRepoState.cotizaciones.findCotizaciones(...args),
+      actualizarCotizacionAtomica: (...args) =>
+        contextoRepoState.cotizaciones.actualizarCotizacionAtomica(...args),
+    },
+  })
+  contextoRepoState.cotizaciones = {
+    findCotizacionById,
+    findCotizaciones:
+      findCotizaciones ??
+      (async () => {
+        throw new Error('findCotizaciones no debería invocarse')
+      }),
+    actualizarCotizacionAtomica:
+      actualizarCotizacionAtomica ??
+      (async () => {
+        throw new Error('actualizarCotizacionAtomica no debería invocarse')
+      }),
+  }
 }
 
 describe('obtenerCotizacion — aislamiento horizontal', () => {
@@ -315,6 +374,38 @@ describe('actualizarCotizacion — aislamiento horizontal', () => {
         findTasasRiesgoObjeto: async () => TASAS_OBJETO_RIESGO_VIVIENDA_FAMILIAR,
       },
     })
+    // `cotizacion.service.js` (el barrel) importa `cotizaciones.repository.js` a nivel de módulo
+    // (usado por obtenerCotizacion/listarCotizaciones/generarPdfOferta) — esa importación se
+    // re-resuelve en CADA `import('./cotizacion.service.js?case=...')` fresco, a diferencia del
+    // import de `cotizacion-persistence.service.js` (specifier estable, congelado desde el primer
+    // test del archivo). Sin este mock, el CI (sin .env) revienta acá al cargar
+    // `config/supabase.js` real — localmente pasaba de pura casualidad porque el `.env` real evita
+    // el throw, aunque el módulo cargado igual fuera el real (sin usarse, ya que
+    // `actualizarCotizacion` en sí sigue leyendo el binding correctamente mockeado de
+    // `cotizacion-persistence.service.js`).
+    t.mock.module('../repositories/cotizaciones.repository.js', {
+      namedExports: {
+        findCotizacionById: (...args) => contextoRepoState.cotizaciones.findCotizacionById(...args),
+        actualizarCotizacionAtomica: (...args) =>
+          contextoRepoState.cotizaciones.actualizarCotizacionAtomica(...args),
+      },
+    })
+    sincronizarContextoRepoState({
+      ramos: {
+        findPlanById: async () => PLAN_OBJETO_RIESGO,
+        findRamoById: async () => RAMO_INCENDIO,
+        findFormasPagoDelPlan: async () => FORMAS_PAGO_CONTADO,
+        findCoberturasByPlanId: async () => [],
+      },
+      coberturas: {
+        findRubroPorNombre: async () => null,
+        findCoberturasCatalogoByRamoId: async () => [
+          { codigo: 'incendio_edificio', nombre: 'Incendio de Edificio', franquicia_default: null },
+        ],
+        findTasasCoberturaRamo: async () => [],
+        findTasasRiesgoObjeto: async () => TASAS_OBJETO_RIESGO_VIVIENDA_FAMILIAR,
+      },
+    })
     t.mock.module('./tipo-cambio.service.js', {
       namedExports: {
         obtenerTipoCambioVigente: async () => ({
@@ -328,9 +419,11 @@ describe('actualizarCotizacion — aislamiento horizontal', () => {
         registrarTipoCambioManual: async () => {},
       },
     })
-    t.mock.module('../repositories/cotizaciones.repository.js', {
-      namedExports: { findCotizacionById, actualizarCotizacionAtomica },
-    })
+    // Ver nota grande al inicio del archivo (PR4): `cotizacion-persistence.service.js` ya está
+    // congelado desde el primer test de `obtenerCotizacion` (bridging registrado en
+    // `mockModulosBase`) — acá alcanza con actualizar el estado que ese bridging lee en cada
+    // llamada, sin necesidad de un `t.mock.module` adicional para este specifier.
+    contextoRepoState.cotizaciones = { findCotizacionById, actualizarCotizacionAtomica }
   }
 
   test('dueño (A sobre su propia cotización): succeeds, llama al RPC de actualización', async (t) => {

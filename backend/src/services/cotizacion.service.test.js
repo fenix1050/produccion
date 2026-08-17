@@ -3,275 +3,35 @@ import { test, describe } from 'node:test'
 
 import { invalidarCacheCatalogos } from './cache.js'
 
-// resolverDescuentos: helper puro (cambio SDD `mrc-plan-descuento-fijo`) que decide, ANTES de
-// invocar al calculador, si el descuento efectivo es el que mandó el body o el forzado por
-// `plan.descuento_default` — ver design.md Decisión 1. `forzadoPorPlan` es lo que después
-// neutraliza el tope del usuario en el calculador (Decisión 2), así que se testea acá como
-// parte del contrato del helper, no solo el array de `descuentos`.
-//
-// Import dinámico + repos mockeados en cada test (mismo patrón que el resto del archivo, ver
-// nota debajo): un `import` estático de `cotizacion.service.js` a nivel de módulo se evalúa
-// ANTES de que cualquier mock se registre, así que carga la cadena real de repositories →
-// `config/supabase.js`, que revienta si no hay SUPABASE_URL/SUPABASE_SERVICE_KEY reales — pasaba
-// desapercibido en local (hay `.env` con credenciales reales) pero rompía CI (sin `.env`).
-describe('resolverDescuentos', () => {
-  const PLAN_SIN_DESCUENTO_DEFAULT = { descuento_default: null, cotizacion_combinada: false }
-  const PLAN_MRC_10 = { descuento_default: 10, cotizacion_combinada: false }
-  const PLAN_AUTO_COMBINADO = { descuento_default: 20, cotizacion_combinada: true }
+// Estado compartido consumido por los mocks de `ramos.repository.js`/`coberturas.repository.js`
+// registrados más abajo (ver `mockearRepositorios`, el primer helper del archivo en ejecutarse
+// desde que `resolverDescuentos`/`resolverTasaRpf` se relocaron a
+// `cotizacion-pricing.service.test.js` en PR 3a). Desde el split `cotizacion-service-split`
+// (PR2), `validarYResolverContexto` y `resolverContextoRepositorios` viven en
+// `cotizacion-context.service.js`, un módulo con specifier ESTABLE (sin query string) que
+// `cotizacion.service.js?case=X` importa de forma estática. Node solo evalúa ese módulo UNA vez
+// por proceso de test (la primera vez que se importa, en este archivo eso ocurre durante el
+// primer test del archivo, dentro de `mockearRepositorios`) — su propio
+// `import * as ramosRepository from '../repositories/ramos.repository.js'` queda atado PARA
+// SIEMPRE al mock que esté activo en ESE momento, sin importar qué `t.mock.module` registre un
+// test posterior (mismo hallazgo que el de `tipo-cambio.service.js` en PR1). Por eso el PRIMER
+// `t.mock.module` de este archivo para esos dos repositories no puede devolver funciones "fijas":
+// expone funciones puente que leen `contextoRepoState` en el momento de la LLAMADA (no de la
+// importación), y `sincronizarContextoRepoState` actualiza este objeto antes de cada test que
+// necesita `validarYResolverContexto`/`resolverContextoRepositorios` — los `t.mock.module` de más
+// abajo siguen siendo necesarios además, para el uso DIRECTO que sigue haciendo el barrel
+// (`cotizacion.service.js`) de estos mismos repositories (findFormasPagoDelPlan/findCurvaRpf/
+// findCoberturasByPlanId/etc.), que sí se re-mockea fresco en cada test porque ese import se
+// reevalúa vía el query string `?case=X`.
+const contextoRepoState = {
+  ramos: {},
+  coberturas: {},
+}
 
-  function mockRepositoriosYObtenerResolverDescuentos(t, caso) {
-    t.mock.module('../repositories/ramos.repository.js', { namedExports: {} })
-    t.mock.module('../repositories/coberturas.repository.js', { namedExports: {} })
-    t.mock.module('../repositories/cotizaciones.repository.js', { namedExports: {} })
-    // cotizacion.service.js también importa tipo-cambio.service.js, que a su vez importa
-    // tipos-cambio.repository.js -> config/supabase.js — sin este mock, el import dinámico de
-    // más abajo sigue reventando en CI (sin .env) aunque los 3 repos de arriba estén mockeados.
-    t.mock.module('./tipo-cambio.service.js', { namedExports: {} })
-    return import(`./cotizacion.service.js?case=resolver-descuentos-${caso}`)
-  }
-
-  test('plan sin descuento_default: el body pasa intacto, forzadoPorPlan=false', async (t) => {
-    const { resolverDescuentos } = await mockRepositoriosYObtenerResolverDescuentos(t, 1)
-    const descuentosBody = [{ descripcion: 'Descuento agente', porcentaje: 15 }]
-    const resultado = resolverDescuentos({
-      plan: PLAN_SIN_DESCUENTO_DEFAULT,
-      descuentosBody,
-      usuario: { puede_editar_descuento_plan: false },
-    })
-
-    assert.deepEqual(resultado.descuentos, descuentosBody)
-    assert.equal(resultado.forzadoPorPlan, false)
-  })
-
-  test('plan con descuento_default + usuario CON permiso: el body pasa intacto', async (t) => {
-    const { resolverDescuentos } = await mockRepositoriosYObtenerResolverDescuentos(t, 2)
-    const descuentosBody = [{ descripcion: 'Descuento agente', porcentaje: 5 }]
-    const resultado = resolverDescuentos({
-      plan: PLAN_MRC_10,
-      descuentosBody,
-      usuario: { puede_editar_descuento_plan: true },
-    })
-
-    assert.deepEqual(resultado.descuentos, descuentosBody)
-    assert.equal(resultado.forzadoPorPlan, false)
-  })
-
-  test('plan con descuento_default + usuario SIN permiso: ignora el body, fuerza el 10% del plan', async (t) => {
-    const { resolverDescuentos } = await mockRepositoriosYObtenerResolverDescuentos(t, 3)
-    const descuentosBody = [{ descripcion: 'Descuento agente', porcentaje: 5 }]
-    const resultado = resolverDescuentos({
-      plan: PLAN_MRC_10,
-      descuentosBody,
-      usuario: { puede_editar_descuento_plan: false },
-    })
-
-    assert.deepEqual(resultado.descuentos, [{ descripcion: 'Descuento del plan', porcentaje: 10 }])
-    assert.equal(resultado.forzadoPorPlan, true)
-  })
-
-  test('plan con descuento_default + usuario undefined (sin sesión mockeada): fuerza igual', async (t) => {
-    const { resolverDescuentos } = await mockRepositoriosYObtenerResolverDescuentos(t, 4)
-    const resultado = resolverDescuentos({
-      plan: PLAN_MRC_10,
-      descuentosBody: [{ porcentaje: 99 }],
-      usuario: undefined,
-    })
-
-    assert.deepEqual(resultado.descuentos, [{ descripcion: 'Descuento del plan', porcentaje: 10 }])
-    assert.equal(resultado.forzadoPorPlan, true)
-  })
-
-  test('plan Auto con cotizacion_combinada=true: NUNCA fuerza, aunque tenga descuento_default', async (t) => {
-    const { resolverDescuentos } = await mockRepositoriosYObtenerResolverDescuentos(t, 5)
-    const descuentosBody = [{ porcentaje: 3 }]
-    const resultado = resolverDescuentos({
-      plan: PLAN_AUTO_COMBINADO,
-      descuentosBody,
-      usuario: { puede_editar_descuento_plan: false },
-    })
-
-    assert.deepEqual(resultado.descuentos, descuentosBody)
-    assert.equal(resultado.forzadoPorPlan, false)
-  })
-
-  test('plan con descuento_default + sin body (undefined): fuerza igual, no rompe', async (t) => {
-    const { resolverDescuentos } = await mockRepositoriosYObtenerResolverDescuentos(t, 6)
-    const resultado = resolverDescuentos({
-      plan: PLAN_MRC_10,
-      descuentosBody: undefined,
-      usuario: { puede_editar_descuento_plan: false },
-    })
-
-    assert.deepEqual(resultado.descuentos, [{ descripcion: 'Descuento del plan', porcentaje: 10 }])
-    assert.equal(resultado.forzadoPorPlan, true)
-  })
-
-  test('plan sin descuento_default + body undefined: devuelve array vacío, no rompe', async (t) => {
-    const { resolverDescuentos } = await mockRepositoriosYObtenerResolverDescuentos(t, 7)
-    const resultado = resolverDescuentos({
-      plan: PLAN_SIN_DESCUENTO_DEFAULT,
-      descuentosBody: undefined,
-      usuario: { puede_editar_descuento_plan: false },
-    })
-
-    assert.deepEqual(resultado.descuentos, [])
-    assert.equal(resultado.forzadoPorPlan, false)
-  })
-})
-
-// resolverTasaRpf: helper puro (cambio SDD `rpf-variable-mrc`, ver design.md — Data Flow) que
-// decide, para CADA forma de pago de la variante, si la tasa de R.P.F. sale de la curva nueva
-// (`rpf_cuotas`, ramos flagueados) o del escalar legacy `plan_formas_pago.tasa_rpf` (todo lo
-// demás, byte-idéntico). Mismo patrón de mock que resolverDescuentos arriba: import dinámico +
-// repos vacíos, la función no toca ningún repository.
-describe('resolverTasaRpf', () => {
-  function mockRepositoriosYObtenerResolverTasaRpf(t, caso) {
-    t.mock.module('../repositories/ramos.repository.js', { namedExports: {} })
-    t.mock.module('../repositories/coberturas.repository.js', { namedExports: {} })
-    t.mock.module('../repositories/cotizaciones.repository.js', { namedExports: {} })
-    t.mock.module('./tipo-cambio.service.js', { namedExports: {} })
-    return import(`./cotizacion.service.js?case=resolver-tasa-rpf-${caso}`)
-  }
-
-  const RAMO_FLAGGED = { usa_rpf_por_cuotas: true }
-  const RAMO_NO_FLAGGED = { usa_rpf_por_cuotas: false }
-
-  // Subconjunto real de la curva (migración 058, Hoja4).
-  const CURVA = [
-    { forma_pago_id: 1, cuotas: 3, tasa_rpf: 1.6889, formas_pago: { codigo: 'cobrador' } },
-    { forma_pago_id: 1, cuotas: 11, tasa_rpf: 9.5, formas_pago: { codigo: 'cobrador' } },
-    { forma_pago_id: 2, cuotas: 1, tasa_rpf: 0, formas_pago: { codigo: 'tarjeta_credito' } },
-    { forma_pago_id: 2, cuotas: 3, tasa_rpf: 0.8, formas_pago: { codigo: 'tarjeta_credito' } },
-    { forma_pago_id: 3, cuotas: 5, tasa_rpf: 3.04, formas_pago: { codigo: 'boca_cobranza' } },
-  ]
-
-  test('ramo flagueado + cuotas dentro de rango: devuelve el valor de la curva, no el escalar', async (t) => {
-    const { resolverTasaRpf } = await mockRepositoriosYObtenerResolverTasaRpf(t, 1)
-    const formaPagoPlan = { tasa_rpf: 99, formas_pago: { codigo: 'cobrador' } }
-
-    const resultado = resolverTasaRpf({
-      ramo: RAMO_FLAGGED,
-      formaPagoPlan,
-      curva: CURVA,
-      cuotas: 3,
-    })
-
-    assert.equal(resultado, 1.6889)
-  })
-
-  test('ramo NO flagueado (Auto): devuelve el escalar legacy sin tocar la curva, sin importar la cantidad de cuotas', async (t) => {
-    const { resolverTasaRpf } = await mockRepositoriosYObtenerResolverTasaRpf(t, 2)
-    const formaPagoPlan = { tasa_rpf: 5, formas_pago: { codigo: 'cobrador' } }
-
-    // Regresión (design.md — Testing Strategy): el escalar de Auto no debe variar con la
-    // cantidad de cuotas, a diferencia de la curva nueva de los 3 ramos flagueados.
-    const con3Cuotas = resolverTasaRpf({
-      ramo: RAMO_NO_FLAGGED,
-      formaPagoPlan,
-      curva: null,
-      cuotas: 3,
-    })
-    const con11Cuotas = resolverTasaRpf({
-      ramo: RAMO_NO_FLAGGED,
-      formaPagoPlan,
-      curva: null,
-      cuotas: 11,
-    })
-
-    assert.equal(con3Cuotas, 5)
-    assert.equal(con11Cuotas, 5)
-  })
-
-  test('forma de pago contado: siempre 0, sin importar el flag ni la curva', async (t) => {
-    const { resolverTasaRpf } = await mockRepositoriosYObtenerResolverTasaRpf(t, 3)
-    const formaPagoPlan = { tasa_rpf: 999, formas_pago: { codigo: 'contado' } }
-
-    const resultado = resolverTasaRpf({
-      ramo: RAMO_FLAGGED,
-      formaPagoPlan,
-      curva: CURVA,
-      cuotas: 5,
-    })
-
-    assert.equal(resultado, 0)
-  })
-
-  test('ramo flagueado + forma financiada con cuotas=0: devuelve 0 por regla, no el escalar (design.md Decisión 4)', async (t) => {
-    const { resolverTasaRpf } = await mockRepositoriosYObtenerResolverTasaRpf(t, 4)
-    const formaPagoPlan = { tasa_rpf: 99, formas_pago: { codigo: 'cobrador' } }
-
-    const resultado = resolverTasaRpf({
-      ramo: RAMO_FLAGGED,
-      formaPagoPlan,
-      curva: CURVA,
-      cuotas: 0,
-    })
-
-    assert.equal(resultado, 0)
-  })
-
-  test('ramo flagueado + cuotas fuera de rango: 422 explícito, sin clamp', async (t) => {
-    const { resolverTasaRpf } = await mockRepositoriosYObtenerResolverTasaRpf(t, 5)
-    const formaPagoPlan = { tasa_rpf: 99, formas_pago: { codigo: 'cobrador' } }
-
-    assert.throws(
-      () => resolverTasaRpf({ ramo: RAMO_FLAGGED, formaPagoPlan, curva: CURVA, cuotas: 12 }),
-      (err) => {
-        assert.equal(err.status, 422)
-        return true
-      }
-    )
-  })
-
-  test('Tarjeta de Crédito @ 1 cuota: devuelve 0 literal (fila real, no ausente)', async (t) => {
-    const { resolverTasaRpf } = await mockRepositoriosYObtenerResolverTasaRpf(t, 6)
-    const formaPagoPlan = { tasa_rpf: 99, formas_pago: { codigo: 'tarjeta_credito' } }
-
-    const resultado = resolverTasaRpf({
-      ramo: RAMO_FLAGGED,
-      formaPagoPlan,
-      curva: CURVA,
-      cuotas: 1,
-    })
-
-    assert.equal(resultado, 0)
-  })
-
-  // Cierra el gap de sdd-verify (obs #397, spec matrix fila 6): a diferencia de 1-2 cuotas
-  // (0% literal), a partir de 3 cuotas Tarjeta de Crédito SÍ cobra R.P.F. — confirma que no hay
-  // un atajo de código que devuelva 0 para toda la forma de pago, solo para las cuotas exactas
-  // que la planilla marca en 0.
-  test('Tarjeta de Crédito @ 3 cuotas: no-cero (distinto de 1-2 cuotas)', async (t) => {
-    const { resolverTasaRpf } = await mockRepositoriosYObtenerResolverTasaRpf(t, 7)
-    const formaPagoPlan = { tasa_rpf: 99, formas_pago: { codigo: 'tarjeta_credito' } }
-
-    const resultado = resolverTasaRpf({
-      ramo: RAMO_FLAGGED,
-      formaPagoPlan,
-      curva: CURVA,
-      cuotas: 3,
-    })
-
-    assert.equal(resultado, 0.8)
-  })
-
-  // Cierra el gap de sdd-verify (obs #397, spec matrix fila 3): prueba explícita del mapeo
-  // "Aquí Pago" (Excel) -> `boca_cobranza` (sistema) — hasta ahora solo probado genéricamente
-  // vía Cobrador/Tarjeta, nunca con este código puntual.
-  test('Boca de Cobranza @ 5 cuotas: resuelve desde la columna "Aquí Pago" de la curva', async (t) => {
-    const { resolverTasaRpf } = await mockRepositoriosYObtenerResolverTasaRpf(t, 8)
-    const formaPagoPlan = { tasa_rpf: 99, formas_pago: { codigo: 'boca_cobranza' } }
-
-    const resultado = resolverTasaRpf({
-      ramo: RAMO_FLAGGED,
-      formaPagoPlan,
-      curva: CURVA,
-      cuotas: 5,
-    })
-
-    assert.equal(resultado, 3.04)
-  })
-})
+function sincronizarContextoRepoState({ ramos = {}, coberturas = {} } = {}) {
+  contextoRepoState.ramos = ramos
+  contextoRepoState.coberturas = coberturas
+}
 
 // Tests de integración del service de cotización (grupo 5/7 de "incendio-3-planes-y-moneda"):
 // moneda + snapshot de tipo de cambio (persistido SOLO al emitir, nunca en preview) y resolución
@@ -367,6 +127,25 @@ function mockearRepositorios(
     },
   })
 
+  // Ver nota grande al inicio del archivo: `validarYResolverContexto`/`resolverContextoRepositorios`
+  // (cotizacion-context.service.js) leen este objeto en vez del `t.mock.module` de arriba.
+  sincronizarContextoRepoState({
+    ramos: {
+      findPlanById: async () => plan,
+      findRamoById: async () => ramo,
+      findFormasPagoDelPlan: async () => FORMAS_PAGO_CONTADO,
+      findCoberturasByPlanId: async () => [],
+    },
+    coberturas: {
+      findRubroPorNombre: async () => null,
+      findCoberturasCatalogoByRamoId: async () => [
+        { codigo: 'incendio_edificio', nombre: 'Incendio de Edificio', franquicia_default: null },
+      ],
+      findTasasCoberturaRamo: async () => [],
+      findTasasRiesgoObjeto: async () => tasasObjetoRiesgo,
+    },
+  })
+
   t.mock.module('../repositories/cotizaciones.repository.js', {
     namedExports: {
       crearCotizacionAtomica: async (payload) => {
@@ -439,16 +218,43 @@ describe('construirVariantes (vía calcularPreview) — enforcement del descuent
   ]
 
   function mockearRepositoriosMrc(t) {
+    // Ver nota grande al inicio del archivo: este es hoy el PRIMER `t.mock.module` de estos dos
+    // repositories en ejecutarse en todo el archivo (primer test del archivo), así que es el que
+    // queda atado para siempre al import estático de `cotizacion-context.service.js` — no puede
+    // ser fijo, tiene que reenviar a `contextoRepoState` en el momento de la llamada.
     t.mock.module('../repositories/ramos.repository.js', {
       namedExports: {
+        findPlanById: (...args) => contextoRepoState.ramos.findPlanById(...args),
+        findRamoById: (...args) => contextoRepoState.ramos.findRamoById(...args),
+        findFormasPagoDelPlan: (...args) => contextoRepoState.ramos.findFormasPagoDelPlan(...args),
+        findCoberturasByPlanId: (...args) =>
+          contextoRepoState.ramos.findCoberturasByPlanId(...args),
+        findTasaCapital: (...args) => contextoRepoState.ramos.findTasaCapital(...args),
+        findCurvaRpf: (...args) => contextoRepoState.ramos.findCurvaRpf(...args),
+      },
+    })
+    t.mock.module('../repositories/coberturas.repository.js', {
+      namedExports: {
+        findRubroPorNombre: (...args) => contextoRepoState.coberturas.findRubroPorNombre(...args),
+        findCoberturasCatalogoByRamoId: (...args) =>
+          contextoRepoState.coberturas.findCoberturasCatalogoByRamoId(...args),
+        findTasasCoberturaRamo: (...args) =>
+          contextoRepoState.coberturas.findTasasCoberturaRamo(...args),
+        findTasasRiesgoObjeto: (...args) =>
+          contextoRepoState.coberturas.findTasasRiesgoObjeto(...args),
+        findTarifasGenericoByPlanId: (...args) =>
+          contextoRepoState.coberturas.findTarifasGenericoByPlanId(...args),
+      },
+    })
+    // Ver nota grande al inicio del archivo.
+    sincronizarContextoRepoState({
+      ramos: {
         findPlanById: async () => PLAN_MRC_DESCUENTO_FIJO,
         findRamoById: async () => RAMO_MRC,
         findFormasPagoDelPlan: async () => FORMAS_PAGO_CONTADO_MRC,
         findCoberturasByPlanId: async () => [],
       },
-    })
-    t.mock.module('../repositories/coberturas.repository.js', {
-      namedExports: {
+      coberturas: {
         findRubroPorNombre: async () => ({
           nombre: 'Bazar',
           tasa_edificio: 2,
@@ -464,7 +270,26 @@ describe('construirVariantes (vía calcularPreview) — enforcement del descuent
     // dinámico de más abajo revienta en CI (sin .env), aunque calcularPreview nunca los invoque
     // en el camino de preview que testean estos casos.
     t.mock.module('../repositories/cotizaciones.repository.js', { namedExports: {} })
-    t.mock.module('./tipo-cambio.service.js', { namedExports: {} })
+    // `umbral-inspeccion.service.js` (specifier ESTABLE, igual que `cotizacion-context.service.js`)
+    // importa `tipo-cambio.service.js` de forma estática — este es hoy el PRIMER
+    // `t.mock.module('./tipo-cambio.service.js', ...)` del archivo en ejecutarse, así que queda
+    // atado para siempre a lo que devuelva acá (mismo hallazgo que PR1). No puede ser
+    // `{ namedExports: {} }`: usa el mismo fixture canónico (venta/fuente/fecha) que el resto del
+    // archivo, para que los tests posteriores que sí necesitan conversión de moneda (vía
+    // resolverUmbralInspeccion) reciban un valor real y consistente.
+    t.mock.module('./tipo-cambio.service.js', {
+      namedExports: {
+        obtenerTipoCambioVigente: async () => ({
+          venta: 7300.75,
+          compra: 7250.5,
+          obtenido_en: '2026-07-27T00:00:00Z',
+          fuente: 'dolarpy:set',
+          origen: 'api',
+          stale: false,
+        }),
+        registrarTipoCambioManual: async () => {},
+      },
+    })
   }
 
   function bodyMrc(descuentoPorcentaje) {
@@ -551,6 +376,17 @@ describe('construirVariantes (vía calcularPreview) — Auto cotizacion_combinad
       },
     })
     t.mock.module('../repositories/coberturas.repository.js', { namedExports: {} })
+    // Ver nota grande al inicio del archivo. `auto` no llama a ningún método de
+    // coberturas.repository.js dentro de resolverContextoRepositorios, así que ese lado queda {}.
+    sincronizarContextoRepoState({
+      ramos: {
+        findPlanById: async () => PLAN_AUTO_PREMIUM,
+        findRamoById: async () => RAMO_AUTO,
+        findFormasPagoDelPlan: async () => FORMAS_PAGO_AUTO,
+        findCoberturasByPlanId: async () => [],
+        findTasaCapital: async () => ({ tasa_porcentaje: 5 }),
+      },
+    })
     t.mock.module('../repositories/cotizaciones.repository.js', { namedExports: {} })
     t.mock.module('./tipo-cambio.service.js', { namedExports: {} })
     const { calcularPreview } =
@@ -634,6 +470,17 @@ describe('construirVariantes (vía calcularPreview) — Auto con forma de pago f
       },
     })
     t.mock.module('../repositories/coberturas.repository.js', { namedExports: {} })
+    // Ver nota grande al inicio del archivo. `auto` no llama a ningún método de
+    // coberturas.repository.js dentro de resolverContextoRepositorios, así que ese lado queda {}.
+    sincronizarContextoRepoState({
+      ramos: {
+        findPlanById: async () => PLAN_AUTO_BASICO,
+        findRamoById: async () => RAMO_AUTO_NO_FLAGGED,
+        findFormasPagoDelPlan: async () => FORMA_PAGO_COBRADOR,
+        findCoberturasByPlanId: async () => [],
+        findTasaCapital: async () => ({ tasa_porcentaje: 5 }),
+      },
+    })
     t.mock.module('../repositories/cotizaciones.repository.js', { namedExports: {} })
     t.mock.module('./tipo-cambio.service.js', { namedExports: {} })
     const { calcularPreview } =
@@ -667,40 +514,6 @@ describe('construirVariantes (vía calcularPreview) — Auto con forma de pago f
   })
 })
 
-test('crearCotizacion con moneda:USD persiste moneda + snapshot de tipo de cambio vía un único RPC atómico', async (t) => {
-  invalidarCacheCatalogos()
-  const { cotizacionesCreadas } = mockearRepositorios(t)
-  const { crearCotizacion } = await import('./cotizacion.service.js?case=crear-usd-snapshot')
-
-  await crearCotizacion(bodyBase({ moneda: 'USD' }), USUARIO)
-
-  assert.equal(
-    cotizacionesCreadas.length,
-    1,
-    'crearCotizacionAtomica debe llamarse exactamente una vez (un solo RPC, no inserts secuenciales)'
-  )
-  const payload = cotizacionesCreadas[0]
-  assert.equal(payload.p_cotizacion.moneda, 'USD')
-  assert.equal(payload.p_cotizacion.tipo_cambio_snapshot, 7300.75)
-  assert.equal(payload.p_cotizacion.tipo_cambio_fuente, 'dolarpy:set')
-  assert.equal(payload.p_cotizacion.tipo_cambio_fecha, '2026-07-27T00:00:00Z')
-})
-
-test('crearCotizacion en la misma moneda del umbral no invoca tipo de cambio ni persiste snapshot', async (t) => {
-  invalidarCacheCatalogos()
-  const { cotizacionesCreadas } = mockearRepositorios(t)
-  const { crearCotizacion } = await import('./cotizacion.service.js?case=crear-misma-moneda')
-
-  await crearCotizacion(bodyBase({ moneda: 'PYG' }), USUARIO)
-
-  assert.equal(cotizacionesCreadas.length, 1)
-  const payload = cotizacionesCreadas[0]
-  assert.equal(payload.p_cotizacion.moneda, 'PYG')
-  assert.equal(payload.p_cotizacion.tipo_cambio_snapshot, undefined)
-  assert.equal(payload.p_cotizacion.tipo_cambio_fuente, undefined)
-  assert.equal(payload.p_cotizacion.tipo_cambio_fecha, undefined)
-})
-
 test('calcularPreview no persiste nada (nunca invoca crearCotizacionAtomica)', async (t) => {
   invalidarCacheCatalogos()
   const { cotizacionesCreadas } = mockearRepositorios(t)
@@ -716,184 +529,8 @@ test('calcularPreview no persiste nada (nunca invoca crearCotizacionAtomica)', a
   )
 })
 
-test('resolución de tasa por objeto de riesgo con override de plan gana sobre la tasa genérica', async (t) => {
-  invalidarCacheCatalogos()
-  const tasasConOverride = {
-    tipo_riesgo: TASAS_OBJETO_RIESGO_VIVIENDA_FAMILIAR.tipo_riesgo,
-    objetos: {
-      // Simula lo que findTasasRiesgoObjeto ya devolvería resuelto: el override de ESTE plan
-      // (0.5%) gana sobre la tasa genérica (0.9%) para "edificio".
-      edificio: { tasa_valor: 0.5, unidad: 'porcentaje' },
-      instalaciones: { tasa_valor: 0.9, unidad: 'porcentaje' },
-      contenido_mueble_equipos: { tasa_valor: 1.34, unidad: 'porcentaje' },
-      contenido_mercaderia: { tasa_valor: 1.34, unidad: 'porcentaje' },
-    },
-  }
-  mockearRepositorios(t, { tasasObjetoRiesgo: tasasConOverride })
-  const { calcularPreview } = await import('./cotizacion.service.js?case=override-plan')
-
-  const resultado = await calcularPreview(
-    bodyBase({
-      moneda: 'PYG',
-      riesgo_datos: { rubro_actividad: 'VIVIENDA FAMILIAR', capital_edificio: 1_000_000 },
-    }),
-    USUARIO
-  )
-
-  // 1.000.000 × 0.5% = 5.000 (con el override) en vez de 1.000.000 × 0.9% = 9.000 (genérica)
-  assert.equal(resultado.detalle.costo_edificio, 5_000)
-})
-
-// Cambio SDD `cotizacion-transaccional` (PR2, Phase 2 RED) — reemplaza el test anterior
-// ("crearCotizacion borra la cabecera recién creada y re-lanza el error original..."), que
-// asumía la compensación manual `deleteCotizacion` de la implementación pre-RPC. Con
-// `crear_cotizacion_atomica` corriendo en una única transacción de Postgres (migración 052,
-// ya mergeada a `main` en PR1), un fallo a mitad de camino nunca deja una cabecera huérfana
-// para compensar — la transacción entera se revierte del lado de la base. El servicio, del
-// lado de JS, solo debe re-lanzar el error tal cual, sin ningún intento de compensación ni
-// reintento. Este test debe fallar (RED) contra la implementación actual: `crearCotizacion`
-// todavía llama a `insertCotizacion`/`nextNumeroCorrelativo`/`deleteCotizacion` (funciones que
-// ESTE mock ya no exporta), así que el error observado hoy no es `errorOriginal` sino un
-// `TypeError` por invocar un export inexistente.
-test('crearCotizacion re-lanza el error original del RPC atómico, sin ninguna compensación manual', async (t) => {
-  invalidarCacheCatalogos()
-
-  const errorOriginal = new Error('duplicate key value violates unique constraint')
-  let llamadasRpc = 0
-
-  t.mock.module('../repositories/ramos.repository.js', {
-    namedExports: {
-      findPlanById: async () => PLAN_OBJETO_RIESGO,
-      findRamoById: async () => RAMO_INCENDIO,
-      findFormasPagoDelPlan: async () => FORMAS_PAGO_CONTADO,
-      findCoberturasByPlanId: async () => [],
-    },
-  })
-
-  t.mock.module('../repositories/coberturas.repository.js', {
-    namedExports: {
-      findRubroPorNombre: async () => null,
-      findCoberturasCatalogoByRamoId: async () => [
-        { codigo: 'incendio_edificio', nombre: 'Incendio de Edificio', franquicia_default: null },
-      ],
-      findTasasCoberturaRamo: async () => [],
-      findTasasRiesgoObjeto: async () => TASAS_OBJETO_RIESGO_VIVIENDA_FAMILIAR,
-    },
-  })
-
-  t.mock.module('./tipo-cambio.service.js', {
-    namedExports: {
-      obtenerTipoCambioVigente: async () => ({
-        venta: 7300.75,
-        compra: 7250.5,
-        obtenido_en: '2026-07-27T00:00:00Z',
-        fuente: 'dolarpy:set',
-        origen: 'api',
-        stale: false,
-      }),
-      registrarTipoCambioManual: async () => {},
-    },
-  })
-
-  // Único export relevante: `crearCotizacionAtomica` rechaza directamente con el error de
-  // Postgres (ej. un FK/constraint violado a mitad de la función plpgsql) — no hay
-  // `deleteCotizacion`/`insertCotizacion`/`nextNumeroCorrelativo` en este mock: si el servicio
-  // todavía los invoca, la llamada revienta contra `undefined`, no contra `errorOriginal`.
-  t.mock.module('../repositories/cotizaciones.repository.js', {
-    namedExports: {
-      crearCotizacionAtomica: async () => {
-        llamadasRpc += 1
-        throw errorOriginal
-      },
-      findCotizacionById: async (id) => ({ id }),
-    },
-  })
-
-  const { crearCotizacion } = await import('./cotizacion.service.js?case=crear-rollback-error')
-
-  await assert.rejects(
-    () => crearCotizacion(bodyBase({ moneda: 'PYG' }), USUARIO),
-    (err) => {
-      assert.equal(err, errorOriginal, 'debe re-lanzar el error original sin envolverlo')
-      return true
-    }
-  )
-
-  assert.equal(llamadasRpc, 1, 'un único intento de RPC — sin reintento y sin compensación')
-})
-
-test('actualizarCotizacion con nueva moneda:USD persiste moneda + snapshot vía un único RPC atómico', async (t) => {
-  invalidarCacheCatalogos()
-  const cotizacionExistente = {
-    id: 5,
-    ramo_id: RAMO_INCENDIO.id,
-    agente_id: USUARIO.id,
-    created_at: new Date().toISOString(),
-    cotizacion_variantes: [],
-    cotizacion_coberturas: [],
-  }
-
-  t.mock.module('../repositories/ramos.repository.js', {
-    namedExports: {
-      findPlanById: async () => PLAN_OBJETO_RIESGO,
-      findRamoById: async () => RAMO_INCENDIO,
-      findFormasPagoDelPlan: async () => FORMAS_PAGO_CONTADO,
-      findCoberturasByPlanId: async () => [],
-    },
-  })
-
-  t.mock.module('../repositories/coberturas.repository.js', {
-    namedExports: {
-      findRubroPorNombre: async () => null,
-      findCoberturasCatalogoByRamoId: async () => [
-        { codigo: 'incendio_edificio', nombre: 'Incendio de Edificio', franquicia_default: null },
-      ],
-      findTasasCoberturaRamo: async () => [],
-      findTasasRiesgoObjeto: async () => TASAS_OBJETO_RIESGO_VIVIENDA_FAMILIAR,
-    },
-  })
-
-  t.mock.module('./tipo-cambio.service.js', {
-    namedExports: {
-      obtenerTipoCambioVigente: async () => ({
-        venta: 7300.75,
-        compra: 7250.5,
-        obtenido_en: '2026-07-27T00:00:00Z',
-        fuente: 'dolarpy:set',
-        origen: 'api',
-        stale: false,
-      }),
-      registrarTipoCambioManual: async () => {},
-    },
-  })
-
-  // Sin `insertCotizacion`/`nextNumeroCorrelativo`/`insertVariante`/`insertCoberturas`/etc: ya no
-  // existen como exports del repository (ver design.md — la actualización deja de ser un
-  // insertar-nuevo-antes-de-borrar-viejo hecho desde JS, todo vive dentro de
-  // `actualizar_cotizacion_atomica`). Si `actualizarCotizacion` todavía los invoca, revienta
-  // contra `undefined` en vez de resolver limpio — eso es lo que prueba el RED de este test.
-  const cotizacionesActualizadas = []
-  t.mock.module('../repositories/cotizaciones.repository.js', {
-    namedExports: {
-      findCotizacionById: async () => cotizacionExistente,
-      actualizarCotizacionAtomica: async (payload) => {
-        cotizacionesActualizadas.push(payload)
-        return payload.p_cotizacion_id
-      },
-    },
-  })
-  const { actualizarCotizacion } =
-    await import('./cotizacion.service.js?case=actualizar-usd-snapshot')
-
-  await actualizarCotizacion(5, bodyBase({ moneda: 'USD' }), USUARIO)
-
-  assert.equal(
-    cotizacionesActualizadas.length,
-    1,
-    'actualizarCotizacionAtomica debe llamarse exactamente una vez'
-  )
-  const payload = cotizacionesActualizadas[0]
-  assert.equal(payload.p_cotizacion_id, 5)
-  assert.equal(payload.p_cotizacion.moneda, 'USD')
-  assert.equal(payload.p_cotizacion.tipo_cambio_snapshot, 7300.75)
-})
+// Nota (PR4 de `cotizacion-service-split`): los tests de `crearCotizacion`/`actualizarCotizacion`
+// (moneda+snapshot, RPC error passthrough) y el de "tasa por objeto de riesgo con override" se
+// relocaron a `cotizacion-persistence.service.test.js` — ver tasks.md Fase 4 / design.md PR4
+// test-reorg. Este archivo conserva solo `calcularPreview no persiste nada` (arriba), que
+// verifica el camino de preview, no de persistencia.

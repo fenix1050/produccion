@@ -2539,3 +2539,23 @@ Verificado con el mismo servidor simulando la raíz real: la imagen responde 200
 No cambian datos, lógica, backend, Supabase, cálculos, validaciones, estados de interfaz ni tests.
 
 **Verificación:** descarga HTTP 200 de la imagen, sin 404s en consola del navegador.
+
+## 75. Backend — split de `cotizacion.service.js` por capa funcional (2026-08-17), rama `sdd/cotizacion-service-split`
+
+`cotizacion.service.js` había crecido a un archivo monolítico mezclando resolución de contexto, pricing, persistencia, autorización y generación de PDF. Change SDD `cotizacion-service-split` (spec/design/tasks en `openspec/changes/cotizacion-service-split/`) lo dividió en 6 PRs encadenados dentro de la misma rama, cada uno con TDD (RED con tests relocalizados, GREEN con la extracción verbatim) y suite completa corrida entre pasos:
+
+- **PR1** (`2aa17c7`): extrae `umbral-inspeccion.service.js` (`resolverUmbralInspeccion`) y `cotizacion-authorization.service.js` (`verificarPropiedad`) como módulos hoja.
+- **PR2** (`e0be7c1`): extrae `cotizacion-context.service.js` (`validarYResolverContexto` + `resolverContextoRepositorios`), preservando byte-a-byte las claves de cache compartidas con `ramos.service.js` (`catalogoRamo:${ramoId}`).
+- **PR3a** (`867e455`): extrae funciones puras de pricing (`resolverDescuentos`, `resolverTasaRpf`, `resolverCuotas`) a `cotizacion-pricing.service.js`.
+- **PR3b** (`d0c888b`): agrega `construirVariantes` + `resolverTiposFranquicia` al mismo archivo de pricing; confirmado que `auto.calculator.js` queda con diff cero.
+- **PR4** (`c2677e0`): extrae `cotizacion-persistence.service.js` (`armarPayloadDetalle`, `crearCotizacion`, `actualizarCotizacion`, `VENTANA_EDICION_MS`), preservando el payload RPC (`p_cotizacion`/`p_coberturas`/`p_variantes`) hacia `crear_cotizacion_atomica`/`actualizar_cotizacion_atomica`.
+- **PR5 (opcional)**: decisión **no-go** — tras PR4 el barrel quedó en 85 líneas, ya thin (4 funciones públicas + re-exports), así que `generarPdfOferta` se queda en el barrel en vez de moverse a un módulo propio.
+- **Final**: barrel de `cotizacion.service.js` verificado — solo contiene `calcularPreview`, `listarCotizaciones`, `obtenerCotizacion`, `generarPdfOferta` (local), los stubs de Fase 4 (`aceptarCotizacion`, `generarPdfPropuestaFormal`), y re-exports de todos los símbolos relocalizados. Grafo de imports acíclico confirmado (ningún módulo de capa importa de vuelta desde el barrel). `cotizaciones.controller.js` con diff cero contra `main`.
+
+Cada PR requirió un fix de infraestructura de tests no planeado, repetido en 3 ocasiones (PR1, PR3a, PR4): al mover una función a un módulo de specifier estable re-exportado incondicionalmente por el barrel, el binding de ESM se congela en el primer `t.mock.module(...)` registrado para ese módulo — rompiendo mocks posteriores de `tipo-cambio.service.js` y `cotizaciones.repository.js` en `cotizacion.service.ownership.test.js`. Se resolvió extendiendo el patrón existente `contextoRepoState` (bridging de mocks vía estado compartido) a los repos afectados.
+
+Baseline de tests subió de 154 (número original en la documentación) a 251/251 verdes de forma neta-cero en cada PR (tests relocalizados, no perdidos ni duplicados), confirmado repetidamente durante todo el split.
+
+No cambia comportamiento observable: extracción verbatim en todos los PRs, sin lógica nueva ni cambios de contrato con el frontend o Supabase.
+
+**Verificación:** 251/251 tests backend en verde tras cada PR y en el estado final; diff cero de `cotizaciones.controller.js` contra `main`; grep confirma ausencia de imports circulares hacia el barrel; smokes manuales vía `/run-cotizador` quedaron deferred en varias tasks (2.7, 3b.6, 4.6) por no representar riesgo funcional dado que son relocaciones verbatim cubiertas por tests automatizados equivalentes o más estrictos — pendiente si se quiere una confirmación visual adicional antes de mergear.

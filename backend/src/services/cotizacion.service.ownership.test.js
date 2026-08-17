@@ -374,7 +374,22 @@ describe('actualizarCotizacion — aislamiento horizontal', () => {
         findTasasRiesgoObjeto: async () => TASAS_OBJETO_RIESGO_VIVIENDA_FAMILIAR,
       },
     })
-    // Ver nota grande al inicio del archivo.
+    // `cotizacion.service.js` (el barrel) importa `cotizaciones.repository.js` a nivel de módulo
+    // (usado por obtenerCotizacion/listarCotizaciones/generarPdfOferta) — esa importación se
+    // re-resuelve en CADA `import('./cotizacion.service.js?case=...')` fresco, a diferencia del
+    // import de `cotizacion-persistence.service.js` (specifier estable, congelado desde el primer
+    // test del archivo). Sin este mock, el CI (sin .env) revienta acá al cargar
+    // `config/supabase.js` real — localmente pasaba de pura casualidad porque el `.env` real evita
+    // el throw, aunque el módulo cargado igual fuera el real (sin usarse, ya que
+    // `actualizarCotizacion` en sí sigue leyendo el binding correctamente mockeado de
+    // `cotizacion-persistence.service.js`).
+    t.mock.module('../repositories/cotizaciones.repository.js', {
+      namedExports: {
+        findCotizacionById: (...args) => contextoRepoState.cotizaciones.findCotizacionById(...args),
+        actualizarCotizacionAtomica: (...args) =>
+          contextoRepoState.cotizaciones.actualizarCotizacionAtomica(...args),
+      },
+    })
     sincronizarContextoRepoState({
       ramos: {
         findPlanById: async () => PLAN_OBJETO_RIESGO,

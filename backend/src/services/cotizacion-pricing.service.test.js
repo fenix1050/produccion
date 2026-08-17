@@ -1,13 +1,18 @@
 import assert from 'node:assert/strict'
-import { test, describe } from 'node:test'
-
-import { resolverDescuentos, resolverTasaRpf } from './cotizacion-pricing.service.js'
+import { test, describe, mock } from 'node:test'
 
 // Relocado desde cotizacion.service.test.js (cambio SDD `cotizacion-service-split`, PR 3a).
 // `resolverDescuentos`/`resolverTasaRpf` son funciones puras — no dependen de ningún repository
-// ni de Supabase, así que este archivo importa `cotizacion-pricing.service.js` directamente,
-// sin mocks (a diferencia de `cotizacion.service.test.js`, que sí necesita mockear repositories
-// para evitar cargar la cadena real hacia `config/supabase.js`).
+// ni de Supabase para SU PROPIA lógica. Pero desde PR 3b, `cotizacion-pricing.service.js`
+// también exporta `construirVariantes` (que sí importa `ramos.repository.js`), así que el
+// archivo entero arrastra, a nivel de módulo, la cadena real hacia `config/supabase.js` — sin
+// mockear, un `import` estático de este archivo revienta en CI (sin .env) aunque los tests de
+// acá nunca invoquen esas dependencias. `mock.module` (variante no ligada a `t`, persiste para
+// todo el archivo) intercepta el specifier raíz una sola vez, sin necesidad de mockear cada
+// repository transitivo por separado.
+mock.module('../config/supabase.js', { namedExports: { supabase: {} } })
+
+const { resolverDescuentos, resolverTasaRpf } = await import('./cotizacion-pricing.service.js')
 
 // resolverDescuentos: helper puro (cambio SDD `mrc-plan-descuento-fijo`) que decide, ANTES de
 // invocar al calculador, si el descuento efectivo es el que mandó el body o el forzado por

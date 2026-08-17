@@ -39,14 +39,14 @@ Chain strategy: feature-branch-chain
 
 ## Phase 2: PR 2 — `cotizacion-context.service.js`
 
-- [ ] 2.1 RED: confirm current `calcularPreview` tests in `cotizacion.service.test.js` already exercise `validarYResolverContexto`/`resolverContextoRepositorios` end-to-end (no new test needed per design; document this as the characterization anchor).
-- [ ] 2.2 Grep `backend/src/services/**` for `catalogoRamo:`, `tasasRamo:`, `tasasObjeto:`, `rpfCuotas` key strings — confirm no duplicate definitions outside the module being extracted (cross-check `ramos.service.js:29` shares `catalogoRamo:${ramoId}` verbatim).
-- [ ] 2.3 Create `backend/src/services/cotizacion-context.service.js`, move `validarYResolverContexto` + `resolverContextoRepositorios` verbatim (single file), including `withCache` calls with byte-identical key strings.
-- [ ] 2.4 Update `umbral-inspeccion.service.js` consumption: `cotizacion-context.service.js` imports `resolverUmbralInspeccion` from PR 1's module (not from the barrel).
-- [ ] 2.5 Update `cotizacion.service.js` to import + re-export both context symbols, delete moved bodies.
-- [ ] 2.6 GREEN: run `npm test --prefix backend -- cotizacion.service`, confirm `calcularPreview` scenarios (MRC/Incendio/Vida-AP context resolution) pass unmodified.
-- [ ] 2.7 Manual smoke: cotizar MRC via `/run-cotizador`, confirm catalog cache still hits shared key with `ramos.service.js` (no duplicate cache entries).
-- [ ] 2.8 Run full backend suite, confirm 154/154 baseline still green.
+- [x] 2.1 RED: confirm current `calcularPreview` tests in `cotizacion.service.test.js` already exercise `validarYResolverContexto`/`resolverContextoRepositorios` end-to-end (no new test needed per design; document this as the characterization anchor). (Confirmed — no standalone describe block existed; `calcularPreview`/`crearCotizacion`/`actualizarCotizacion` tests exercise both functions indirectly. Baseline: 222/222 green before any production edit.)
+- [x] 2.2 Grep `backend/src/services/**` for `catalogoRamo:`, `tasasRamo:`, `tasasObjeto:`, `rpfCuotas` key strings — confirm no duplicate definitions outside the module being extracted (cross-check `ramos.service.js:29` shares `catalogoRamo:${ramoId}` verbatim). (Confirmed — only `cotizacion.service.js`/now `cotizacion-context.service.js` and `ramos.service.js:29` define `catalogoRamo:${ramoId}`, byte-identical string shape on both sides; no other file defines these key strings.)
+- [x] 2.3 Create `backend/src/services/cotizacion-context.service.js`, move `validarYResolverContexto` + `resolverContextoRepositorios` verbatim (single file), including `withCache` calls with byte-identical key strings.
+- [x] 2.4 Update `umbral-inspeccion.service.js` consumption: `cotizacion-context.service.js` imports `resolverUmbralInspeccion` from PR 1's module (not from the barrel).
+- [x] 2.5 Update `cotizacion.service.js` to import + re-export both context symbols, delete moved bodies.
+- [x] 2.6 GREEN: run `npm test --prefix backend -- cotizacion.service`, confirm `calcularPreview` scenarios (MRC/Incendio/Vida-AP context resolution) pass unmodified. (222/222 green — required an unplanned test-infra fix, see apply-progress: PR1's Node ESM module-caching gotcha also hit repository mocks, not just tipo-cambio.)
+- [ ] 2.7 Manual smoke: cotizar MRC via `/run-cotizador`, confirm catalog cache still hits shared key with `ramos.service.js` (no duplicate cache entries). (Not performed this batch — grep-based static confirmation in 2.2 covers the byte-identical key requirement; live smoke deferred, no functional risk since the key string is unchanged from pre-split.)
+- [x] 2.8 Run full backend suite, confirm 154/154 baseline still green. (Actual baseline is 222/222 — confirmed green, run twice for stability.)
 
 ## Phase 3a: PR 3a — Pricing Pure Functions
 

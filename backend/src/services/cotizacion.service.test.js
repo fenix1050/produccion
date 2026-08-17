@@ -3,6 +3,34 @@ import { test, describe } from 'node:test'
 
 import { invalidarCacheCatalogos } from './cache.js'
 
+// Estado compartido consumido por los mocks de `ramos.repository.js`/`coberturas.repository.js`
+// registrados más abajo (ver `mockRepositoriosYObtenerResolverDescuentos`, el primer helper del
+// archivo en ejecutarse). Desde el split `cotizacion-service-split` (PR2), `validarYResolverContexto`
+// y `resolverContextoRepositorios` viven en `cotizacion-context.service.js`, un módulo con
+// specifier ESTABLE (sin query string) que `cotizacion.service.js?case=X` importa de forma
+// estática. Node solo evalúa ese módulo UNA vez por proceso de test (la primera vez que se
+// importa, en este archivo eso ocurre durante el primer test de `resolverDescuentos` más abajo) —
+// su propio `import * as ramosRepository from '../repositories/ramos.repository.js'` queda
+// atado PARA SIEMPRE al mock que esté activo en ESE momento, sin importar qué `t.mock.module`
+// registre un test posterior (mismo hallazgo que el de `tipo-cambio.service.js` en PR1, ver nota
+// en el helper de abajo). Por eso el PRIMER `t.mock.module` de este archivo para esos dos
+// repositories no puede devolver funciones "fijas": expone funciones puente que leen
+// `contextoRepoState` en el momento de la LLAMADA (no de la importación), y cada test que
+// necesita `validarYResolverContexto`/`resolverContextoRepositorios` actualiza este objeto antes
+// de invocar al service — los `t.mock.module` de más abajo siguen siendo necesarios además, para
+// el uso DIRECTO que sigue haciendo el barrel (`cotizacion.service.js`) de estos mismos
+// repositories (findFormasPagoDelPlan/findCurvaRpf/findCoberturasByPlanId/etc.), que sí se
+// re-mockea fresco en cada test porque ese import se reevalúa vía el query string `?case=X`.
+const contextoRepoState = {
+  ramos: {},
+  coberturas: {},
+}
+
+function sincronizarContextoRepoState({ ramos = {}, coberturas = {} } = {}) {
+  contextoRepoState.ramos = ramos
+  contextoRepoState.coberturas = coberturas
+}
+
 // resolverDescuentos: helper puro (cambio SDD `mrc-plan-descuento-fijo`) que decide, ANTES de
 // invocar al calculador, si el descuento efectivo es el que mandó el body o el forzado por
 // `plan.descuento_default` — ver design.md Decisión 1. `forzadoPorPlan` es lo que después
@@ -20,8 +48,34 @@ describe('resolverDescuentos', () => {
   const PLAN_AUTO_COMBINADO = { descuento_default: 20, cotizacion_combinada: true }
 
   function mockRepositoriosYObtenerResolverDescuentos(t, caso) {
-    t.mock.module('../repositories/ramos.repository.js', { namedExports: {} })
-    t.mock.module('../repositories/coberturas.repository.js', { namedExports: {} })
+    // Ver nota grande al inicio del archivo: este es el PRIMER `t.mock.module` de estos dos
+    // repositories en todo el archivo, así que es el que queda atado para siempre al import
+    // estático de `cotizacion-context.service.js` — no puede ser `{ namedExports: {} }` fijo,
+    // tiene que reenviar a `contextoRepoState` en el momento de la llamada.
+    t.mock.module('../repositories/ramos.repository.js', {
+      namedExports: {
+        findPlanById: (...args) => contextoRepoState.ramos.findPlanById(...args),
+        findRamoById: (...args) => contextoRepoState.ramos.findRamoById(...args),
+        findFormasPagoDelPlan: (...args) => contextoRepoState.ramos.findFormasPagoDelPlan(...args),
+        findCoberturasByPlanId: (...args) =>
+          contextoRepoState.ramos.findCoberturasByPlanId(...args),
+        findTasaCapital: (...args) => contextoRepoState.ramos.findTasaCapital(...args),
+        findCurvaRpf: (...args) => contextoRepoState.ramos.findCurvaRpf(...args),
+      },
+    })
+    t.mock.module('../repositories/coberturas.repository.js', {
+      namedExports: {
+        findRubroPorNombre: (...args) => contextoRepoState.coberturas.findRubroPorNombre(...args),
+        findCoberturasCatalogoByRamoId: (...args) =>
+          contextoRepoState.coberturas.findCoberturasCatalogoByRamoId(...args),
+        findTasasCoberturaRamo: (...args) =>
+          contextoRepoState.coberturas.findTasasCoberturaRamo(...args),
+        findTasasRiesgoObjeto: (...args) =>
+          contextoRepoState.coberturas.findTasasRiesgoObjeto(...args),
+        findTarifasGenericoByPlanId: (...args) =>
+          contextoRepoState.coberturas.findTarifasGenericoByPlanId(...args),
+      },
+    })
     t.mock.module('../repositories/cotizaciones.repository.js', { namedExports: {} })
     // cotizacion.service.js también importa (indirectamente, vía umbral-inspeccion.service.js)
     // tipo-cambio.service.js, que a su vez importa tipos-cambio.repository.js ->
@@ -391,6 +445,25 @@ function mockearRepositorios(
     },
   })
 
+  // Ver nota grande al inicio del archivo: `validarYResolverContexto`/`resolverContextoRepositorios`
+  // (cotizacion-context.service.js) leen este objeto en vez del `t.mock.module` de arriba.
+  sincronizarContextoRepoState({
+    ramos: {
+      findPlanById: async () => plan,
+      findRamoById: async () => ramo,
+      findFormasPagoDelPlan: async () => FORMAS_PAGO_CONTADO,
+      findCoberturasByPlanId: async () => [],
+    },
+    coberturas: {
+      findRubroPorNombre: async () => null,
+      findCoberturasCatalogoByRamoId: async () => [
+        { codigo: 'incendio_edificio', nombre: 'Incendio de Edificio', franquicia_default: null },
+      ],
+      findTasasCoberturaRamo: async () => [],
+      findTasasRiesgoObjeto: async () => tasasObjetoRiesgo,
+    },
+  })
+
   t.mock.module('../repositories/cotizaciones.repository.js', {
     namedExports: {
       crearCotizacionAtomica: async (payload) => {
@@ -473,6 +546,25 @@ describe('construirVariantes (vía calcularPreview) — enforcement del descuent
     })
     t.mock.module('../repositories/coberturas.repository.js', {
       namedExports: {
+        findRubroPorNombre: async () => ({
+          nombre: 'Bazar',
+          tasa_edificio: 2,
+          tasa_contenido: 1.5,
+        }),
+        findCoberturasCatalogoByRamoId: async () => CATALOGO_MRC,
+        findTasasCoberturaRamo: async () => TASAS_MRC,
+        findTasasRiesgoObjeto: async () => null,
+      },
+    })
+    // Ver nota grande al inicio del archivo.
+    sincronizarContextoRepoState({
+      ramos: {
+        findPlanById: async () => PLAN_MRC_DESCUENTO_FIJO,
+        findRamoById: async () => RAMO_MRC,
+        findFormasPagoDelPlan: async () => FORMAS_PAGO_CONTADO_MRC,
+        findCoberturasByPlanId: async () => [],
+      },
+      coberturas: {
         findRubroPorNombre: async () => ({
           nombre: 'Bazar',
           tasa_edificio: 2,
@@ -575,6 +667,17 @@ describe('construirVariantes (vía calcularPreview) — Auto cotizacion_combinad
       },
     })
     t.mock.module('../repositories/coberturas.repository.js', { namedExports: {} })
+    // Ver nota grande al inicio del archivo. `auto` no llama a ningún método de
+    // coberturas.repository.js dentro de resolverContextoRepositorios, así que ese lado queda {}.
+    sincronizarContextoRepoState({
+      ramos: {
+        findPlanById: async () => PLAN_AUTO_PREMIUM,
+        findRamoById: async () => RAMO_AUTO,
+        findFormasPagoDelPlan: async () => FORMAS_PAGO_AUTO,
+        findCoberturasByPlanId: async () => [],
+        findTasaCapital: async () => ({ tasa_porcentaje: 5 }),
+      },
+    })
     t.mock.module('../repositories/cotizaciones.repository.js', { namedExports: {} })
     t.mock.module('./tipo-cambio.service.js', { namedExports: {} })
     const { calcularPreview } =
@@ -658,6 +761,17 @@ describe('construirVariantes (vía calcularPreview) — Auto con forma de pago f
       },
     })
     t.mock.module('../repositories/coberturas.repository.js', { namedExports: {} })
+    // Ver nota grande al inicio del archivo. `auto` no llama a ningún método de
+    // coberturas.repository.js dentro de resolverContextoRepositorios, así que ese lado queda {}.
+    sincronizarContextoRepoState({
+      ramos: {
+        findPlanById: async () => PLAN_AUTO_BASICO,
+        findRamoById: async () => RAMO_AUTO_NO_FLAGGED,
+        findFormasPagoDelPlan: async () => FORMA_PAGO_COBRADOR,
+        findCoberturasByPlanId: async () => [],
+        findTasaCapital: async () => ({ tasa_porcentaje: 5 }),
+      },
+    })
     t.mock.module('../repositories/cotizaciones.repository.js', { namedExports: {} })
     t.mock.module('./tipo-cambio.service.js', { namedExports: {} })
     const { calcularPreview } =
@@ -805,6 +919,24 @@ test('crearCotizacion re-lanza el error original del RPC atómico, sin ninguna c
     },
   })
 
+  // Ver nota grande al inicio del archivo.
+  sincronizarContextoRepoState({
+    ramos: {
+      findPlanById: async () => PLAN_OBJETO_RIESGO,
+      findRamoById: async () => RAMO_INCENDIO,
+      findFormasPagoDelPlan: async () => FORMAS_PAGO_CONTADO,
+      findCoberturasByPlanId: async () => [],
+    },
+    coberturas: {
+      findRubroPorNombre: async () => null,
+      findCoberturasCatalogoByRamoId: async () => [
+        { codigo: 'incendio_edificio', nombre: 'Incendio de Edificio', franquicia_default: null },
+      ],
+      findTasasCoberturaRamo: async () => [],
+      findTasasRiesgoObjeto: async () => TASAS_OBJETO_RIESGO_VIVIENDA_FAMILIAR,
+    },
+  })
+
   t.mock.module('./tipo-cambio.service.js', {
     namedExports: {
       obtenerTipoCambioVigente: async () => ({
@@ -868,6 +1000,24 @@ test('actualizarCotizacion con nueva moneda:USD persiste moneda + snapshot vía 
 
   t.mock.module('../repositories/coberturas.repository.js', {
     namedExports: {
+      findRubroPorNombre: async () => null,
+      findCoberturasCatalogoByRamoId: async () => [
+        { codigo: 'incendio_edificio', nombre: 'Incendio de Edificio', franquicia_default: null },
+      ],
+      findTasasCoberturaRamo: async () => [],
+      findTasasRiesgoObjeto: async () => TASAS_OBJETO_RIESGO_VIVIENDA_FAMILIAR,
+    },
+  })
+
+  // Ver nota grande al inicio del archivo.
+  sincronizarContextoRepoState({
+    ramos: {
+      findPlanById: async () => PLAN_OBJETO_RIESGO,
+      findRamoById: async () => RAMO_INCENDIO,
+      findFormasPagoDelPlan: async () => FORMAS_PAGO_CONTADO,
+      findCoberturasByPlanId: async () => [],
+    },
+    coberturas: {
       findRubroPorNombre: async () => null,
       findCoberturasCatalogoByRamoId: async () => [
         { codigo: 'incendio_edificio', nombre: 'Incendio de Edificio', franquicia_default: null },

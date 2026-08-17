@@ -27,9 +27,40 @@ const COTIZACION_DE_A = { id: 7, agente_id: AGENTE_A.id, ramo_id: 1, plan_id: 10
 
 const ERROR_404 = httpError(404, 'Cotización no encontrada', 'Cotización no encontrada')
 
+// Ver nota equivalente en cotizacion.service.test.js: `node --test` corre cada archivo de test en
+// su propio proceso, así que este archivo tiene su PROPIO punto de congelamiento independiente
+// para el import estático de `cotizacion-context.service.js` (desde el split
+// `cotizacion-service-split`, PR2) — el primer `t.mock.module` de ramos/coberturas de ESTE
+// archivo (acá abajo, en `mockModulosBase`) es el que queda atado para siempre, sin importar qué
+// mockeen `mockModulosActualizar`/`mockModulosPdf` después. Por eso ese primer mock reenvía a
+// `contextoRepoState` en vez de devolver exports fijos.
+const contextoRepoState = { ramos: {}, coberturas: {} }
+
+function sincronizarContextoRepoState({ ramos = {}, coberturas = {} } = {}) {
+  contextoRepoState.ramos = ramos
+  contextoRepoState.coberturas = coberturas
+}
+
 function mockModulosBase(t, { findCotizacionById, findCotizaciones, actualizarCotizacionAtomica }) {
-  t.mock.module('../repositories/ramos.repository.js', { namedExports: {} })
-  t.mock.module('../repositories/coberturas.repository.js', { namedExports: {} })
+  t.mock.module('../repositories/ramos.repository.js', {
+    namedExports: {
+      findPlanById: (...args) => contextoRepoState.ramos.findPlanById(...args),
+      findRamoById: (...args) => contextoRepoState.ramos.findRamoById(...args),
+      findFormasPagoDelPlan: (...args) => contextoRepoState.ramos.findFormasPagoDelPlan(...args),
+      findCoberturasByPlanId: (...args) => contextoRepoState.ramos.findCoberturasByPlanId(...args),
+    },
+  })
+  t.mock.module('../repositories/coberturas.repository.js', {
+    namedExports: {
+      findRubroPorNombre: (...args) => contextoRepoState.coberturas.findRubroPorNombre(...args),
+      findCoberturasCatalogoByRamoId: (...args) =>
+        contextoRepoState.coberturas.findCoberturasCatalogoByRamoId(...args),
+      findTasasCoberturaRamo: (...args) =>
+        contextoRepoState.coberturas.findTasasCoberturaRamo(...args),
+      findTasasRiesgoObjeto: (...args) =>
+        contextoRepoState.coberturas.findTasasRiesgoObjeto(...args),
+    },
+  })
   t.mock.module('./tipo-cambio.service.js', { namedExports: {} })
   t.mock.module('../repositories/cotizaciones.repository.js', {
     namedExports: {
@@ -307,6 +338,23 @@ describe('actualizarCotizacion — aislamiento horizontal', () => {
     })
     t.mock.module('../repositories/coberturas.repository.js', {
       namedExports: {
+        findRubroPorNombre: async () => null,
+        findCoberturasCatalogoByRamoId: async () => [
+          { codigo: 'incendio_edificio', nombre: 'Incendio de Edificio', franquicia_default: null },
+        ],
+        findTasasCoberturaRamo: async () => [],
+        findTasasRiesgoObjeto: async () => TASAS_OBJETO_RIESGO_VIVIENDA_FAMILIAR,
+      },
+    })
+    // Ver nota grande al inicio del archivo.
+    sincronizarContextoRepoState({
+      ramos: {
+        findPlanById: async () => PLAN_OBJETO_RIESGO,
+        findRamoById: async () => RAMO_INCENDIO,
+        findFormasPagoDelPlan: async () => FORMAS_PAGO_CONTADO,
+        findCoberturasByPlanId: async () => [],
+      },
+      coberturas: {
         findRubroPorNombre: async () => null,
         findCoberturasCatalogoByRamoId: async () => [
           { codigo: 'incendio_edificio', nombre: 'Incendio de Edificio', franquicia_default: null },

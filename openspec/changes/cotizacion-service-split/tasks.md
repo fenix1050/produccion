@@ -50,11 +50,11 @@ Chain strategy: feature-branch-chain
 
 ## Phase 3a: PR 3a — Pricing Pure Functions
 
-- [ ] 3a.1 RED: relocate `resolverDescuentos`/`resolverTasaRpf`/`resolverCuotas` describe blocks from `cotizacion.service.test.js` into new `backend/src/services/cotizacion-pricing.service.test.js`, import path pointing at the new module.
-- [ ] 3a.2 Create `backend/src/services/cotizacion-pricing.service.js`, move `resolverDescuentos`, `resolverTasaRpf`, `resolverCuotas` verbatim.
-- [ ] 3a.3 Update `cotizacion.service.js` to import + re-export the three symbols, delete moved bodies.
-- [ ] 3a.4 GREEN: run `npm test --prefix backend -- cotizacion-pricing.service`, confirm relocated assertions pass unchanged.
-- [ ] 3a.5 Run full backend suite, confirm 154/154 baseline still green.
+- [x] 3a.1 RED: relocate `resolverDescuentos`/`resolverTasaRpf`/`resolverCuotas` describe blocks from `cotizacion.service.test.js` into new `backend/src/services/cotizacion-pricing.service.test.js`, import path pointing at the new module. (Relocated 15 test cases, both describes. Since the moved functions are 100% pure with zero repository/Supabase dependency, the new test file imports `cotizacion-pricing.service.js` STATICALLY with zero mocks — simpler than the barrel's `?case=X` dynamic-import pattern, and confirmed safe since the file needs no module-mocking gymnastics at all.)
+- [x] 3a.2 Create `backend/src/services/cotizacion-pricing.service.js`, move `resolverDescuentos`, `resolverTasaRpf`, `resolverCuotas` verbatim. (`resolverCuotas` also exported, unlike its previous internal-only status in the barrel — required so the barrel can import it; not re-exported from the barrel's own public surface, preserving the original external contract.)
+- [x] 3a.3 Update `cotizacion.service.js` to import + re-export the three symbols, delete moved bodies. (`resolverDescuentos`/`resolverTasaRpf` re-exported per design's function-to-file map, matching their pre-existing exported status; `resolverCuotas` imported for internal use only, not re-exported, since it was never in the barrel's public export list.)
+- [x] 3a.4 GREEN: run `npm test --prefix backend -- cotizacion-pricing.service`, confirm relocated assertions pass unchanged. (15/15 pass.)
+- [x] 3a.5 Run full backend suite, confirm 154/154 baseline still green. (Actual current baseline is 251/251 — confirmed green, net-zero test count change since 15 tests moved out of `cotizacion.service.test.js` and 15 moved into the new file. Required an unplanned test-infra fix: removing the `resolverDescuentos`/`resolverTasaRpf` describes shifted which mock helper runs FIRST in `cotizacion.service.test.js` — `mockearRepositoriosMrc` became first-to-execute and needed the same dispatcher-forwarding fix (`contextoRepoState`) for ramos/coberturas repos, PLUS a second instance of the PR1 gotcha: `tipo-cambio.service.js`'s first-ever mock (also inside `mockearRepositoriosMrc`) had to switch from empty exports to the canonical fixture, since `umbral-inspeccion.service.js`'s stable-specifier binding froze onto it. See apply-progress for full detail.)
 
 ## Phase 3b: PR 3b — `construirVariantes` + `resolverTiposFranquicia`
 

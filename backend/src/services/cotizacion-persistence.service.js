@@ -1,0 +1,223 @@
+import { getCalculador } from '../calculators/index.js'
+import * as coberturasRepository from '../repositories/coberturas.repository.js'
+import * as cotizacionesRepository from '../repositories/cotizaciones.repository.js'
+import { httpError } from '../utils/http-error.js'
+
+import { verificarPropiedad } from './cotizacion-authorization.service.js'
+import { validarYResolverContexto } from './cotizacion-context.service.js'
+import { construirVariantes } from './cotizacion-pricing.service.js'
+
+/**
+ * Calcula y persiste la cotización completa: cabecera, variantes y planes de pago
+ * por forma de pago. Asigna número(s) correlativo(s) por variante.
+ */
+export async function crearCotizacion(body, usuario) {
+  const { plan, ramo, datosValidados } = await validarYResolverContexto(body)
+  const calculador = getCalculador(ramo.calculador)
+
+  const variantesCalculadas = await construirVariantes({
+    calculador,
+    plan,
+    ramo,
+    datosValidados,
+    usuario,
+  })
+
+  const { coberturas, variantes } = await armarPayloadDetalle({
+    ramoId: ramo.id,
+    variantesCalculadas,
+  })
+
+  // Un único RPC atómico (migración 052, `crear_cotizacion_atomica`) hace, en una sola
+  // transacción de Postgres: reservar el correlativo de la cabecera, insertar `cotizaciones` y
+  // delegar coberturas/variantes/ajustes/plan de pago al helper compartido — un fallo en
+  // cualquier paso hace rollback de TODO, incluido el incremento del correlativo. Ya no hace
+  // falta ninguna compensación manual del lado de JS (ver spec.md — "Manual DELETE compensation
+  // removed"): si el RPC falla, se re-lanza el error tal cual.
+  const cotizacionId = await cotizacionesRepository.crearCotizacionAtomica({
+    p_prefijo_numero: ramo.nombre.toUpperCase(),
+    p_ramo_id: ramo.id,
+    p_cotizacion: {
+      plan_id: plan.id,
+      agente_id: usuario.id,
+      cliente_nombre: body.cliente_nombre,
+      cliente_contacto: body.cliente_contacto,
+      riesgo_datos: datosValidados.riesgo_datos,
+      capital_asegurado: datosValidados.capital_asegurado,
+      estado: 'cotizada',
+      moneda: variantesCalculadas.moneda,
+      // Snapshot de tipo de cambio SOLO cuando la cotización realmente necesitó convertir (ver
+      // resolverUmbralInspeccion) — `calcularPreview` nunca llega acá, así que el preview nunca
+      // persiste snapshot (migración 034: columnas nullable, ausentes acá = NULL = "no hubo
+      // conversión", ver `crear_cotizacion_atomica`).
+      ...(variantesCalculadas.tipoCambioUsado
+        ? {
+            tipo_cambio_snapshot: variantesCalculadas.tipoCambioUsado.venta,
+            tipo_cambio_fuente: variantesCalculadas.tipoCambioUsado.fuente,
+            tipo_cambio_fecha: variantesCalculadas.tipoCambioUsado.obtenido_en,
+          }
+        : {}),
+    },
+    p_coberturas: coberturas,
+    p_variantes: variantes,
+  })
+
+  return cotizacionesRepository.findCotizacionById(cotizacionId)
+}
+
+const VENTANA_EDICION_MS = 30 * 24 * 60 * 60 * 1000
+
+/**
+ * Recalcula y reemplaza una cotización ya guardada, dentro de la ventana de 30 días desde su
+ * creación (`created_at`). Reusa la misma validación/cálculo que `crearCotizacion` — no se toca
+ * `numero_cotizacion`, `ramo_id` ni `agente_id`: son identidad de la cotización, no datos del
+ * riesgo. Las variantes/coberturas/plan de pago/ajustes viejos se borran y se reinsertan con
+ * números de variante NUEVOS (no se reciclan los correlativos ya emitidos).
+ */
+export async function actualizarCotizacion(id, body, usuario) {
+  const existente = await cotizacionesRepository.findCotizacionById(id)
+  verificarPropiedad(existente, usuario, 'No tenés permiso para editar esta cotización')
+
+  if (Date.now() - new Date(existente.created_at).getTime() > VENTANA_EDICION_MS) {
+    const mensaje =
+      'Ya pasaron más de 30 días desde que se generó esta cotización — no se puede editar.'
+    throw httpError(422, mensaje, mensaje)
+  }
+
+  const { plan, ramo, datosValidados } = await validarYResolverContexto(body)
+
+  // No se puede "editar" una cotización cambiándole el ramo: coberturas/schema/tasas son
+  // específicos de cada calculador y `ramo_id` nunca se toca en el UPDATE de abajo (es
+  // identidad de la cotización, junto con numero_cotizacion/agente_id). Sin este chequeo, un
+  // agente que cambia de ramo en el sidebar mientras edita (frontend/cotizar/cotizar.js,
+  // selectRamo) terminaría guardando riesgo_datos/coberturas de un ramo distinto bajo el
+  // ramo_id original — detectado en review-risk/readability de esta misma feature.
+  if (ramo.id !== existente.ramo_id) {
+    const mensaje = 'No se puede cambiar el ramo de una cotización ya existente.'
+    throw httpError(422, mensaje, mensaje)
+  }
+
+  const calculador = getCalculador(ramo.calculador)
+  const variantesCalculadas = await construirVariantes({
+    calculador,
+    plan,
+    ramo,
+    datosValidados,
+    usuario,
+  })
+
+  const { coberturas, variantes } = await armarPayloadDetalle({
+    ramoId: ramo.id,
+    variantesCalculadas,
+  })
+
+  // Un único RPC atómico (migración 052, `actualizar_cotizacion_atomica`) bloquea la cabecera
+  // (`FOR UPDATE`), borra el detalle viejo por `cotizacion_id`, actualiza los campos editables y
+  // reinserta el detalle nuevo — todo en una sola transacción de Postgres. Ya no hace falta el
+  // truco "insertar antes de borrar por IDs capturados": eso solo existía para sobrevivir una
+  // falla no-transaccional del cliente PostgREST (ver design.md Decision #7).
+  const cotizacionId = await cotizacionesRepository.actualizarCotizacionAtomica({
+    p_cotizacion_id: id,
+    p_cotizacion: {
+      cliente_nombre: body.cliente_nombre,
+      cliente_contacto: body.cliente_contacto,
+      riesgo_datos: datosValidados.riesgo_datos,
+      capital_asegurado: datosValidados.capital_asegurado,
+      plan_id: plan.id,
+      estado: 'cotizada',
+      moneda: variantesCalculadas.moneda,
+      // Mismo criterio que crearCotizacion: solo se pisa el snapshot si ESTA edición volvió a
+      // necesitar conversión — si no, el RPC preserva el `tipo_cambio_snapshot` existente (la
+      // clave simplemente no viaja en el payload).
+      ...(variantesCalculadas.tipoCambioUsado
+        ? {
+            tipo_cambio_snapshot: variantesCalculadas.tipoCambioUsado.venta,
+            tipo_cambio_fuente: variantesCalculadas.tipoCambioUsado.fuente,
+            tipo_cambio_fecha: variantesCalculadas.tipoCambioUsado.obtenido_en,
+          }
+        : {}),
+    },
+    p_coberturas: coberturas,
+    p_variantes: variantes,
+  })
+
+  return cotizacionesRepository.findCotizacionById(cotizacionId)
+}
+
+/**
+ * Arma el `p_coberturas`/`p_variantes` JSONB que espera el RPC atómico (migración 052) a partir
+ * del resultado del calculador — pura lógica de shape, SIN escrituras a la base: el único `await`
+ * que queda es una lectura de catálogo (necesaria para resolver `cobertura_id`/textos legales
+ * snapshot), no un insert. Reemplaza `insertarCoberturasYVariantes` (que hacía los INSERTs
+ * secuenciales uno por uno) ahora que `_insertar_detalle_cotizacion` (mismo shape de columnas)
+ * corre del lado de Postgres dentro de `crear_cotizacion_atomica`/`actualizar_cotizacion_atomica`.
+ */
+async function armarPayloadDetalle({ ramoId, variantesCalculadas }) {
+  // Detalle de coberturas mostrado en "Detalle del plan" (hoy solo lo arma mrc.calculator.js —
+  // Incendio/Vida-AP todavía no devuelven `coberturas`, de ahí el guard). Snapshot de
+  // nombre/texto legal/exclusiones para que quede congelado aunque después cambie el catálogo
+  // (mismo criterio que cotizacion_clausulas/cotizacion_servicios).
+  let coberturas = []
+  if (variantesCalculadas.coberturas?.length) {
+    const catalogoRamo = await coberturasRepository.findCoberturasCatalogoByRamoId(ramoId)
+    const catalogoPorCodigo = new Map(catalogoRamo.map((c) => [c.codigo, c]))
+
+    coberturas = variantesCalculadas.coberturas.map((cobertura) => {
+      const catalogoRow = catalogoPorCodigo.get(cobertura.codigo)
+      return {
+        cobertura_id: catalogoRow?.id ?? null,
+        nombre_snapshot: cobertura.nombre,
+        texto_legal_snapshot: catalogoRow?.texto_legal ?? null,
+        texto_exclusiones_snapshot: catalogoRow?.texto_exclusiones ?? null,
+        monto: cobertura.monto,
+        // El calculador ya resuelve acá la franquicia elegida por el agente (o la default del
+        // catálogo si no eligió ninguna) — ver construirListaCoberturas en mrc.calculator.js.
+        franquicia: cobertura.franquicia_default ?? null,
+        tipo_aplicacion: cobertura.tipo_aplicacion ?? 'cobertura',
+        incluida: true,
+      }
+    })
+  }
+
+  // El `numero_variante` (correlativo por variante) ya NO se pide acá — el RPC lo reserva
+  // internamente por variante vía `siguiente_correlativo` dentro de la misma transacción.
+  const variantes = variantesCalculadas.variantes.map((variante) => {
+    // Descuento/recargo manual del agente (mrc/incendio hoy — ver sumarAjustes en esos
+    // calculadores) — se guarda el total ya topado por plan.descuento_maximo/recargo_maximo,
+    // no el body crudo, para que la Carta Oferta muestre lo que efectivamente se aplicó.
+    const ajustes = []
+    if (variantesCalculadas.detalle?.total_descuentos > 0) {
+      ajustes.push({
+        tipo: 'descuento',
+        descripcion: 'Descuento aplicado por el agente',
+        monto: variantesCalculadas.detalle.total_descuentos,
+      })
+    }
+    if (variantesCalculadas.detalle?.total_recargos > 0) {
+      ajustes.push({
+        tipo: 'recargo',
+        descripcion: 'Recargo aplicado por el agente',
+        monto: variantesCalculadas.detalle.total_recargos,
+      })
+    }
+
+    return {
+      tipo_franquicia: variante.tipo_franquicia,
+      franquicia_monto: variante.franquicia_monto,
+      prima: variante.prima,
+      ajustes,
+      planes_pago: variante.formasPago.map((fp) => ({
+        forma_pago_id: fp.forma_pago_id,
+        cantidad_cuotas: fp.cantidad_cuotas,
+        rpf_porcentaje: fp.rpf_porcentaje,
+        rpf_monto: fp.rpf,
+        iva_monto: fp.iva,
+        premio_total: fp.premio,
+        monto_inicial: fp.inicial,
+        monto_cuota: fp.cuota,
+      })),
+    }
+  })
+
+  return { coberturas, variantes }
+}

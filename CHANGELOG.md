@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.52](https://github.com/fenix1050/produccion/compare/v0.1.51...v0.1.52) (2026-08-17)
+
+
+### Bug Fixes
+
+* **cotizar:** limpiar franquiciasPorCobertura al cargar cotizacion MRC ([#286](https://github.com/fenix1050/produccion/issues/286)) ([e267c3c](https://github.com/fenix1050/produccion/commit/e267c3ccfbfb7ccf033d9ff1f0c17957071c1d3c)), closes [#285](https://github.com/fenix1050/produccion/issues/285)
+
 ## [0.1.51](https://github.com/fenix1050/produccion/compare/v0.1.50...v0.1.51) (2026-08-14)
 
 

@@ -23,10 +23,34 @@ describe('resolverDescuentos', () => {
     t.mock.module('../repositories/ramos.repository.js', { namedExports: {} })
     t.mock.module('../repositories/coberturas.repository.js', { namedExports: {} })
     t.mock.module('../repositories/cotizaciones.repository.js', { namedExports: {} })
-    // cotizacion.service.js también importa tipo-cambio.service.js, que a su vez importa
-    // tipos-cambio.repository.js -> config/supabase.js — sin este mock, el import dinámico de
-    // más abajo sigue reventando en CI (sin .env) aunque los 3 repos de arriba estén mockeados.
-    t.mock.module('./tipo-cambio.service.js', { namedExports: {} })
+    // cotizacion.service.js también importa (indirectamente, vía umbral-inspeccion.service.js)
+    // tipo-cambio.service.js, que a su vez importa tipos-cambio.repository.js ->
+    // config/supabase.js — sin este mock, el import dinámico de más abajo sigue reventando en CI
+    // (sin .env) aunque los 3 repos de arriba estén mockeados.
+    //
+    // Esta es la PRIMERA vez que el archivo importa cotizacion.service.js (primer test del
+    // archivo) — desde el split `cotizacion-service-split` (PR1), ese import carga
+    // umbral-inspeccion.service.js, un módulo intermedio que Node NO vuelve a re-evaluar en tests
+    // posteriores (a diferencia de cotizacion.service.js?case=X, que sí se re-importa fresco en
+    // cada test por el query string). El resultado: el binding de
+    // umbral-inspeccion.service.js hacia tipo-cambio.service.js queda fijado para siempre al mock
+    // que esté activo ACÁ, sin importar qué mock registre un test posterior. Por eso este mock usa
+    // el mismo fixture canónico (venta/fuente/fecha) que el resto del archivo, en vez de exports
+    // vacíos — así los tests posteriores que sí necesitan conversión de moneda (vía
+    // resolverUmbralInspeccion) reciben un valor real y consistente.
+    t.mock.module('./tipo-cambio.service.js', {
+      namedExports: {
+        obtenerTipoCambioVigente: async () => ({
+          venta: 7300.75,
+          compra: 7250.5,
+          obtenido_en: '2026-07-27T00:00:00Z',
+          fuente: 'dolarpy:set',
+          origen: 'api',
+          stale: false,
+        }),
+        registrarTipoCambioManual: async () => {},
+      },
+    })
     return import(`./cotizacion.service.js?case=resolver-descuentos-${caso}`)
   }
 

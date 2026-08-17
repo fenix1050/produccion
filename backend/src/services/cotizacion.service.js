@@ -6,8 +6,12 @@ import { getSchemaCotizar } from '../schemas/index.js'
 import { httpError } from '../utils/http-error.js'
 
 import { withCache } from './cache.js'
+import { verificarPropiedad } from './cotizacion-authorization.service.js'
 import { renderOfertaPdf } from './pdf.service.js'
-import * as tipoCambioService from './tipo-cambio.service.js'
+import { resolverUmbralInspeccion } from './umbral-inspeccion.service.js'
+
+export { verificarPropiedad } from './cotizacion-authorization.service.js'
+export { resolverUmbralInspeccion } from './umbral-inspeccion.service.js'
 
 /**
  * Calcula una cotización SIN guardarla — usado para el preview en vivo del frontend.
@@ -217,21 +221,6 @@ export async function generarPdfPropuestaFormal(_id) {
 // ---------------------------------------------------------------------------
 
 /**
- * Lanza un error 403 (mismo patrón que `requireRole` en middleware/auth.js: mensaje + `.status`
- * seteado a mano) si el usuario no es admin y no es el dueño de la cotización. Compartido entre
- * `obtenerCotizacion`, `generarPdfOferta` y `actualizarCotizacion` para no repetir la condición.
- */
-function verificarPropiedad(
-  cotizacion,
-  usuario,
-  mensaje = 'No tenés permiso para ver esta cotización'
-) {
-  if (usuario.rol !== 'admin' && cotizacion.agente_id !== usuario.id) {
-    throw httpError(403, mensaje, mensaje)
-  }
-}
-
-/**
  * Arma el `p_coberturas`/`p_variantes` JSONB que espera el RPC atómico (migración 052) a partir
  * del resultado del calculador — pura lógica de shape, SIN escrituras a la base: el único `await`
  * que queda es una lectura de catálogo (necesaria para resolver `cobertura_id`/textos legales
@@ -387,58 +376,6 @@ async function resolverContextoRepositorios(ramo, plan, riesgoDatos, capital, mo
     }
     default:
       return {}
-  }
-}
-
-/**
- * Resuelve el umbral de inspección aplicable al plan, convertido a la moneda de la cotización.
- * Devuelve `null` si `plan.requiere_inspeccion IS NULL` (la regla no aplica: Hipotecario,
- * Maquinaria, Edificio y Contenido — migración 035) o si todavía no se cargó el monto (estado
- * transitorio documentado en design.md/migración 038). Solo invoca al servicio de tipo de
- * cambio (I/O real) cuando la moneda de la cotización difiere de `umbral_inspeccion_moneda` —
- * una cotización 100% en la moneda del umbral no paga ningún fetch externo (Threat Matrix de
- * design.md: "Cotización 100% en una sola moneda → el servicio no se invoca").
- *
- * No hay conversión de montos declarados (ver Decision "sin conversión implícita" en design.md):
- * el tipo de cambio solo se usa acá para poder comparar la suma asegurada (en la moneda de la
- * cotización) contra un umbral expresado en otra moneda.
- *
- * @param {object} plan
- * @param {'PYG'|'USD'} moneda
- * @returns {Promise<{requiereInspeccion:boolean, montoEnMonedaCotizacion:number, moneda:string,
- *   tipoCambio:{venta:number,fuente:string,obtenido_en:string,stale:boolean}|null}|null>}
- */
-async function resolverUmbralInspeccion(plan, moneda) {
-  if (plan.requiere_inspeccion == null || plan.umbral_inspeccion_monto == null) return null
-
-  if (moneda === plan.umbral_inspeccion_moneda) {
-    return {
-      requiereInspeccion: plan.requiere_inspeccion,
-      montoEnMonedaCotizacion: plan.umbral_inspeccion_monto,
-      moneda,
-      tipoCambio: null,
-    }
-  }
-
-  const tipoCambio = await tipoCambioService.obtenerTipoCambioVigente({ moneda: 'USD' })
-
-  // Umbral en USD, cotización en Gs.: convertir el umbral A Gs. multiplicando por `venta`.
-  // Umbral en Gs., cotización en USD: convertir el umbral A USD dividiendo por `venta`.
-  const montoEnMonedaCotizacion =
-    plan.umbral_inspeccion_moneda === 'USD'
-      ? plan.umbral_inspeccion_monto * tipoCambio.venta
-      : plan.umbral_inspeccion_monto / tipoCambio.venta
-
-  return {
-    requiereInspeccion: plan.requiere_inspeccion,
-    montoEnMonedaCotizacion,
-    moneda,
-    tipoCambio: {
-      venta: tipoCambio.venta,
-      fuente: tipoCambio.fuente,
-      obtenido_en: tipoCambio.obtenido_en,
-      stale: tipoCambio.stale,
-    },
   }
 }
 

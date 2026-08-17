@@ -4,17 +4,9 @@ import * as cotizacionesRepository from '../repositories/cotizaciones.repository
 import * as ramosRepository from '../repositories/ramos.repository.js'
 import { httpError } from '../utils/http-error.js'
 
-import { withCache } from './cache.js'
 import { verificarPropiedad } from './cotizacion-authorization.service.js'
-import {
-  resolverContextoRepositorios,
-  validarYResolverContexto,
-} from './cotizacion-context.service.js'
-import {
-  resolverCuotas,
-  resolverDescuentos,
-  resolverTasaRpf,
-} from './cotizacion-pricing.service.js'
+import { validarYResolverContexto } from './cotizacion-context.service.js'
+import { construirVariantes } from './cotizacion-pricing.service.js'
 import { renderOfertaPdf } from './pdf.service.js'
 
 export { verificarPropiedad } from './cotizacion-authorization.service.js'
@@ -308,112 +300,4 @@ async function armarPayloadDetalle({ ramoId, variantesCalculadas }) {
   })
 
   return { coberturas, variantes }
-}
-
-/**
- * Arma las variantes (sin/con franquicia) según la regla de negocio de Auto
- * (ver sección 5 de PLAN_DESARROLLO.md). Otros ramos no tienen franquicia dual
- * todavía — devuelven siempre 1 variante sin franquicia hasta que se implementen.
- */
-async function construirVariantes({ calculador, plan, ramo, datosValidados, usuario }) {
-  // `moneda` solo existe hoy en el schema de Incendio (grupo 4) — el resto de los ramos cae al
-  // default 'PYG' (mismo default que la columna `cotizaciones.moneda` de la migración 034).
-  const moneda = datosValidados.moneda ?? 'PYG'
-
-  const contexto = await resolverContextoRepositorios(
-    ramo,
-    plan,
-    datosValidados.riesgo_datos,
-    datosValidados.capital_asegurado,
-    moneda
-  )
-
-  const { descuentos, forzadoPorPlan } = resolverDescuentos({
-    plan,
-    descuentosBody: datosValidados.descuentos,
-    usuario,
-  })
-
-  const { prima, detalle, coberturas } = await calculador.calcularPrima({
-    planId: plan.id,
-    plan,
-    capital: datosValidados.capital_asegurado,
-    riesgoDatos: datosValidados.riesgo_datos,
-    descuentos,
-    forzadoPorPlan,
-    recargos: datosValidados.recargos,
-    usuario,
-    moneda,
-    ...contexto,
-  })
-
-  const formasPagoPlan = await ramosRepository.findFormasPagoDelPlan(plan.id)
-  const cuotas = resolverCuotas(plan, datosValidados.cuotas)
-
-  // Solo se pide la curva (cacheada, cambia únicamente desde el admin) para los ramos
-  // flagueados (MRC/Incendio/Vida-AP) — Auto y el resto ni la tocan, `resolverTasaRpf` cae
-  // directo al escalar legacy sin este `await` de más.
-  const curvaRpf = ramo.usa_rpf_por_cuotas
-    ? await withCache('rpfCuotas', () => ramosRepository.findCurvaRpf())
-    : null
-
-  const tiposFranquicia = resolverTiposFranquicia(plan, datosValidados.riesgo_datos, prima)
-
-  const variantes = tiposFranquicia.map(({ tipo, primaAjustada, franquiciaMonto }) => ({
-    tipo_franquicia: tipo,
-    prima: primaAjustada,
-    franquicia_monto: franquiciaMonto,
-    formasPago: formasPagoPlan.map((fp) => ({
-      forma_pago_id: fp.forma_pago_id,
-      codigo: fp.formas_pago.codigo,
-      nombre_display: fp.formas_pago.nombre_display,
-      cantidad_cuotas: cuotas,
-      ...calculador.calcularPlanPago(
-        primaAjustada,
-        {
-          codigo: fp.formas_pago.codigo,
-          tasa_rpf: resolverTasaRpf({ ramo, formaPagoPlan: fp, curva: curvaRpf, cuotas }),
-        },
-        cuotas
-      ),
-    })),
-  }))
-
-  return {
-    prima,
-    detalle,
-    coberturas,
-    variantes,
-    moneda,
-    // Solo no-null cuando resolverUmbralInspeccion tuvo que convertir (moneda de la cotización
-    // distinta de `umbral_inspeccion_moneda`) — `crearCotizacion` lo usa para decidir si persiste
-    // tipo_cambio_snapshot/_fuente/_fecha. `calcularPreview` nunca llega a leer este campo.
-    tipoCambioUsado: contexto.umbralInspeccion?.tipoCambio ?? null,
-  }
-}
-
-/**
- * @param {number} primaBase - prima ya calculada (capital × tasa, con piso de prima técnica mínima)
- */
-function resolverTiposFranquicia(plan, riesgoDatos, primaBase) {
-  // TODO Fase 2: mover a calculators/auto.calculator.js como parte de la interfaz
-  // (hoy vive acá porque depende de datos de `plan` Y de `riesgo_datos` a la vez).
-  // Ver regla completa en PLAN_DESARROLLO.md sección 5.
-  if (riesgoDatos.via_importacion === 'IMPORTACION DIRECTA') {
-    // Franquicia fija por defecto en toda cotización. El add-on para sacarla
-    // (antes Gs. 909.091) está pendiente de recalcular — ver sección 11, punto 9.
-    const FRANQUICIA_BASE = 350000 // TODO: leer de franquicia_auto_importacion_directa
-    return [{ tipo: 'con_franquicia', primaAjustada: primaBase, franquiciaMonto: FRANQUICIA_BASE }]
-  }
-
-  if (plan.cotizacion_combinada) {
-    const primaConDescuento = primaBase * (1 - (plan.descuento_default ?? 0) / 100)
-    const franquiciaMonto = primaConDescuento * ((plan.franquicia_porcentaje ?? 0) / 100)
-    return [
-      { tipo: 'sin_franquicia', primaAjustada: primaBase, franquiciaMonto: 0 },
-      { tipo: 'con_franquicia', primaAjustada: primaConDescuento, franquiciaMonto },
-    ]
-  }
-
-  return [{ tipo: 'sin_franquicia', primaAjustada: primaBase, franquiciaMonto: 0 }]
 }

@@ -58,13 +58,13 @@ Chain strategy: feature-branch-chain
 
 ## Phase 3b: PR 3b — `construirVariantes` + `resolverTiposFranquicia`
 
-- [ ] 3b.1 RED: verify the byte-identical Auto RPF/franquicia regression fixture in `cotizacion.service.test.js` still targets the barrel's `calcularPreview` (per design, this describe stays on the public path, not relocated) — confirm no accidental deletion.
-- [ ] 3b.2 Add `construirVariantes` + `resolverTiposFranquicia` into `cotizacion-pricing.service.js` (same file as PR 3a), moved verbatim including the `TODO Fase 2` comment untouched.
-- [ ] 3b.3 Update `cotizacion.service.js` `calcularPreview` to call `construirVariantes` from `cotizacion-pricing.service.js`; delete moved bodies from the barrel.
-- [ ] 3b.4 Confirm `auto.calculator.js` is untouched (grep diff for that file — must show zero changes).
-- [ ] 3b.5 GREEN: run `npm test --prefix backend -- cotizacion.service cotizacion-pricing.service`, confirm Auto RPF/franquicia fixture assertions are byte-identical to pre-move output.
-- [ ] 3b.6 Manual smoke: run Auto individual franquicia scenario via `/run-cotizador` (read-only check, Fase 2 stays paused — no logic edits).
-- [ ] 3b.7 Run full backend suite, confirm 154/154 baseline still green.
+- [x] 3b.1 RED: verify the byte-identical Auto RPF/franquicia regression fixture in `cotizacion.service.test.js` still targets the barrel's `calcularPreview` (per design, this describe stays on the public path, not relocated) — confirm no accidental deletion. (Confirmed: all 3 `construirVariantes (vía calcularPreview)` describes at lines 190/347/432 present, untouched — including "Auto con forma de pago financiada: regresión de RPF" with the byte-identical fixture test "Premio/RPF/IVA/Inicial/Cuota byte-idénticos al valor fijado a mano (cero diff)". Baseline: 251/251 green before any production edit, per design's PR3 test-reorg table — no describe relocation this phase.)
+- [x] 3b.2 Add `construirVariantes` + `resolverTiposFranquicia` into `cotizacion-pricing.service.js` (same file as PR 3a), moved verbatim including the `TODO Fase 2` comment untouched.
+- [x] 3b.3 Update `cotizacion.service.js` `calcularPreview` to call `construirVariantes` from `cotizacion-pricing.service.js`; delete moved bodies from the barrel. (Also removed now-unused imports left dangling by the relocation — `withCache`, `resolverContextoRepositorios` direct import, `resolverDescuentos`/`resolverTasaRpf` direct import, `resolverCuotas` import — since their only call sites lived inside the relocated `construirVariantes` body; their re-export statements, which do not require a separate import, are untouched.)
+- [x] 3b.4 Confirm `auto.calculator.js` is untouched (grep diff for that file — must show zero changes). (`git diff --stat backend/src/calculators/auto.calculator.js` → empty output, zero diff.)
+- [x] 3b.5 GREEN: run `npm test --prefix backend -- cotizacion.service cotizacion-pricing.service`, confirm Auto RPF/franquicia fixture assertions are byte-identical to pre-move output. (Full suite run instead, see 3b.7 — fixture passes unchanged.)
+- [ ] 3b.6 Manual smoke: run Auto individual franquicia scenario via `/run-cotizador` (read-only check, Fase 2 stays paused — no logic edits). (Not performed this batch — same deferral rationale as task 2.7: Auto individual is business-paused, and the byte-identical automated regression fixture test in `cotizacion.service.test.js` ("Auto con forma de pago financiada: regresión de RPF") already exercises this exact code path end-to-end with fixed expected values, which is a stronger guarantee than a manual eyeball smoke. No functional risk — pure relocation, zero logic changes, confirmed by the fixture passing byte-identical.)
+- [x] 3b.7 Run full backend suite, confirm 154/154 baseline still green. (Actual current baseline is 251/251 — confirmed green, net-zero test count change since no test files were relocated or modified this batch, per design's PR3b test-reorg table: `construirVariantes` tests stay on the public `calcularPreview` path.)
 
 ## Phase 4: PR 4 — `cotizacion-persistence.service.js`
 

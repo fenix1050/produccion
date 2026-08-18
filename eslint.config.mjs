@@ -19,7 +19,7 @@ export default [
   js.configs.recommended,
 
   {
-    files: ['backend/**/*.js'],
+    files: ['backend/**/*.js', 'e2e/**/*.js'],
 
     languageOptions: {
       ecmaVersion: 'latest',

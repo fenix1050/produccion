@@ -31,13 +31,13 @@ Chain strategy: pending
 - [x] 1.1 RED: Add `e2e/support/isolation.test.js`; reject `SUPABASE_*`, `DATABASE_URL`, `PG*`, and production mode.
 - [x] 1.2 RED: Prove HTTP, socket, and fetch guards reject each non-loopback target before connection.
 - [x] 1.3 RED: Add `e2e/support/fixture-adapter.test.js`; require deep copies and `E2E_ISOLATION_BREACH` for unhandled named repository calls.
-- [ ] 1.4 RED: Add `e2e/support/test-system.test.js`; prove failed startup/child teardown closes listeners/browser and resets fixtures.
+- [x] 1.4 RED: Add `e2e/support/test-system.test.js`; prove failed startup/child teardown closes listeners/browser and resets fixtures.
 
 ## Phase 2: GREEN Isolated Harness
 
 - [x] 2.1 GREEN: Create `e2e/support/isolation.js` with guards that pass 1.1–1.2.
 - [x] 2.2 GREEN: Create frozen MRC/Incendio fixtures in `e2e/fixtures/data.js` and a named-module, monotonic-quote adapter in `e2e/support/fixture-adapter.js`.
-- [ ] 2.3 GREEN: Create `e2e/support/test-system.js`; require `E2E_SMOKE=1`, mock repositories before `backend/src/app.js`, and own loopback servers/teardown.
+- [x] 2.3 GREEN: Create `e2e/support/test-system.js`; require `E2E_SMOKE=1`, mock repositories before `backend/src/app.js`, and own loopback servers/teardown.
 - [ ] 2.4 REFACTOR: Simplify support helpers without weakening errors; leave `backend/src/**`, rules, schemas, and credentials untouched.
 
 ## Phase 3: RED/ GREEN Browser Contracts

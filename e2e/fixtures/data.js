@@ -52,8 +52,20 @@ function coverageRate(id, codigo, tasaValor) {
   }
 }
 
-const MRC_RAMO = { id: 10, codigo: 'mrc', nombre: 'Multirriesgo Comercio', activo: true }
-const INCENDIO_RAMO = { id: 20, codigo: 'incendio', nombre: 'Incendio', activo: true }
+const MRC_RAMO = {
+  id: 10,
+  codigo: 'mrc',
+  nombre: 'mrc',
+  nombre_display: 'Multirriesgo Comercio',
+  activo: true,
+}
+const INCENDIO_RAMO = {
+  id: 20,
+  codigo: 'incendio',
+  nombre: 'incendio',
+  nombre_display: 'Incendio',
+  activo: true,
+}
 const MRC_PLAN = {
   id: 101,
   ramo_id: 10,
@@ -184,18 +196,8 @@ export const FIXTURES = freezeFixture({
   },
 
   ramos: [
-    {
-      ...MRC_RAMO,
-      nombre_display: 'Multirriesgo Comercio',
-      calculador: 'mrc',
-      usa_rpf_por_cuotas: false,
-    },
-    {
-      ...INCENDIO_RAMO,
-      nombre_display: 'Incendio',
-      calculador: 'incendio',
-      usa_rpf_por_cuotas: false,
-    },
+    { ...MRC_RAMO, calculador: 'mrc', usa_rpf_por_cuotas: false },
+    { ...INCENDIO_RAMO, calculador: 'incendio', usa_rpf_por_cuotas: false },
   ],
   planes: [MRC_PLAN, INCENDIO_PLAN],
   rubros: [

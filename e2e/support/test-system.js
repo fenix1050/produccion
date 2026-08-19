@@ -1,10 +1,21 @@
+import { createRequire } from 'node:module'
+import path from 'node:path'
 import { mock } from 'node:test'
+import { fileURLToPath } from 'node:url'
+
+import express from 'express'
 
 import { closeBrowser } from '../../backend/src/templates/oferta/pdf-utils.js'
 
 import { createFixtureAdapter } from './fixture-adapter.js'
 import { assertIsolatedEnvironment, installLoopbackGuards } from './isolation.js'
+import { cleanupSuccessfulArtifacts, runProcess } from './playwright-runner.js'
 
+const require = createRequire(import.meta.url)
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const repoRoot = path.resolve(__dirname, '..', '..')
+const backendDir = path.join(repoRoot, 'backend')
+const frontendDir = path.join(repoRoot, 'frontend')
 const backendAppUrl = new URL('../../backend/src/app.js', import.meta.url)
 const mockedSpecifiers = new Set()
 let activeAdapter = null
@@ -165,7 +176,11 @@ function restoreEnvironment(original) {
   }
 }
 
-export async function launchGREEN(fixtures, testFn, { apiPort = 0 } = {}) {
+export async function launchGREEN(
+  fixtures,
+  testFn,
+  { apiPort = 0, frontendUrl = 'http://localhost:3000' } = {}
+) {
   assertIsolatedEnvironment(process.env)
   const originalEnv = saveEnvironment()
   let guards
@@ -175,7 +190,7 @@ export async function launchGREEN(fixtures, testFn, { apiPort = 0 } = {}) {
       E2E_SMOKE: '1',
       SUPABASE_URL: 'http://127.0.0.1:54321',
       SUPABASE_SERVICE_KEY: 'dummy-key',
-      FRONTEND_URL: 'http://localhost:3000',
+      FRONTEND_URL: frontendUrl,
       JWT_SECRET: 'smoke-test-secret',
     })
     guards = installLoopbackGuards()
@@ -203,4 +218,81 @@ export async function launchGREEN(fixtures, testFn, { apiPort = 0 } = {}) {
       }
     }
   }
+}
+
+function isDirectRun(metaUrl) {
+  return path.resolve(process.argv[1] ?? '') === fileURLToPath(metaUrl)
+}
+
+async function runSmokeLauncher() {
+  const { FIXTURES } = await import('../fixtures/data.js')
+  const frontendPort = 5100
+  const frontendUrl = `http://127.0.0.1:${frontendPort}`
+  const apiUrl = 'http://127.0.0.1:3100/api'
+  let staticServer
+  let adapter
+  let exitCode = 1
+
+  try {
+    exitCode = await launchGREEN(
+      FIXTURES,
+      async ({ adapter: fixtureAdapter }) => {
+        adapter = fixtureAdapter
+        const frontend = express()
+        frontend.use(express.static(frontendDir))
+        staticServer = frontend.listen(frontendPort, '127.0.0.1')
+        await listenLoopback(staticServer, 'Smoke frontend')
+        await assertHttpOk(`${frontendUrl}/login/`, 'Smoke frontend')
+
+        const cli = require.resolve('@playwright/test/cli', { paths: [backendDir] })
+        const result = await runProcess(
+          process.execPath,
+          [
+            cli,
+            'test',
+            '--config',
+            path.join(repoRoot, 'playwright.config.js'),
+            'e2e/smoke.spec.js',
+          ],
+          {
+            cwd: repoRoot,
+            env: { ...process.env, E2E_BASE_URL: frontendUrl, E2E_API_URL: apiUrl },
+          }
+        )
+        await cleanupSuccessfulArtifacts(result, path.join(repoRoot, 'test-results'))
+        return result
+      },
+      { apiPort: 3100, frontendUrl }
+    )
+  } catch (error) {
+    console.error(`[e2e:smoke] Launcher failed: ${error.message}`)
+  } finally {
+    await closeServer(staticServer)
+  }
+
+  const reads = adapter?.planCoberturaReads?.filter((read) => read.planId === 101) ?? []
+  const sublimits = new Set(
+    reads.flatMap((read) =>
+      read.rows.map((row) => `${row.coberturas_catalogo?.codigo}:${row.monto}`)
+    )
+  )
+  const mrcPlanCoverageRead =
+    reads.some((read) => read.stack?.includes('generarPdfOferta')) &&
+    [
+      'sublimite_danos_agua:2500000',
+      'sublimite_equipos_electronicos:5000000',
+      'sublimite_granizo:5000000',
+    ].every((value) => sublimits.has(value))
+  const quotes = adapter?.quotes?.length ?? 0
+  console.log(
+    `[e2e:smoke] Playwright exit=${exitCode} | quotes=${quotes} (expected: 2) | MRC PDF plan coverage read=${mrcPlanCoverageRead}`
+  )
+  if (exitCode !== 0 || quotes !== 2 || !mrcPlanCoverageRead) process.exitCode = 1
+}
+
+if (isDirectRun(import.meta.url)) {
+  runSmokeLauncher().catch((error) => {
+    console.error(`[e2e:smoke] Unhandled launcher failure: ${error.stack || error.message}`)
+    process.exitCode = 1
+  })
 }

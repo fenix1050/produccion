@@ -1,69 +1,206 @@
+import { mock } from 'node:test'
+
+import { closeBrowser } from '../../backend/src/templates/oferta/pdf-utils.js'
+
 import { createFixtureAdapter } from './fixture-adapter.js'
-import { installLoopbackGuards, assertIsolatedEnvironment } from './isolation.js'
+import { assertIsolatedEnvironment, installLoopbackGuards } from './isolation.js'
 
-/**
- * GREEN Launcher for E2E Smoke Tests.
- *
- * This launcher ensures that the backend is started in a strictly isolated
- * environment, with repositories mocked by a fixture adapter and network
- * traffic restricted to loopback interfaces.
- *
- * @param {Object} fixtures - The set of fixture data to load into the adapter.
- * @param {Function} testFn - The test function to execute. Receives { port, adapter }.
- * @returns {Promise<void>}
- */
-export async function launchGREEN(fixtures, testFn) {
-  const originalSmoke = process.env.E2E_SMOKE
-  const originalUrl = process.env.SUPABASE_URL
-  const originalKey = process.env.SUPABASE_SERVICE_KEY
-  const originalFrontendUrl = process.env.FRONTEND_URL
-  const originalJwtSecret = process.env.JWT_SECRET
+const backendAppUrl = new URL('../../backend/src/app.js', import.meta.url)
+const mockedSpecifiers = new Set()
+let activeAdapter = null
 
-  process.env.E2E_SMOKE = '1'
-  process.env.SUPABASE_URL = 'http://127.0.0.1:54321'
-  process.env.SUPABASE_SERVICE_KEY = 'dummy-key'
-  process.env.FRONTEND_URL = 'http://localhost:3000'
-  process.env.JWT_SECRET = 'smoke-test-secret'
+const REPOSITORY_METHODS = {
+  usuarios: [
+    'findByEmail',
+    'findById',
+    'actualizarUltimaSesion',
+    'findAll',
+    'crear',
+    'actualizar',
+    'actualizarPassword',
+    'incrementarTokenVersion',
+    'eliminar',
+  ],
+  ramos: [
+    'findRamosActivos',
+    'findRamoById',
+    'findAllRamos',
+    'actualizarRamo',
+    'countPlanesByRamoId',
+    'countCotizacionesByRamoId',
+    'eliminarRamo',
+    'findPlanesByRamoId',
+    'findPlanById',
+    'findCoberturasByPlanId',
+    'findTasaCapital',
+    'findFormasPagoDelPlan',
+    'findClausulasObligatoriasByPlanId',
+    'findCurvaRpf',
+    'findFormasPagoDelPlanTodas',
+  ],
+  coberturas: [
+    'findRubrosActividad',
+    'actualizarRubroActividad',
+    'findRubroPorNombre',
+    'findCoberturasCatalogoByRamoId',
+    'findTasasCoberturaRamo',
+    'findTasasRiesgoObjeto',
+    'findTarifasGenericoByPlanId',
+    'findPlanCoberturasByPlanId',
+    'crearPlanCobertura',
+    'actualizarPlanCobertura',
+    'eliminarPlanCobertura',
+    'findTasasCoberturaRamoConHistorial',
+    'eliminarTasaCoberturaRamo',
+    'crearTasaCoberturaRamo',
+  ],
+  cotizaciones: [
+    'crearCotizacionAtomica',
+    'actualizarCotizacionAtomica',
+    'findCotizacionById',
+    'findCotizaciones',
+  ],
+  tasas: [
+    'findPlanByCodigoTasa',
+    'reemplazarTasasCapitalDePlan',
+    'findAllPlanes',
+    'findPlanById',
+    'actualizarPlan',
+    'eliminarPlan',
+    'findPlanFormaPagoById',
+    'actualizarPlanFormaPago',
+    'upsertCurvaRpf',
+  ],
+  roles: ['findAll', 'findById', 'crear', 'actualizar', 'eliminar'],
+  'tipos-cambio': ['findUltimoVigente', 'insertTipoCambio'],
+}
 
-  // 2. Isolation Guards:
-  // - Prevents any network call to a non-loopback target.
-  // - Ensures no DB credentials or production env vars are leaked.
-  const guards = installLoopbackGuards()
-  assertIsolatedEnvironment()
+function mockModuleOnce(specifier, exports) {
+  if (mockedSpecifiers.has(specifier)) return
+  mock.module(specifier, { cache: true, exports })
+  mockedSpecifiers.add(specifier)
+}
 
-  // 3. Mock Repositories using the Fixture Adapter.
-  const adapter = createFixtureAdapter(fixtures)
+function repositoryExports(repository, methods) {
+  return Object.fromEntries(
+    methods.map((method) => [
+      method,
+      (...args) => {
+        if (!activeAdapter)
+          throw new Error(`E2E_ISOLATION_BREACH: ${repository}.${method} called without a fixture`)
+        return activeAdapter[repository][method](...args)
+      },
+    ])
+  )
+}
 
-  // Note: In an ESM environment, mocking individual repository modules
-  // requires the use of a module loader or the Node.js native
-  // --experimental-test-module-mocks. The test runner is responsible
-  // for mapping the adapter's methods to the repository exports.
-
-  // 4. Launch the Express server on a random loopback port.
-  const { createApp } = await import('../../backend/src/app.js')
-  const app = createApp()
-  const server = app.listen({
-    port: 0,
-    host: '127.0.0.1',
+function mockRepositories() {
+  const repositories = {
+    'usuarios.repository.js': 'usuarios',
+    'ramos.repository.js': 'ramos',
+    'coberturas.repository.js': 'coberturas',
+    'cotizaciones.repository.js': 'cotizaciones',
+    'tasas.repository.js': 'tasas',
+    'roles.repository.js': 'roles',
+    'tipos-cambio.repository.js': 'tipos-cambio',
+  }
+  for (const [fileName, repository] of Object.entries(repositories)) {
+    mockModuleOnce(
+      new URL(`../../backend/src/repositories/${fileName}`, import.meta.url).href,
+      repositoryExports(repository, REPOSITORY_METHODS[repository])
+    )
+  }
+  mockModuleOnce(new URL('../../backend/src/config/supabase.js', import.meta.url).href, {
+    supabase: {},
   })
+}
 
-  await new Promise((resolve) => server.once('listening', resolve))
-  const { port } = server.address()
+function listenLoopback(server, label, timeoutMs = 10000) {
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(
+      () => finish(new Error(`${label} did not start within ${timeoutMs}ms`)),
+      timeoutMs
+    )
+    function finish(error) {
+      clearTimeout(timeout)
+      server.off('listening', onListening)
+      server.off('error', onError)
+      if (error) reject(error)
+      else resolve()
+    }
+    function onListening() {
+      finish()
+    }
+    function onError(error) {
+      finish(error)
+    }
+    server.once('listening', onListening)
+    server.once('error', onError)
+  })
+}
 
+async function closeServer(server) {
+  if (!server?.listening) return
+  server.closeAllConnections?.()
+  await new Promise((resolve) => server.close(resolve))
+}
+
+async function assertHttpOk(url, label) {
+  const response = await fetch(url, { signal: AbortSignal.timeout(5000) })
+  if (!response.ok) throw new Error(`${label} readiness check failed with HTTP ${response.status}`)
+}
+
+function saveEnvironment() {
+  return Object.fromEntries(
+    ['E2E_SMOKE', 'SUPABASE_URL', 'SUPABASE_SERVICE_KEY', 'FRONTEND_URL', 'JWT_SECRET'].map(
+      (key) => [key, process.env[key]]
+    )
+  )
+}
+
+function restoreEnvironment(original) {
+  for (const [key, value] of Object.entries(original)) {
+    if (value === undefined) delete process.env[key]
+    else process.env[key] = value
+  }
+}
+
+export async function launchGREEN(fixtures, testFn, { apiPort = 0 } = {}) {
+  assertIsolatedEnvironment(process.env)
+  const originalEnv = saveEnvironment()
+  let guards
+  let server
   try {
-    // 5. Execute the test function.
-    await testFn({ port, adapter })
+    Object.assign(process.env, {
+      E2E_SMOKE: '1',
+      SUPABASE_URL: 'http://127.0.0.1:54321',
+      SUPABASE_SERVICE_KEY: 'dummy-key',
+      FRONTEND_URL: 'http://localhost:3000',
+      JWT_SECRET: 'smoke-test-secret',
+    })
+    guards = installLoopbackGuards()
+    mockRepositories()
+    activeAdapter = createFixtureAdapter(fixtures)
+
+    const { createApp } = await import(backendAppUrl.href)
+    server = createApp().listen({ port: apiPort, host: '127.0.0.1' })
+    await listenLoopback(server, 'Smoke API')
+    const address = server.address()
+    const port = typeof address === 'object' && address ? address.port : null
+    if (!port) throw new Error('Smoke API did not expose a loopback port')
+    await assertHttpOk(`http://127.0.0.1:${port}/health`, 'Smoke API')
+    return await testFn({ port, adapter: activeAdapter })
   } finally {
-    // 6. Guaranteed Teardown:
-    // - Close the Express server.
-    // - Restore loopback guards.
-    if (server.closeAllConnections) server.closeAllConnections()
-    await new Promise((resolve) => server.close(resolve))
-    guards.restore()
-    process.env.E2E_SMOKE = originalSmoke
-    process.env.SUPABASE_URL = originalUrl
-    process.env.SUPABASE_SERVICE_KEY = originalKey
-    process.env.FRONTEND_URL = originalFrontendUrl
-    process.env.JWT_SECRET = originalJwtSecret
+    try {
+      await closeBrowser()
+    } finally {
+      try {
+        await closeServer(server)
+      } finally {
+        activeAdapter = null
+        guards?.restore()
+        restoreEnvironment(originalEnv)
+      }
+    }
   }
 }

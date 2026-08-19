@@ -11,7 +11,8 @@
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
     "test": "node --experimental-test-module-mocks --test src/**/*.test.js",
-    "verify:migrations": "node scripts/verificar-numeracion-migraciones.js"
+    "verify:migrations": "node scripts/verificar-numeracion-migraciones.js",
+    "test:e2e:smoke": "node --experimental-test-module-mocks ../e2e/support/test-system.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.3",

@@ -38,17 +38,18 @@ Chain strategy: pending
 - [x] 2.1 GREEN: Create `e2e/support/isolation.js` with guards that pass 1.1–1.2.
 - [x] 2.2 GREEN: Create frozen MRC/Incendio fixtures in `e2e/fixtures/data.js` and a named-module, monotonic-quote adapter in `e2e/support/fixture-adapter.js`.
 - [x] 2.3 GREEN: Create `e2e/support/test-system.js`; require `E2E_SMOKE=1`, mock repositories before `backend/src/app.js`, and own loopback servers/teardown.
-- [ ] 2.4 REFACTOR: Simplify support helpers without weakening errors; leave `backend/src/**`, rules, schemas, and credentials untouched.
+- [x] 2.4 REFACTOR: Simplify support helpers without weakening errors; leave `backend/src/**`, rules, schemas, and credentials untouched.
 
 ## Phase 3: RED/ GREEN Browser Contracts
 
-- [ ] 3.1 RED: Create `e2e/smoke.spec.js` for browser login/CSRF, MRC UI/PDF, invalid MRC no offer, and non-empty `application/pdf` `%PDF-` bytes.
-- [ ] 3.2 RED: Reuse that context for missing-CSRF `403`, Incendio preview/create/PDF, and invalid preview with no create/PDF.
-- [ ] 3.3 GREEN: Complete only test fixtures, launcher mapping, and resilient selectors for real Express/frontend/Puppeteer assertions.
-- [ ] 3.4 REFACTOR: Bound serial waits, retain failure traces/screenshots only, and close context, servers, browser, and fixture state after each outcome.
+- [x] 3.1 RED: Create `e2e/smoke.spec.js` for browser login/CSRF, MRC UI/PDF, invalid MRC no offer, and non-empty `application/pdf` `%PDF-` bytes.
+- [x] 3.2 RED: Reuse that context for missing-CSRF `403`, Incendio preview/create/PDF, and invalid preview with no create/PDF.
+- [x] 3.3 GREEN: Complete only test fixtures, launcher mapping, and resilient selectors for real Express/frontend/Puppeteer assertions.
+- [x] 3.4 REFACTOR: Bound serial waits, retain failure traces/screenshots only, and close context, servers, browser, and fixture state after each outcome.
 
 ## Phase 4: Reproducibility and Verification
 
-- [ ] 4.1 Add `playwright.config.js`; pin `@playwright/test` plus smoke/install scripts in `backend/package.json` and root `package-lock.json`.
+- [x] 4.1a Unit 4 prerequisite: add `playwright.config.js`, pin `@playwright/test`, and add the `test:e2e:smoke` runner.
+- [ ] 4.1b Unit 5: add `e2e:install:chromium` / `e2e:install:chromium:ci` scripts and any remaining browser setup.
 - [ ] 4.2 Update `.github/workflows/ci.yml` to cache browsers, install CI Chromium, run smoke, and print runtime/path/port/trace diagnostics on failure.
 - [ ] 4.3 Run `npm test --prefix backend` and local Chromium smoke; confirm no external request, persisted data, session, or success artifact remains.

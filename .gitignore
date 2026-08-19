@@ -18,3 +18,6 @@ docs/insumos/
 .agents/skills/
 .claude/skills/
 skills-lock.json
+
+# Playwright traces and screenshots retained only on failure.
+test-results/

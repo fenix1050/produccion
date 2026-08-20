@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.55](https://github.com/fenix1050/produccion/compare/v0.1.54...v0.1.55) (2026-08-20)
+
+
+### Bug Fixes
+
+* **mrc:** enforce quote conditions ([#314](https://github.com/fenix1050/produccion/issues/314)) ([d4490aa](https://github.com/fenix1050/produccion/commit/d4490aae6da8c0045f660bf0be97a1e40bc99676))
+
 ## [0.1.54](https://github.com/fenix1050/produccion/compare/v0.1.53...v0.1.54) (2026-08-20)
 
 

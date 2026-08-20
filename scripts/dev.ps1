@@ -4,9 +4,8 @@
 # Abre 2 ventanas de PowerShell separadas (una por proceso) para ver los logs de cada
 # uno y poder cortar con Ctrl+C sin matar la otra.
 #
-# Gotcha ya pisado antes: el frontend se sirve desde la RAIZ del repo, no desde
-# frontend/ - las paginas referencian logo/ (../../logo/...) como si la raiz servida
-# fuera el repo completo. Por eso la URL final es /frontend/cotizar/, no /cotizar/.
+# Serve the frontend directory as the static root, matching Vercel and absolute
+# asset paths such as /favicon/manifest.json. The local Cotizador URL is /cotizar/.
 
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
@@ -28,16 +27,16 @@ if (Test-PortListening 3000) {
 if (Test-PortListening 5000) {
     Write-Host "Frontend ya esta corriendo en el puerto 5000 - no se abre una instancia nueva." -ForegroundColor Yellow
 } else {
-    Write-Host "Iniciando frontend (puerto 5000, servido desde la raiz del repo)..." -ForegroundColor Cyan
+    Write-Host "Iniciando frontend (puerto 5000, servido desde frontend/)..." -ForegroundColor Cyan
     Start-Process powershell -ArgumentList @(
         '-NoExit', '-Command',
-        "cd '$root'; npx --yes serve -l 5000 ."
+        "cd '$root\frontend'; npx --yes serve -l 5000 ."
     )
 }
 
 Start-Sleep -Seconds 2
 Write-Host ""
-Write-Host "Cotizador: http://localhost:5000/frontend/cotizar/" -ForegroundColor Green
+Write-Host "Cotizador: http://localhost:5000/cotizar/" -ForegroundColor Green
 Write-Host "API:       http://localhost:3000/api/ramos" -ForegroundColor Green
 Write-Host ""
 Write-Host "Para cortar: cerra las 2 ventanas que se abrieron (o Ctrl+C en cada una)." -ForegroundColor DarkGray

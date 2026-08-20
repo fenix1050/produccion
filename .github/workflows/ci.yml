@@ -10,6 +10,9 @@ on:
       - main
       - develop
 
+permissions:
+  contents: read
+
 jobs:
   quality:
     runs-on: ubuntu-latest
@@ -21,11 +24,31 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: 24
+          node-version: 24.19.0
           cache: npm
+
+      - name: Cache browser binaries
+        # v4.2.3
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684
+        with:
+          path: |
+            ~/.cache/ms-playwright
+            ~/.cache/puppeteer
+          key: ${{ runner.os }}-browser-binaries-${{ hashFiles('package-lock.json') }}
 
       - name: Install dependencies
         run: npm ci
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: 'true'
+
+      - name: Install Chromium for E2E smoke
+        run: npm run e2e:install:chromium:ci --workspace=backend
+
+      - name: Install Puppeteer Chrome for PDF smoke
+        run: npm run e2e:install:puppeteer --workspace=backend
+
+      - name: Run isolated E2E smoke
+        run: npm run test:e2e:smoke --workspace=backend
 
       - name: Check formatting
         run: npm run format:check
@@ -38,3 +61,29 @@ jobs:
 
       - name: Run tests
         run: npm test
+
+      - name: Diagnose E2E smoke failure
+        if: failure()
+        shell: bash
+        run: |
+          node --version || true
+          npm --version || true
+          npm exec playwright -- --version || true
+          node -p "require('puppeteer/package.json').version" || true
+          printf '\nPlaywright browser cache:\n'
+          ls -la ~/.cache/ms-playwright || true
+          printf '\nPuppeteer browser cache:\n'
+          ls -la ~/.cache/puppeteer || true
+          printf '\nListeners on ports 3100 and 5100:\n'
+          ss -ltnp '( sport = :3100 or sport = :5100 )' || true
+          printf '\nE2E test results:\n'
+          find test-results -maxdepth 3 -type f -printf '%p\t%s bytes\t%TY-%Tm-%Td %TH:%TM:%TS\n' || true
+
+      - name: Upload E2E smoke results
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: e2e-smoke-test-results
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 3

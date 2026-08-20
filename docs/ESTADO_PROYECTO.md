@@ -2567,10 +2567,22 @@ No cambia comportamiento observable: extracción verbatim en todos los PRs, sin 
 
 Ambos bugs se reprodujeron localmente forzando `DOTENV_CONFIG_PATH` a un archivo inexistente (sin tocar el `.env` real) y se confirmaron arreglados con 251/251 verde en ese mismo modo — replicando exactamente lo que corre CI.
 
-## 76. Infraestructura de pruebas — Unit 4: smoke E2E aislado MRC/Incendio (2026-08-19), sin commit
+## 76. Infraestructura de pruebas — Unit 4: smoke E2E aislado MRC/Incendio (2026-08-19), mergeada en PR #303 / commit `e86af98`
 
 La Unit 4 de `e2e-smoke-pilot` queda ejecutable tras seis slices: PR #298 incorporó los fixtures canónicos, #299 el adapter compuesto, #300 el launcher API aislado, #301 el runner de procesos con cleanup, #302 el prerequisito de Playwright, y este slice final integró el launcher, runner y contrato de navegador. No se modificó `backend/src/**` ni `frontend/**`.
 
 El smoke levanta solo frontend/API loopback (`127.0.0.1:5100`/`:3100`), bloquea tráfico del browser fuera de loopback, autentica por UI, verifica cookies de sesión/CSRF, cotiza MRC por UI y valida Carta Oferta PDF (`application/pdf`, firma `%PDF-`, >1KB), comprueba el 403 CSRF exacto, y recorre preview/creación/PDF de Incendio. También prueba que MRC inválido se bloquea por validación cliente sin preview/creación/PDF durante una ventana acotada, e Incendio inválido responde 422 sin creación/PDF. El launcher exige exactamente dos cotizaciones persistidas y una lectura de los tres sublímites MRC desde `generarPdfOferta`.
 
 **Verificación:** tests de support (12/12), backend (251/251), smoke Playwright (1/1), ESLint/Prettier focalizados y `git diff --check` en verde. Sin listeners residuales en `:3100`/`:5100` ni artefactos de éxito en `test-results/`. Pendiente Unit 5: scripts de instalación de Chromium, cache/ejecución/diagnóstico CI y verificación final; no se implementaron en esta Unit.
+
+## 77. Infraestructura de pruebas — Unit 5: reproducibilidad del smoke E2E en CI (2026-08-19)
+
+**Qué se agregó.** El workflow de CI restaura las cachés de Playwright/Puppeteer antes de `npm ci`, ejecuta esa instalación con `PUPPETEER_SKIP_DOWNLOAD=true`, instala explícitamente Chromium de Playwright y el Chrome pinneado por Puppeteer, y conserva el smoke exacto `npm run test:e2e:smoke --workspace=backend`. Se agregaron los scripts locales de Chromium, Chromium para CI y Chrome de Puppeteer; la allowlist raíz se actualizó a `puppeteer` 25.7.0.
+
+**Por qué ambos browsers.** Chromium de Playwright ejecuta el flujo de navegador del smoke, mientras que Puppeteer genera los PDF usando el Chrome que su versión pinneada requiere. Instalar solo Chromium de Playwright no garantiza el ejecutable de Puppeteer.
+
+**Bug de reproducibilidad corregido.** La candidata inicial podía pasar con una caché local, pero no era reproducible en un runner frío: solo provisionaba Chromium de Playwright y restauraba las cachés después de `npm ci`; además, la allowlist apuntaba a Puppeteer 25.6.0 aunque el lockfile resuelve 25.7.0. La corrección separa el skip de descarga del paso `npm ci` y deja que la instalación explícita posterior descargue el Chrome pinneado.
+
+**Verificación corregida.** `npm ci` con skip scoped PASS (23.117s); tests de support 12/12 PASS (14.476s); backend 251/251 PASS (4.725s); instalación de Chromium PASS (1.385s); instalación de Puppeteer PASS (1.678s); smoke 1/1 PASS (14.497s); Prettier dirigido a las 3 candidatas PASS (1.002s); lint PASS con 5 warnings existentes; migraciones 61 PASS (0.670s); y `git diff --check` PASS. Tras el smoke no quedaron listeners en `:3100`/`:5100` y `test-results/` fue eliminado por éxito.
+
+**Fuera de alcance.** No se modificó código de producto, tests, locks ni la semántica del smoke. `format:check` global sigue fallando sobre un baseline de 292 archivos; no se atribuye a esta unidad. No se declara estado de CI remoto.

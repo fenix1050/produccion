@@ -10,6 +10,7 @@ import { JSDOM } from 'jsdom'
 
 const dom = new JSDOM('<!doctype html><html><body><div id="app"></div></body></html>')
 globalThis.document = dom.window.document
+globalThis.window = dom.window
 
 const { state } = await import('./state.js')
 const { prefillDatosDesdeCotizacion, idLinea, armarRiesgoDatos } = await import('./body-builder.js')
@@ -77,7 +78,7 @@ test('armarRiesgoDatos en mrc arma cédula/dirección/rubro/ciudad/capitales y c
     { codigo: 'sublimite_danos_agua', suma_asegurada: 5000000 },
     { codigo: 'robo_contenido', suma_asegurada: 3000000 },
   ])
-  assert.deepEqual(resultado.franquicias_por_cobertura, { robo_contenido: 500000 })
+  assert.deepEqual(resultado.franquicias_por_cobertura, {})
 })
 
 // ---------------------------------------------------------------------------
@@ -251,6 +252,39 @@ test('prefillDatosDesdeCotizacion en mrc limpia franquiciasPorCobertura de una c
   assert.deepEqual(state.franquiciasPorCobertura, {
     robo_contenido: '10_500000',
   })
+})
+
+test('prefillDatosDesdeCotizacion en mrc preserves mandatory sublimit franchise snapshots', () => {
+  const cotizacion = {
+    cliente_nombre: 'Ana',
+    moneda: 'PYG',
+    riesgo_datos: {
+      coberturas_adicionales: [
+        { codigo: 'robo_valores_ventanilla', suma_asegurada: 300000 },
+        { codigo: 'sublimite_equipos_electronicos', suma_asegurada: 5000000 },
+      ],
+      franquicias_por_cobertura: {
+        robo_valores_ventanilla: null,
+        sublimite_equipos_electronicos: 800000,
+      },
+    },
+    cotizacion_coberturas: [
+      {
+        franquicia: null,
+        coberturas_catalogo: { codigo: 'robo_valores_ventanilla' },
+      },
+      {
+        franquicia: 800000,
+        coberturas_catalogo: { codigo: 'sublimite_equipos_electronicos' },
+      },
+    ],
+    cotizacion_variantes: [],
+  }
+
+  prefillDatosDesdeCotizacion('mrc', { nombre: 'PLAN COMERCIO' }, cotizacion)
+
+  assert.equal(state.franquiciasPorCobertura.robo_valores_ventanilla, 'sin_deducible')
+  assert.equal(state.franquiciasPorCobertura.sublimite_equipos_electronicos, '10_800000')
 })
 
 test('prefillDatosDesdeCotizacion en incendio MAQUINARIA BASICO restaura capital y sublímite condicional', () => {

@@ -6,13 +6,14 @@ import { httpError } from '../utils/http-error.js'
 import { verificarPropiedad } from './cotizacion-authorization.service.js'
 import { validarYResolverContexto } from './cotizacion-context.service.js'
 import { construirVariantes } from './cotizacion-pricing.service.js'
+import { CODIGOS_FRANQUICIA_MRC_OBLIGATORIA } from './mrc-franquicia-authorization.service.js'
 
 /**
  * Calcula y persiste la cotización completa: cabecera, variantes y planes de pago
  * por forma de pago. Asigna número(s) correlativo(s) por variante.
  */
 export async function crearCotizacion(body, usuario) {
-  const { plan, ramo, datosValidados } = await validarYResolverContexto(body)
+  const { plan, ramo, datosValidados } = await validarYResolverContexto(body, usuario)
   const calculador = getCalculador(ramo.calculador)
 
   const variantesCalculadas = await construirVariantes({
@@ -84,7 +85,7 @@ export async function actualizarCotizacion(id, body, usuario) {
     throw httpError(422, mensaje, mensaje)
   }
 
-  const { plan, ramo, datosValidados } = await validarYResolverContexto(body)
+  const { plan, ramo, datosValidados } = await validarYResolverContexto(body, usuario)
 
   // No se puede "editar" una cotización cambiándole el ramo: coberturas/schema/tasas son
   // específicos de cada calculador y `ramo_id` nunca se toca en el UPDATE de abajo (es
@@ -109,6 +110,8 @@ export async function actualizarCotizacion(id, body, usuario) {
   const { coberturas, variantes } = await armarPayloadDetalle({
     ramoId: ramo.id,
     variantesCalculadas,
+    franquiciasHistoricas:
+      ramo.calculador === 'mrc' ? franquiciasHistoricasMrcObligatorias(existente) : undefined,
   })
 
   // Un único RPC atómico (migración 052, `actualizar_cotizacion_atomica`) bloquea la cabecera
@@ -152,7 +155,11 @@ export async function actualizarCotizacion(id, body, usuario) {
  * secuenciales uno por uno) ahora que `_insertar_detalle_cotizacion` (mismo shape de columnas)
  * corre del lado de Postgres dentro de `crear_cotizacion_atomica`/`actualizar_cotizacion_atomica`.
  */
-async function armarPayloadDetalle({ ramoId, variantesCalculadas }) {
+async function armarPayloadDetalle({
+  ramoId,
+  variantesCalculadas,
+  franquiciasHistoricas = new Map(),
+}) {
   // Detalle de coberturas mostrado en "Detalle del plan" (hoy solo lo arma mrc.calculator.js —
   // Incendio/Vida-AP todavía no devuelven `coberturas`, de ahí el guard). Snapshot de
   // nombre/texto legal/exclusiones para que quede congelado aunque después cambie el catálogo
@@ -172,7 +179,9 @@ async function armarPayloadDetalle({ ramoId, variantesCalculadas }) {
         monto: cobertura.monto,
         // El calculador ya resuelve acá la franquicia elegida por el agente (o la default del
         // catálogo si no eligió ninguna) — ver construirListaCoberturas en mrc.calculator.js.
-        franquicia: cobertura.franquicia_default ?? null,
+        franquicia: franquiciasHistoricas.has(cobertura.codigo)
+          ? franquiciasHistoricas.get(cobertura.codigo)
+          : (cobertura.franquicia_default ?? null),
         tipo_aplicacion: cobertura.tipo_aplicacion ?? 'cobertura',
         incluida: true,
       }
@@ -220,4 +229,12 @@ async function armarPayloadDetalle({ ramoId, variantesCalculadas }) {
   })
 
   return { coberturas, variantes }
+}
+
+function franquiciasHistoricasMrcObligatorias(cotizacion) {
+  return new Map(
+    (cotizacion.cotizacion_coberturas ?? [])
+      .map((cobertura) => [cobertura.coberturas_catalogo?.codigo, cobertura.franquicia])
+      .filter(([codigo]) => CODIGOS_FRANQUICIA_MRC_OBLIGATORIA.includes(codigo))
+  )
 }

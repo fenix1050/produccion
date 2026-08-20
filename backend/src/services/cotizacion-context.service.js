@@ -3,9 +3,10 @@ import * as ramosRepository from '../repositories/ramos.repository.js'
 import { getSchemaCotizar } from '../schemas/index.js'
 
 import { withCache } from './cache.js'
+import { normalizarFranquiciasMrc } from './mrc-franquicia-authorization.service.js'
 import { resolverUmbralInspeccion } from './umbral-inspeccion.service.js'
 
-export async function validarYResolverContexto(body) {
+export async function validarYResolverContexto(body, usuario) {
   const plan = await ramosRepository.findPlanById(body.plan_id)
   // soloActivos: true — no se debe poder cotizar/editar sobre un ramo dado de baja
   // (mismo comportamiento que el `.find()` sobre `findRamosActivos()` que reemplaza).
@@ -14,7 +15,14 @@ export async function validarYResolverContexto(body) {
   const schema = getSchemaCotizar(ramo.calculador)
   const datosValidados = schema.parse(body)
 
-  return { plan, ramo, datosValidados }
+  return {
+    plan,
+    ramo,
+    datosValidados:
+      ramo.calculador === 'mrc'
+        ? normalizarFranquiciasMrc(datosValidados, usuario)
+        : datosValidados,
+  }
 }
 
 /**

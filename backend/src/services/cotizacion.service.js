@@ -21,7 +21,7 @@ export { resolverUmbralInspeccion } from './umbral-inspeccion.service.js'
  * Devuelve todas las variantes (sin/con franquicia si corresponde) con sus 4 formas de pago.
  */
 export async function calcularPreview(body, usuario) {
-  const { plan, ramo, datosValidados } = await validarYResolverContexto(body)
+  const { plan, ramo, datosValidados } = await validarYResolverContexto(body, usuario)
   const calculador = getCalculador(ramo.calculador)
 
   return construirVariantes({ calculador, plan, ramo, datosValidados, usuario })

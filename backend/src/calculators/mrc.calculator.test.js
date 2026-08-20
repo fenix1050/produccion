@@ -508,6 +508,80 @@ describe('mrc.calculator — robo_valores_ventanilla no suma costo a la prima', 
     assert.ok(lineaVentanilla, 'la línea de ventanilla se sigue listando en coberturas')
     assert.equal(lineaVentanilla.monto, 3_000_000)
   })
+
+  test('la franquicia obligatoria no modifica la prima, el premio ni las cuotas', async () => {
+    const catalogo = [
+      ...catalogoBase(),
+      {
+        codigo: 'robo_valores_ventanilla',
+        nombre: 'Robo valores ventanilla',
+        categoria: 'Sublímites',
+        franquicia_default: 500000,
+        incluye_en_suma_asegurada_total: false,
+      },
+      {
+        codigo: 'sublimite_equipos_electronicos',
+        nombre: 'Daños a los Equipos Electrónicos',
+        categoria: 'Sublímites',
+        franquicia_default: 500000,
+        incluye_en_suma_asegurada_total: true,
+      },
+    ]
+    const tasas = [
+      ...tasasBase(),
+      {
+        coberturas_catalogo: { codigo: 'robo_valores_ventanilla' },
+        tasa_valor: 10,
+        unidad: 'permil',
+      },
+      {
+        coberturas_catalogo: { codigo: 'sublimite_equipos_electronicos' },
+        tasa_valor: 4,
+        unidad: 'permil',
+      },
+    ]
+    const riesgoDatos = {
+      rubro_actividad: 'Bazar',
+      capital_edificio: 100_000_000,
+      capital_contenido: 50_000_000,
+      coberturas_adicionales: [
+        { codigo: 'responsabilidad_civil', suma_asegurada: 1_000_000 },
+        { codigo: 'robo_valores_ventanilla', suma_asegurada: 300_000 },
+        { codigo: 'sublimite_equipos_electronicos', suma_asegurada: 5_000_000 },
+      ],
+    }
+
+    const sinFranquicias = await calcularPrima({
+      plan: planBase(),
+      riesgoDatos,
+      rubro: rubroBase(),
+      catalogoRamo: catalogo,
+      tasasRamo: tasas,
+    })
+    const conFranquiciasObligatorias = await calcularPrima({
+      plan: planBase(),
+      riesgoDatos: {
+        ...riesgoDatos,
+        franquicias_por_cobertura: {
+          robo_valores_ventanilla: 500000,
+          sublimite_equipos_electronicos: 500000,
+        },
+      },
+      rubro: rubroBase(),
+      catalogoRamo: catalogo,
+      tasasRamo: tasas,
+    })
+
+    assert.equal(conFranquiciasObligatorias.prima, sinFranquicias.prima)
+    assert.equal(
+      conFranquiciasObligatorias.detalle.costo_coberturas_adicionales,
+      sinFranquicias.detalle.costo_coberturas_adicionales
+    )
+    assert.deepEqual(
+      calcularPlanPago(conFranquiciasObligatorias.prima, { codigo: 'cobrador', tasa_rpf: 1.6 }, 3),
+      calcularPlanPago(sinFranquicias.prima, { codigo: 'cobrador', tasa_rpf: 1.6 }, 3)
+    )
+  })
 })
 
 describe('mrc.calculator — MRC-specific: dos líneas de cobertura + adicional, piso independiente por línea', () => {

@@ -2592,3 +2592,106 @@ El smoke levanta solo frontend/API loopback (`127.0.0.1:5100`/`:3100`), bloquea 
 The shared admin profile dropdown rendered behind the main content, especially in dark mode. The dark-theme decoration assigned `position: relative; z-index: 1` to both topbar and main children, trapping the menu inside the breadcrumb stacking context; its own `z-index` could not escape that parent layer. `frontend/shared/cotizador.css` now elevates the topbar as a whole, while the valid dark-theme contrast adjustments remain in `frontend/shared/theme-dark.css`.
 
 **Verification:** 55/55 frontend tests passed, and real-browser visual checks confirmed that the open menu renders above the content in both dark and light themes.
+
+## 79. MRC — permiso configurable para seleccionar franquicia (2026-08-20)
+
+Se agregó la migración `062_permiso_seleccionar_franquicia.sql`, que incorpora
+`roles.puede_seleccionar_franquicia` con default `FALSE`. El rol `admin` conserva el selector por
+bypass explícito de aplicación; cualquier rol custom puede recibir el permiso desde el modal de
+roles del panel admin. Agente, Comercial y todo rol sin el permiso ven en Detalle del plan la
+franquicia fija no editable: `10% en todo y cada siniestro, mínimo Gs. 500.000`.
+
+La restricción es end-to-end: el frontend arma Gs. 500.000 para cada cobertura aplicable y el
+backend normaliza de nuevo el JSON validado antes de preview, creación y actualización. Por eso un
+body forjado no puede persistir otro monto. El normalizador también elimina códigos de franquicia
+que no correspondan a coberturas aplicables, manteniendo coherentes `riesgo_datos` y el snapshot de
+`cotizacion_coberturas`; los roles autorizados conservan sus selecciones válidas.
+
+**Verificación:** `npm test` en `backend` (255/255), `npm test` en `frontend` (57/57),
+`npm run verify:migrations` (62 migraciones, sin colisiones), y `node --check` de los módulos
+modificados de backend/frontend, todos en verde. La migración todavía debe aplicarse contra
+Supabase antes del despliegue.
+
+## 80. MRC — adyacencia de Valores en caja fuerte y Robo valores ventanilla (2026-08-20)
+
+La tabla "SUMAS ASEGURADAS POR COBERTURA" de la Carta Oferta ahora reubica el sublímite `robo_valores_ventanilla` inmediatamente después de `robo_caja_registradora` cuando ambas líneas están cotizadas. El orden previo de todas las demás coberturas y sublímites se conserva; no cambian cálculos, franquicias ni sumas aseguradas.
+
+**Verificación:** la prueba focalizada de `backend/src/templates/oferta/mrc.test.js` comprueba la adyacencia de las dos filas en el HTML y que Responsabilidad Civil, Daños por agua y Daños por granizo mantienen su orden relativo. `node --check backend/src/templates/oferta/mrc.js` sin errores.
+
+## 81. MRC — franquicias obligatorias para sublímites de Ventanilla y Equipos Electrónicos (2026-08-20)
+
+Se agregó la migración `063_mrc_franquicias_sublimites_obligatorias.sql` para configurar
+`franquicia_default = 500000` en `robo_valores_ventanilla` y
+`sublimite_equipos_electronicos`. La regla es obligatoria para cualquier rol, incluido admin:
+`10% en todo y cada siniestro, mínimo Gs. 500.000`. El monto persistido representa el mínimo.
+La migración solo afecta el catálogo de cotizaciones nuevas; no modifica snapshots históricos.
+
+El backend normaliza ambos códigos antes de preview y creación, por encima del permiso de
+selección de franquicia. Por lo tanto, un body forjado con `null` u otro importe genera Gs. 500.000
+en cotizaciones nuevas. Las demás coberturas preservan el comportamiento introducido por la
+migración 062. El cálculo MRC no usa la franquicia para prima, premio ni cuotas, y Ventanilla
+mantiene su regla de costo cero.
+
+**Corrección posterior de regresión:** la primera implementación también normalizaba al precargar
+y actualizar cotizaciones existentes, reescribiendo indebidamente `cotizacion_coberturas.franquicia`
+para estos sublímites. Se corrigió para que el prefill tome el valor del snapshot y la actualización
+lo preserve —incluidos `null` y valores históricos no nulos— mientras la regla de Gs. 500.000 sigue
+aplicando a previews y cotizaciones nuevas. La vista fija ya no muta el estado al renderizar.
+
+**Verificación posterior a la corrección:** pruebas focalizadas de frontend y persistencia cubren
+la conservación de ambos snapshots históricos; pruebas de autorización preservan la normalización
+para previews/nuevas cotizaciones sin permiso. También se ejecutaron `node --check` de los módulos
+modificados y `git diff --check`. Pendiente aplicar la migración 063 contra Supabase antes del
+despliegue.
+
+## 82. Cotizador — restricción temporal de tipos de riesgo (2026-08-20)
+
+El selector compartido "Tipo de Riesgo" de MRC e Incendio deja de ofrecer `CHANCHERIAS` y
+`GRANJA EN GENERAL` para cotizaciones nuevas. La exclusión vive en la constante frontend
+`TIPOS_RIESGO_OCULTOS_TEMPORALMENTE`, documentada como una restricción transitoria de interfaz
+hasta que exista la administración de activar, desactivar y agregar tipos de riesgo.
+
+No se modificaron datos de Supabase, backend ni cálculo. Al abrir para editar una cotización
+histórica cuyo `rubro_actividad` sea uno de esos valores, el selector conserva esa opción visible y
+seleccionada — incluso si el catálogo cargado ya no la devolviera — para no invalidar el formulario.
+
+**Verificación:** prueba focalizada del renderer para altas nuevas y edición histórica, chequeo de
+sintaxis de los módulos frontend modificados y `git diff --check` en verde.
+
+## 83. MRC — corrección acotada de franquicias por permiso (2026-08-20)
+
+**Causa.** La normalización aplicada a un usuario sin permiso asignaba Gs. 500.000 a cada código
+de cobertura aplicable. Eso reemplazaba indebidamente los defaults del catálogo y convertía los
+sublímites de Daños por agua y Daños por granizo en franquicias obligatorias.
+
+**Alcance.** Para usuarios sin permiso, backend y frontend ahora incluyen únicamente
+`robo_valores_ventanilla` y `sublimite_equipos_electronicos`, ambos con Gs. 500.000. Los demás
+códigos se excluyen del mapa enviado o normalizado. La vista no editable obtiene su etiqueta desde
+`franquicia_default` del catálogo: Daños por agua y Daños por granizo muestran "Sin deducible",
+Cristales conserva Gs. 1.200.000 y Responsabilidad Civil conserva Gs. 500.000. Los usuarios
+autorizados mantienen sus selecciones válidas, salvo los dos códigos obligatorios.
+
+No se modificó el PDF: usa snapshots de cotizaciones existentes y no debe alterar históricos. No
+se aplicó ninguna migración remota ni se cambió el checklist de fase.
+
+**Verificación:** `node --experimental-test-module-mocks --test
+src/services/mrc-franquicia-authorization.service.test.js` (backend, 3/3 PASS); `node --test
+cotizar/domain-rules.test.js cotizar/body-builder.test.js cotizar/render/render-detalle-plan.test.js`
+(frontend, 56/56 PASS); `node --check` de los tres módulos modificados (PASS); y `git diff --check`
+(PASS, solo avisos preexistentes de normalización LF/CRLF en archivos ajenos).
+
+## 84. MRC — ajuste de franquicia por defecto de Cristales (2026-08-20)
+
+Se preparó la migración `064_mrc_cristales_franquicia_default.sql` para cambiar únicamente
+`coberturas_catalogo.franquicia_default` de la cobertura MRC con código exacto `cristales`, de
+Gs. 1.200.000 a Gs. 500.000. El `UPDATE` exige simultáneamente la relación con el ramo `mrc`, el
+código exacto y el valor previo esperado de Gs. 1.200.000; por eso una segunda ejecución no hace
+cambios y un registro inesperado queda fuera del alcance.
+
+No se modificaron el cálculo, la UI ni snapshots históricos en `cotizacion_coberturas`: el valor
+vigente del catálogo se consume dinámicamente para cotizaciones nuevas. Se actualizó la prueba
+existente que cubre el default hardcodeado de Cristales en el renderer no editable.
+
+**Estado remoto:** la migración `064_mrc_cristales_franquicia_default` fue aplicada correctamente
+en Supabase. Se verificó que el registro MRC `cristales` pasó de Gs. 1.200.000 a Gs. 500.000 para
+cotizaciones futuras, sin modificar snapshots históricos.

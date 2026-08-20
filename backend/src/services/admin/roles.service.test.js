@@ -119,6 +119,23 @@ test('crearRol permite a un admin pleno otorgar los 4 permisos sin restricción'
   assert.equal(resultado.puede_gestionar_usuarios, true)
 })
 
+test('crearRol rechaza si un solicitante intenta otorgar puede_seleccionar_franquicia sin tenerlo', async (t) => {
+  mockearRepositorio(t)
+  const { crearRol } = await import('./roles.service.js?case=crear-escalada-franquicia')
+
+  await assert.rejects(
+    () =>
+      crearRol(
+        { nombre: 'Rol nuevo', puede_seleccionar_franquicia: true },
+        { id: 9, rol: 'agente', puede_seleccionar_franquicia: false }
+      ),
+    (err) => {
+      assert.equal(err.status, 403)
+      return true
+    }
+  )
+})
+
 test('editarRol rechaza con 403 si un solicitante intenta otorgar un permiso que no tiene, aunque el rol no sea de sistema', async (t) => {
   mockearRepositorio(t)
   const { editarRol } = await import('./roles.service.js?case=editar-escalada')

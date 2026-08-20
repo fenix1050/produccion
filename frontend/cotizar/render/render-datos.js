@@ -17,6 +17,7 @@ import {
   CLIENT_FIELDS,
   MOTIVO_BLOQUEO_ID,
   COBERTURA_ICONOS,
+  TIPOS_RIESGO_OCULTOS_TEMPORALMENTE,
 } from '../constants.js'
 import {
   monedaEfectiva,
@@ -29,6 +30,25 @@ import {
 import { idParaCampo } from './render-campos.js'
 import { renderLivePanelContent } from './render-cotizacion-vivo.js'
 import { renderStepper } from './render-detalle-plan.js'
+
+// Evita ofrecer temporalmente tipos de riesgo restringidos en altas nuevas. Si uno ya está
+// seleccionado en una cotización histórica, se conserva incluso si dejó de llegar desde el
+// catálogo para que el formulario siga siendo válido al editarla.
+export function tiposRiesgoVisibles(rubros, rubroSeleccionado) {
+  const visibles = rubros.filter(
+    (rubro) =>
+      !TIPOS_RIESGO_OCULTOS_TEMPORALMENTE.has(rubro.nombre) || rubro.nombre === rubroSeleccionado
+  )
+
+  if (
+    TIPOS_RIESGO_OCULTOS_TEMPORALMENTE.has(rubroSeleccionado) &&
+    !visibles.some((rubro) => rubro.nombre === rubroSeleccionado)
+  ) {
+    return [...visibles, { nombre: rubroSeleccionado }]
+  }
+
+  return visibles
+}
 
 // Campo "Tipo de Riesgo" (selector de rubro de actividad) — compartido por
 // camposEdificioContenido() y camposObjetoRiesgo(). Mientras GET /ramos/rubros-actividad está
@@ -49,7 +69,12 @@ function campoTipoRiesgo() {
       <label for="${idParaCampo('rubroActividad')}">Tipo de Riesgo</label>
       <select class="field-input" id="${idParaCampo('rubroActividad')}" data-field="rubroActividad">
         <option value="">Seleccioná un tipo de riesgo…</option>
-        ${state.rubros.map((r) => `<option value="${escapeHtml(r.nombre)}" ${state.data.rubroActividad === r.nombre ? 'selected' : ''}>${escapeHtml(r.nombre)}</option>`).join('')}
+        ${tiposRiesgoVisibles(state.rubros, state.data.rubroActividad)
+          .map(
+            (r) =>
+              `<option value="${escapeHtml(r.nombre)}" ${state.data.rubroActividad === r.nombre ? 'selected' : ''}>${escapeHtml(r.nombre)}</option>`
+          )
+          .join('')}
       </select>
     </div>
   `

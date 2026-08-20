@@ -91,6 +91,11 @@ export const CLIENT_FIELDS = [
 
 export const CIUDADES = ['Asunción', 'Ciudad del Este', 'Encarnación', 'Otra']
 
+// Restricción temporal solo de UI para el selector compartido de MRC e Incendio. No modifica el
+// catálogo de Supabase ni la validación/cálculo del backend. Si una cotización histórica tiene uno
+// de estos valores, render-datos.js lo conserva como opción seleccionada durante su edición.
+export const TIPOS_RIESGO_OCULTOS_TEMPORALMENTE = new Set(['CHANCHERIAS', 'GRANJA EN GENERAL'])
+
 // Opciones de franquicia/deducible que el agente puede elegir por cobertura, según lo que le
 // interese al asegurado — misma lista para cualquier cobertura de MRC (confirmado por Kevin,
 // 2026-07-13). Puramente informativo para la propuesta: no cambia la prima ya calculada.

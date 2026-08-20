@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.56](https://github.com/fenix1050/produccion/compare/v0.1.55...v0.1.56) (2026-08-20)
+
+
+### Bug Fixes
+
+* **mrc:** align cristales deductible ([#317](https://github.com/fenix1050/produccion/issues/317)) ([ba0f539](https://github.com/fenix1050/produccion/commit/ba0f5393dcde15a69cee90f09704965c6ea7a885))
+
 ## [0.1.55](https://github.com/fenix1050/produccion/compare/v0.1.54...v0.1.55) (2026-08-20)
 
 

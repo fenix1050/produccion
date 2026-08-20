@@ -86,6 +86,101 @@ test('buildMrcOfertaPages muestra los sub-límites fijos también en Sumas Asegu
   assert.match(paginaDosBalanceada, /Daños por agua: 2\.500\.000/)
 })
 
+test('buildMrcOfertaPages ubica Robo valores ventanilla inmediatamente debajo de Valores en caja fuerte', () => {
+  const cotizacionConValoresVentanilla = {
+    ...COTIZACION_BASE,
+    cotizacion_coberturas: [
+      {
+        tipo_aplicacion: 'cobertura',
+        monto: 1000000,
+        franquicia: null,
+        nombre_snapshot: 'Valores en caja fuerte',
+        coberturas_catalogo: { codigo: 'robo_caja_registradora' },
+      },
+      {
+        tipo_aplicacion: 'cobertura',
+        monto: 2000000,
+        franquicia: null,
+        nombre_snapshot: 'Responsabilidad Civil',
+        coberturas_catalogo: { codigo: 'responsabilidad_civil' },
+      },
+      {
+        tipo_aplicacion: 'sublimite',
+        monto: 300000,
+        franquicia: 500000,
+        nombre_snapshot: 'Daños por agua',
+        coberturas_catalogo: { codigo: 'sublimite_danos_agua' },
+      },
+      {
+        tipo_aplicacion: 'sublimite',
+        monto: 100000,
+        franquicia: null,
+        nombre_snapshot: 'Robo valores ventanilla',
+        coberturas_catalogo: { codigo: 'robo_valores_ventanilla' },
+      },
+      {
+        tipo_aplicacion: 'sublimite',
+        monto: 400000,
+        franquicia: null,
+        nombre_snapshot: 'Daños por granizo',
+        coberturas_catalogo: { codigo: 'sublimite_granizo' },
+      },
+    ],
+  }
+
+  const { paginaUno } = buildMrcOfertaPages({
+    cotizacion: cotizacionConValoresVentanilla,
+    plan: PLAN_BASE,
+    ramo: RAMO_BASE,
+    planCoberturas: [],
+  })
+
+  assert.match(
+    paginaUno,
+    /Valores en caja fuerte<\/td>\s*<td>1\.000\.000<\/td>\s*<td>Sin franquicia<\/td>\s*<\/tr>\s*<tr>\s*<td><span class="badge badge--sublimite">Sublímite<\/span>Robo valores ventanilla/
+  )
+  assert.ok(
+    paginaUno.indexOf('Robo valores ventanilla') < paginaUno.indexOf('Responsabilidad Civil')
+  )
+  assert.ok(paginaUno.indexOf('Responsabilidad Civil') < paginaUno.indexOf('Daños por agua'))
+  assert.ok(paginaUno.indexOf('Daños por agua') < paginaUno.indexOf('Daños por granizo'))
+})
+
+test('buildMrcOfertaPages imprime las franquicias obligatorias de ambos sublímites desde el snapshot', () => {
+  const cotizacionConFranquiciasObligatorias = {
+    ...COTIZACION_BASE,
+    cotizacion_coberturas: [
+      {
+        tipo_aplicacion: 'sublimite',
+        monto: 300000,
+        franquicia: 500000,
+        nombre_snapshot: 'Robo valores ventanilla',
+        coberturas_catalogo: { codigo: 'robo_valores_ventanilla' },
+      },
+      {
+        tipo_aplicacion: 'sublimite',
+        monto: 5000000,
+        franquicia: 500000,
+        nombre_snapshot: 'Daños a los Equipos Electrónicos',
+        coberturas_catalogo: { codigo: 'sublimite_equipos_electronicos' },
+      },
+    ],
+  }
+
+  const { paginaUno, paginaDosBalanceada } = buildMrcOfertaPages({
+    cotizacion: cotizacionConFranquiciasObligatorias,
+    plan: PLAN_BASE,
+    ramo: RAMO_BASE,
+    planCoberturas: [],
+  })
+
+  const franquicia = '10% en todo y cada siniestro, mínimo Gs. 500.000'
+  assert.match(paginaUno, new RegExp(`Robo valores ventanilla[\\s\\S]*${franquicia}`))
+  assert.match(paginaUno, new RegExp(`Daños a los Equipos Electrónicos[\\s\\S]*${franquicia}`))
+  assert.match(paginaDosBalanceada, new RegExp(`Robo valores ventanilla: ${franquicia}`))
+  assert.match(paginaDosBalanceada, new RegExp(`Daños a los Equipos Electrónicos: ${franquicia}`))
+})
+
 test('buildMrcOfertaPages no rompe si planCoberturas no trae un código esperado', () => {
   const { paginaDosBalanceada } = buildMrcOfertaPages({
     cotizacion: COTIZACION_BASE,

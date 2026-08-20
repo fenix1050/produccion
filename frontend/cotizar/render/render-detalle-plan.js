@@ -15,6 +15,8 @@ import {
 } from '../constants.js'
 import {
   franquiciaValorPorDefecto,
+  esFranquiciaMrcObligatoria,
+  puedeSeleccionarFranquicia,
   monedaEfectiva,
   formaPagoSeleccionada,
   capitalTotalAsegurado,
@@ -31,6 +33,16 @@ import { idParaCampo } from './render-campos.js'
 // interesa y el agente la elige acá para que figure en la propuesta. No afecta la prima ya
 // calculada (confirmado por Kevin, 2026-07-13): es solo el texto que se va a mostrar.
 export function renderFranquiciaSelect(cobertura) {
+  if (esFranquiciaMrcObligatoria(cobertura.codigo)) {
+    return '<span>Franquicia obligatoria: 10% en todo y cada siniestro, mínimo Gs. 500.000</span>'
+  }
+
+  if (!puedeSeleccionarFranquicia(auth.getUsuario())) {
+    const seleccionado = franquiciaValorPorDefecto(cobertura.franquicia_default)
+    const etiqueta = FRANQUICIA_OPCIONES.find((opcion) => opcion.valor === seleccionado)?.label
+    return `<span>Franquicia: ${escapeHtml(etiqueta ?? 'Sin deducible')}</span>`
+  }
+
   const seleccionado =
     state.franquiciasPorCobertura[cobertura.codigo] ??
     franquiciaValorPorDefecto(cobertura.franquicia_default)

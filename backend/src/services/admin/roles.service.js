@@ -14,6 +14,7 @@ const PERMISOS_ROL = [
   'puede_editar_descuento_plan',
   'puede_ver_descuento_plan',
   'puede_agregar_cobertura_libre',
+  'puede_seleccionar_franquicia',
 ]
 
 // --- Roles (migración 031) ---

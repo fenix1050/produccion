@@ -11,6 +11,7 @@ import { JSDOM } from 'jsdom'
 
 const dom = new JSDOM('<!doctype html><html><body><div id="app"></div></body></html>')
 globalThis.document = dom.window.document
+globalThis.window = dom.window
 
 const { state } = await import('./state.js')
 const {
@@ -23,6 +24,8 @@ const {
   sumaObjetoRiesgo,
   franquiciaValorPorDefecto,
   franquiciasPorCoberturaParaBody,
+  puedeSeleccionarFranquicia,
+  FRANQUICIA_MRC_OBLIGATORIA_MONTO,
   ajustesParaBody,
   sublimiteVentanillaCalculado,
   sublimitesFijosMrc,
@@ -367,6 +370,66 @@ test('[CARACTERIZACIÓN] franquiciasPorCoberturaParaBody traduce un valor descon
   state.franquiciasPorCobertura = { robo_contenido: '10_800000', cristales: 'valor-inexistente' }
   const resultado = franquiciasPorCoberturaParaBody()
   assert.deepEqual(resultado, { robo_contenido: 800000, cristales: null })
+})
+
+test('franquiciasPorCoberturaParaBody incluye solo los sublímites obligatorios sin permiso', () => {
+  state.franquiciasPorCobertura = {
+    cristales: '10_1200000',
+    responsabilidad_civil: '10_500000',
+    sublimite_danos_agua: '10_500000',
+    sublimite_granizo: '10_500000',
+  }
+  assert.deepEqual(
+    franquiciasPorCoberturaParaBody({
+      codigosAplicables: [
+        'cristales',
+        'responsabilidad_civil',
+        'sublimite_danos_agua',
+        'sublimite_granizo',
+        'robo_valores_ventanilla',
+        'sublimite_equipos_electronicos',
+      ],
+      puedeSeleccionar: false,
+    }),
+    {
+      robo_valores_ventanilla: 500000,
+      sublimite_equipos_electronicos: 500000,
+    }
+  )
+})
+
+test('franquiciasPorCoberturaParaBody fuerza los sublímites obligatorios para un usuario autorizado y conserva las demás selecciones', () => {
+  state.franquiciasPorCobertura = {
+    robo_valores_ventanilla: 'sin_deducible',
+    sublimite_equipos_electronicos: '10_800000',
+    responsabilidad_civil: '10_800000',
+  }
+
+  const resultado = franquiciasPorCoberturaParaBody({
+    codigosAplicables: [
+      'robo_valores_ventanilla',
+      'sublimite_equipos_electronicos',
+      'responsabilidad_civil',
+    ],
+    puedeSeleccionar: true,
+  })
+
+  assert.deepEqual(resultado, {
+    robo_valores_ventanilla: FRANQUICIA_MRC_OBLIGATORIA_MONTO,
+    sublimite_equipos_electronicos: FRANQUICIA_MRC_OBLIGATORIA_MONTO,
+    responsabilidad_civil: 800000,
+  })
+  assert.equal(state.franquiciasPorCobertura.robo_valores_ventanilla, '10_500000')
+  assert.equal(state.franquiciasPorCobertura.sublimite_equipos_electronicos, '10_500000')
+})
+
+test('puedeSeleccionarFranquicia solo habilita admin o el permiso explícito', () => {
+  assert.equal(puedeSeleccionarFranquicia({ rol: 'admin' }), true)
+  assert.equal(puedeSeleccionarFranquicia({ rol: 'comercial' }), false)
+  assert.equal(
+    puedeSeleccionarFranquicia({ rol: 'analisis-riesgo', puede_seleccionar_franquicia: true }),
+    true
+  )
 })
 
 test('ajustesParaBody prioriza monto sobre porcentaje y devuelve [] fuera de RAMOS_CON_AJUSTES', () => {

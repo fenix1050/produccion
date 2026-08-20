@@ -97,24 +97,13 @@ function renderLivePanelBody() {
   const unidad = unidadMoneda(moneda)
   const plan = state.planes.find((p) => p.id === state.planId)
 
-  // Capital total asegurado + tasa efectiva (costo/capital), pedido de Kevin 2026-08-07
-  // ampliando el ítem #7 del Ajuste MC.xlsx (2026-08-05, que lo había dejado solo en MRC) a
-  // Incendio y Vida/AP. MRC sigue usando capitalTotalAsegurado() (ya shippeado, suma también
-  // las coberturas adicionales que cuentan para la suma asegurada total) — Incendio/Vida-AP no
-  // devuelven ese desglose por cobertura, así que usan el mismo capital que ya se manda al
-  // backend en el body (capitalAseguradoParaBody).
-  // Numerador y unidad confirmados contra docs/insumos/Version 01 - Calculo Varios.xlsx (hoja
-  // MRC, fila "Tasa Global"): esa celda es `Costo total / Suma total × 1000` (‰, no %) — con
-  // Costo total = 3.847.000 y Suma total = 970.000.000 da 3,97, en la misma escala que cada
-  // tasa individual de la planilla (1‰, 2‰, 8‰...). El "Costo" (`fp.cuota_sin_iva||fp.premio_sin_iva`,
-  // ver renderLivePanelBody) todavía incluye RPF/cuotas — NO es este numerador: acá se usa la
-  // prima cruda del calculador (`state.preview.prima`), que es la misma que arma la planilla
-  // (suma de capital×tasa por cobertura, sublímites fijos incluidos vía coberturas_adicionales).
+  // The premium rate uses the selected payment method's total cost without VAT.
+  // It stays in per mille, matching `Costo total / Suma total × 1000`.
   const capitalTotal =
     state.ramoId === 'mrc' ? capitalTotalAsegurado() : capitalAseguradoParaBody(plan)
-  const primaBase = state.preview.prima
+  const costoSinIva = fp.premio_sin_iva
   const tasaEfectiva =
-    capitalTotal > 0 && Number.isFinite(primaBase) ? (primaBase / capitalTotal) * 1000 : null
+    capitalTotal > 0 && Number.isFinite(costoSinIva) ? (costoSinIva / capitalTotal) * 1000 : null
 
   return `
     ${renderLiveLabel()}
@@ -132,7 +121,7 @@ function renderLivePanelBody() {
       <div class="live-summary__row"><span>Cuotas</span><span>Inicial + ${fp.cantidad_cuotas} cuotas</span></div>
       <div class="live-summary__row"><span>Coberturas</span><span>${coberturasCount} incluidas</span></div>
       ${capitalTotal > 0 ? `<div class="live-summary__row"><span>Capital total asegurado</span><span>${fmtMonto(capitalTotal, moneda)} ${unidad}</span></div>` : ''}
-      ${tasaEfectiva != null ? `<div class="live-summary__row"><span>Tasa efectiva (costo/capital)</span><span>${tasaEfectiva.toLocaleString('es-PY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ‰</span></div>` : ''}
+      ${tasaEfectiva != null ? `<div class="live-summary__row"><span>Tasa premio (costo/capital)</span><span>${tasaEfectiva.toLocaleString('es-PY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ‰</span></div>` : ''}
     </div>
     <div class="live-summary__hint">El monto se recalcula automáticamente a medida que completás los datos.</div>
   `

@@ -1,4 +1,5 @@
 import { state } from './state.js'
+import { auth } from '../shared/api.js'
 import {
   CODIGOS_COBERTURA_EXCLUIDOS_BASE,
   OBJETOS_RIESGO_CAMPOS,
@@ -7,6 +8,7 @@ import {
 import {
   franquiciaValorPorDefecto,
   franquiciasPorCoberturaParaBody,
+  puedeSeleccionarFranquicia,
   sublimitesFijosMrc,
 } from './domain-rules.js'
 
@@ -55,6 +57,12 @@ export function prefillDatosDesdeCotizacion(ramoNombre, plan, cotizacion) {
     state.franquiciasPorCobertura = {}
     for (const [codigo, monto] of Object.entries(rd.franquicias_por_cobertura || {})) {
       state.franquiciasPorCobertura[codigo] = franquiciaValorPorDefecto(monto)
+    }
+    for (const cobertura of cotizacion.cotizacion_coberturas || []) {
+      const codigo = cobertura.coberturas_catalogo?.codigo
+      if (codigo) {
+        state.franquiciasPorCobertura[codigo] = franquiciaValorPorDefecto(cobertura.franquicia)
+      }
     }
   } else if (ramoNombre === 'incendio') {
     if (plan?.nombre === 'MAQUINARIA BASICO') {
@@ -109,8 +117,19 @@ export function idLinea() {
     : `linea-${Date.now()}-${Math.random().toString(36).slice(2)}`
 }
 
-function armarRiesgoDatosMrc(plan) {
+function armarRiesgoDatosMrc(_plan) {
   const d = state.data
+  const coberturasAdicionales = [
+    ...sublimitesFijosMrc().map((s) => ({ codigo: s.codigo, suma_asegurada: s.monto })),
+    ...state.coberturasAdicionales
+      .filter((l) => l.codigo && Number(l.sumaAsegurada) > 0)
+      .map((l) => ({ codigo: l.codigo, suma_asegurada: Number(l.sumaAsegurada) })),
+  ]
+  const codigosAplicables = [
+    'incendio_edificio',
+    'incendio_contenido',
+    ...coberturasAdicionales.map((cobertura) => cobertura.codigo),
+  ]
   return {
     cedula: d.cedula || '',
     direccion: d.direccion || '',
@@ -118,13 +137,11 @@ function armarRiesgoDatosMrc(plan) {
     ciudad: d.ciudad || '',
     capital_edificio: Number(d.capitalEdificio) || 0,
     capital_contenido: Number(d.capitalContenido) || 0,
-    coberturas_adicionales: [
-      ...sublimitesFijosMrc().map((s) => ({ codigo: s.codigo, suma_asegurada: s.monto })),
-      ...state.coberturasAdicionales
-        .filter((l) => l.codigo && Number(l.sumaAsegurada) > 0)
-        .map((l) => ({ codigo: l.codigo, suma_asegurada: Number(l.sumaAsegurada) })),
-    ],
-    franquicias_por_cobertura: franquiciasPorCoberturaParaBody(),
+    coberturas_adicionales: coberturasAdicionales,
+    franquicias_por_cobertura: franquiciasPorCoberturaParaBody({
+      codigosAplicables,
+      puedeSeleccionar: puedeSeleccionarFranquicia(auth.getUsuario()),
+    }),
   }
 }
 

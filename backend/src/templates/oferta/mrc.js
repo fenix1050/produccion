@@ -89,8 +89,12 @@ const TEXTO_COBERTURAS_PRINCIPALES = [
 ]
 
 const TEXTO_FRANQUICIAS_ESTANDAR = `Itapúa/Alto Paraná: 10% mín. Gs. 500.000 (Caída de Rayo)
-Robo contenido/tránsito/caja fuerte/RC: 10% mín. Gs. 500.000
-Equipos Electrónicos: 10% mín. Gs. 300.000`
+Robo contenido/tránsito/caja fuerte/RC: 10% mín. Gs. 500.000`
+
+const CODIGOS_FRANQUICIA_SUBLIMITES_OBLIGATORIA = new Set([
+  'robo_valores_ventanilla',
+  'sublimite_equipos_electronicos',
+])
 
 const TEXTO_EXCLUSIONES = `Modificación de materia prima / material combustible (panaderías, talleres, supermercados, imprentas, carpinterías, mueblerías, gomerías); se excluyen carteles.
 Joyas, metales preciosos, títulos, papeles, obras de arte.
@@ -137,6 +141,22 @@ export function buildMrcOfertaPages({ cotizacion, plan, planCoberturas }) {
     }
     return ordenPrioridad(codigoDe(a)) - ordenPrioridad(codigoDe(b))
   })
+
+  // "Robo valores ventanilla" es el sublímite de "Valores en caja fuerte". Se lo reubica
+  // únicamente cuando ambas líneas están cotizadas para conservar el orden vigente del resto.
+  const indiceCajaFuerte = coberturasCotizadas.findIndex(
+    (cobertura) => codigoDe(cobertura) === 'robo_caja_registradora'
+  )
+  const indiceValoresVentanilla = coberturasCotizadas.findIndex(
+    (cobertura) => codigoDe(cobertura) === 'robo_valores_ventanilla'
+  )
+  if (indiceCajaFuerte !== -1 && indiceValoresVentanilla !== -1) {
+    const [valoresVentanilla] = coberturasCotizadas.splice(indiceValoresVentanilla, 1)
+    const indiceCajaFuerteActualizado = coberturasCotizadas.findIndex(
+      (cobertura) => codigoDe(cobertura) === 'robo_caja_registradora'
+    )
+    coberturasCotizadas.splice(indiceCajaFuerteActualizado + 1, 0, valoresVentanilla)
+  }
 
   // Misma cuenta que "Suma Asegurada total" en el panel del cotizador (cotizar.js): suma solo
   // coberturas (nunca sub-límites, a pedido de Kevin, 2026-07-15), salvo las marcadas
@@ -229,7 +249,7 @@ de seguridad y adecuaciones que surjan de la misma.</strong>
     },
     {
       titulo: 'Franquicias',
-      contenido: `<div class="legal-block">${TEXTO_FRANQUICIAS_ESTANDAR.split('\n')
+      contenido: `<div class="legal-block">${textoFranquicias(coberturasCotizadas)
         .map((linea) => escapeHtml(linea))
         .join('\n')}</div>`,
     },
@@ -352,6 +372,14 @@ function renderFilaSumaAsegurada(cobertura) {
       <td>${escapeHtml(textoFranquicia(cobertura.franquicia))}</td>
     </tr>
   `
+}
+
+function textoFranquicias(coberturasCotizadas) {
+  const franquiciasSublimites = coberturasCotizadas
+    .filter((cobertura) => CODIGOS_FRANQUICIA_SUBLIMITES_OBLIGATORIA.has(codigoDe(cobertura)))
+    .map((cobertura) => `${cobertura.nombre_snapshot}: ${textoFranquicia(cobertura.franquicia)}`)
+
+  return [...TEXTO_FRANQUICIAS_ESTANDAR.split('\n'), ...franquiciasSublimites]
 }
 
 // El monto de franquicia persistido es siempre el "mínimo Gs." de la opción elegida en el

@@ -185,6 +185,12 @@ export function renderModalRol() {
               Puede agregar coberturas libremente (sin esto, solo checkboxes fijos)
             </label>
           </div>
+          <div class="admin-modal__field">
+            <label class="admin-modal__checkbox">
+              <input type="checkbox" name="puede_seleccionar_franquicia" ${m.puede_seleccionar_franquicia ? 'checked' : ''} />
+              Puede seleccionar franquicia en MRC
+            </label>
+          </div>
           <div class="admin-modal__actions">
             <button type="button" class="btn-outline" data-action="cerrar-modal-rol">Cancelar</button>
             <button type="submit" class="btn-primary" ${m.guardando ? 'disabled' : ''}>${m.guardando ? 'Guardando…' : 'Guardar'}</button>

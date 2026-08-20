@@ -69,6 +69,7 @@ function renderTablaRoles() {
       <td data-label="Edita descuento">${crearBadge(r.puede_editar_descuento_plan ? 'Sí' : 'No', r.puede_editar_descuento_plan ? 'success' : 'neutral')}</td>
       <td data-label="Ve descuento">${crearBadge(r.puede_ver_descuento_plan ? 'Sí' : 'No', r.puede_ver_descuento_plan ? 'success' : 'neutral')}</td>
       <td data-label="Coberturas libres">${crearBadge(r.puede_agregar_cobertura_libre ? 'Sí' : 'No', r.puede_agregar_cobertura_libre ? 'success' : 'neutral')}</td>
+      <td data-label="Selecciona franquicia">${crearBadge(r.puede_seleccionar_franquicia ? 'Sí' : 'No', r.puede_seleccionar_franquicia ? 'success' : 'neutral')}</td>
       <td data-label="Acciones">
         <div class="admin-table__actions">
           ${
@@ -101,6 +102,7 @@ function renderTablaRoles() {
             <th title="Edita descuento del plan">Edita descuento</th>
             <th title="Ve descuento del plan">Ve descuento</th>
             <th title="Agrega coberturas libremente">Coberturas libres</th>
+            <th title="Selecciona franquicia en MRC">Selecciona franquicia</th>
             <th>Acciones</th>
           </tr>
         </thead>

@@ -50,6 +50,6 @@ Chain strategy: pending
 ## Phase 4: Reproducibility and Verification
 
 - [x] 4.1a Unit 4 prerequisite: add `playwright.config.js`, pin `@playwright/test`, and add the `test:e2e:smoke` runner.
-- [ ] 4.1b Unit 5: add `e2e:install:chromium` / `e2e:install:chromium:ci` scripts and any remaining browser setup.
-- [ ] 4.2 Update `.github/workflows/ci.yml` to cache browsers, install CI Chromium, run smoke, and print runtime/path/port/trace diagnostics on failure.
-- [ ] 4.3 Run `npm test --prefix backend` and local Chromium smoke; confirm no external request, persisted data, session, or success artifact remains.
+- [x] 4.1b Unit 5: add `e2e:install:chromium` / `e2e:install:chromium:ci` scripts and any remaining browser setup.
+- [x] 4.2 Update `.github/workflows/ci.yml` to cache browsers, install CI Chromium, run smoke, and print runtime/path/port/trace diagnostics on failure.
+- [x] 4.3 Run `npm test --prefix backend` and local Chromium smoke; confirm no external request, persisted data, session, or success artifact remains.

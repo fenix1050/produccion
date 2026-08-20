@@ -255,6 +255,36 @@ html[data-theme='dark'] .topbar__user-chevron {
   color: var(--tajy-text-muted);
 }
 
+html[data-theme='dark'] .topbar__user-menu {
+  background: var(--tajy-elevated);
+  border-color: var(--tajy-border-strong);
+  box-shadow: var(--tajy-shadow-card);
+}
+
+html[data-theme='dark'] .topbar__user-menu-item {
+  color: var(--tajy-text-body);
+}
+
+html[data-theme='dark'] .topbar__user-menu-item .nav-item__badge {
+  color: var(--tajy-text-secondary);
+}
+
+html[data-theme='dark'] .topbar__user-menu-item:hover,
+html[data-theme='dark'] .topbar__user-menu-item:focus-visible {
+  background: var(--tajy-pink);
+  color: var(--tajy-red-a11y);
+}
+
+html[data-theme='dark'] .topbar__user-menu-item:hover .nav-item__badge,
+html[data-theme='dark'] .topbar__user-menu-item:focus-visible .nav-item__badge {
+  color: var(--tajy-red-a11y);
+}
+
+html[data-theme='dark'] .topbar__user-menu-item:focus-visible {
+  outline: 2px solid var(--tajy-red-a11y);
+  outline-offset: 2px;
+}
+
 /* .main-header (cabecera "Nueva cotización" / breadcrumb de cada vista) tenía
    background: #fff y .main-header__subtitle color: #000 hardcodeados —
    encontrado en verificación visual: quedaba texto blanco (--tajy-ink) sobre

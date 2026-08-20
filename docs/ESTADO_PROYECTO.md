@@ -2586,3 +2586,9 @@ El smoke levanta solo frontend/API loopback (`127.0.0.1:5100`/`:3100`), bloquea 
 **Verificación corregida.** `npm ci` con skip scoped PASS (23.117s); tests de support 12/12 PASS (14.476s); backend 251/251 PASS (4.725s); instalación de Chromium PASS (1.385s); instalación de Puppeteer PASS (1.678s); smoke 1/1 PASS (14.497s); Prettier dirigido a las 3 candidatas PASS (1.002s); lint PASS con 5 warnings existentes; migraciones 61 PASS (0.670s); y `git diff --check` PASS. Tras el smoke no quedaron listeners en `:3100`/`:5100` y `test-results/` fue eliminado por éxito.
 
 **Fuera de alcance.** No se modificó código de producto, tests, locks ni la semántica del smoke. `format:check` global sigue fallando sobre un baseline de 292 archivos; no se atribuye a esta unidad. No se declara estado de CI remoto.
+
+## 78. Frontend — admin profile menu stacking fix (2026-08-20)
+
+The shared admin profile dropdown rendered behind the main content, especially in dark mode. The dark-theme decoration assigned `position: relative; z-index: 1` to both topbar and main children, trapping the menu inside the breadcrumb stacking context; its own `z-index` could not escape that parent layer. `frontend/shared/cotizador.css` now elevates the topbar as a whole, while the valid dark-theme contrast adjustments remain in `frontend/shared/theme-dark.css`.
+
+**Verification:** 55/55 frontend tests passed, and real-browser visual checks confirmed that the open menu renders above the content in both dark and light themes.

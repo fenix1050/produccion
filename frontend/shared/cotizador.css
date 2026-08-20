@@ -294,6 +294,11 @@ button {
    breadcrumb + acciones opcionales a la derecha. Reemplazo directo del
    topbar anterior — el diseño previo queda recuperable solo por git history. */
 .topbar {
+  /* Keep dropdowns above the later app-body stacking contexts. Dark-theme
+     decoration gives topbar/main children their own z-index layers, so the
+     topbar must be elevated as a whole rather than only its nested menu. */
+  position: relative;
+  z-index: 30;
   flex-shrink: 0;
   background: #fff;
   color: var(--tajy-ink);

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.53](https://github.com/fenix1050/produccion/compare/v0.1.52...v0.1.53) (2026-08-20)
+
+
+### Bug Fixes
+
+* **ui:** keep admin profile menu above content ([#306](https://github.com/fenix1050/produccion/issues/306)) ([4cfc177](https://github.com/fenix1050/produccion/commit/4cfc177caec7bca34837a38be75acf41631a1f5c))
+
 ## [0.1.52](https://github.com/fenix1050/produccion/compare/v0.1.51...v0.1.52) (2026-08-17)
 
 

@@ -2695,3 +2695,58 @@ existente que cubre el default hardcodeado de Cristales en el renderer no editab
 **Estado remoto:** la migración `064_mrc_cristales_franquicia_default` fue aplicada correctamente
 en Supabase. Se verificó que el registro MRC `cristales` pasó de Gs. 1.200.000 a Gs. 500.000 para
 cotizaciones futuras, sin modificar snapshots históricos.
+
+## 85. MRC — franquicias predeterminadas por plan y cobertura (2026-08-21)
+
+La franquicia informativa de MRC para cotizaciones nuevas dejó de depender de un valor hardcodeado
+o del default general del catálogo. La fuente de verdad es ahora la asociación existente
+`plan_coberturas.franquicia`. La migración inicializó `incendio_edificio` e `incendio_contenido`
+en `NULL` (sin deducible) y las demás coberturas aplicables en Gs. 500.000. Desde el panel admin,
+cualquier cobertura MRC admite un importe positivo o puede configurarse sin deducible: ingresar `0`
+o dejar el campo vacío se normaliza y persiste como `NULL`. Otros ramos conservan su comportamiento
+nullable anterior.
+
+La migración `065_mrc_franquicias_500000_cotizaciones_nuevas.sql` crea las asociaciones faltantes
+para cada plan MRC sin marcarlas por defecto ni pisar `monto` o `incluida_por_defecto` existentes.
+Inicializa Edificio/Contenido en `NULL` y las demás coberturas aplicables en Gs. 500.000. No toca
+`cotizacion_coberturas` ni ninguna cotización histórica.
+
+El backend resuelve y valida la configuración por plan+cobertura antes del cálculo. Los usuarios sin
+`puede_seleccionar_franquicia` no pueden forjar otro valor; los usuarios autorizados parten del
+default configurado y pueden elegir opciones soportadas solo en las coberturas visibles. Daños por
+agua, granizo, Robo valores ventanilla y Equipos Electrónicos permanecen fuera de Detalles del plan
+para todos los roles y siempre usan el default configurado. El backend rechaza con 422 el código
+independiente forjado `equipos_electronicos`; solo admite el sublímite fijo
+`sublimite_equipos_electronicos`. Las franquicias siguen siendo informativas y no intervienen en
+prima, premio ni cuotas.
+
+Las ediciones preservan la franquicia ya snapshoteada para cada línea existente; solo las líneas
+nuevas toman la configuración vigente. La Carta Oferta imprime las franquicias desde
+`cotizacion_coberturas.franquicia`, por lo que regenerar un documento histórico no consulta defaults
+actuales.
+
+**Verificación focalizada:** autorización/configuración, preview, creación, edición y snapshots MRC,
+incluida la prueba unitaria y de servicio que rechaza `equipos_electronicos` forjado aun con permiso
+y default de plan; invariancia del calculador; admin backend/UI; body y Detalles del plan del
+cotizador; y Carta Oferta.
+También se verificó la numeración de migraciones. No se ejecutaron suites completas en esta pasada.
+
+**Alcance remoto (2026-08-21):** la migración 065 fue aplicada correctamente contra Supabase real. Se verificó su registro como `065_mrc_franquicias_500000_cotizaciones_nuevas` y la configuración resultante por plan: Edificio/Contenido permanecen con franquicia `NULL`, mientras que las demás coberturas MRC aplicables quedaron en Gs. 500.000 sin alterar su estado `incluida_por_defecto`.
+
+## 86. MRC — configuración administrable “Sin deducible” (2026-08-21)
+
+Se amplió el editor de franquicias por plan para que cualquier cobertura MRC pueda quedar sin
+deducible. En Admin, tanto el valor `0` como el campo vacío se convierten a `NULL` antes de persistir;
+los importes positivos siguen guardándose sin cambios y los negativos se rechazan. El backend repite
+la normalización para no depender de la validación del navegador.
+
+Un default `NULL` configurado es válido también para usuarios sin permiso de selección y se propaga a
+la cotización nueva como “Sin deducible”. La Carta Oferta usa el mismo texto leyendo el snapshot de
+`cotizacion_coberturas`, sin consultar la configuración vigente ni modificar cotizaciones históricas.
+Se preservaron las restricciones de selección manual, los defaults forzados de coberturas ocultas, el
+rechazo de códigos forjados y el bloqueo de `equipos_electronicos` independiente.
+
+**Verificación:** 278/278 pruebas backend y 68/68 frontend en verde; lint con 0 errores y las 4
+advertencias preexistentes de cookies; Prettier aprobado en los 11 archivos alcanzados y
+`git diff --check` sin errores. El `format:check` global continúa fuera de alcance por su deuda
+preexistente de formato en 302 archivos.

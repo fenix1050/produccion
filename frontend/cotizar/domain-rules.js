@@ -22,35 +22,14 @@ export function planEsCalculable(ramoNombre, plan) {
 }
 
 export function franquiciaValorPorDefecto(franquiciaDefaultMonto) {
-  if (!franquiciaDefaultMonto) return 'sin_deducible'
-  const match = FRANQUICIA_OPCIONES.find((o) => o.monto === franquiciaDefaultMonto)
-  return match ? match.valor : 'sin_deducible'
+  if (franquiciaDefaultMonto == null) return 'sin_deducible'
+  const monto = Number(franquiciaDefaultMonto)
+  const match = FRANQUICIA_OPCIONES.find((o) => o.monto === monto)
+  return match?.valor ?? (monto > 0 ? `10_${monto}` : 'sin_deducible')
 }
 
 export function puedeSeleccionarFranquicia(usuario) {
   return usuario?.rol === 'admin' || usuario?.puede_seleccionar_franquicia === true
-}
-
-export const FRANQUICIA_MRC_OBLIGATORIA_MONTO = 500000
-export const CODIGOS_FRANQUICIA_MRC_OBLIGATORIA = [
-  'robo_valores_ventanilla',
-  'sublimite_equipos_electronicos',
-]
-
-export function esFranquiciaMrcObligatoria(codigo) {
-  return CODIGOS_FRANQUICIA_MRC_OBLIGATORIA.includes(codigo)
-}
-
-// Mantiene el estado de UI alineado con la condición obligatoria antes de armar el body o
-// renderizar el selector. El backend repite esta normalización y sigue siendo la autoridad.
-export function sincronizarFranquiciasMrcObligatorias(codigosAplicables = []) {
-  for (const codigo of codigosAplicables) {
-    if (esFranquiciaMrcObligatoria(codigo)) {
-      state.franquiciasPorCobertura[codigo] = franquiciaValorPorDefecto(
-        FRANQUICIA_MRC_OBLIGATORIA_MONTO
-      )
-    }
-  }
 }
 
 // Traduce el mapa de selección en UI (codigo -> valor de FRANQUICIA_OPCIONES) al mapa
@@ -59,26 +38,19 @@ export function franquiciasPorCoberturaParaBody({
   codigosAplicables,
   puedeSeleccionar = true,
 } = {}) {
-  const codigosProtegidos = codigosAplicables ?? Object.keys(state.franquiciasPorCobertura)
-  sincronizarFranquiciasMrcObligatorias(codigosProtegidos)
-
-  if (!puedeSeleccionar) {
-    return Object.fromEntries(
-      codigosProtegidos
-        .filter((codigo) => esFranquiciaMrcObligatoria(codigo))
-        .map((codigo) => [codigo, FRANQUICIA_MRC_OBLIGATORIA_MONTO])
-    )
-  }
+  if (!puedeSeleccionar) return {}
 
   const resultado = {}
   for (const [codigo, valor] of Object.entries(state.franquiciasPorCobertura)) {
     if (codigosAplicables && !codigosAplicables.includes(codigo)) continue
     const opcion = FRANQUICIA_OPCIONES.find((o) => o.valor === valor)
-    resultado[codigo] = opcion ? opcion.monto : null
-  }
-  for (const codigo of codigosProtegidos) {
-    if (esFranquiciaMrcObligatoria(codigo)) {
-      resultado[codigo] = FRANQUICIA_MRC_OBLIGATORIA_MONTO
+    if (opcion) {
+      resultado[codigo] = opcion.monto
+      continue
+    }
+    const montoConfigurado = /^10_(\d+)$/.exec(valor)?.[1]
+    if (montoConfigurado && Number(montoConfigurado) > 0) {
+      resultado[codigo] = Number(montoConfigurado)
     }
   }
   return resultado

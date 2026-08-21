@@ -121,6 +121,15 @@ export const FRANQUICIA_OPCIONES = [
   },
 ]
 
+export const CODIGOS_FRANQUICIA_NULA_MRC = new Set(['incendio_edificio', 'incendio_contenido'])
+
+export const CODIGOS_MRC_OCULTOS_EN_DETALLE_PLAN = new Set([
+  'sublimite_danos_agua',
+  'sublimite_granizo',
+  'robo_valores_ventanilla',
+  'sublimite_equipos_electronicos',
+])
+
 // Ramos que hoy soportan descuento/recargo manual del agente en "Detalle del plan" — los
 // calculadores de mrc/incendio ya implementan sumarAjustes con tope plan.descuento_maximo /
 // plan.recargo_maximo (ver mrc.calculator.js / incendio.calculator.js). Vida/AP no tiene ese

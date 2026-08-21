@@ -6,6 +6,14 @@ import { renderCampoInline } from './campos-inline.js'
 // Render de la sección "Coberturas por plan" — extraído de admin.js (WU
 // admin-module-split, PR7).
 
+function esRamoMrcSeleccionado() {
+  return state.ramos.some(
+    (ramo) =>
+      String(ramo.id) === String(state.ramoCoberturasSeleccionado) &&
+      (ramo.nombre === 'mrc' || ramo.calculador === 'mrc')
+  )
+}
+
 export function renderCoberturas() {
   const opcionesRamo = state.ramos
     .map(
@@ -122,6 +130,7 @@ function renderTablaCoberturasPlan() {
 }
 
 function renderCamposMontoFranquicia(planCobertura, planId) {
+  const esMrc = esRamoMrcSeleccionado()
   return renderCampoInline({
     editando: state.coberturaEnEdicion.has(planCobertura.id),
     id: planCobertura.id,
@@ -143,7 +152,8 @@ function renderCamposMontoFranquicia(planCobertura, planId) {
         tipo: 'number',
         name: 'franquicia',
         step: '0.01',
-        placeholder: 'Franquicia',
+        min: esMrc ? '0' : undefined,
+        placeholder: esMrc ? '0 = Sin deducible' : 'Franquicia',
         value: planCobertura.franquicia,
       },
     ],
@@ -158,6 +168,7 @@ export function renderModalCobertura() {
       (c) => c.cobertura_id
     )
   )
+  const esMrc = esRamoMrcSeleccionado()
   const opcionesCobertura = catalogo
     .filter((c) => !yaAgregadas.has(c.id))
     .map(
@@ -191,8 +202,8 @@ export function renderModalCobertura() {
             <input class="field-input" id="admin-modal-cobertura-monto" type="number" step="0.01" name="monto" value="${escapeHtml(m.monto)}" />
           </div>
           <div class="admin-modal__field">
-            <label for="admin-modal-cobertura-franquicia">Franquicia (opcional)</label>
-            <input class="field-input" id="admin-modal-cobertura-franquicia" type="number" step="0.01" name="franquicia" value="${escapeHtml(m.franquicia)}" />
+            <label for="admin-modal-cobertura-franquicia">Franquicia${esMrc ? ' (0 = Sin deducible)' : ' (opcional)'}</label>
+            <input class="field-input" id="admin-modal-cobertura-franquicia" type="number" step="0.01" ${esMrc ? 'min="0"' : ''} name="franquicia" value="${escapeHtml(m.franquicia)}" />
           </div>
           <div class="admin-modal__actions">
             <button type="button" class="btn-outline" data-action="cerrar-modal-cobertura">Cancelar</button>

@@ -6,7 +6,6 @@ import { httpError } from '../utils/http-error.js'
 import { verificarPropiedad } from './cotizacion-authorization.service.js'
 import { validarYResolverContexto } from './cotizacion-context.service.js'
 import { construirVariantes } from './cotizacion-pricing.service.js'
-import { CODIGOS_FRANQUICIA_MRC_OBLIGATORIA } from './mrc-franquicia-authorization.service.js'
 
 /**
  * Calcula y persiste la cotización completa: cabecera, variantes y planes de pago
@@ -111,7 +110,7 @@ export async function actualizarCotizacion(id, body, usuario) {
     ramoId: ramo.id,
     variantesCalculadas,
     franquiciasHistoricas:
-      ramo.calculador === 'mrc' ? franquiciasHistoricasMrcObligatorias(existente) : undefined,
+      ramo.calculador === 'mrc' ? franquiciasHistoricasMrc(existente) : undefined,
   })
 
   // Un único RPC atómico (migración 052, `actualizar_cotizacion_atomica`) bloquea la cabecera
@@ -177,8 +176,8 @@ async function armarPayloadDetalle({
         texto_legal_snapshot: catalogoRow?.texto_legal ?? null,
         texto_exclusiones_snapshot: catalogoRow?.texto_exclusiones ?? null,
         monto: cobertura.monto,
-        // El calculador ya resuelve acá la franquicia elegida por el agente (o la default del
-        // catálogo si no eligió ninguna) — ver construirListaCoberturas en mrc.calculator.js.
+        // El calculador ya trae la franquicia resuelta desde plan_coberturas para esta cobertura;
+        // si había snapshot histórico, ese valor previo tiene precedencia durante la edición.
         franquicia: franquiciasHistoricas.has(cobertura.codigo)
           ? franquiciasHistoricas.get(cobertura.codigo)
           : (cobertura.franquicia_default ?? null),
@@ -231,10 +230,13 @@ async function armarPayloadDetalle({
   return { coberturas, variantes }
 }
 
-function franquiciasHistoricasMrcObligatorias(cotizacion) {
+// Una edición recalcula la cotización vigente, pero no debe reinterpretar la franquicia que quedó
+// snapshoteada para una cobertura ya existente. Las coberturas agregadas durante la edición usan
+// la regla vigente porque no tienen un snapshot anterior.
+function franquiciasHistoricasMrc(cotizacion) {
   return new Map(
     (cotizacion.cotizacion_coberturas ?? [])
       .map((cobertura) => [cobertura.coberturas_catalogo?.codigo, cobertura.franquicia])
-      .filter(([codigo]) => CODIGOS_FRANQUICIA_MRC_OBLIGATORIA.includes(codigo))
+      .filter(([codigo]) => codigo)
   )
 }

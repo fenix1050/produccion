@@ -216,6 +216,11 @@ describe('construirVariantes (vía calcularPreview) — enforcement del descuent
   const TASAS_MRC = [
     { coberturas_catalogo: { codigo: 'responsabilidad_civil' }, tasa_valor: 2, unidad: 'permil' },
   ]
+  const PLAN_COBERTURAS_MRC = [
+    { franquicia: null, coberturas_catalogo: { codigo: 'incendio_edificio' } },
+    { franquicia: null, coberturas_catalogo: { codigo: 'incendio_contenido' } },
+    { franquicia: 800_000, coberturas_catalogo: { codigo: 'responsabilidad_civil' } },
+  ]
 
   function mockearRepositoriosMrc(t) {
     // Ver nota grande al inicio del archivo: este es hoy el PRIMER `t.mock.module` de estos dos
@@ -252,7 +257,7 @@ describe('construirVariantes (vía calcularPreview) — enforcement del descuent
         findPlanById: async () => PLAN_MRC_DESCUENTO_FIJO,
         findRamoById: async () => RAMO_MRC,
         findFormasPagoDelPlan: async () => FORMAS_PAGO_CONTADO_MRC,
-        findCoberturasByPlanId: async () => [],
+        findCoberturasByPlanId: async () => PLAN_COBERTURAS_MRC,
       },
       coberturas: {
         findRubroPorNombre: async () => ({

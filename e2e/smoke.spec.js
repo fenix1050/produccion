@@ -98,7 +98,11 @@ test.describe.serial('Isolated MRC and Incendio smoke', () => {
     await expect(page.locator('#campo-capital-edificio')).toBeVisible()
     await fillMrc(page)
     const planCoberturas = await browserRequest(page, '/planes/101/coberturas')
-    expect(planCoberturas.json.map((row) => [row.coberturas_catalogo.codigo, row.monto])).toEqual([
+    expect(
+      planCoberturas.json
+        .filter((row) => row.coberturas_catalogo.categoria === 'Sublímites')
+        .map((row) => [row.coberturas_catalogo.codigo, row.monto])
+    ).toEqual([
       ['sublimite_danos_agua', 2500000],
       ['sublimite_equipos_electronicos', 5000000],
       ['sublimite_granizo', 5000000],

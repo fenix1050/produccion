@@ -25,7 +25,6 @@ const {
   franquiciaValorPorDefecto,
   franquiciasPorCoberturaParaBody,
   puedeSeleccionarFranquicia,
-  FRANQUICIA_MRC_OBLIGATORIA_MONTO,
   ajustesParaBody,
   sublimiteVentanillaCalculado,
   sublimitesFijosMrc,
@@ -356,23 +355,20 @@ test('sumaObjetoRiesgo suma los 4 campos declarados y trata no-numéricos como 0
   assert.equal(sumaObjetoRiesgo(), 3000)
 })
 
-test('franquiciaValorPorDefecto mapea el monto a la opción del catálogo o cae a sin_deducible', () => {
+test('franquiciaValorPorDefecto conserva montos positivos configurados aunque no sean opción estándar', () => {
   assert.equal(franquiciaValorPorDefecto(0), 'sin_deducible')
   assert.equal(franquiciaValorPorDefecto(null), 'sin_deducible')
   assert.equal(franquiciaValorPorDefecto(800000), '10_800000')
-  assert.equal(franquiciaValorPorDefecto(999999), 'sin_deducible')
+  assert.equal(franquiciaValorPorDefecto(999999), '10_999999')
 })
 
-// CARACTERIZACIÓN: un valor de franquicia no reconocido en FRANQUICIA_OPCIONES se traduce a
-// `null`, exactamente el mismo monto que 'sin_deducible' — el backend no puede distinguir
-// "sin deducible" de "valor de UI corrupto/desconocido".
-test('[CARACTERIZACIÓN] franquiciasPorCoberturaParaBody traduce un valor desconocido a null', () => {
+test('franquiciasPorCoberturaParaBody omite un valor de UI corrupto en vez de convertirlo a null', () => {
   state.franquiciasPorCobertura = { robo_contenido: '10_800000', cristales: 'valor-inexistente' }
   const resultado = franquiciasPorCoberturaParaBody()
-  assert.deepEqual(resultado, { robo_contenido: 800000, cristales: null })
+  assert.deepEqual(resultado, { robo_contenido: 800000 })
 })
 
-test('franquiciasPorCoberturaParaBody incluye solo los sublímites obligatorios sin permiso', () => {
+test('franquiciasPorCoberturaParaBody no hardcodea defaults para usuarios sin permiso', () => {
   state.franquiciasPorCobertura = {
     cristales: '10_1200000',
     responsabilidad_civil: '10_500000',
@@ -391,14 +387,11 @@ test('franquiciasPorCoberturaParaBody incluye solo los sublímites obligatorios 
       ],
       puedeSeleccionar: false,
     }),
-    {
-      robo_valores_ventanilla: 500000,
-      sublimite_equipos_electronicos: 500000,
-    }
+    {}
   )
 })
 
-test('franquiciasPorCoberturaParaBody fuerza los sublímites obligatorios para un usuario autorizado y conserva las demás selecciones', () => {
+test('franquiciasPorCoberturaParaBody conserva selecciones autorizadas inicializadas desde preview', () => {
   state.franquiciasPorCobertura = {
     robo_valores_ventanilla: 'sin_deducible',
     sublimite_equipos_electronicos: '10_800000',
@@ -415,12 +408,12 @@ test('franquiciasPorCoberturaParaBody fuerza los sublímites obligatorios para u
   })
 
   assert.deepEqual(resultado, {
-    robo_valores_ventanilla: FRANQUICIA_MRC_OBLIGATORIA_MONTO,
-    sublimite_equipos_electronicos: FRANQUICIA_MRC_OBLIGATORIA_MONTO,
+    robo_valores_ventanilla: null,
+    sublimite_equipos_electronicos: 800000,
     responsabilidad_civil: 800000,
   })
-  assert.equal(state.franquiciasPorCobertura.robo_valores_ventanilla, '10_500000')
-  assert.equal(state.franquiciasPorCobertura.sublimite_equipos_electronicos, '10_500000')
+  assert.equal(state.franquiciasPorCobertura.robo_valores_ventanilla, 'sin_deducible')
+  assert.equal(state.franquiciasPorCobertura.sublimite_equipos_electronicos, '10_800000')
 })
 
 test('puedeSeleccionarFranquicia solo habilita admin o el permiso explícito', () => {

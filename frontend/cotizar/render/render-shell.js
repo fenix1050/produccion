@@ -233,7 +233,7 @@ export function renderApp() {
 // (.progreso-carta-modal) porque cotizar/index.html no importa admin.css.
 // ---------------------------------------------------------------------------
 
-function renderModalProgresoCarta() {
+export function renderModalProgresoCarta() {
   const p = state.progresoCarta
   if (!p) return ''
 
@@ -302,7 +302,9 @@ function renderModalProgresoCarta() {
         <ol class="progreso-steps" aria-live="polite">
           ${stepsHtml}
         </ol>
-        ${resultadoHtml}
+        <div class="progreso-terminal-slot">
+          <div class="progreso-terminal-slot__content">${resultadoHtml}</div>
+        </div>
       </div>
     </div>
   `

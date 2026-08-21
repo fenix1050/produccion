@@ -2858,6 +2858,12 @@ button {
   border: 1px solid var(--tajy-red-soft);
 }
 
+.progreso-terminal-slot {
+  /* Keep the centered dialog's geometry independent of the terminal state. */
+  block-size: 147.75px;
+  overflow-y: auto;
+}
+
 @keyframes progreso-modal-in {
   from {
     opacity: 0;

@@ -2751,6 +2751,22 @@ advertencias preexistentes de cookies; Prettier aprobado en los 11 archivos alca
 `git diff --check` sin errores. El `format:check` global continúa fuera de alcance por su deuda
 preexistente de formato en 302 archivos.
 
+## 87. Vercel findings — progress modal stability and dark admin contrast (2026-08-21)
+
+The Carta Oferta progress modal now renders a permanent 147.75px terminal-state slot with
+scrollable overflow. The 18px increase addresses the measured success/error action-row deficit
+while retaining the fixed terminal-state region that isolates title geometry from terminal content.
+The active, success, and error controls, focus flow, and accessibility roles remain unchanged.
+
+Dark-theme Admin primary buttons use `--tajy-red-active` with white text; that declared color pair
+calculates to 4.555:1. Separately, the dark Carta Oferta modal CTA uses that same pair through its
+own scoped selector. The Admin rule does not apply to that CTA because it is not rendered inside
+Admin, so this is not a global primary-button claim.
+
+Focused frontend tests cover the progress modal's stable structure and all three states. Verification
+did not include browser layout, timing, or CLS measurement: unit tests can prove the reserved
+structure and selector scope, not runtime rendering.
+
 ## 88. Frontend — recuperación de sesión ante rechazo CSRF exacto (2026-08-21)
 
 `frontend/shared/api.js` ahora reconoce únicamente el HTTP 403 cuyo payload contiene

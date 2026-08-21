@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.57](https://github.com/fenix1050/produccion/compare/v0.1.56...v0.1.57) (2026-08-21)
+
+
+### Bug Fixes
+
+* **mrc:** configure deductible defaults and plan details ([#328](https://github.com/fenix1050/produccion/issues/328)) ([ad5c314](https://github.com/fenix1050/produccion/commit/ad5c3142c96f0398f80c63c2dadc7f4afdf23d2d))
+* **mrc:** coordinate configurable deductible defaults ([#320](https://github.com/fenix1050/produccion/issues/320)) ([1b932fc](https://github.com/fenix1050/produccion/commit/1b932fc71b9f032f3cf95a0b2f0182a400fec0e8))
+
 ## [0.1.56](https://github.com/fenix1050/produccion/compare/v0.1.55...v0.1.56) (2026-08-20)
 
 

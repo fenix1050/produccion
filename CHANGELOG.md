@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.59](https://github.com/fenix1050/produccion/compare/v0.1.58...v0.1.59) (2026-08-21)
+
+
+### Bug Fixes
+
+* **admin:** prevent roles table overflow ([#335](https://github.com/fenix1050/produccion/issues/335)) ([9093deb](https://github.com/fenix1050/produccion/commit/9093debb8c564a76c27dbb7f5f407853aa6184d3))
+* **auth:** redirect to login after csrf rejection ([#334](https://github.com/fenix1050/produccion/issues/334)) ([d6b1a9e](https://github.com/fenix1050/produccion/commit/d6b1a9edb20ebaeb184be4f057b926fe9bac74c3))
+
 ## [0.1.58](https://github.com/fenix1050/produccion/compare/v0.1.57...v0.1.58) (2026-08-21)
 
 

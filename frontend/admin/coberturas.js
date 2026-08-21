@@ -9,6 +9,24 @@ import { cargarCatalogoDeRamo } from './catalogo-ramo.js'
 // Coberturas por plan: carga y acciones
 // ---------------------------------------------------------------------------
 
+function esRamoMrcSeleccionado() {
+  return state.ramos.some(
+    (ramo) =>
+      String(ramo.id) === String(state.ramoCoberturasSeleccionado) &&
+      (ramo.nombre === 'mrc' || ramo.calculador === 'mrc')
+  )
+}
+
+function canonicalizarFranquiciaAdmin(franquicia) {
+  if (!esRamoMrcSeleccionado()) return franquicia
+  return franquicia == null || franquicia === 0 ? null : franquicia
+}
+
+function franquiciaMrcValida(franquicia) {
+  if (!esRamoMrcSeleccionado()) return true
+  return franquicia == null || (Number.isFinite(franquicia) && franquicia > 0)
+}
+
 export async function seleccionarRamoCoberturas(ramoId) {
   // Mismo criterio que ramoTasasSeleccionado: guardar el string crudo del <select>,
   // castear con Number() recién al armar el payload que va al backend.
@@ -91,7 +109,13 @@ export async function guardarMontoFranquicia(planCoberturaId, planId, form) {
   const montoValor = form.monto.value
   const franquiciaValor = form.franquicia.value
   const monto = montoValor === '' ? null : Number(montoValor)
-  const franquicia = franquiciaValor === '' ? null : Number(franquiciaValor)
+  const franquicia = canonicalizarFranquiciaAdmin(
+    franquiciaValor === '' ? null : Number(franquiciaValor)
+  )
+  if (!franquiciaMrcValida(franquicia)) {
+    mostrarBanner('error', 'La franquicia MRC no puede ser negativa.')
+    return
+  }
 
   try {
     const fila = await api.put(`/admin/plan-coberturas/${planCoberturaId}`, { monto, franquicia })
@@ -153,6 +177,15 @@ export async function guardarModalCobertura(form) {
     return
   }
 
+  const franquicia = canonicalizarFranquiciaAdmin(
+    franquiciaValor === '' ? null : Number(franquiciaValor)
+  )
+  if (!franquiciaMrcValida(franquicia)) {
+    state.modalCobertura.error = 'La franquicia MRC no puede ser negativa.'
+    renderApp()
+    return
+  }
+
   state.modalCobertura.error = ''
   state.modalCobertura.guardando = true
   renderApp()
@@ -162,7 +195,7 @@ export async function guardarModalCobertura(form) {
       cobertura_id,
       incluida_por_defecto,
       monto: montoValor === '' ? null : Number(montoValor),
-      franquicia: franquiciaValor === '' ? null : Number(franquiciaValor),
+      franquicia,
     })
     cerrarModalCobertura()
     mostrarBanner('success', 'Cobertura agregada al plan.')

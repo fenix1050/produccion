@@ -93,6 +93,7 @@ function mockearRepositorios(
       { codigo: 'incendio_edificio', nombre: 'Incendio de Edificio', franquicia_default: null },
     ],
     tasasRamo = [],
+    planCoberturas = [],
   } = {}
 ) {
   // Cambio SDD `cotizacion-transaccional` (PR2, Phase 2 RED): `insertCotizacion` /
@@ -136,7 +137,7 @@ function mockearRepositorios(
       findPlanById: async () => plan,
       findRamoById: async () => ramo,
       findFormasPagoDelPlan: async () => formasPago,
-      findCoberturasByPlanId: async () => [],
+      findCoberturasByPlanId: async () => planCoberturas,
     },
     coberturas: {
       findRubroPorNombre: async () => rubro,
@@ -218,6 +219,13 @@ const TASAS_MRC = [
     unidad: 'permil',
   },
 ]
+const PLAN_COBERTURAS_MRC = [
+  ['incendio_edificio', null],
+  ['incendio_contenido', null],
+  ['responsabilidad_civil', 800_000],
+  ['robo_valores_ventanilla', 500_000],
+  ['sublimite_equipos_electronicos', 800_000],
+].map(([codigo, franquicia]) => ({ franquicia, coberturas_catalogo: { codigo } }))
 const FORMAS_PAGO_MRC = [
   { forma_pago_id: 1, tasa_rpf: 0, formas_pago: { codigo: 'contado', nombre_display: 'Contado' } },
 ]
@@ -241,6 +249,9 @@ function bodyMrcConFranquiciasForjadas() {
         { codigo: 'sublimite_equipos_electronicos', suma_asegurada: 5_000_000 },
       ],
       franquicias_por_cobertura: {
+        incendio_edificio: null,
+        incendio_contenido: 1_200_000,
+        responsabilidad_civil: 1_500_000,
         robo_valores_ventanilla: null,
         sublimite_equipos_electronicos: 800000,
       },
@@ -256,19 +267,14 @@ function opcionesMrcPersistencia(insertados = {}) {
     catalogoRamo: CATALOGO_MRC,
     tasasRamo: TASAS_MRC,
     formasPago: FORMAS_PAGO_MRC,
+    planCoberturas: PLAN_COBERTURAS_MRC,
     insertados,
   }
 }
 
-function franquiciasProtegidas(payload) {
+function franquiciasPorNombre(payload) {
   return Object.fromEntries(
-    payload.p_coberturas
-      .filter((cobertura) =>
-        ['Robo valores ventanilla', 'Daños a los Equipos Electrónicos'].includes(
-          cobertura.nombre_snapshot
-        )
-      )
-      .map((cobertura) => [cobertura.nombre_snapshot, cobertura.franquicia])
+    payload.p_coberturas.map((cobertura) => [cobertura.nombre_snapshot, cobertura.franquicia])
   )
 }
 
@@ -319,26 +325,117 @@ test('crearCotizacion en la misma moneda del umbral no invoca tipo de cambio ni 
   assert.equal(payload.p_cotizacion.tipo_cambio_fecha, undefined)
 })
 
-test('crearCotizacion persiste Gs. 500.000 para los dos sublímites obligatorios aunque admin envíe null u otro mínimo', async (t) => {
+test('calcularPreview resuelve defaults por plan+cobertura ante un body forjado sin permiso', async (t) => {
+  invalidarCacheCatalogos()
+  mockearRepositorios(t, opcionesMrcPersistencia())
+  const { calcularPreview } = await import('./cotizacion.service.js?case=preview-franquicias-mrc')
+
+  const resultado = await calcularPreview(bodyMrcConFranquiciasForjadas(), USUARIO)
+
+  assert.deepEqual(
+    Object.fromEntries(
+      resultado.coberturas.map((cobertura) => [cobertura.codigo, cobertura.franquicia_default])
+    ),
+    {
+      incendio_edificio: null,
+      incendio_contenido: null,
+      responsabilidad_civil: 800_000,
+      robo_valores_ventanilla: 500_000,
+      sublimite_equipos_electronicos: 800_000,
+    }
+  )
+})
+
+test('calcularPreview rechaza equipos_electronicos forjado aunque el plan tenga default y el rol esté autorizado', async (t) => {
+  invalidarCacheCatalogos()
+  const opciones = opcionesMrcPersistencia()
+  opciones.catalogoRamo = [
+    ...opciones.catalogoRamo,
+    {
+      codigo: 'equipos_electronicos',
+      nombre: 'Equipos Electrónicos',
+      franquicia_default: 500_000,
+    },
+  ]
+  opciones.tasasRamo = [
+    ...opciones.tasasRamo,
+    {
+      coberturas_catalogo: { codigo: 'equipos_electronicos' },
+      tasa_valor: 4,
+      unidad: 'permil',
+    },
+  ]
+  opciones.planCoberturas = [
+    ...opciones.planCoberturas,
+    {
+      franquicia: 500_000,
+      coberturas_catalogo: { codigo: 'equipos_electronicos' },
+    },
+  ]
+  mockearRepositorios(t, opciones)
+  const { calcularPreview } =
+    await import('./cotizacion.service.js?case=preview-equipos-electronicos-forjado')
+  const body = bodyMrcConFranquiciasForjadas()
+  body.riesgo_datos.coberturas_adicionales.push({
+    codigo: 'equipos_electronicos',
+    suma_asegurada: 2_000_000,
+  })
+  body.riesgo_datos.franquicias_por_cobertura.equipos_electronicos = 1_500_000
+
+  await assert.rejects(calcularPreview(body, USUARIO_ADMIN), (error) => {
+    assert.equal(error.status, 422)
+    assert.match(error.publicMessage, /equipos electrónicos.*no puede solicitarse/i)
+    return true
+  })
+})
+
+test('crearCotizacion conserva selecciones visibles y fuerza defaults en coberturas ocultas', async (t) => {
   invalidarCacheCatalogos()
   const { cotizacionesCreadas } = mockearRepositorios(t, opcionesMrcPersistencia())
   const { crearCotizacion } =
-    await import('./cotizacion-persistence.service.js?case=crear-franquicias-obligatorias-mrc')
+    await import('./cotizacion-persistence.service.js?case=crear-franquicias-autorizadas-mrc')
 
   await crearCotizacion(bodyMrcConFranquiciasForjadas(), USUARIO_ADMIN)
 
   const payload = cotizacionesCreadas[0]
-  assert.equal(
-    payload.p_cotizacion.riesgo_datos.franquicias_por_cobertura.robo_valores_ventanilla,
-    500000
-  )
-  assert.equal(
-    payload.p_cotizacion.riesgo_datos.franquicias_por_cobertura.sublimite_equipos_electronicos,
-    500000
-  )
-  assert.deepEqual(franquiciasProtegidas(payload), {
-    'Robo valores ventanilla': 500000,
-    'Daños a los Equipos Electrónicos': 500000,
+  assert.deepEqual(payload.p_cotizacion.riesgo_datos.franquicias_por_cobertura, {
+    incendio_edificio: null,
+    incendio_contenido: 1_200_000,
+    responsabilidad_civil: 1_500_000,
+    robo_valores_ventanilla: 500_000,
+    sublimite_equipos_electronicos: 800_000,
+  })
+  assert.deepEqual(franquiciasPorNombre(payload), {
+    'Incendio Edificio': null,
+    'Incendio Contenido': 1_200_000,
+    'Responsabilidad Civil': 1_500_000,
+    'Robo valores ventanilla': 500_000,
+    'Daños a los Equipos Electrónicos': 800_000,
+  })
+})
+
+test('crearCotizacion persiste defaults plan+cobertura ante un body forjado sin permiso', async (t) => {
+  invalidarCacheCatalogos()
+  const { cotizacionesCreadas } = mockearRepositorios(t, opcionesMrcPersistencia())
+  const { crearCotizacion } =
+    await import('./cotizacion-persistence.service.js?case=crear-franquicias-restringidas-mrc')
+
+  await crearCotizacion(bodyMrcConFranquiciasForjadas(), USUARIO)
+
+  const payload = cotizacionesCreadas[0]
+  assert.deepEqual(payload.p_cotizacion.riesgo_datos.franquicias_por_cobertura, {
+    incendio_edificio: null,
+    incendio_contenido: null,
+    responsabilidad_civil: 800_000,
+    robo_valores_ventanilla: 500_000,
+    sublimite_equipos_electronicos: 800_000,
+  })
+  assert.deepEqual(franquiciasPorNombre(payload), {
+    'Incendio Edificio': null,
+    'Incendio Contenido': null,
+    'Responsabilidad Civil': 800_000,
+    'Robo valores ventanilla': 500_000,
+    'Daños a los Equipos Electrónicos': 800_000,
   })
 })
 
@@ -564,13 +661,25 @@ test('actualizarCotizacion con nueva moneda:USD persiste moneda + snapshot vía 
   assert.equal(payload.p_cotizacion.tipo_cambio_snapshot, 7300.75)
 })
 
-test('actualizarCotizacion preserves historical mandatory sublimit franchise snapshots', async (t) => {
+test('actualizarCotizacion normaliza un body forjado sin reescribir franquicias históricas de MRC', async (t) => {
   invalidarCacheCatalogos()
   const existente = {
     ramo_id: RAMO_MRC.id,
-    agente_id: USUARIO_ADMIN.id,
+    agente_id: USUARIO.id,
     created_at: new Date().toISOString(),
     cotizacion_coberturas: [
+      {
+        franquicia: null,
+        coberturas_catalogo: { codigo: 'incendio_edificio' },
+      },
+      {
+        franquicia: 1_200_000,
+        coberturas_catalogo: { codigo: 'incendio_contenido' },
+      },
+      {
+        franquicia: 800_000,
+        coberturas_catalogo: { codigo: 'responsabilidad_civil' },
+      },
       {
         franquicia: null,
         coberturas_catalogo: { codigo: 'robo_valores_ventanilla' },
@@ -585,18 +694,20 @@ test('actualizarCotizacion preserves historical mandatory sublimit franchise sna
   const { actualizarCotizacion } =
     await import('./cotizacion-persistence.service.js?case=editar-franquicias-obligatorias-mrc')
 
-  await actualizarCotizacion(123, bodyMrcConFranquiciasForjadas(), USUARIO_ADMIN)
+  await actualizarCotizacion(123, bodyMrcConFranquiciasForjadas(), USUARIO)
 
   const payload = cotizacionesActualizadas[0]
-  assert.equal(
-    payload.p_cotizacion.riesgo_datos.franquicias_por_cobertura.robo_valores_ventanilla,
-    500000
-  )
-  assert.equal(
-    payload.p_cotizacion.riesgo_datos.franquicias_por_cobertura.sublimite_equipos_electronicos,
-    500000
-  )
-  assert.deepEqual(franquiciasProtegidas(payload), {
+  assert.deepEqual(payload.p_cotizacion.riesgo_datos.franquicias_por_cobertura, {
+    incendio_edificio: null,
+    incendio_contenido: null,
+    responsabilidad_civil: 800_000,
+    robo_valores_ventanilla: 500_000,
+    sublimite_equipos_electronicos: 800_000,
+  })
+  assert.deepEqual(franquiciasPorNombre(payload), {
+    'Incendio Edificio': null,
+    'Incendio Contenido': 1_200_000,
+    'Responsabilidad Civil': 800_000,
     'Robo valores ventanilla': null,
     'Daños a los Equipos Electrónicos': 800000,
   })

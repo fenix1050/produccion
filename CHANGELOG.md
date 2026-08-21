@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.58](https://github.com/fenix1050/produccion/compare/v0.1.57...v0.1.58) (2026-08-21)
+
+
+### Bug Fixes
+
+* **admin:** shorten franchise permission label ([#331](https://github.com/fenix1050/produccion/issues/331)) ([a065421](https://github.com/fenix1050/produccion/commit/a06542194732d93c8ea0607c110793b3c12059c1))
+
 ## [0.1.57](https://github.com/fenix1050/produccion/compare/v0.1.56...v0.1.57) (2026-08-21)
 
 

@@ -24,14 +24,14 @@ function planPayment(id, planId, formaPagoId, tasaRpf) {
   return { id, plan_id: planId, forma_pago_id: formaPagoId, tasa_rpf: tasaRpf }
 }
 
-function planCoverage(id, cobertura, monto) {
+function planCoverage(id, cobertura, monto, franquicia = null, incluidaPorDefecto = true) {
   return {
     id,
     plan_id: 101,
     cobertura_id: cobertura.id,
-    incluida_por_defecto: true,
+    incluida_por_defecto: incluidaPorDefecto,
     monto,
-    franquicia: null,
+    franquicia,
     coberturas_catalogo: {
       codigo: cobertura.codigo,
       nombre: cobertura.nombre,
@@ -227,6 +227,9 @@ export const FIXTURES = freezeFixture({
   coberturasCatalogo: { 10: MRC_COVERAGES, 20: INCENDIO_COVERAGES },
   planCoberturas: {
     101: [
+      planCoverage(1098, MRC_COVERAGES[0], null),
+      planCoverage(1099, MRC_COVERAGES[1], null),
+      planCoverage(1100, MRC_COVERAGES[2], null, 500000, false),
       planCoverage(1101, MRC_COVERAGES[3], 2500000),
       planCoverage(1102, MRC_COVERAGES[4], 5000000),
       planCoverage(1103, MRC_COVERAGES[5], 5000000),

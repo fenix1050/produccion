@@ -711,6 +711,18 @@ html[data-theme='dark'] .admin-modal {
   box-shadow: var(--tajy-shadow-card);
 }
 
+html[data-theme='dark'] .admin-content .btn-primary,
+html[data-theme='dark'] .admin-modal .btn-primary {
+  background: var(--tajy-red-active);
+  color: #fff;
+}
+
+/* The Carta Oferta modal is rendered outside Admin and uses its own CTA class. */
+html[data-theme='dark'] .progreso-carta-modal .resumen-sistema__cta {
+  background: var(--tajy-red-active);
+  color: #fff;
+}
+
 /* Dentro de ese modal, .historial-detalle__resumen usa un gradient que termina en
    #fff, y .historial-detalle__variante / .historial-detalle__pago tienen
    background: #fff hardcodeado directo — las 3 quedaban como bloques blancos sobre

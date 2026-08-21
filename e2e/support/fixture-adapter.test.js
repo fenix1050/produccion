@@ -53,7 +53,7 @@ test('createFixtureAdapter() resolves the composite catalog, rates, payments, an
   sublimits[0].monto = 0
   assert.deepEqual(
     (await adapter.ramos.findCoberturasByPlanId(101)).map((row) => row.monto),
-    [2500000, 5000000, 5000000]
+    [null, null, null, 2500000, 5000000, 5000000]
   )
   assert.equal(adapter.planCoberturaReads.length, 2)
 })

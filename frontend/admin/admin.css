@@ -67,6 +67,7 @@
    viewports angostos, sin scrollbar visible ni forma de ver las columnas perdidas. */
 .admin-table-scroll {
   overflow-x: auto;
+  container-type: inline-size;
 }
 
 .admin-table {
@@ -220,6 +221,108 @@
 .admin-table--roles th:not(:first-child):not(:last-child),
 .admin-table--roles td:not(:first-child):not(:last-child) {
   text-align: center;
+}
+
+/* Roles concentra muchos permisos de contenido corto. En un panel ancho se distribuyen
+   equitativamente, dejando que los encabezados se partan en dos líneas en vez de forzar
+   scroll horizontal. Rol y Acciones conservan el espacio que necesitan. */
+.admin-table--roles {
+  table-layout: fixed;
+}
+
+.admin-table--roles th {
+  padding: 10px 6px;
+  line-height: 1.2;
+  white-space: normal;
+}
+
+.admin-table--roles th:first-child {
+  width: 115px;
+}
+
+.admin-table--roles th:last-child {
+  width: 105px;
+}
+
+/* El sidebar puede reducir el panel aun con un viewport de escritorio. Por eso el
+   cambio a tarjetas depende del ancho disponible del contenedor, no del viewport. */
+@container (max-width: 1050px) {
+  .admin-table--roles {
+    min-width: 0;
+  }
+
+  .admin-table--roles thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .admin-table--roles,
+  .admin-table--roles tbody,
+  .admin-table--roles tr {
+    display: block;
+    width: 100%;
+  }
+
+  .admin-table--roles tr {
+    box-sizing: border-box;
+    margin-bottom: 12px;
+    padding: 4px 14px;
+    border: 1px solid var(--tajy-border-light);
+    border-radius: var(--tajy-radius-md, 8px);
+  }
+
+  .admin-table--roles tr:last-child {
+    margin-bottom: 0;
+  }
+
+  .admin-table--roles td,
+  .admin-table--roles td:not(:first-child):not(:last-child) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--tajy-border-light);
+    text-align: right;
+  }
+
+  .admin-table--roles td:last-child {
+    border-bottom: none;
+  }
+
+  .admin-table--roles td::before {
+    content: attr(data-label);
+    flex-shrink: 0;
+    color: var(--tajy-text-muted);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-align: left;
+    text-transform: uppercase;
+  }
+
+  .admin-table--roles td:first-child {
+    justify-content: flex-start;
+    padding: 16px 0;
+    color: var(--tajy-pink);
+    font-size: 16px;
+  }
+
+  .admin-table--roles td:first-child::before,
+  .admin-table--roles td:last-child::before {
+    content: none;
+  }
+
+  .admin-table--roles .admin-table__actions {
+    justify-content: flex-end;
+  }
 }
 
 .admin-pill {

@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mockup — Tabla de roles sin scroll</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --surface: #111217;
+        --line: #2a3140;
+        --muted: #aab1bd;
+        --text: #f2f4f7;
+        --accent: #ff2d46;
+        --yes-bg: #092d22;
+        --yes: #35d58b;
+        --no-bg: #1b293c;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        padding: 28px;
+        background: #090a0e;
+        color: var(--text);
+        font:
+          14px/1.35 Inter,
+          Arial,
+          sans-serif;
+      }
+      .frame {
+        overflow: hidden;
+        max-width: 1450px;
+        margin: auto;
+        border: 1px solid #8e1726;
+        border-radius: 24px;
+        background: var(--surface);
+      }
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+        padding: 20px 28px;
+        border-bottom: 1px solid var(--line);
+      }
+      h1 {
+        margin: 0;
+        color: var(--accent);
+        font-size: 18px;
+      }
+      button {
+        border: 0;
+        border-radius: 12px;
+        padding: 11px 18px;
+        background: var(--accent);
+        color: white;
+        font-weight: 800;
+      }
+      .table {
+        container-type: inline-size;
+        padding: 24px 28px;
+      }
+      .role-grid {
+        display: grid;
+        grid-template-columns: 115px repeat(8, minmax(0, 1fr)) 105px;
+        align-items: center;
+      }
+      .role-grid > div {
+        min-width: 0;
+      }
+      .head {
+        min-height: 54px;
+        padding: 9px 6px;
+        border-bottom: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.02em;
+        line-height: 1.2;
+        text-align: center;
+        text-transform: uppercase;
+      }
+      .head:first-child,
+      .head:last-child {
+        text-align: left;
+      }
+      .cell {
+        min-height: 88px;
+        padding: 10px 6px;
+        border-bottom: 1px solid var(--line);
+        text-align: center;
+      }
+      .cell:first-child,
+      .cell:last-child {
+        text-align: left;
+      }
+      .name {
+        padding-left: 10px;
+        font-weight: 700;
+        text-transform: capitalize;
+      }
+      .pill {
+        display: inline-block;
+        padding: 6px 11px;
+        border-radius: 999px;
+        font-weight: 800;
+      }
+      .yes {
+        background: var(--yes-bg);
+        color: var(--yes);
+      }
+      .no {
+        background: var(--no-bg);
+        color: #c7d0dc;
+      }
+      .actions {
+        display: grid;
+        gap: 6px;
+        justify-content: start;
+      }
+      .action {
+        display: inline-block;
+        width: fit-content;
+        border: 1px solid var(--accent);
+        border-radius: 9px;
+        padding: 7px 11px;
+        color: var(--accent);
+        font-weight: 700;
+      }
+      .caption {
+        margin: 0;
+        padding: 0 28px 24px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      @container (max-width: 1050px) {
+        .role-grid {
+          display: block;
+          border: 1px solid var(--line);
+          border-radius: 12px;
+          padding: 0 14px;
+        }
+        .head {
+          display: none;
+        }
+        .cell {
+          display: flex;
+          min-height: auto;
+          align-items: center;
+          justify-content: space-between;
+          gap: 14px;
+          padding: 11px 0;
+          text-align: right;
+        }
+        .cell::before {
+          content: attr(data-label);
+          color: var(--muted);
+          font-size: 11px;
+          font-weight: 800;
+          text-align: left;
+          text-transform: uppercase;
+        }
+        .cell.name {
+          justify-content: flex-start;
+          padding: 16px 0;
+          color: var(--accent);
+          font-size: 16px;
+        }
+        .cell.name:not(:first-of-type) {
+          margin-top: 12px;
+          border-top: 1px solid var(--line);
+        }
+        .head + .cell.name {
+          margin-top: 0;
+          border-top: 0;
+        }
+        .cell.name::before,
+        .cell:last-child::before {
+          content: none;
+        }
+        .actions {
+          display: flex;
+          flex-wrap: wrap;
+          justify-content: flex-end;
+        }
+      }
+      @media (max-width: 600px) {
+        body {
+          padding: 14px;
+        }
+        header,
+        .table {
+          padding: 16px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="frame">
+      <header>
+        <h1>Roles</h1>
+        <button>+ Crear rol</button>
+      </header>
+      <section class="table" aria-label="Ejemplo de tabla de roles">
+        <div class="role-grid">
+          <div class="head">Rol</div>
+          <div class="head">Gestiona<br />usuarios</div>
+          <div class="head">Edita<br />coberturas</div>
+          <div class="head">Edita<br />tasas</div>
+          <div class="head">Edita<br />planes</div>
+          <div class="head">Edita<br />descuento</div>
+          <div class="head">Ve<br />descuento</div>
+          <div class="head">Coberturas<br />libres</div>
+          <div class="head">Franquicia</div>
+          <div class="head">Acciones</div>
+          <div class="cell name" data-label="Rol">admin</div>
+          <div class="cell" data-label="Gestiona usuarios"><span class="pill yes">Sí</span></div>
+          <div class="cell" data-label="Edita coberturas"><span class="pill yes">Sí</span></div>
+          <div class="cell" data-label="Edita tasas"><span class="pill yes">Sí</span></div>
+          <div class="cell" data-label="Edita planes"><span class="pill yes">Sí</span></div>
+          <div class="cell" data-label="Edita descuento"><span class="pill yes">Sí</span></div>
+          <div class="cell" data-label="Ve descuento"><span class="pill yes">Sí</span></div>
+          <div class="cell" data-label="Coberturas libres"><span class="pill yes">Sí</span></div>
+          <div class="cell" data-label="Franquicia"><span class="pill yes">Sí</span></div>
+          <div class="cell">
+            <div class="actions">
+              <span class="action">Editar</span><span class="action">Eliminar</span>
+            </div>
+          </div>
+          <div class="cell name" data-label="Rol">agente</div>
+          <div class="cell" data-label="Gestiona usuarios"><span class="pill no">No</span></div>
+          <div class="cell" data-label="Edita coberturas"><span class="pill no">No</span></div>
+          <div class="cell" data-label="Edita tasas"><span class="pill no">No</span></div>
+          <div class="cell" data-label="Edita planes"><span class="pill no">No</span></div>
+          <div class="cell" data-label="Edita descuento"><span class="pill no">No</span></div>
+          <div class="cell" data-label="Ve descuento"><span class="pill no">No</span></div>
+          <div class="cell" data-label="Coberturas libres"><span class="pill no">No</span></div>
+          <div class="cell" data-label="Franquicia"><span class="pill no">No</span></div>
+          <div class="cell">
+            <div class="actions">
+              <span class="action">Editar</span><span class="action">Eliminar</span>
+            </div>
+          </div>
+        </div>
+      </section>
+      <p class="caption">
+        Cuando el panel tiene más de 1050 px, muestra una tabla compacta. Por debajo de ese ancho
+        real, cambia a tarjetas para evitar scroll y recortes.
+      </p>
+    </main>
+  </body>
+</html>

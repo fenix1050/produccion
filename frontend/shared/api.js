@@ -68,6 +68,12 @@ async function request(path, options = {}) {
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
+
+    if (res.status === 403 && body.error === 'Token CSRF inválido o ausente') {
+      clearSession()
+      redirectToLogin()
+    }
+
     throw new Error(body.error || `Error ${res.status} al llamar a ${path}`)
   }
 

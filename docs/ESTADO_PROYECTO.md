@@ -2750,3 +2750,14 @@ rechazo de códigos forjados y el bloqueo de `equipos_electronicos` independient
 advertencias preexistentes de cookies; Prettier aprobado en los 11 archivos alcanzados y
 `git diff --check` sin errores. El `format:check` global continúa fuera de alcance por su deuda
 preexistente de formato en 302 archivos.
+
+## 88. Frontend — recuperación de sesión ante rechazo CSRF exacto (2026-08-21)
+
+`frontend/shared/api.js` ahora reconoce únicamente el HTTP 403 cuyo payload contiene
+`error: 'Token CSRF inválido o ausente'`. En ese caso limpia la sesión en memoria y redirige a
+`../login/`, igual que ante un 401, sin invocar `logout` porque ese endpoint mutante también puede
+ser rechazado por CSRF. Los demás 403 y respuestas no exitosas conservan su mensaje y flujo de error
+existentes; el payload se analiza una sola vez.
+
+**Verificación estática:** `node --check shared/api.js` y `git diff --check` en verde. No se realizó
+verificación en navegador ni contra un entorno en vivo.

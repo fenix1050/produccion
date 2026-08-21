@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.60](https://github.com/fenix1050/produccion/compare/v0.1.59...v0.1.60) (2026-08-21)
+
+
+### Bug Fixes
+
+* **cotizar:** stabilize Carta Oferta progress modal ([#338](https://github.com/fenix1050/produccion/issues/338)) ([adf66db](https://github.com/fenix1050/produccion/commit/adf66db6d01b7a806058ca532d889fae69b83f43))
+
 ## [0.1.59](https://github.com/fenix1050/produccion/compare/v0.1.58...v0.1.59) (2026-08-21)
 
 

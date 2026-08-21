@@ -6,15 +6,47 @@ import { CODIGO_FOREIGN_KEY_VIOLATION } from '../../utils/postgres-errors.js'
 
 // --- Plan coberturas ---
 
+async function canonicalizarFranquiciaMrc(planId, cobertura, franquicia) {
+  const plan = await ramosRepository.findPlanById(planId)
+  if (!plan) throw httpError(404, 'Plan no encontrado')
+  if (!cobertura || cobertura.ramo_id !== plan.ramo_id) {
+    throw httpError(422, 'La cobertura no pertenece al ramo del plan')
+  }
+  const ramo = await ramosRepository.findRamoById(plan.ramo_id)
+  if (ramo.calculador !== 'mrc') return franquicia
+
+  if (franquicia == null || franquicia === 0) return null
+  if (Number.isFinite(franquicia) && franquicia > 0) return franquicia
+  throw httpError(
+    422,
+    `La franquicia MRC de "${cobertura.nombre}" no puede ser negativa.`,
+    'La franquicia MRC no puede ser negativa.'
+  )
+}
+
 export async function listarCoberturasDePlan(planId) {
   return coberturasRepository.findPlanCoberturasByPlanId(planId)
 }
 
 export async function agregarCoberturaAPlan(planId, datos) {
-  return coberturasRepository.crearPlanCobertura(planId, datos)
+  const cobertura = await coberturasRepository.findCoberturaCatalogoById(datos.cobertura_id)
+  const franquicia = await canonicalizarFranquiciaMrc(planId, cobertura, datos.franquicia ?? null)
+  return coberturasRepository.crearPlanCobertura(planId, { ...datos, franquicia })
 }
 
 export async function editarPlanCobertura(id, cambios) {
+  if (Object.hasOwn(cambios, 'franquicia')) {
+    const existente = await coberturasRepository.findPlanCoberturaById(id)
+    if (!existente) throw httpError(404, 'Cobertura de plan no encontrada')
+    cambios = {
+      ...cambios,
+      franquicia: await canonicalizarFranquiciaMrc(
+        existente.plan_id,
+        existente.coberturas_catalogo,
+        cambios.franquicia
+      ),
+    }
+  }
   const fila = await coberturasRepository.actualizarPlanCobertura(id, cambios)
   if (!fila) {
     throw httpError(404, 'Cobertura de plan no encontrada')

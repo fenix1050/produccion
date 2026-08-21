@@ -137,7 +137,7 @@ test('buildMrcOfertaPages ubica Robo valores ventanilla inmediatamente debajo de
 
   assert.match(
     paginaUno,
-    /Valores en caja fuerte<\/td>\s*<td>1\.000\.000<\/td>\s*<td>Sin franquicia<\/td>\s*<\/tr>\s*<tr>\s*<td><span class="badge badge--sublimite">Sublímite<\/span>Robo valores ventanilla/
+    /Valores en caja fuerte<\/td>\s*<td>1\.000\.000<\/td>\s*<td>Sin deducible<\/td>\s*<\/tr>\s*<tr>\s*<td><span class="badge badge--sublimite">Sublímite<\/span>Robo valores ventanilla/
   )
   assert.ok(
     paginaUno.indexOf('Robo valores ventanilla') < paginaUno.indexOf('Responsabilidad Civil')
@@ -146,8 +146,33 @@ test('buildMrcOfertaPages ubica Robo valores ventanilla inmediatamente debajo de
   assert.ok(paginaUno.indexOf('Daños por agua') < paginaUno.indexOf('Daños por granizo'))
 })
 
-test('buildMrcOfertaPages imprime las franquicias obligatorias de ambos sublímites desde el snapshot', () => {
-  const cotizacionConFranquiciasObligatorias = {
+test('buildMrcOfertaPages imprime NULL exactamente como Sin deducible desde el snapshot histórico', () => {
+  const cotizacionConSnapshotNulo = {
+    ...COTIZACION_BASE,
+    cotizacion_coberturas: [
+      {
+        tipo_aplicacion: 'cobertura',
+        monto: 1_000_000,
+        franquicia: null,
+        nombre_snapshot: 'Cristales histórico',
+        coberturas_catalogo: { codigo: 'cristales' },
+      },
+    ],
+  }
+
+  const { paginaUno } = buildMrcOfertaPages({
+    cotizacion: cotizacionConSnapshotNulo,
+    plan: PLAN_BASE,
+    ramo: RAMO_BASE,
+    planCoberturas: [{ franquicia: 800_000, coberturas_catalogo: { codigo: 'cristales' } }],
+  })
+
+  assert.match(paginaUno, /Cristales histórico[\s\S]*<td>Sin deducible<\/td>/)
+  assert.doesNotMatch(paginaUno, /Sin franquicia/)
+})
+
+test('buildMrcOfertaPages prints each deductible from its coverage snapshot, including water and hail', () => {
+  const cotizacionConFranquiciasSnapshot = {
     ...COTIZACION_BASE,
     cotizacion_coberturas: [
       {
@@ -160,25 +185,48 @@ test('buildMrcOfertaPages imprime las franquicias obligatorias de ambos sublími
       {
         tipo_aplicacion: 'sublimite',
         monto: 5000000,
-        franquicia: 500000,
+        franquicia: 800000,
         nombre_snapshot: 'Daños a los Equipos Electrónicos',
         coberturas_catalogo: { codigo: 'sublimite_equipos_electronicos' },
+      },
+      {
+        tipo_aplicacion: 'sublimite',
+        monto: 2500000,
+        franquicia: 500000,
+        nombre_snapshot: 'Daños por agua',
+        coberturas_catalogo: { codigo: 'sublimite_danos_agua' },
+      },
+      {
+        tipo_aplicacion: 'sublimite',
+        monto: 5000000,
+        franquicia: 800000,
+        nombre_snapshot: 'Daños por granizo',
+        coberturas_catalogo: { codigo: 'sublimite_granizo' },
       },
     ],
   }
 
   const { paginaUno, paginaDosBalanceada } = buildMrcOfertaPages({
-    cotizacion: cotizacionConFranquiciasObligatorias,
+    cotizacion: cotizacionConFranquiciasSnapshot,
     plan: PLAN_BASE,
     ramo: RAMO_BASE,
     planCoberturas: [],
   })
 
-  const franquicia = '10% en todo y cada siniestro, mínimo Gs. 500.000'
-  assert.match(paginaUno, new RegExp(`Robo valores ventanilla[\\s\\S]*${franquicia}`))
-  assert.match(paginaUno, new RegExp(`Daños a los Equipos Electrónicos[\\s\\S]*${franquicia}`))
-  assert.match(paginaDosBalanceada, new RegExp(`Robo valores ventanilla: ${franquicia}`))
-  assert.match(paginaDosBalanceada, new RegExp(`Daños a los Equipos Electrónicos: ${franquicia}`))
+  const franquiciaVentanilla = '10% en todo y cada siniestro, mínimo Gs. 500.000'
+  const franquiciaEquipos = '10% en todo y cada siniestro, mínimo Gs. 800.000'
+  assert.match(paginaUno, new RegExp(`Robo valores ventanilla[\\s\\S]*${franquiciaVentanilla}`))
+  assert.match(
+    paginaUno,
+    new RegExp(`Daños a los Equipos Electrónicos[\\s\\S]*${franquiciaEquipos}`)
+  )
+  assert.match(paginaDosBalanceada, new RegExp(`Robo valores ventanilla: ${franquiciaVentanilla}`))
+  assert.match(
+    paginaDosBalanceada,
+    new RegExp(`Daños a los Equipos Electrónicos: ${franquiciaEquipos}`)
+  )
+  assert.match(paginaUno, new RegExp(`Daños por agua[\\s\\S]*${franquiciaVentanilla}`))
+  assert.match(paginaUno, new RegExp(`Daños por granizo[\\s\\S]*${franquiciaEquipos}`))
 })
 
 test('buildMrcOfertaPages no rompe si planCoberturas no trae un código esperado', () => {

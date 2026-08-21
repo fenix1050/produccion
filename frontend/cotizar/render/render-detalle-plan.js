@@ -12,51 +12,62 @@ import {
   ICON_TAG,
   RAMOS_CON_CALCULO,
   COBERTURA_ICONOS,
+  CODIGOS_FRANQUICIA_NULA_MRC,
+  CODIGOS_MRC_OCULTOS_EN_DETALLE_PLAN,
 } from '../constants.js'
 import {
   franquiciaValorPorDefecto,
-  esFranquiciaMrcObligatoria,
   puedeSeleccionarFranquicia,
   monedaEfectiva,
   formaPagoSeleccionada,
   capitalTotalAsegurado,
-  sublimitesFijosMrc,
   monedaCotizacionActual,
 } from '../domain-rules.js'
 import { idParaCampo } from './render-campos.js'
 
-// Bloque "Suma Asegurada / Costo Contado / Costo Financiado" — mismo formato que la pantalla
-// del sistema de escritorio real. A diferencia del resto de "Detalle del plan" (que sigue la
-// forma de pago elegida en las pills), este bloque siempre muestra Contado y el financiado a
-// través de Cobrador en simultáneo, sin importar cuál esté seleccionada.
-// Selector de franquicia/deducible por cobertura — el asegurado decide qué franquicia le
-// interesa y el agente la elige acá para que figure en la propuesta. No afecta la prima ya
-// calculada (confirmado por Kevin, 2026-07-13): es solo el texto que se va a mostrar.
-export function renderFranquiciaSelect(cobertura) {
-  if (esFranquiciaMrcObligatoria(cobertura.codigo)) {
-    return '<span>Franquicia obligatoria: 10% en todo y cada siniestro, mínimo Gs. 500.000</span>'
-  }
+// Selector de franquicia/deducible por cobertura. No afecta la prima ya calculada: es solo el
+// texto que se va a mostrar en la propuesta.
+function etiquetaFranquicia(monto) {
+  return monto == null
+    ? 'Sin deducible'
+    : `10% en todo y cada siniestro, mínimo Gs. ${Number(monto).toLocaleString('es-PY')}`
+}
 
+export function renderFranquiciaSelect(cobertura) {
   if (!puedeSeleccionarFranquicia(auth.getUsuario())) {
-    const seleccionado = franquiciaValorPorDefecto(cobertura.franquicia_default)
-    const etiqueta = FRANQUICIA_OPCIONES.find((opcion) => opcion.valor === seleccionado)?.label
-    return `<span>Franquicia: ${escapeHtml(etiqueta ?? 'Sin deducible')}</span>`
+    return `<span>Franquicia: ${escapeHtml(etiquetaFranquicia(cobertura.franquicia_default))}</span>`
   }
 
   const seleccionado =
     state.franquiciasPorCobertura[cobertura.codigo] ??
     franquiciaValorPorDefecto(cobertura.franquicia_default)
-
-  const opciones = FRANQUICIA_OPCIONES.map(
-    (o) =>
-      `<option value="${o.valor}" ${o.valor === seleccionado ? 'selected' : ''}>${escapeHtml(o.label)}</option>`
-  ).join('')
+  const permiteSinDeducible = CODIGOS_FRANQUICIA_NULA_MRC.has(cobertura.codigo)
+  const opcionesDisponibles = FRANQUICIA_OPCIONES.filter(
+    (opcion) => opcion.monto != null || permiteSinDeducible
+  )
+  if (!opcionesDisponibles.some((opcion) => opcion.valor === seleccionado)) {
+    opcionesDisponibles.push({
+      valor: seleccionado,
+      monto: cobertura.franquicia_default,
+      label: etiquetaFranquicia(cobertura.franquicia_default),
+    })
+  }
+  const opciones = opcionesDisponibles
+    .map(
+      (opcion) =>
+        `<option value="${opcion.valor}" ${opcion.valor === seleccionado ? 'selected' : ''}>${escapeHtml(opcion.label)}</option>`
+    )
+    .join('')
 
   return `
     <label class="cobertura-row__franquicia-label">Franquicia
       <select class="cobertura-row__franquicia" data-franquicia-cobertura="${cobertura.codigo}" aria-label="Franquicia">${opciones}</select>
     </label>
   `
+}
+
+function shouldHideMrcCoverageInPlanDetail(cobertura) {
+  return state.ramoId === 'mrc' && CODIGOS_MRC_OCULTOS_EN_DETALLE_PLAN.has(cobertura.codigo)
 }
 
 // Descuento/recargo manual del agente — solo mrc/incendio (ver RAMOS_CON_AJUSTES). El tope real
@@ -310,9 +321,7 @@ function renderResultadoCompleto(ramo, plan, planLabel) {
               <h2 class="coberturas-section__title">Coberturas incluidas</h2>
               <div class="coberturas-lista">
                 ${[...coberturas]
-                  // Los sub-límites fijos del plan no van en este listado de "Coberturas incluidas"
-                  // (a pedido de Kevin, 2026-07-15) — se muestran aparte en renderSublimitesFijosMrc.
-                  .filter((c) => !sublimitesFijosMrc().some((s) => s.codigo === c.codigo))
+                  .filter((c) => !shouldHideMrcCoverageInPlanDetail(c))
                   .sort(
                     (a, b) =>
                       (a.tipo_aplicacion === 'sublimite' ? 1 : 0) -

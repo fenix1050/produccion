@@ -388,5 +388,5 @@ function textoFranquicias(coberturasCotizadas) {
 function textoFranquicia(montoFranquicia) {
   return montoFranquicia != null
     ? `10% en todo y cada siniestro, mínimo Gs. ${fmtGs(montoFranquicia)}`
-    : 'Sin franquicia'
+    : 'Sin deducible'
 }

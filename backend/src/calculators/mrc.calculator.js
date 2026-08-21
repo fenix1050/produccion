@@ -284,11 +284,18 @@ function construirListaCoberturas({
   coberturasAdicionalesValidadas,
   franquiciasPorCobertura,
 }) {
-  // El agente puede elegir una franquicia distinta a la default del catálogo por cobertura
-  // (selector "Franquicia" en Detalle del plan) — si eligió una, esa es la que se persiste;
-  // si no, se cae a la default del catálogo (mismo comportamiento que antes de esta elección).
-  const franquiciaEfectiva = (codigo, porDefecto) =>
-    codigo in franquiciasPorCobertura ? franquiciasPorCobertura[codigo] : porDefecto
+  // La autorización/contextualización previa ya resolvió una franquicia por plan+cobertura. El
+  // calculador no puede caer al default general del catálogo: una omisión es configuración inválida.
+  const franquiciaEfectiva = (codigo) => {
+    if (!Object.hasOwn(franquiciasPorCobertura, codigo)) {
+      throw httpError(
+        422,
+        `Falta la franquicia MRC resuelta para la cobertura "${codigo}".`,
+        'El plan seleccionado tiene una configuración de franquicia incompleta.'
+      )
+    }
+    return franquiciasPorCobertura[codigo]
+  }
 
   const catalogoEdificio = catalogoPorCodigo.get(CODIGO_INCENDIO_EDIFICIO)
   const catalogoContenido = catalogoPorCodigo.get(CODIGO_INCENDIO_CONTENIDO)
@@ -298,10 +305,7 @@ function construirListaCoberturas({
       codigo: CODIGO_INCENDIO_EDIFICIO,
       nombre: catalogoEdificio?.nombre ?? 'Incendio Edificio',
       monto: capitalEdificio,
-      franquicia_default: franquiciaEfectiva(
-        CODIGO_INCENDIO_EDIFICIO,
-        catalogoEdificio?.franquicia_default ?? null
-      ),
+      franquicia_default: franquiciaEfectiva(CODIGO_INCENDIO_EDIFICIO),
       tipo_aplicacion: 'cobertura',
       incluye_en_suma_asegurada_total: true,
     },
@@ -309,28 +313,18 @@ function construirListaCoberturas({
       codigo: CODIGO_INCENDIO_CONTENIDO,
       nombre: catalogoContenido?.nombre ?? 'Incendio Contenido',
       monto: capitalContenido,
-      franquicia_default: franquiciaEfectiva(
-        CODIGO_INCENDIO_CONTENIDO,
-        catalogoContenido?.franquicia_default ?? null
-      ),
+      franquicia_default: franquiciaEfectiva(CODIGO_INCENDIO_CONTENIDO),
       tipo_aplicacion: 'cobertura',
       incluye_en_suma_asegurada_total: true,
     },
   ]
 
   const adicionales = coberturasAdicionalesValidadas.map(
-    ({
+    ({ codigo, nombre, monto, tipo_aplicacion, incluye_en_suma_asegurada_total }) => ({
       codigo,
       nombre,
       monto,
-      franquicia_default,
-      tipo_aplicacion,
-      incluye_en_suma_asegurada_total,
-    }) => ({
-      codigo,
-      nombre,
-      monto,
-      franquicia_default: franquiciaEfectiva(codigo, franquicia_default),
+      franquicia_default: franquiciaEfectiva(codigo),
       tipo_aplicacion,
       incluye_en_suma_asegurada_total,
     })

@@ -1,7 +1,28 @@
 import assert from 'node:assert/strict'
 import { test, describe } from 'node:test'
 
-import { calcularPrima, calcularPlanPago } from './mrc.calculator.js'
+import { calcularPrima as calcularPrimaSinContexto, calcularPlanPago } from './mrc.calculator.js'
+
+function calcularPrima(input) {
+  const riesgoDatos = input.riesgoDatos ?? {}
+  const franquiciasResueltas = Object.fromEntries(
+    [
+      'incendio_edificio',
+      'incendio_contenido',
+      ...(riesgoDatos.coberturas_adicionales ?? []).map((cobertura) => cobertura.codigo),
+    ].map((codigo) => [codigo, null])
+  )
+  return calcularPrimaSinContexto({
+    ...input,
+    riesgoDatos: {
+      ...riesgoDatos,
+      franquicias_por_cobertura: {
+        ...franquiciasResueltas,
+        ...(riesgoDatos.franquicias_por_cobertura ?? {}),
+      },
+    },
+  })
+}
 
 // Verifica valores reales calculados por el motor de MRC (Multirriesgo Comercio) contra las
 // reglas de negocio confirmadas en CLAUDE.md/PLAN_DESARROLLO.md — no solo la forma del objeto
@@ -80,6 +101,26 @@ function tasasBase({ tasaRC = 2, tasaRoboContenido = 8 } = {}) {
     },
   ]
 }
+
+test('calcularPrima falla cerrado si el contexto no resolvió una franquicia aplicable', async () => {
+  await assert.rejects(
+    () =>
+      calcularPrimaSinContexto({
+        plan: planBase(),
+        riesgoDatos: {
+          rubro_actividad: 'Bazar',
+          capital_edificio: 1_000_000,
+          capital_contenido: 1_000_000,
+          coberturas_adicionales: [{ codigo: 'responsabilidad_civil', suma_asegurada: 500_000 }],
+          franquicias_por_cobertura: {},
+        },
+        rubro: rubroBase(),
+        catalogoRamo: catalogoBase(),
+        tasasRamo: tasasBase(),
+      }),
+    /franquicia MRC resuelta/i
+  )
+})
 
 describe('mrc.calculator — calcularPrima — Prima Técnica Mínima (piso)', () => {
   test('capital bajo: la prima tarifada cae por debajo del piso y se aplica Gs. 409.091', async () => {
@@ -509,7 +550,7 @@ describe('mrc.calculator — robo_valores_ventanilla no suma costo a la prima', 
     assert.equal(lineaVentanilla.monto, 3_000_000)
   })
 
-  test('la franquicia obligatoria no modifica la prima, el premio ni las cuotas', async () => {
+  test('las franquicias configuradas no modifican la prima, el premio ni las cuotas', async () => {
     const catalogo = [
       ...catalogoBase(),
       {
@@ -558,7 +599,7 @@ describe('mrc.calculator — robo_valores_ventanilla no suma costo a la prima', 
       catalogoRamo: catalogo,
       tasasRamo: tasas,
     })
-    const conFranquiciasObligatorias = await calcularPrima({
+    const conFranquiciasConfiguradas = await calcularPrima({
       plan: planBase(),
       riesgoDatos: {
         ...riesgoDatos,
@@ -572,13 +613,13 @@ describe('mrc.calculator — robo_valores_ventanilla no suma costo a la prima', 
       tasasRamo: tasas,
     })
 
-    assert.equal(conFranquiciasObligatorias.prima, sinFranquicias.prima)
+    assert.equal(conFranquiciasConfiguradas.prima, sinFranquicias.prima)
     assert.equal(
-      conFranquiciasObligatorias.detalle.costo_coberturas_adicionales,
+      conFranquiciasConfiguradas.detalle.costo_coberturas_adicionales,
       sinFranquicias.detalle.costo_coberturas_adicionales
     )
     assert.deepEqual(
-      calcularPlanPago(conFranquiciasObligatorias.prima, { codigo: 'cobrador', tasa_rpf: 1.6 }, 3),
+      calcularPlanPago(conFranquiciasConfiguradas.prima, { codigo: 'cobrador', tasa_rpf: 1.6 }, 3),
       calcularPlanPago(sinFranquicias.prima, { codigo: 'cobrador', tasa_rpf: 1.6 }, 3)
     )
   })

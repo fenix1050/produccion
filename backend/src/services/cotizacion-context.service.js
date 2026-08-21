@@ -15,12 +15,15 @@ export async function validarYResolverContexto(body, usuario) {
   const schema = getSchemaCotizar(ramo.calculador)
   const datosValidados = schema.parse(body)
 
+  const planCoberturas =
+    ramo.calculador === 'mrc' ? await ramosRepository.findCoberturasByPlanId(plan.id) : null
+
   return {
     plan,
     ramo,
     datosValidados:
       ramo.calculador === 'mrc'
-        ? normalizarFranquiciasMrc(datosValidados, usuario)
+        ? normalizarFranquiciasMrc(datosValidados, usuario, planCoberturas)
         : datosValidados,
   }
 }

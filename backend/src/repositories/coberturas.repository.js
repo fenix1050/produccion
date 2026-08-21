@@ -65,6 +65,16 @@ export async function findCoberturasCatalogoByRamoId(ramoId) {
   return data
 }
 
+export async function findCoberturaCatalogoById(id) {
+  const { data, error } = await supabase
+    .from('coberturas_catalogo')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle()
+  if (error) throw error
+  return data
+}
+
 /**
  * Tasas ‰ (o %) por línea de cobertura de un ramo, con el código de la cobertura
  * ya resuelto (join contra coberturas_catalogo) para poder indexar por código.
@@ -185,6 +195,16 @@ export async function findPlanCoberturasByPlanId(planId) {
     .select('*, coberturas_catalogo(*)')
     .eq('plan_id', planId)
     .order('id')
+  if (error) throw error
+  return data
+}
+
+export async function findPlanCoberturaById(id) {
+  const { data, error } = await supabase
+    .from('plan_coberturas')
+    .select('*, coberturas_catalogo(*)')
+    .eq('id', id)
+    .maybeSingle()
   if (error) throw error
   return data
 }

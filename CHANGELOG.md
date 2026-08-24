@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.61](https://github.com/fenix1050/produccion/compare/v0.1.60...v0.1.61) (2026-08-24)
+
+
+### Features
+
+* **admin:** hide inactive ramos from cotizador ([#343](https://github.com/fenix1050/produccion/issues/343)) ([f82e7b1](https://github.com/fenix1050/produccion/commit/f82e7b14bad809b72a465159f930643d12b5ff7a))
+
 ## [0.1.60](https://github.com/fenix1050/produccion/compare/v0.1.59...v0.1.60) (2026-08-24)
 
 

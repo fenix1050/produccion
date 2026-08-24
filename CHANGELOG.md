@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.62](https://github.com/fenix1050/produccion/compare/v0.1.61...v0.1.62) (2026-08-24)
+
+
+### Bug Fixes
+
+* **mrc:** order Normal plan before SEGUCOOP ([#346](https://github.com/fenix1050/produccion/issues/346)) ([81d2400](https://github.com/fenix1050/produccion/commit/81d240022dbfa7df7bde596a8883b30098786feb))
+
 ## [0.1.61](https://github.com/fenix1050/produccion/compare/v0.1.60...v0.1.61) (2026-08-24)
 
 

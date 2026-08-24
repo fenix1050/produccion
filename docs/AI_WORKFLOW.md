@@ -22,6 +22,8 @@ Antes de modificar código:
 
 10. Ejecutar pruebas
 
-11. Actualizar documentación
+11. Reunir evidencia de verificación relevante antes de entregar el cambio. Seguir los comandos y el checklist en [`docs/VERIFICATION.md`](VERIFICATION.md).
 
-12. Registrar decisiones importantes en Engram
+12. Actualizar documentación
+
+13. Registrar decisiones importantes en Engram

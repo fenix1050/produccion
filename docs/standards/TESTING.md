@@ -1,5 +1,9 @@
 # TESTING.md
 
+## Canonical verification workflow
+
+Use [`docs/VERIFICATION.md`](../VERIFICATION.md) for the canonical commands, browser prerequisites, smoke-test boundaries, and delivery-evidence checklist. Run `npm run verify:fast` for the fast gate and `npm run verify` when the full workflow is relevant.
+
 ## Objetivo
 
 Toda modificación del sistema debe demostrar que no rompe funcionalidades existentes.

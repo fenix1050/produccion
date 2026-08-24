@@ -31,7 +31,19 @@ npm run e2e:install:chromium --workspace=backend
 npm run e2e:install:puppeteer --workspace=backend
 ```
 
-CI performs its existing browser setup before invoking `npm run verify`; it uses the CI-specific Chromium install command and does not install browsers through the root scripts.
+## Temporary CI formatting gate
+
+Until the formatting-cleanup chain is complete, CI checks only Prettier-eligible tracked files changed from the event base revision:
+
+```bash
+npm run format:check:changed -- <base-revision>
+```
+
+The script fails when the base revision is missing, invalid, or unrelated to `HEAD`; it succeeds when no eligible files changed. This temporary gate isolates the 318-file formatting baseline so unrelated work can continue to use formatting enforcement without reformatting the repository in one change.
+
+CI checks out full history, passes the pull request base SHA or push `before` SHA explicitly, runs this changed-files check before lint, tests, migration validation, and the existing E2E smoke. Browser setup remains unchanged.
+
+`format:check` and `verify` remain the full-repository gates for local delivery. After the last formatting slice, restore CI to `npm run verify` and remove this temporary changed-files gate.
 
 ## Isolated smoke coverage
 

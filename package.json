@@ -11,6 +11,7 @@
     "start": "npm start --workspace=backend",
     "format": "prettier . --write",
     "format:check": "prettier . --check",
+    "format:check:changed": "node scripts/check-changed-format.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "test": "npm test --workspace=backend && npm test --workspace=frontend",

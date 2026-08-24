@@ -2807,3 +2807,18 @@ de 65 migraciones y smoke E2E aislado con Chromium 1/1, todos en verde.
 **Seguimiento diferido, fuera de este cambio:** el baseline global de Prettier tiene 314 archivos
 pendientes. Debe resolverse en un cambio separado y exclusivamente de formato; no se ejecutaron
 formateadores masivos como parte de esta entrega.
+
+## 91. CI — gate temporal de Prettier por archivos cambiados para cadena de formato (2026-08-24)
+
+Para habilitar una cadena stacked exclusivamente de formato sobre los **318 archivos existentes**,
+CI usa temporalmente `format:check:changed`: valida solo los archivos modificados que Prettier
+reconoce, contra una revisión base de Git explícita. El checkout obtiene el historial completo
+(`fetch-depth: 0`) y el workflow pasa la base del evento (`pull_request.base.sha` o `before` en
+push), evitando comparar contra una referencia implícita o incompleta.
+
+Los comandos globales canónicos `format:check` y `verify` no se modifican. Al mergear el último
+slice de la cadena debe restaurarse en CI la ejecución de esos comandos completos; este gate no es
+la nueva política permanente de formato.
+
+**Verificación focalizada:** sintaxis del script, rango vacío (exit 0), base inválida (exit 2),
+wiring de CI (historial completo + base del evento) y `git diff --check` para integridad del diff.

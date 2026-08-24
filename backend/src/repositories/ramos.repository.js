@@ -72,6 +72,7 @@ export async function findPlanesByRamoId(ramoId) {
     .select('*')
     .eq('ramo_id', ramoId)
     .eq('activo', true)
+    .order('nombre', { ascending: true })
   if (error) throw error
   return data
 }

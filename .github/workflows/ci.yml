@@ -47,20 +47,8 @@ jobs:
       - name: Install Puppeteer Chrome for PDF smoke
         run: npm run e2e:install:puppeteer --workspace=backend
 
-      - name: Run isolated E2E smoke
-        run: npm run test:e2e:smoke --workspace=backend
-
-      - name: Check formatting
-        run: npm run format:check
-
-      - name: Run ESLint
-        run: npm run lint
-
-      - name: Verificar numeración de migraciones
-        run: npm run verify:migrations --workspace=backend
-
-      - name: Run tests
-        run: npm test
+      - name: Run repository verification
+        run: npm run verify
 
       - name: Diagnose E2E smoke failure
         if: failure()

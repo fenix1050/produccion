@@ -2793,3 +2793,17 @@ migración, y se sigue actualizando exclusivamente `ramos.activo`.
 **Verificación:** pruebas focalizadas de frontend para la omisión del sidebar y el render accesible
 de acciones de Ramos, junto con chequeos de sintaxis, lint y diff. No se modificó la lógica de
 negocio de Auto ni la aplicación de la API.
+
+## 90. Infraestructura de pruebas — flujo de verificación nativo del repositorio (2026-08-24)
+
+Se entregó un flujo único de verificación nativo del repositorio: `verify:fast`, `verify:e2e` y
+`verify` son los scripts canónicos. CI ejecuta el comando completo canónico después de la
+preparación existente de navegadores. Se agregaron además una guía de verificación y una plantilla
+de PR para dejar explícita la evidencia esperada en cada cambio.
+
+**Verificación independiente:** lint, 279/279 pruebas backend, 73/73 pruebas frontend, validación
+de 65 migraciones y smoke E2E aislado con Chromium 1/1, todos en verde.
+
+**Seguimiento diferido, fuera de este cambio:** el baseline global de Prettier tiene 314 archivos
+pendientes. Debe resolverse en un cambio separado y exclusivamente de formato; no se ejecutaron
+formateadores masivos como parte de esta entrega.

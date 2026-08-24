@@ -29,8 +29,8 @@ export async function toggleRamoActivo(ramoId, activo) {
     mostrarBanner(
       'success',
       activo
-        ? 'Ramo activado. Ya aparece disponible en el sidebar del cotizador.'
-        : 'Ramo desactivado. Ahora aparece como "Próximamente" en el sidebar del cotizador.'
+        ? 'Ramo mostrado. Ya aparece en el sidebar del cotizador.'
+        : 'Ramo ocultado. Ya no aparece en el sidebar del cotizador.'
     )
     renderApp()
   } catch (err) {

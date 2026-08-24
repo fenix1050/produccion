@@ -8,7 +8,7 @@ globalThis.document = dom.window.document
 globalThis.window = dom.window
 
 const { state } = await import('../state.js')
-const { renderModalProgresoCarta } = await import('./render-shell.js')
+const { renderModalProgresoCarta, renderSidebar } = await import('./render-shell.js')
 
 function renderProgressModal(progress) {
   state.progresoCarta = progress
@@ -70,6 +70,30 @@ test('renderModalProgresoCarta preserves active, success, and error controls', (
     assert.ok(error.querySelector('[data-action="reintentar-carta"]'))
   } finally {
     state.progresoCarta = originalProgress
+  }
+})
+
+test('renderSidebar omits inactive ramos', () => {
+  const originalRamosActivos = state.ramosActivos
+  const originalLoadingRamos = state.loadingRamos
+  const originalRamoId = state.ramoId
+
+  try {
+    state.loadingRamos = false
+    state.ramoId = 'mrc'
+    state.ramosActivos = [{ id: 3, nombre: 'mrc', nombre_display: 'Multirriesgo Comercio' }]
+
+    const document = new JSDOM(renderSidebar()).window.document
+    const rows = document.querySelectorAll('[data-action="select-ramo"]')
+
+    assert.equal(rows.length, 1)
+    assert.equal(rows[0].dataset.ramo, 'mrc')
+    assert.equal(document.querySelector('[data-ramo="auto"]'), null)
+    assert.equal(document.body.textContent.includes('Próximamente'), false)
+  } finally {
+    state.ramosActivos = originalRamosActivos
+    state.loadingRamos = originalLoadingRamos
+    state.ramoId = originalRamoId
   }
 })
 

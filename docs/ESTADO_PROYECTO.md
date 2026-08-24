@@ -2777,3 +2777,19 @@ existentes; el payload se analiza una sola vez.
 
 **Verificación estática:** `node --check shared/api.js` y `git diff --check` en verde. No se realizó
 verificación en navegador ni contra un entorno en vivo.
+
+## 89. Panel admin y cotizador — ocultar ramos inactivos (2026-08-24)
+
+`ramos.activo` pasa a controlar de forma directa la presencia de cada ramo en el sidebar del
+cotizador: los inactivos se omiten por completo, en vez de mostrarse como “Próximamente”. La
+protección existente se conserva: el frontend ya rechaza la selección directa de un ramo ausente de
+la lista activa y el backend consulta ramos activos al crear o editar cotizaciones.
+
+En Administración, la columna ambigua de checkbox se reemplazó por estado textual explícito
+(“Visible en cotizador” u “Oculto del cotizador”) y botones nativos `Ocultar`/`Mostrar`. Cada botón
+declara la acción resultante y el nuevo estado en sus atributos de datos; no se agregó columna ni
+migración, y se sigue actualizando exclusivamente `ramos.activo`.
+
+**Verificación:** pruebas focalizadas de frontend para la omisión del sidebar y el render accesible
+de acciones de Ramos, junto con chequeos de sintaxis, lint y diff. No se modificó la lógica de
+negocio de Auto ni la aplicación de la API.

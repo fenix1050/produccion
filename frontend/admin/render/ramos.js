@@ -2,7 +2,7 @@ import { escapeHtml } from '../../shared/dom.js'
 import { state } from '../state.js'
 import { renderCampoInline } from './campos-inline.js'
 
-// Render de la sección Ramos (tabla de ramos, toggle activo/próximamente, editar nombre
+// Render de la sección Ramos (tabla de ramos, visibilidad, editar nombre
 // inline, eliminar ramo) — extraído de admin.js (WU admin-module-split, PR6).
 
 export function renderRamosGestion() {
@@ -32,13 +32,13 @@ function renderTablaRamosGestion() {
       (r) => `
     <tr>
       <td data-label="Ramo">${renderCampoNombreRamo(r)}</td>
-      <td data-label="Estado en el sidebar">
-        <label class="admin-modal__checkbox">
-          <input type="checkbox" data-action="toggle-ramo-activo" data-id="${r.id}" ${r.activo ? 'checked' : ''} />
-          ${r.activo ? 'Activo' : 'Próximamente (oculto para cotizar)'}
-        </label>
+      <td data-label="Estado">
+        ${r.activo ? 'Visible en cotizador' : 'Oculto del cotizador'}
       </td>
       <td data-label="Acciones">
+        <button type="button" class="btn-outline" data-action="toggle-ramo-activo" data-id="${r.id}" data-next-activo="${!r.activo}">
+          ${r.activo ? 'Ocultar' : 'Mostrar'}
+        </button>
         <button class="btn-outline" data-action="eliminar-ramo" data-id="${r.id}">Eliminar</button>
       </td>
     </tr>
@@ -52,8 +52,8 @@ function renderTablaRamosGestion() {
         <thead>
           <tr>
             <th>Ramo</th>
-            <th>Estado en el sidebar</th>
-            <th></th>
+            <th>Estado</th>
+            <th>Acciones</th>
           </tr>
         </thead>
         <tbody>${filas}</tbody>

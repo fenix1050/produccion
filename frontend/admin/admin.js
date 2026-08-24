@@ -280,7 +280,7 @@ const ACTION_HANDLERS = {
     renderApp()
   },
   'toggle-plan-activo': (el) => togglePlanActivo(el.dataset.id, el.checked),
-  'toggle-ramo-activo': (el) => toggleRamoActivo(el.dataset.id, el.checked),
+  'toggle-ramo-activo': (el) => toggleRamoActivo(el.dataset.id, el.dataset.nextActivo === 'true'),
   'editar-nombre-ramo': (el) => habilitarEdicionNombreRamo(Number(el.dataset.id)),
   'cancelar-nombre-ramo': (el) => cancelarEdicionNombreRamo(Number(el.dataset.id)),
   'eliminar-ramo': (el) => eliminarRamo(Number(el.dataset.id)),

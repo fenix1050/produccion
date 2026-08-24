@@ -64,18 +64,18 @@ function renderSidebarSkeleton() {
 export function renderSidebar() {
   if (state.loadingRamos) return renderSidebarSkeleton()
 
-  const rows = RAMOS_UI.map((base) => {
-    const r = ramoInfo(base.nombre)
-    const activa = r.nombre === state.ramoId
-    const estadoTexto = r.estado === 'proximamente' ? 'Próximamente' : ''
-    return `
-      <div class="ramo-row ${activa ? 'ramo-row--activa' : ''} ${r.estado !== 'disponible' ? `ramo-row--${r.estado}` : ''}" data-action="select-ramo" data-ramo="${r.nombre}">
+  const rows = RAMOS_UI.filter((base) => ramoActivo(base.nombre))
+    .map((base) => {
+      const r = ramoInfo(base.nombre)
+      const activa = r.nombre === state.ramoId
+      return `
+      <div class="ramo-row ${activa ? 'ramo-row--activa' : ''}" data-action="select-ramo" data-ramo="${r.nombre}">
         <div class="ramo-row__icon">${RAMO_ICONOS[r.nombre] || ''}</div>
         <div class="ramo-row__label">${r.label}</div>
-        ${estadoTexto ? `<div class="ramo-row__estado">${estadoTexto}</div>` : ''}
       </div>
     `
-  }).join('')
+    })
+    .join('')
 
   return `
     <div class="sidebar ${state.sidebarAbierta ? 'sidebar--abierta' : ''}">

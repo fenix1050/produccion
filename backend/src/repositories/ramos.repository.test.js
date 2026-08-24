@@ -81,3 +81,48 @@ test('findClausulasObligatoriasByPlanId: propaga el error de Supabase', async (t
 
   await assert.rejects(() => findClausulasObligatoriasByPlanId(1), /boom/)
 })
+
+test('findPlanesByRamoId filters active plans by ramo and returns ordered rows unchanged', async (t) => {
+  const planes = [
+    { id: 2, ramo_id: 7, nombre: 'Alpha', activo: true },
+    { id: 1, ramo_id: 7, nombre: 'Beta', activo: true },
+  ]
+  const llamadas = []
+  const builder = {
+    select: (...args) => {
+      llamadas.push(['select', ...args])
+      return builder
+    },
+    eq: (...args) => {
+      llamadas.push(['eq', ...args])
+      return builder
+    },
+    order: (...args) => {
+      llamadas.push(['order', ...args])
+      return builder
+    },
+    then: (resolve, reject) => Promise.resolve({ data: planes, error: null }).then(resolve, reject),
+  }
+  t.mock.module('../config/supabase.js', {
+    namedExports: {
+      supabase: {
+        from: (tabla) => {
+          llamadas.push(['from', tabla])
+          return builder
+        },
+      },
+    },
+  })
+
+  const { findPlanesByRamoId } = await import('./ramos.repository.js?case=planes-activos-ordenados')
+  const resultado = await findPlanesByRamoId(7)
+
+  assert.deepEqual(llamadas, [
+    ['from', 'planes'],
+    ['select', '*'],
+    ['eq', 'ramo_id', 7],
+    ['eq', 'activo', true],
+    ['order', 'nombre', { ascending: true }],
+  ])
+  assert.strictEqual(resultado, planes)
+})

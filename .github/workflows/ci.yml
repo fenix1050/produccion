@@ -20,8 +20,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
@@ -49,13 +47,8 @@ jobs:
       - name: Install Puppeteer Chrome for PDF smoke
         run: npm run e2e:install:puppeteer --workspace=backend
 
-      - name: Run temporary changed-files format check
-        env:
-          FORMAT_BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
-        run: npm run format:check:changed -- "$FORMAT_BASE"
-
-      - name: Run remaining repository verification
-        run: npm run lint && npm run test && npm run verify:migrations --workspace=backend && npm run verify:e2e
+      - name: Run repository verification
+        run: npm run verify
 
       - name: Diagnose E2E smoke failure
         if: failure()

@@ -80,14 +80,14 @@ Before driving the browser, run `git diff --name-only` (or
 `--name-only HEAD~1` if already committed) and map touched files to the
 affected page(s) instead of re-walking the whole app every time:
 
-| Changed path | Test only |
-|---|---|
-| `backend/src/calculators/mrc.calculator.js`, `backend/src/schemas/*mrc*` | MRC flow in `/cotizar/` (Datos + Detalle del plan) |
-| `backend/src/calculators/incendio*`, `*incendio*` | Incendio flow |
-| `backend/src/templates/*carta-oferta*` | The PDF output for that ramo's Carta Oferta |
-| `frontend/shared/*` (api.js, sidebar, etc.) | Smoke-test every ramo's sidebar nav + one fetch call, since shared code has cross-ramo blast radius |
-| `frontend/admin/*` | `/admin/` only |
-| Anything under `backend/migrations/` | Re-run whichever ramo flow reads the changed tables — migrations don't show up in a frontend diff but can silently break a calculator |
+| Changed path                                                             | Test only                                                                                                                             |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `backend/src/calculators/mrc.calculator.js`, `backend/src/schemas/*mrc*` | MRC flow in `/cotizar/` (Datos + Detalle del plan)                                                                                    |
+| `backend/src/calculators/incendio*`, `*incendio*`                        | Incendio flow                                                                                                                         |
+| `backend/src/templates/*carta-oferta*`                                   | The PDF output for that ramo's Carta Oferta                                                                                           |
+| `frontend/shared/*` (api.js, sidebar, etc.)                              | Smoke-test every ramo's sidebar nav + one fetch call, since shared code has cross-ramo blast radius                                   |
+| `frontend/admin/*`                                                       | `/admin/` only                                                                                                                        |
+| Anything under `backend/migrations/`                                     | Re-run whichever ramo flow reads the changed tables — migrations don't show up in a frontend diff but can silently break a calculator |
 
 If the diff spans more than one ramo or touches `frontend/shared/`,
 widen to a full pass across all ramos rather than guessing which one
@@ -136,7 +136,7 @@ selectors/behavior discovered by trial:
   instead of a fixed `waitForTimeout` — the calc call is a real network
   round-trip to Supabase.
 - Screenshot both the filled form (`Datos` tab) and the `Detalle del
-  plan` tab (click the tab button, or the CTA button navigates there
+plan` tab (click the tab button, or the CTA button navigates there
   directly) — cobertura names live in the second one.
 
 Example full script: see the session that authored this skill, or

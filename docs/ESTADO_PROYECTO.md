@@ -2822,3 +2822,18 @@ la nueva política permanente de formato.
 
 **Verificación focalizada:** sintaxis del script, rango vacío (exit 0), base inválida (exit 2),
 wiring de CI (historial completo + base del evento) y `git diff --check` para integridad del diff.
+
+## 92. Cierre del baseline temporal de formato (2026-08-25)
+
+La medición original de 321 archivos rastreados elegibles para Prettier confirmó que 320 de las
+321 diferencias eran solo ruido de finales de línea CRLF de worktrees Windows con
+`core.autocrlf=true`; la única diferencia real de contenido estaba en
+`.agents/skills/run-cotizador/SKILL.md` y quedó formateada.
+
+Se agregó `.gitattributes` con `* text=auto eol=lf` para que los checkouts de texto usen LF, en
+coherencia con `.prettierrc.json`, sin ejecutar una renormalización masiva ni modificar contenido
+rastreado no relacionado. Se eliminó el gate temporal de PR #351, incluido su script y comando npm;
+CI volvió a ejecutar el gate completo canónico `npm run verify` sin requerir historial adicional.
+
+La verificación final compara el contenido candidato en memoria, independiente de finales de línea;
+la prueba de ejecución definitiva queda en CI Linux.

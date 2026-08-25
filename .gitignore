@@ -17,6 +17,11 @@ docs/insumos/
 # .claude/skills contiene symlinks con path absoluto (no portable entre máquinas).
 .agents/skills/
 .claude/skills/
+!.claude/skills/
+.claude/skills/*
+!.claude/skills/run-cotizador/
+.claude/skills/run-cotizador/*
+!.claude/skills/run-cotizador/SKILL.md
 skills-lock.json
 
 # Playwright traces and screenshots retained only on failure.

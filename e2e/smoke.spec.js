@@ -49,14 +49,31 @@ async function fillMrc(page) {
   await page.locator('#campo-capital-contenido').fill('50000000')
   await page.locator('[data-action="add-cobertura-linea"]').click()
   await page.locator('[data-linea-field="codigo"]').selectOption('robo_contenido')
-  const preview = page.waitForResponse(
-    (response) =>
-      response.url().endsWith('/api/cotizaciones/calcular') &&
-      response.request().method() === 'POST' &&
-      response.status() === 200
-  )
+  const preview = page.waitForResponse((response) => {
+    if (
+      !response.url().endsWith('/api/cotizaciones/calcular') ||
+      response.request().method() !== 'POST'
+    ) {
+      return false
+    }
+
+    const body = response.request().postDataJSON()
+    return (
+      body.cliente_nombre === FIXTURES.request.mrc.cliente_nombre &&
+      body.riesgo_datos?.cedula === '1234567' &&
+      body.riesgo_datos?.direccion === 'Av. Mariscal López 1234' &&
+      body.riesgo_datos?.rubro_actividad === 'OFFICE' &&
+      body.riesgo_datos?.ciudad === 'Asunción' &&
+      body.riesgo_datos?.capital_edificio === 100000000 &&
+      body.riesgo_datos?.capital_contenido === 50000000 &&
+      body.riesgo_datos?.coberturas_adicionales?.some(
+        (cobertura) =>
+          cobertura.codigo === 'robo_contenido' && cobertura.suma_asegurada === 10000000
+      )
+    )
+  })
   await page.locator('[data-linea-field="sumaAsegurada"]').fill('10000000')
-  await preview
+  expect((await preview).status()).toBe(200)
   await expect(page.locator('.live-summary__price')).toContainText('495.000')
 }
 

@@ -23,3 +23,51 @@ export const apiRateLimiter = rateLimit({
   keyGenerator: (req) => ipKeyGenerator(req.ip),
   message: { error: 'Demasiadas solicitudes. Probá de nuevo más tarde.' },
 })
+
+function claveUsuario(req) {
+  return req.usuario?.id ? `user:${req.usuario.id}` : ipKeyGenerator(req.ip)
+}
+
+export const passwordRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: claveUsuario,
+  message: {
+    error: 'Demasiados intentos de cambio de contraseña. Probá de nuevo más tarde.',
+  },
+})
+
+export const adminPasswordResetRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: claveUsuario,
+  message: {
+    error: 'Demasiados reseteos de contraseña. Probá de nuevo más tarde.',
+  },
+})
+
+export const importRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: claveUsuario,
+  message: {
+    error: 'Demasiadas importaciones. Probá de nuevo más tarde.',
+  },
+})
+
+export const pdfRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: claveUsuario,
+  message: {
+    error: 'Demasiadas solicitudes de generación de PDF. Probá de nuevo más tarde.',
+  },
+})

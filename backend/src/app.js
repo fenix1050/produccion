@@ -3,7 +3,7 @@ import cookieParser from 'cookie-parser'
 import cors from 'cors'
 import express from 'express'
 import helmet from 'helmet'
-
+import { ZodError } from 'zod'
 import { csrfProtection } from './middleware/csrf.js'
 import { apiRateLimiter } from './middleware/rate-limit.js'
 import { router as apiRouter } from './routes/index.js'
@@ -63,7 +63,19 @@ export function createApp() {
 
   app.use((err, _req, res, _next) => {
     console.error(err.stack || err.message || err)
+
+    if (err instanceof ZodError) {
+      return res.status(400).json({
+        error: 'Datos de entrada inválidos',
+        detalles: err.issues.map((issue) => ({
+          campo: issue.path.join('.'),
+          mensaje: issue.message,
+        })),
+      })
+    }
+
     const status = err.status || 500
+
     res.status(status).json({
       error: err.publicMessage || 'Error interno del servidor',
     })

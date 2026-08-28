@@ -15,8 +15,15 @@ services:
       - NODE_ENV=production
     expose:
       - '3000'
+    healthcheck:
+      test: ['CMD', 'node', '-e', "fetch('http://127.0.0.1:3000/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     networks:
       - web
+      - supabase_internal
 
   caddy:
     image: caddy:2-alpine
@@ -24,7 +31,7 @@ services:
     restart: unless-stopped
     ports:
       - '80:80'
-      - '443:443'
+
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - caddy_data:/data
@@ -32,8 +39,21 @@ services:
     networks:
       - web
 
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cotizador-cloudflared
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token-file /run/secrets/cloudflared-token
+    volumes:
+      - /opt/cotizador/secrets/cloudflared-token:/run/secrets/cloudflared-token:ro
+    networks:
+      - web
+
 networks:
   web:
+  supabase_internal:
+    external: true
+    name: cotizador_supabase_internal
 
 volumes:
   caddy_data:

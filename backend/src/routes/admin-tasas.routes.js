@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import multer from 'multer'
-
+import { importRateLimiter } from '../middleware/rate-limit.js'
 import * as tasasController from '../controllers/tasas.controller.js'
 import { requireRole, requireTasasEdit } from '../middleware/auth.js'
 import { httpError } from '../utils/http-error.js'
@@ -30,6 +30,7 @@ router.post(
   '/importar',
   requireRole('admin'),
   requireTasasEdit,
+  importRateLimiter,
   (req, res, next) => {
     upload.single('archivo')(req, res, (err) => {
       if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {

@@ -1,5 +1,5 @@
 import { Router } from 'express'
-
+import { adminPasswordResetRateLimiter } from '../middleware/rate-limit.js'
 import * as adminController from '../controllers/admin.controller.js'
 import {
   requireTasasEdit,
@@ -25,7 +25,12 @@ export const router = Router()
 router.get('/usuarios', requireUsuariosEdit, adminController.listarUsuarios)
 router.post('/usuarios', requireUsuariosEdit, adminController.crearUsuario)
 router.put('/usuarios/:id', requireUsuariosEdit, adminController.editarUsuario)
-router.put('/usuarios/:id/password', requireUsuariosEdit, adminController.resetearPassword)
+router.put(
+  '/usuarios/:id/password',
+  requireUsuariosEdit,
+  adminPasswordResetRateLimiter,
+  adminController.resetearPassword
+)
 router.delete('/usuarios/:id', requireUsuariosEdit, adminController.eliminarUsuario)
 
 // Roles (migración 031) — sub-recurso de Usuarios, mismo gate que esa sección.

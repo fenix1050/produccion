@@ -1,3 +1,20 @@
 :80 {
-	reverse_proxy backend:3000
+        @frontendProd host cotizador.lat
+        @frontendTest host test-web.cotizador.lat
+
+        handle @frontendProd {
+                header Cache-Control "public, max-age=0, must-revalidate"
+                root * /srv/frontend-prod
+                file_server
+        }
+
+        handle @frontendTest {
+                header Cache-Control "public, max-age=0, must-revalidate"
+                root * /srv/frontend-test
+                file_server
+        }
+
+        handle {
+                reverse_proxy backend:3000
+        }
 }

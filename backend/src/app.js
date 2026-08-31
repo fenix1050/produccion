@@ -9,7 +9,7 @@ import { apiRateLimiter } from './middleware/rate-limit.js'
 import { router as apiRouter } from './routes/index.js'
 
 export function createApp() {
-  const { FRONTEND_URL, JWT_SECRET } = process.env
+  const { FRONTEND_URL, FRONTEND_URL_EXTRA, JWT_SECRET } = process.env
   if (!FRONTEND_URL) {
     throw new Error(
       'Falta FRONTEND_URL en el .env — copiar .env.example y completar. No hay fallback a wildcard por seguridad.'
@@ -39,9 +39,17 @@ export function createApp() {
   // credentials: true habilita que el navegador envíe/reciba la cookie de sesión
   // httpOnly (fetch con credentials:'include') — requiere un origin explícito, nunca
   // wildcard: el propio spec de CORS prohíbe combinar '*' con credenciales.
+  const allowedOrigins = [
+    FRONTEND_URL,
+    ...(FRONTEND_URL_EXTRA || '')
+      .split(',')
+      .map((origin) => origin.trim())
+      .filter(Boolean),
+  ]
+
   app.use(
     cors({
-      origin: FRONTEND_URL,
+      origin: allowedOrigins,
       credentials: true,
       allowedHeaders: ['Content-Type', 'X-CSRF-Token'],
     })

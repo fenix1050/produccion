@@ -1,6 +1,11 @@
 import { escapeHtml, fmtGs, fmtFecha } from './layout.js'
 
 const ORDEN_FORMAS_PAGO = ['contado', 'cobrador', 'boca_cobranza', 'tarjeta_credito']
+const DEFAULT_RENDER_CONTEXT = {
+  timestamp: '1970-01-01T00:00:00.000Z',
+  timezone: 'America/Asuncion',
+  locale: 'es-PY',
+}
 
 // Códigos de catálogo que NUNCA son sub-límites fijos de MRC aunque vinieran marcados
 // `incluida_por_defecto` — Incendio Edificio/Contenido no viven en `plan_coberturas` (se
@@ -116,7 +121,12 @@ Cláusula de cobranza (todas las formas de pago excepto Segucoop).`
  * necesario para que los sub-límites fijos reflejen los montos actuales del admin, no los que
  * tenía la migración de carga original.
  */
-export function buildMrcOfertaPages({ cotizacion, plan, planCoberturas }) {
+export function buildMrcOfertaPages({
+  cotizacion,
+  plan,
+  planCoberturas,
+  renderContext = DEFAULT_RENDER_CONTEXT,
+}) {
   const riesgo = cotizacion.riesgo_datos || {}
   const sublimitesFijos = sublimitesFijosMrc(planCoberturas)
 
@@ -170,7 +180,7 @@ export function buildMrcOfertaPages({ cotizacion, plan, planCoberturas }) {
 
   const paginaUno = `
     <div class="meta-row">
-      <div>Fecha: ${fmtFecha()}</div>
+      <div>Fecha: ${fmtFecha(renderContext.timestamp, renderContext)}</div>
       <div class="plan-name">${escapeHtml(plan.nombre)}</div>
     </div>
     <div class="cliente-banner"><span class="cliente-banner__accent"></span>Sr/a ${escapeHtml(cotizacion.cliente_nombre || 'Asegurado')} — Cotización Nro: ${escapeHtml(cotizacion.numero_cotizacion)}</div>
@@ -205,7 +215,7 @@ export function buildMrcOfertaPages({ cotizacion, plan, planCoberturas }) {
     ${(cotizacion.cotizacion_variantes || []).map(renderVariantePlanPago).join('')}
 
     <div class="footer-legal">
-      Vigencia del seguro: 1 año, desde ${fmtFecha()}. <br>
+      Vigencia del seguro: 1 año, desde ${fmtFecha(renderContext.timestamp, renderContext)}. <br>
       Este presupuesto es válido por ${cotizacion.vigencia_dias || 30} días. <br>
       Esta cotización no implica aceptación del riesgo, ni el consentimiento de cobertura alguna por parte del
 Asegurado. <br>

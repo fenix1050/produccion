@@ -1,6 +1,8 @@
 :80 {
         @frontendProd host cotizador.lat
         @frontendTest host test-web.cotizador.lat
+        @apiProd host api.cotizador.lat
+        @apiTest host test-api.cotizador.lat
 
         handle @frontendProd {
                 header Cache-Control "public, max-age=0, must-revalidate"
@@ -14,7 +16,15 @@
                 file_server
         }
 
-        handle {
+        handle @apiProd {
                 reverse_proxy backend:3000
+        }
+
+        handle @apiTest {
+                reverse_proxy cotizador-test-backend:3000
+        }
+
+        handle {
+                respond "Not Found" 404
         }
 }

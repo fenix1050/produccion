@@ -1,7 +1,12 @@
 #!/bin/sh
 set -e
 
-printf "window.API_BASE_URL = '%s'\n" "$API_BASE_URL" > shared/config.js
+COOKIE_CSRF_NAME="${COOKIE_CSRF_NAME:-tajy_csrf}"
+
+{
+  printf "window.API_BASE_URL = '%s'\n" "$API_BASE_URL"
+  printf "window.COOKIE_CSRF_NAME = '%s'\n" "$COOKIE_CSRF_NAME"
+} > shared/config.js
 
 VERSION="${VERCEL_GIT_COMMIT_SHA:-$(date +%s)}"
 find . -name "*.html" -exec sed -i -E \

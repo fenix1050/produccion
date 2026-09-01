@@ -85,3 +85,25 @@ test('limpiarCookiesSesion(): limpia ambas cookies con los MISMOS atributos base
   assert.deepEqual(sesion.opciones, baseSesion)
   assert.deepEqual(csrf.opciones, baseCsrf)
 })
+
+test('permite nombres de cookies distintos por entorno mediante variables de entorno', async (t) => {
+  const sessionAnterior = process.env.COOKIE_SESSION_NAME
+  const csrfAnterior = process.env.COOKIE_CSRF_NAME
+
+  process.env.COOKIE_SESSION_NAME = 'tajy_test_session'
+  process.env.COOKIE_CSRF_NAME = 'tajy_test_csrf'
+
+  t.after(() => {
+    if (sessionAnterior === undefined) delete process.env.COOKIE_SESSION_NAME
+    else process.env.COOKIE_SESSION_NAME = sessionAnterior
+
+    if (csrfAnterior === undefined) delete process.env.COOKIE_CSRF_NAME
+    else process.env.COOKIE_CSRF_NAME = csrfAnterior
+  })
+
+  const { COOKIE_SESION, COOKIE_CSRF } =
+    await import('./cookies.js?case=custom-cookie-names')
+
+  assert.equal(COOKIE_SESION, 'tajy_test_session')
+  assert.equal(COOKIE_CSRF, 'tajy_test_csrf')
+})

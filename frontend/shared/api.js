@@ -7,7 +7,7 @@
 
 const API_BASE_URL = window.API_BASE_URL || 'http://localhost:3000/api'
 
-const COOKIE_CSRF = 'tajy_csrf'
+const COOKIE_CSRF = window.COOKIE_CSRF_NAME || 'tajy_csrf'
 
 // ---- Caché en memoria de la sesión (D4) ----
 // getUsuario()/isLoggedIn()/tieneAccesoAdmin() se invocan en render síncrono en ~10

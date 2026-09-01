@@ -101,8 +101,7 @@ test('permite nombres de cookies distintos por entorno mediante variables de ent
     else process.env.COOKIE_CSRF_NAME = csrfAnterior
   })
 
-  const { COOKIE_SESION, COOKIE_CSRF } =
-    await import('./cookies.js?case=custom-cookie-names')
+  const { COOKIE_SESION, COOKIE_CSRF } = await import('./cookies.js?case=custom-cookie-names')
 
   assert.equal(COOKIE_SESION, 'tajy_test_session')
   assert.equal(COOKIE_CSRF, 'tajy_test_csrf')

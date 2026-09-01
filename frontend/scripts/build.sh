@@ -1,14 +1,35 @@
 #!/bin/sh
-set -e
+set -eu
 
-COOKIE_CSRF_NAME="${COOKIE_CSRF_NAME:-tajy_csrf}"
+RUNTIME_CONFIG_MODE="${RUNTIME_CONFIG_MODE:-embedded}"
 
-{
-  printf "window.API_BASE_URL = '%s'\n" "$API_BASE_URL"
-  printf "window.COOKIE_CSRF_NAME = '%s'\n" "$COOKIE_CSRF_NAME"
-} > shared/config.js
+case "$RUNTIME_CONFIG_MODE" in
+  embedded)
+    : "${API_BASE_URL:?API_BASE_URL es obligatorio en modo embedded}"
 
-VERSION="${VERCEL_GIT_COMMIT_SHA:-$(date +%s)}"
+    COOKIE_CSRF_NAME="${COOKIE_CSRF_NAME:-tajy_csrf}"
+
+    {
+      printf "window.API_BASE_URL = '%s'\n" "$API_BASE_URL"
+      printf "window.COOKIE_CSRF_NAME = '%s'\n" "$COOKIE_CSRF_NAME"
+    } > shared/config.js
+    ;;
+
+  external)
+    # En releases del VPS, config.js pertenece al entorno y no al artifact.
+    # Debe ser materializado por deploy-test/promote-prod.
+    rm -f shared/config.js
+    ;;
+
+  *)
+    echo "RUNTIME_CONFIG_MODE inválido: $RUNTIME_CONFIG_MODE" >&2
+    echo "Valores permitidos: embedded | external" >&2
+    exit 1
+    ;;
+esac
+
+VERSION="${BUILD_VERSION:-${VERCEL_GIT_COMMIT_SHA:-$(date +%s)}}"
+
 find . -name "*.html" -exec sed -i -E \
   "s#(src|href)=\"([^\"?]+\.(js|css))\"#\1=\"\2?v=${VERSION}\"#g" {} +
 

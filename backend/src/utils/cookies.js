@@ -4,11 +4,9 @@
 // (login y logout) es el modo de falla más probable (cookie zombie tras logout). Por eso
 // set y clear comparten las mismas funciones de opciones.
 
-export const COOKIE_SESION =
-  process.env.COOKIE_SESSION_NAME || 'tajy_session'
+export const COOKIE_SESION = process.env.COOKIE_SESSION_NAME || 'tajy_session'
 
-export const COOKIE_CSRF =
-  process.env.COOKIE_CSRF_NAME || 'tajy_csrf'
+export const COOKIE_CSRF = process.env.COOKIE_CSRF_NAME || 'tajy_csrf'
 
 // 45 minutos, alineado a JWT_EXPIRES_IN de auth.service.js.
 const MAX_AGE_MS = 45 * 60 * 1000

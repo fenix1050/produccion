@@ -5,7 +5,6 @@ import * as ramosRepository from '../repositories/ramos.repository.js'
 import { verificarPropiedad } from './cotizacion-authorization.service.js'
 import { validarYResolverContexto } from './cotizacion-context.service.js'
 import { construirVariantes } from './cotizacion-pricing.service.js'
-import { renderOfertaPdf } from './pdf.service.js'
 
 export { verificarPropiedad } from './cotizacion-authorization.service.js'
 export {
@@ -48,25 +47,40 @@ export async function obtenerCotizacion(id, usuario) {
 
 export async function generarPdfOferta(id, usuario) {
   const t0 = Date.now()
-  const cotizacion = await cotizacionesRepository.findCotizacionById(id)
-  verificarPropiedad(cotizacion, usuario)
-  const t1 = Date.now()
-  // Las 3 queries siguientes solo dependen de `cotizacion` (ya resuelta arriba), no entre sí —
-  // se piden en paralelo en vez de 3 awaits secuenciales.
-  const [plan, ramo, planCoberturas] = await Promise.all([
-    ramosRepository.findPlanById(cotizacion.plan_id),
-    // Sin filtro de `activo`: la cotización ya existe (se creó cuando el ramo estaba activo),
-    // así que generar su PDF no debe fallar solo porque el ramo se dio de baja después.
-    ramosRepository.findRamoById(cotizacion.ramo_id),
-    // Catálogo VIGENTE del plan (montos/incluida_por_defecto actuales) — necesario para que los
-    // sub-límites fijos de la Carta Oferta (ej. MRC) reflejen cambios del admin, en vez de quedar
-    // hardcodeados con el valor de cuando se cargó la migración original.
-    ramosRepository.findCoberturasByPlanId(cotizacion.plan_id),
-  ])
-  const t2 = Date.now()
+  const { generarCartaOfertaPersistida } = await import('./carta-oferta.service.js')
+  let pdf
+  let t1
+  let t2
+  let t3
 
-  const pdf = await renderOfertaPdf({ cotizacion, plan, ramo, planCoberturas })
-  const t3 = Date.now()
+  // A stale snapshot is rejected inside the locked RPC or when a recotization
+  // replaces the generating Carta. Retry once from fresh source data; any second
+  // concurrent recotization becomes a controlled conflict instead of an obsolete PDF.
+  for (let intento = 0; intento < 2; intento += 1) {
+    const cotizacion = await cotizacionesRepository.findCotizacionById(id)
+    verificarPropiedad(cotizacion, usuario)
+    t1 = Date.now()
+    const [plan, ramo, planCoberturas] = await Promise.all([
+      ramosRepository.findPlanById(cotizacion.plan_id),
+      ramosRepository.findRamoById(cotizacion.ramo_id),
+      ramosRepository.findCoberturasByPlanId(cotizacion.plan_id),
+    ])
+    t2 = Date.now()
+
+    try {
+      pdf = await generarCartaOfertaPersistida({
+        cotizacion,
+        plan,
+        ramo,
+        planCoberturas,
+        usuario,
+      })
+      t3 = Date.now()
+      break
+    } catch (error) {
+      if (error.code !== 'CARTA_OFERTA_SNAPSHOT_OBSOLETO' || intento === 1) throw error
+    }
+  }
 
   console.log(
     `[perf-oferta] findCotizacionById=${t1 - t0}ms plan+ramo+coberturas(paralelo)=${t2 - t1}ms renderOfertaPdf=${t3 - t2}ms total=${t3 - t0}ms`

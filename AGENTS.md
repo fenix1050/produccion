@@ -81,11 +81,16 @@ Este proyecto se construye **fase por fase**, en este orden fijo (detalle comple
 
 **Cambio de prioridad (2026-07-10):** el cliente pidió priorizar **MRC, Incendio y Vida/AP** por sobre Auto. Fase 2 de Auto queda **pausada tal cual está** (no se revierte, no se sigue tocando). Hogar y TRO no fueron pedidos todavía — quedan en fase futura.
 
-**Fase 6/7 cerrada a nivel de negocio.** MRC opera end-to-end (calculador, frontend, Carta Oferta en PDF). Incendio y Vida/AP tienen catálogo y calculador completos — a Vida/AP le falta el template de Carta Oferta (pendiente de texto oficial). Panel admin, historial y el rediseño visual completo ya están commiteados y verificados en vivo.
+**Fase 4 — Propuesta Formal está activa.** Estado del checklist:
+
+- [ ] **PF-0:** siguen pendientes el archivo trazable de modelos oficiales, el cierre con Compliance, la política de retención documental y los textos/firma oficiales.
+- [x] **PF-1:** fundamento documental y emisión de Carta Oferta de MRC verificados en QA.
+- [x] **PF-2 para MRC:** migración 069 aplicada y flujo de elegibilidad/borradores verificado en QA por API y UI. Quedó exactamente un borrador activo para la Carta `MRC-1`, sin emisión de Propuesta Formal ni generación de su PDF.
+- [ ] **PF-3:** no iniciado y bloqueado hasta cerrar PF-0. La emisión continúa deshabilitada.
 
 **El detalle de cada cambio (qué se hizo, por qué, cómo se verificó) vive únicamente en `docs/ESTADO_PROYECTO.md`, en orden cronológico por sección numerada — no se repite acá para no desincronizarse.** Antes de asumir el estado de una feature, revisar ahí la sección más reciente que la mencione.
 
-**Próximo paso confirmado con Kevin:** revisar/commitear el template de Incendio, agregar el de Vida/AP (requiere texto oficial), cerrar cambios abiertos con verificación/archivo formal si se pide, o retomar Fase 2 (Auto) si se pide.
+**Próximo paso operativo:** cerrar PF-0 con los insumos oficiales y Compliance. Solo después puede comenzar PF-3 para MRC. Vida/AP sigue requiriendo texto oficial para su Carta Oferta; no se registra aquí una verificación de Incendio o Vida/AP equivalente a la realizada para MRC.
 
 ## Versionado y despliegue automáticos (agregado 2026-08-02)
 

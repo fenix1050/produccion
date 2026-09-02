@@ -3,25 +3,6 @@ import { test } from 'node:test'
 
 import { buildIncendioOfertaPages } from './incendio.js'
 
-test('buildIncendioOfertaPages uses the supplied immutable render time', () => {
-  const { paginaUno } = buildIncendioOfertaPages({
-    cotizacion: {
-      numero_cotizacion: 'INC-1',
-      vigencia_dias: 30,
-      cotizacion_coberturas: [],
-      cotizacion_variantes: [],
-    },
-    plan: { nombre: 'INCENDIO SIN INSPECCION' },
-    renderContext: {
-      timestamp: '2026-08-25T03:00:00.000Z',
-      timezone: 'America/Asuncion',
-      locale: 'es-PY',
-    },
-  })
-
-  assert.match(paginaUno, /Fecha: 25\/08\/2026/)
-})
-
 // Cada uno de los 4 planes de Incendio tiene texto legal (Coberturas Principales/Exclusiones/
 // Recomendaciones) DISTINTO. Estos tests verifican que cada plan renderiza su propio texto, y
 // que un plan no arrastra el texto de otro (regresión de un eventual mapeo mal armado en

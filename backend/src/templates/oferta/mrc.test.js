@@ -50,23 +50,6 @@ test('buildMrcOfertaPages usa los montos vigentes de planCoberturas, no valores 
   assert.doesNotMatch(paginaDosBalanceada, /Equipos Electrónicos: 5\.000\.000/)
 })
 
-test('buildMrcOfertaPages uses the supplied immutable render time', () => {
-  const { paginaUno } = buildMrcOfertaPages({
-    cotizacion: COTIZACION_BASE,
-    plan: PLAN_BASE,
-    ramo: RAMO_BASE,
-    planCoberturas: [],
-    renderContext: {
-      timestamp: '2026-08-25T03:00:00.000Z',
-      timezone: 'America/Asuncion',
-      locale: 'es-PY',
-    },
-  })
-
-  assert.match(paginaUno, /Fecha: 25\/08\/2026/)
-  assert.match(paginaUno, /Vigencia del seguro: 1 año, desde 25\/08\/2026/)
-})
-
 // A pedido de Kevin (2026-08-06): los sub-límites fijos por defecto (agua/equipos
 // electrónicos/granizo) también deben figurar como fila en "Sumas Aseguradas" (página 1), con
 // la misma etiqueta SUBLÍMITE que ya tenía "Robo valores ventanilla" — revierte la exclusión de

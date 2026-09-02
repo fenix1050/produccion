@@ -1,11 +1,6 @@
 import { escapeHtml, fmtGs, fmtFecha } from './layout.js'
 
 const ORDEN_FORMAS_PAGO = ['contado', 'cobrador', 'boca_cobranza', 'tarjeta_credito']
-const DEFAULT_RENDER_CONTEXT = {
-  timestamp: '1970-01-01T00:00:00.000Z',
-  timezone: 'America/Asuncion',
-  locale: 'es-PY',
-}
 
 const NOMBRE_PLAN_HIPOTECARIO = 'INCENDIO HIPOTECARIO'
 const NOMBRE_PLAN_CON_INSPECCION = 'INCENDIO CON INSPECCION'
@@ -106,11 +101,7 @@ const TEXTOS_POR_PLAN = {
  * builders igual) pero no se usa acá: a diferencia de MRC, Incendio no tiene sub-límites fijos
  * cuyo monto dependa del catálogo vigente del plan.
  */
-export function buildIncendioOfertaPages({
-  cotizacion,
-  plan,
-  renderContext = DEFAULT_RENDER_CONTEXT,
-}) {
+export function buildIncendioOfertaPages({ cotizacion, plan }) {
   const riesgo = cotizacion.riesgo_datos || {}
   const textos = TEXTOS_POR_PLAN[plan.nombre] ?? null
 
@@ -125,7 +116,7 @@ export function buildIncendioOfertaPages({
 
   const paginaUno = `
     <div class="meta-row">
-      <div>Fecha: ${fmtFecha(renderContext.timestamp, renderContext)}</div>
+      <div>Fecha: ${fmtFecha()}</div>
       <div class="plan-name">${escapeHtml(plan.nombre)}</div>
     </div>
     <div class="cliente-banner"><span class="cliente-banner__accent"></span>Sr/a ${escapeHtml(cotizacion.cliente_nombre || 'Asegurado')} — Cotización Nro: ${escapeHtml(cotizacion.numero_cotizacion)}</div>

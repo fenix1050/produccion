@@ -648,11 +648,6 @@ Contenido:
 - Pie legal estándar ("esta cotización no implica aceptación del riesgo...")
 
 ### Documento 2 — Propuesta Formal (se genera al marcar la cotización como `aceptada`)
-El diseño actualizado y completo de este módulo —incluidos snapshots inmutables, borradores,
-selección persistida de variante/pago y la preparación de Maquinarias— está en
-[`PLAN_PROPUESTA_FORMAL.md`](PLAN_PROPUESTA_FORMAL.md). Esa especificación prevalece sobre el
-resumen histórico de esta sección cuando exista una diferencia.
-
 Réplica del documento real que compartiste (`ASEGURADORA TAJY — PROPUESTA PARA SEGURO DE...`):
 
 - Todo lo del Documento 1, más:
@@ -763,11 +758,9 @@ Mismo patrón visual que Siniestros Tajy (sidebar, Vanilla JS, sin framework).
 - Anexo de condiciones dinámico en el PDF
 
 **Fase 4 — Propuesta Formal**
-- ✅ PF-1: Carta Oferta histórica, inmutable y persistida; emisión MRC verificada en QA.
-- ✅ PF-2 para MRC: elegibilidad, borradores persistentes, selección por referencia, revisión
-  optimista y entradas desde Bienvenida/Historial verificadas en QA. La migración 069 está aplicada
-  solo en QA; PF-3 sigue bloqueado hasta cerrar PF-0 y aprobar el plan de rollout a producción.
-- 🔲 PF-3: plantilla, emisión PDF, firmas y selección final en el documento oficial. No iniciada.
+- Formulario de KYC/PLA-FT al marcar cotización como 'aceptada'
+- Plantilla y generación de la Propuesta Formal en PDF (réplica del documento real)
+- Firmas y checkbox de forma de pago elegida
 
 **Fase 5 — Historial y administración** — ✅ Base funcional implementada (2026-07-19), con
 iteraciones visuales y de seguridad agregadas después.

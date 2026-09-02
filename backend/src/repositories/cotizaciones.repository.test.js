@@ -29,45 +29,6 @@ function mockearSupabaseRpc(t, respuesta) {
   return llamadas
 }
 
-test('findCotizacionById loads every persisted relation used by Carta Oferta snapshots', async (t) => {
-  let selectedColumns
-  const builder = {
-    select(columns) {
-      selectedColumns = columns
-      return this
-    },
-    eq() {
-      return this
-    },
-    single() {
-      return Promise.resolve({ data: { id: 7 }, error: null })
-    },
-  }
-  t.mock.module('../config/supabase.js', {
-    namedExports: {
-      supabase: {
-        from: () => builder,
-      },
-    },
-  })
-
-  const { findCotizacionById } =
-    await import('./cotizaciones.repository.js?case=carta-snapshot-relations')
-
-  await findCotizacionById(7)
-
-  for (const relation of [
-    'cotizacion_coberturas',
-    'cotizacion_servicios',
-    'cotizacion_clausulas',
-    'cotizacion_variantes',
-    'cotizacion_plan_pago',
-    'cotizacion_ajustes',
-  ]) {
-    assert.match(selectedColumns, new RegExp(relation))
-  }
-})
-
 test('crearCotizacionAtomica: llama a supabase.rpc("crear_cotizacion_atomica", payload) con el payload p_* exacto', async (t) => {
   const llamadas = mockearSupabaseRpc(t, { data: 123, error: null })
 

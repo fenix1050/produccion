@@ -36,7 +36,6 @@ const CALCULADORES_CON_OFERTA_PDF = ['mrc']
 const state = {
   ramos: [],
   cotizaciones: [],
-  cartasAptas: [],
   count: 0,
   offset: 0,
   loading: false,
@@ -169,13 +168,9 @@ async function cargarCotizaciones() {
   params.set('offset', String(state.offset))
 
   try {
-    const [{ data, count }, cartasAptas] = await Promise.all([
-      api.get(`/cotizaciones?${params.toString()}`),
-      api.get('/propuestas/cartas-aptas?limite=100').catch(() => []),
-    ])
+    const { data, count } = await api.get(`/cotizaciones?${params.toString()}`)
     state.cotizaciones = data
     state.count = count ?? 0
-    state.cartasAptas = cartasAptas
   } catch (err) {
     state.cotizaciones = []
     state.count = 0
@@ -393,7 +388,6 @@ function renderTabla() {
       const prima = primaRepresentativa(c)
       const moneda = c.moneda ?? 'PYG'
       const puedeOferta = ofertaDisponible(c)
-      const cartaApta = state.cartasAptas.find((carta) => carta.cotizacion_id === c.id)
       return `
       <tr>
         <td data-label="Número"><span class="historial-tabla__numero">${escapeHtml(c.numero_cotizacion)}</span></td>
@@ -407,11 +401,6 @@ function renderTabla() {
         <td data-label="Acciones">
           <div class="historial-tabla__actions">
             <button class="historial-tabla__btn-ghost" data-action="ver-detalle" data-id="${c.id}">Ver detalle</button>
-            ${
-              cartaApta
-                ? `<button class="btn-primary historial-tabla__btn-propuesta" data-action="preparar-propuesta" data-carta-id="${cartaApta.id}">${cartaApta.propuesta_borrador_id ? 'Reabrir propuesta' : 'Preparar propuesta'}</button>`
-                : ''
-            }
             ${
               puedeOferta
                 ? `<button class="btn-outline historial-tabla__btn-oferta" data-action="descargar-oferta" data-id="${c.id}" data-numero="${escapeHtml(c.numero_cotizacion)}">Carta Oferta</button>`
@@ -703,10 +692,6 @@ function onActionClick(el) {
   }
   if (action === 'descargar-oferta') {
     descargarOferta(el, Number(el.dataset.id), el.dataset.numero)
-    return
-  }
-  if (action === 'preparar-propuesta') {
-    window.location.href = `../propuestas/?carta=${encodeURIComponent(el.dataset.cartaId)}`
     return
   }
   if (action === 'editar-cotizacion') {

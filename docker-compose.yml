@@ -1,8 +1,6 @@
 services:
   backend:
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
+    image: ${BACKEND_IMAGE:?BACKEND_IMAGE requerido}
     container_name: cotizador-tajy-backend
     restart: unless-stopped
     env_file:

@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.1.63](https://github.com/fenix1050/produccion/compare/v0.1.62...v0.1.63) (2026-09-02)
+
+
+### Features
+
+* integrate PF-1/PF-2 MRC rollout ([3cf5627](https://github.com/fenix1050/produccion/commit/3cf5627fca02e30eaf242a42f8e7afa5582460e8))
+* isolate test environment from production ([22c7f4e](https://github.com/fenix1050/produccion/commit/22c7f4e7912a9ebae4ace29aa2f5a4a150722ad6))
+* **propuestas:** add MRC proposal draft foundation ([96c5c97](https://github.com/fenix1050/produccion/commit/96c5c97df4ff7b707af1f34dbea881f089b885e1))
+* serve frontend from VPS with prod and test environments ([ad168b3](https://github.com/fenix1050/produccion/commit/ad168b372ddc105f88cdc4671b80da0cabef54c7))
+
+
+### Reverts
+
+* keep MRC proposal work out of main ([29c3975](https://github.com/fenix1050/produccion/commit/29c3975282a246aa9f09779250fec297a8150429))
+
 ## [0.1.62](https://github.com/fenix1050/produccion/compare/v0.1.61...v0.1.62) (2026-08-24)
 
 

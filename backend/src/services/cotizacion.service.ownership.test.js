@@ -205,11 +205,7 @@ describe('generarPdfOferta — aislamiento horizontal', () => {
     t.mock.module('../repositories/cotizaciones.repository.js', {
       namedExports: { findCotizacionById },
     })
-    t.mock.module('./carta-oferta.service.js', {
-      namedExports: {
-        generarCartaOfertaPersistida: async (input) => renderOfertaPdf(input),
-      },
-    })
+    t.mock.module('./pdf.service.js', { namedExports: { renderOfertaPdf } })
   }
 
   test('dueño (A sobre su propia cotización): succeeds, genera el PDF', async (t) => {
@@ -292,37 +288,6 @@ describe('generarPdfOferta — aislamiento horizontal', () => {
       }
     )
     assert.equal(generado, false)
-  })
-
-  test('recotización entre la lectura y el lock: recarga datos y solo entrega el segundo snapshot', async (t) => {
-    let lecturas = 0
-    const snapshotsGenerados = []
-    mockModulosPdf(t, {
-      findCotizacionById: async () => {
-        lecturas += 1
-        return {
-          ...COTIZACION_DE_A,
-          plan_id: PLAN_DUMMY.id,
-          riesgo_datos: { version: lecturas },
-        }
-      },
-      renderOfertaPdf: async ({ cotizacion }) => {
-        snapshotsGenerados.push(cotizacion.riesgo_datos.version)
-        if (snapshotsGenerados.length === 1) {
-          const error = new Error('snapshot stale')
-          error.code = 'CARTA_OFERTA_SNAPSHOT_OBSOLETO'
-          throw error
-        }
-        return Buffer.from('fresh-pdf')
-      },
-    })
-    const { generarPdfOferta } = await import('./cotizacion.service.js?case=pdf-recotizacion-race')
-
-    const pdf = await generarPdfOferta(7, AGENTE_A)
-
-    assert.equal(lecturas, 2)
-    assert.deepEqual(snapshotsGenerados, [1, 2])
-    assert.deepEqual(pdf, Buffer.from('fresh-pdf'))
   })
 })
 

@@ -131,12 +131,6 @@
   white-space: nowrap;
 }
 
-.historial-tabla__btn-propuesta {
-  padding: 7px 11px;
-  font-size: 12px;
-  white-space: nowrap;
-}
-
 .historial-modal-detalle {
   width: min(760px, calc(100vw - 32px));
   max-height: none;

@@ -1,7 +1,4 @@
-import {
-  cotizacionIdParamsSchema,
-  listarCotizacionesQuerySchema,
-} from '../schemas/cotizaciones.schema.js'
+import { listarCotizacionesQuerySchema } from '../schemas/cotizaciones.schema.js'
 import * as cotizacionService from '../services/cotizacion.service.js'
 import { httpError } from '../utils/http-error.js'
 
@@ -60,11 +57,7 @@ export async function actualizar(req, res, next) {
 
 export async function pdfOferta(req, res, next) {
   try {
-    const parseo = cotizacionIdParamsSchema.safeParse(req.params)
-    if (!parseo.success) {
-      throw httpError(400, parseo.error.issues.map((issue) => issue.message).join('; '))
-    }
-    const pdfBuffer = await cotizacionService.generarPdfOferta(parseo.data.id, req.usuario)
+    const pdfBuffer = await cotizacionService.generarPdfOferta(req.params.id, req.usuario)
     res.setHeader('Content-Type', 'application/pdf')
     res.send(pdfBuffer)
   } catch (err) {

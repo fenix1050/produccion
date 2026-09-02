@@ -28,14 +28,7 @@ export function ofertaDisponibleParaRamo(ramo) {
   return Boolean(BUILDERS_POR_CALCULADOR[ramo.calculador])
 }
 
-export async function buildOfertaHtml({
-  cotizacion,
-  plan,
-  ramo,
-  planCoberturas,
-  renderContext,
-  page,
-}) {
+export async function buildOfertaHtml({ cotizacion, plan, ramo, planCoberturas, page }) {
   const builder = BUILDERS_POR_CALCULADOR[ramo.calculador]
   if (!builder) {
     throw httpError(
@@ -51,7 +44,6 @@ export async function buildOfertaHtml({
     plan,
     ramo,
     planCoberturas,
-    renderContext,
   })
 
   // El layout flex (3 bloques fijos por columna) no puede fragmentarse entre hojas — solo se

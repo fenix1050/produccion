@@ -25,8 +25,6 @@ function namedRepository(repository, handlers) {
 
 export function createFixtureAdapter(fixtures) {
   const quotes = []
-  const cartasOferta = []
-  const pdfsCartaOferta = new Map()
   const planCoberturaReads = []
   const ramosById = new Map(fixtures.ramos.map((row) => [row.id, row]))
   const planesById = new Map(fixtures.planes.map((row) => [row.id, row]))
@@ -43,7 +41,6 @@ export function createFixtureAdapter(fixtures) {
   let nextCoberturaId = 1
   let nextVarianteId = 1
   let nextPlanPagoId = 1
-  let nextCartaOfertaId = 1
 
   for (const row of fixtures.planFormasPago) {
     const rows = pagosPorPlan.get(row.plan_id) ?? []
@@ -233,62 +230,6 @@ export function createFixtureAdapter(fixtures) {
       },
       async findCotizaciones() {
         return copy({ data: quotes, count: quotes.length })
-      },
-    }),
-    'cartas-oferta': namedRepository('cartas-oferta', {
-      async iniciarCartaOfertaGeneracion(payload) {
-        const existing = cartasOferta.find(
-          (carta) =>
-            carta.cotizacion_id === number(payload.p_cotizacion_id) &&
-            carta.snapshot_hash === payload.p_snapshot_hash &&
-            ['generando', 'error_pdf', 'emitida'].includes(carta.estado)
-        )
-        if (existing) {
-          return copy({
-            ...existing,
-            puede_generar: existing.estado !== 'emitida',
-            snapshot_vigente: true,
-          })
-        }
-
-        const carta = {
-          id: nextCartaOfertaId++,
-          cotizacion_id: number(payload.p_cotizacion_id),
-          version: 1,
-          estado: 'generando',
-          snapshot_hash: payload.p_snapshot_hash,
-          snapshot_json: copy(payload.p_snapshot_json),
-          pdf_storage_path: null,
-          pdf_hash: null,
-        }
-        cartasOferta.push(carta)
-        return copy({ ...carta, puede_generar: true, snapshot_vigente: true })
-      },
-      async emitirCartaOferta({ p_carta_id, p_pdf_storage_path, p_pdf_hash }) {
-        const carta = cartasOferta.find((row) => row.id === number(p_carta_id))
-        if (!carta || carta.estado !== 'generando') return false
-        carta.estado = 'emitida'
-        carta.pdf_storage_path = p_pdf_storage_path
-        carta.pdf_hash = p_pdf_hash
-        return true
-      },
-      async registrarErrorCartaOferta({ p_carta_id }) {
-        const carta = cartasOferta.find((row) => row.id === number(p_carta_id))
-        if (carta?.estado === 'generando') carta.estado = 'error_pdf'
-      },
-      async descargarPdfCartaOferta(storagePath) {
-        const pdf = pdfsCartaOferta.get(storagePath)
-        if (!pdf) throw new Error(`Missing fixture PDF at ${storagePath}`)
-        return Buffer.from(pdf)
-      },
-      async subirPdfCartaOferta(storagePath, pdf) {
-        pdfsCartaOferta.set(storagePath, Buffer.from(pdf))
-      },
-      async eliminarPdfCartaOferta(storagePath) {
-        pdfsCartaOferta.delete(storagePath)
-      },
-      async findCartaOfertaById(id) {
-        return copy(cartasOferta.find((row) => row.id === number(id)) ?? null)
       },
     }),
     tasas: namedRepository('tasas', {

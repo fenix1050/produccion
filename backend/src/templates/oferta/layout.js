@@ -318,7 +318,12 @@ export function fmtGs(value) {
   return Math.round(Number(value) || 0).toLocaleString('es-PY')
 }
 
-export function fmtFecha(value) {
-  const date = value ? new Date(value) : new Date()
-  return date.toLocaleDateString('es-PY', { day: '2-digit', month: '2-digit', year: 'numeric' })
+export function fmtFecha(value, { timezone = 'America/Asuncion', locale = 'es-PY' } = {}) {
+  const date = new Date(value)
+  return date.toLocaleDateString(locale, {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    timeZone: timezone,
+  })
 }

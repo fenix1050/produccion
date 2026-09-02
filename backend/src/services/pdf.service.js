@@ -17,7 +17,7 @@ import { getBrowser } from '../templates/oferta/pdf-utils.js'
  * header/footer dentro del HTML de la página, que solo aparece una vez por página lógica y deja
  * sin marca las hojas de overflow cuando el contenido no entra en una sola hoja.
  */
-export async function renderOfertaPdf({ cotizacion, plan, ramo, planCoberturas }) {
+export async function renderOfertaPdf({ cotizacion, plan, ramo, planCoberturas, renderContext }) {
   const t0 = Date.now()
   const browser = await getBrowser()
   const t1 = Date.now()
@@ -29,6 +29,7 @@ export async function renderOfertaPdf({ cotizacion, plan, ramo, planCoberturas }
       plan,
       ramo,
       planCoberturas,
+      renderContext,
       page,
     })
     const t3 = Date.now()

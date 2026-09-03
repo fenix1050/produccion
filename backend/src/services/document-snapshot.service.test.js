@@ -386,3 +386,74 @@ test('buildCotizacionFuenteSnapshot changes for every mutable active render depe
     assert.notEqual(hashSnapshot(candidate), hashSnapshot(original))
   }
 })
+
+test('Carta snapshot identity ignores render timestamp but preserves it for rendering', () => {
+  const base = {
+    cotizacion: {
+      id: 7,
+      numero_cotizacion: 'MRC-7',
+      agente_id: 1,
+      fecha: '2026-08-25',
+      vigencia_dias: 30,
+      cliente_nombre: 'Cliente',
+      cliente_contacto: null,
+      riesgo_datos: {},
+      capital_asegurado: 1000000,
+      moneda: 'PYG',
+      tipo_cambio_snapshot: null,
+      tipo_cambio_fuente: null,
+      tipo_cambio_fecha: null,
+      usuarios: {
+        nombre: 'Agent',
+        email: 'agent@example.com',
+        telefono: '123',
+        roles: { nombre: 'agente' },
+      },
+      cotizacion_coberturas: [],
+      cotizacion_servicios: [],
+      cotizacion_clausulas: [],
+      cotizacion_variantes: [],
+    },
+    plan: {
+      id: 3,
+      nombre: 'MRC',
+    },
+    ramo: {
+      id: 5,
+      nombre: 'mrc',
+      nombre_display: 'MRC',
+      calculador: 'mrc',
+    },
+    planCoberturas: [],
+  }
+
+  const first = buildCartaOfertaSnapshot({
+    ...base,
+    renderTimestamp: '2026-09-03T12:32:30.074Z',
+  })
+
+  const second = buildCartaOfertaSnapshot({
+    ...base,
+    renderTimestamp: '2026-09-03T12:32:32.648Z',
+  })
+
+  assert.notEqual(
+    first.snapshot.render_context.timestamp,
+    second.snapshot.render_context.timestamp
+  )
+
+  assert.equal(
+    first.snapshotHash,
+    second.snapshotHash
+  )
+
+  assert.equal(
+    buildCartaOfertaRenderInput(first.snapshot).renderContext.timestamp,
+    '2026-09-03T12:32:30.074Z'
+  )
+
+  assert.equal(
+    buildCartaOfertaRenderInput(second.snapshot).renderContext.timestamp,
+    '2026-09-03T12:32:32.648Z'
+  )
+})

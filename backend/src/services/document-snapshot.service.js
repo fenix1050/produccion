@@ -66,9 +66,17 @@ export function buildCartaOfertaSnapshot({
     plan_coberturas: fuente.plan_coberturas,
   }
 
+  const identitySnapshot = {
+    ...snapshot,
+    render_context: {
+      timezone: snapshot.render_context.timezone,
+      locale: snapshot.render_context.locale,
+    },
+  }
+
   return {
     snapshot,
-    snapshotHash: hashSnapshot(snapshot),
+    snapshotHash: hashSnapshot(identitySnapshot),
     schemaVersion: CARTA_SNAPSHOT_SCHEMA_VERSION,
     templateVersion: `${ramo.calculador}:manual-source-revision:${CARTA_OFERTA_RENDERER_REVISION}`,
     calculatorVersion: `${ramo.calculador}:1`,

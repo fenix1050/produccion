@@ -4,7 +4,6 @@ import { initConstellationFx, initLoginFx } from '../shared/fx.js'
 import { logger } from '../shared/logger.js'
 import {
   ICON_ARROW_LEFT,
-  ICON_CLOCK,
   ICON_RAMO_AUTO,
   ICON_RAMO_MRC,
   ICON_RAMO_INCENDIO,
@@ -15,8 +14,8 @@ import {
 } from '../shared/nav-icons.js'
 
 // Pantalla de bienvenida post-login (WU7) — recreación en Vanilla JS del handoff aprobado
-// (v2, ver logo/Diseño para pantalla de bienvenida/README.md). Un solo componente con 3
-// estados en memoria (welcome | ramo | propuesta), sin routing por URL.
+// (v2, ver logo/Diseño para pantalla de bienvenida/README.md). Un solo componente con 2
+// estados en memoria (welcome | ramo), sin routing por URL.
 
 const ICON_COTIZAR = `<svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M7 3.5h7l4 4V19a1.2 1.2 0 0 1-1.2 1.2H7A1.2 1.2 0 0 1 5.8 19V4.7A1.2 1.2 0 0 1 7 3.5z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path><path d="M14 3.5V7a1 1 0 0 0 1 1h3.5" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path><path d="M8.5 12h7M8.5 15h7M8.5 9h3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path></svg>`
 const ICON_PROPUESTA = `<svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M12 3.5l7 2.6v5.4c0 4.4-3 7.9-7 9-4-1.1-7-4.6-7-9V6.1l7-2.6z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path><path d="M9.3 12.1l1.9 1.9 3.5-3.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path></svg>`
@@ -112,7 +111,6 @@ function render() {
         ${renderBanner(state.banner)}
         ${state.view === 'welcome' ? renderWelcome() : ''}
         ${state.view === 'ramo' ? renderRamo() : ''}
-        ${state.view === 'propuesta' ? renderPropuesta() : ''}
       </main>
     </div>
   `
@@ -228,25 +226,13 @@ function renderRamo() {
   `
 }
 
-function renderPropuesta() {
-  return `
-    <button type="button" class="bv-volver" data-action="volver">${ICON_ARROW_LEFT} Volver</button>
-    <div class="bv-placeholder">
-      <div class="bv-placeholder__icon">${ICON_CLOCK}</div>
-      <div class="bv-placeholder__title">Próximamente</div>
-      <p class="bv-placeholder__text">La Propuesta Formal con KYC/PLA-FT todavía está en desarrollo. Por ahora podés generar la Carta Oferta desde el cotizador.</p>
-    </div>
-  `
-}
-
 function bindEvents() {
   app.querySelector('[data-action="ir-cotizar"]')?.addEventListener('click', () => {
     state.view = 'ramo'
     render()
   })
   app.querySelector('[data-action="ir-propuesta"]')?.addEventListener('click', () => {
-    state.view = 'propuesta'
-    render()
+    window.location.href = '../propuestas/'
   })
   app.querySelector('[data-action="ir-admin"]')?.addEventListener('click', () => {
     window.location.href = '../admin/'

@@ -74,7 +74,10 @@ async function request(path, options = {}) {
       redirectToLogin()
     }
 
-    throw new Error(body.error || `Error ${res.status} al llamar a ${path}`)
+    const error = new Error(body.error || `Error ${res.status} al llamar a ${path}`)
+    error.status = res.status
+    error.body = body
+    throw error
   }
 
   if (res.status === 204) return null

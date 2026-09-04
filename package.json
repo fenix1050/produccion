@@ -16,6 +16,7 @@
     "test": "npm test --workspace=backend && npm test --workspace=frontend",
     "check": "npm run format:check && npm run lint && npm run test",
     "verify:fast": "npm run check && npm run verify:migrations --workspace=backend",
+    "verify:migrations:pf3": "npm run verify:migrations --workspace=backend && npm run test:migrations:pf3 --workspace=backend",
     "verify:e2e": "npm run test:e2e:smoke --workspace=backend",
     "verify": "npm run verify:fast && npm run verify:e2e",
     "prepare": "husky || true"

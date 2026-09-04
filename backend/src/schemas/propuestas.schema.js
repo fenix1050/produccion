@@ -25,12 +25,29 @@ const aseguradoSchema = z
   })
   .passthrough()
 
+const personaSchema = aseguradoSchema
+  .extend({
+    fecha_nacimiento: z.string().date().optional(),
+    nacionalidad: texto(80),
+    estado_civil: texto(60),
+    ocupacion: texto(160),
+    ciudad: texto(100),
+    ingreso_mensual: z.number().nonnegative().nullable().optional(),
+    lugar_trabajo: texto(200),
+  })
+  .passthrough()
+
 export const draftPropuestaSchema = z
   .object({
     partes: z
       .object({
-        asegurado: aseguradoSchema.optional(),
+        asegurado: personaSchema.optional(),
         tomador_igual_asegurado: z.boolean().optional(),
+        tomador: personaSchema.optional(),
+        representante_legal: z
+          .object({ nombre: texto(200), documento: texto(50), cargo: texto(120) })
+          .passthrough()
+          .optional(),
       })
       .passthrough()
       .optional(),
@@ -41,9 +58,13 @@ export const draftPropuestaSchema = z
         pep_cargo: texto(100),
         sujeto_obligado: z.boolean().nullable().optional(),
         origen_fondos_descripcion: texto(500),
+        proveedor_estado: z.boolean().nullable().optional(),
       })
       .passthrough()
       .optional(),
+    descripcion_detallada: texto(2000),
+    observaciones: texto(2000),
+    tipo_firma: z.enum(['manual', 'digital']).optional(),
   })
   .catchall(jsonValue)
 
@@ -52,4 +73,18 @@ export const actualizarBorradorSchema = z.object({
   cotizacion_variante_id: z.number().int().positive().nullable(),
   cotizacion_plan_pago_id: z.number().int().positive().nullable(),
   draft_json: draftPropuestaSchema,
+})
+
+export const emitirPropuestaSchema = z.object({
+  revision: z.number().int().positive(),
+})
+
+export const anularPropuestaSchema = z.object({
+  motivo: z.string().trim().min(3).max(1000),
+})
+
+export const publicarTextoPropuestaSchema = z.object({
+  clave: z.string().trim().min(1).max(80),
+  contenido: z.string().trim().min(1).max(30000),
+  motivo: z.string().trim().min(3).max(500),
 })

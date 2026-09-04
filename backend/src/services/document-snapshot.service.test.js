@@ -5,8 +5,10 @@ import {
   buildCartaOfertaSnapshot,
   buildCartaOfertaRenderInput,
   buildCotizacionFuenteSnapshot,
+  buildPropuestaFormalSnapshot,
   canonicalStringify,
   hashSnapshot,
+  PROPUESTA_FORMAL_RENDERER_REVISION,
 } from './document-snapshot.service.js'
 
 test('canonicalStringify and hashSnapshot are stable when object key order differs', () => {
@@ -437,15 +439,9 @@ test('Carta snapshot identity ignores render timestamp but preserves it for rend
     renderTimestamp: '2026-09-03T12:32:32.648Z',
   })
 
-  assert.notEqual(
-    first.snapshot.render_context.timestamp,
-    second.snapshot.render_context.timestamp
-  )
+  assert.notEqual(first.snapshot.render_context.timestamp, second.snapshot.render_context.timestamp)
 
-  assert.equal(
-    first.snapshotHash,
-    second.snapshotHash
-  )
+  assert.equal(first.snapshotHash, second.snapshotHash)
 
   assert.equal(
     buildCartaOfertaRenderInput(first.snapshot).renderContext.timestamp,
@@ -456,4 +452,22 @@ test('Carta snapshot identity ignores render timestamp but preserves it for rend
     buildCartaOfertaRenderInput(second.snapshot).renderContext.timestamp,
     '2026-09-03T12:32:32.648Z'
   )
+})
+
+test('buildPropuestaFormalSnapshot identifies the active MRC renderer revision', () => {
+  const result = buildPropuestaFormalSnapshot({
+    propuesta: { id: 1, numero_propuesta: 2, draft_json: {} },
+    carta: { id: 3, numero_carta: 'MRC-3', version: 1, snapshot_json: {} },
+    commercial: {},
+    agente: { id: 4, nombre: 'Synthetic Agent' },
+    textos: [],
+  })
+
+  assert.equal(result.snapshot.renderer_identity.revision, PROPUESTA_FORMAL_RENDERER_REVISION)
+  assert.equal(PROPUESTA_FORMAL_RENDERER_REVISION, 'pf3-mrc-renderer-r16')
+  assert.equal(
+    result.templateVersion,
+    `mrc:manual-source-revision:${PROPUESTA_FORMAL_RENDERER_REVISION}`
+  )
+  assert.match(result.snapshotHash, /^[a-f0-9]{64}$/)
 })

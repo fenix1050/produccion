@@ -6,6 +6,7 @@ export const CARTA_SNAPSHOT_SCHEMA_VERSION = '2'
 // do not reliably expose the exact template source bytes, so it MUST be bumped whenever any active
 // Carta template, layout, or renderer behavior changes.
 export const CARTA_OFERTA_RENDERER_REVISION = 'pf1-renderer-r2'
+export const PROPUESTA_FORMAL_RENDERER_REVISION = 'pf3-mrc-renderer-r16'
 
 export function canonicalStringify(value) {
   return JSON.stringify(normalize(value))
@@ -191,6 +192,57 @@ export function buildCartaOfertaRenderInput(snapshot) {
     ramo: snapshot.ramo,
     planCoberturas: snapshot.plan_coberturas,
     renderContext: snapshot.render_context,
+  }
+}
+
+export function buildPropuestaFormalSnapshot({ propuesta, carta, commercial, agente, textos }) {
+  const textVersions = Object.fromEntries(
+    textos.map((texto) => [
+      texto.clave,
+      {
+        id: texto.id,
+        version: texto.version,
+        hash: hashSnapshot(texto.contenido),
+        contenido: texto.contenido,
+        motivo: texto.motivo,
+        creado_por: texto.creado_por,
+        creado_at: texto.creado_at,
+        publicado_at: texto.publicado_at,
+        origen: texto.origen,
+      },
+    ])
+  )
+  const snapshot = {
+    document_type: 'propuesta_formal',
+    product_code: 'mrc',
+    renderer_identity: {
+      policy: 'manual_source_revision',
+      revision: PROPUESTA_FORMAL_RENDERER_REVISION,
+    },
+    proposal: {
+      id: propuesta.id,
+      numero_propuesta: propuesta.numero_propuesta,
+      emitida_at: new Date().toISOString(),
+      agente: { id: agente.id, nombre: agente.nombre, matricula: agente.matricula_agente ?? null },
+    },
+    carta: {
+      id: carta.id,
+      numero_carta: carta.numero_carta,
+      version: carta.version,
+      render_context: carta.snapshot_json?.render_context,
+      riesgo_datos: carta.snapshot_json?.cotizacion?.riesgo_datos ?? {},
+      coberturas: carta.snapshot_json?.cotizacion?.cotizacion_coberturas ?? [],
+    },
+    commercial,
+    draft: propuesta.draft_json,
+    texts: textVersions,
+  }
+  return {
+    snapshot,
+    snapshotHash: hashSnapshot(snapshot),
+    schemaVersion: '1',
+    templateVersion: `mrc:manual-source-revision:${PROPUESTA_FORMAL_RENDERER_REVISION}`,
+    textVersions,
   }
 }
 

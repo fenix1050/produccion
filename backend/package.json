@@ -12,6 +12,7 @@
     "start": "node src/server.js",
     "test": "node --experimental-test-module-mocks --test src/**/*.test.js",
     "verify:migrations": "node scripts/verificar-numeracion-migraciones.js",
+    "test:migrations:pf3": "node --test migrations/069_propuestas_formales_borradores.test.js migrations/071_propuestas_formales_emision_mrc.test.js migrations/072_revoke_pf3_rpc_browser_roles.test.js migrations/073_prevenir_emision_duplicada_propuesta_formal_mrc.test.js migrations/074_pf3_service_role_acl.test.js",
     "e2e:install:chromium": "playwright install chromium",
     "e2e:install:chromium:ci": "playwright install --with-deps chromium",
     "e2e:install:puppeteer": "puppeteer browsers install chrome",

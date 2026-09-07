@@ -57,6 +57,9 @@ export function abrirModalRolCrear() {
     puede_ver_descuento_plan: true,
     puede_agregar_cobertura_libre: true,
     puede_seleccionar_franquicia: false,
+    puede_gestionar_textos_propuesta: false,
+    puede_descargar_propuestas: false,
+    puede_anular_propuestas: false,
   }
   renderApp()
   enfocarPrimerElemento(app.querySelector('.admin-modal'))
@@ -80,6 +83,9 @@ export function abrirModalRolEditar(rolId) {
     puede_ver_descuento_plan: Boolean(rol.puede_ver_descuento_plan),
     puede_agregar_cobertura_libre: Boolean(rol.puede_agregar_cobertura_libre),
     puede_seleccionar_franquicia: Boolean(rol.puede_seleccionar_franquicia),
+    puede_gestionar_textos_propuesta: Boolean(rol.puede_gestionar_textos_propuesta),
+    puede_descargar_propuestas: Boolean(rol.puede_descargar_propuestas),
+    puede_anular_propuestas: Boolean(rol.puede_anular_propuestas),
   }
   renderApp()
   enfocarPrimerElemento(app.querySelector('.admin-modal'))
@@ -106,6 +112,9 @@ export async function guardarModalRol(form) {
     puede_ver_descuento_plan: form.puede_ver_descuento_plan.checked,
     puede_agregar_cobertura_libre: form.puede_agregar_cobertura_libre.checked,
     puede_seleccionar_franquicia: form.puede_seleccionar_franquicia.checked,
+    puede_gestionar_textos_propuesta: form.puede_gestionar_textos_propuesta.checked,
+    puede_descargar_propuestas: form.puede_descargar_propuestas.checked,
+    puede_anular_propuestas: form.puede_anular_propuestas.checked,
   }
 
   if (!nombre) {

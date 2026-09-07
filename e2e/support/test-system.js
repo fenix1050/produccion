@@ -71,6 +71,15 @@ const REPOSITORY_METHODS = {
     'findCotizacionById',
     'findCotizaciones',
   ],
+  'cartas-oferta': [
+    'iniciarCartaOfertaGeneracion',
+    'emitirCartaOferta',
+    'registrarErrorCartaOferta',
+    'descargarPdfCartaOferta',
+    'subirPdfCartaOferta',
+    'eliminarPdfCartaOferta',
+    'findCartaOfertaById',
+  ],
   tasas: [
     'findPlanByCodigoTasa',
     'reemplazarTasasCapitalDePlan',
@@ -111,6 +120,7 @@ function mockRepositories() {
     'ramos.repository.js': 'ramos',
     'coberturas.repository.js': 'coberturas',
     'cotizaciones.repository.js': 'cotizaciones',
+    'cartas-oferta.repository.js': 'cartas-oferta',
     'tasas.repository.js': 'tasas',
     'roles.repository.js': 'roles',
     'tipos-cambio.repository.js': 'tipos-cambio',

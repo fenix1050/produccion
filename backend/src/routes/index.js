@@ -7,6 +7,7 @@ import { router as adminRouter } from './admin.routes.js'
 import { router as authRouter } from './auth.routes.js'
 import { router as cotizacionesRouter } from './cotizaciones.routes.js'
 import { router as planesRouter } from './planes.routes.js'
+import { router as propuestasRouter } from './propuestas.routes.js'
 import { router as ramosRouter } from './ramos.routes.js'
 
 export const router = Router()
@@ -19,6 +20,7 @@ router.use('/auth', authRouter)
 router.use('/ramos', requireAuth, ramosRouter)
 router.use('/planes', requireAuth, planesRouter)
 router.use('/cotizaciones', requireAuth, cotizacionesRouter)
+router.use('/propuestas', requireAuth, propuestasRouter)
 router.use('/admin/tasas', requireAuth, adminTasasRouter)
 // Montado DESPUÉS de /admin/tasas: si una request a /admin/tasas no matchea ninguna
 // ruta de adminTasasRouter (solo define /importar), Express hace fallthrough hasta

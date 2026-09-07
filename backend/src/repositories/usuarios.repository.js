@@ -7,7 +7,7 @@ import { supabase } from '../config/supabase.js'
 // código downstream que lea `usuario.rol` / `usuario.puede_editar_tasas` etc. no necesiten
 // cambiar — ver docs/ESTADO_PROYECTO.md.
 const CAMPOS_ROL =
-  'roles(nombre, puede_editar_tasas, puede_gestionar_usuarios, puede_editar_coberturas, puede_editar_planes, puede_editar_descuento_plan, puede_ver_descuento_plan, puede_agregar_cobertura_libre, puede_seleccionar_franquicia)'
+  'roles(nombre, puede_editar_tasas, puede_gestionar_usuarios, puede_editar_coberturas, puede_editar_planes, puede_editar_descuento_plan, puede_ver_descuento_plan, puede_agregar_cobertura_libre, puede_seleccionar_franquicia, puede_gestionar_textos_propuesta, puede_descargar_propuestas, puede_anular_propuestas)'
 
 function aplanar(usuario) {
   if (!usuario) return usuario
@@ -28,6 +28,9 @@ function aplanar(usuario) {
     // libre de "Agregar cobertura" sigue disponible salvo que el rol lo tenga restringido.
     puede_agregar_cobertura_libre: roles?.puede_agregar_cobertura_libre ?? true,
     puede_seleccionar_franquicia: roles?.puede_seleccionar_franquicia ?? false,
+    puede_gestionar_textos_propuesta: roles?.puede_gestionar_textos_propuesta ?? false,
+    puede_descargar_propuestas: roles?.puede_descargar_propuestas ?? false,
+    puede_anular_propuestas: roles?.puede_anular_propuestas ?? false,
   }
 }
 
@@ -35,7 +38,7 @@ export async function findByEmail(email) {
   const { data, error } = await supabase
     .from('usuarios')
     .select(
-      `id, nombre, email, telefono, rol_id, ${CAMPOS_ROL}, activo, password_hash, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct, token_version`
+      `id, nombre, email, telefono, matricula_agente, rol_id, ${CAMPOS_ROL}, activo, password_hash, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct, token_version`
     )
     .eq('email', email)
     .maybeSingle()
@@ -47,7 +50,7 @@ export async function findById(id) {
   const { data, error } = await supabase
     .from('usuarios')
     .select(
-      `id, nombre, email, telefono, rol_id, ${CAMPOS_ROL}, activo, password_hash, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct, token_version`
+      `id, nombre, email, telefono, matricula_agente, rol_id, ${CAMPOS_ROL}, activo, password_hash, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct, token_version`
     )
     .eq('id', id)
     .maybeSingle()
@@ -70,7 +73,7 @@ export async function findAll() {
   const { data, error } = await supabase
     .from('usuarios')
     .select(
-      `id, nombre, email, telefono, rol_id, ${CAMPOS_ROL}, activo, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct`
+      `id, nombre, email, telefono, matricula_agente, rol_id, ${CAMPOS_ROL}, activo, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct`
     )
     .order('id')
   if (error) throw error
@@ -89,7 +92,7 @@ export async function crear({ nombre, email, rol_id, password_hash, telefono }) 
       activo: true,
     })
     .select(
-      `id, nombre, email, telefono, rol_id, ${CAMPOS_ROL}, activo, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct`
+      `id, nombre, email, telefono, matricula_agente, rol_id, ${CAMPOS_ROL}, activo, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct`
     )
     .single()
   if (error) throw error
@@ -102,7 +105,7 @@ export async function actualizar(id, cambios) {
     .update(cambios)
     .eq('id', id)
     .select(
-      `id, nombre, email, telefono, rol_id, ${CAMPOS_ROL}, activo, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct`
+      `id, nombre, email, telefono, matricula_agente, rol_id, ${CAMPOS_ROL}, activo, ultima_sesion, descuento_maximo_pct, recargo_maximo_pct`
     )
     .maybeSingle()
   if (error) throw error

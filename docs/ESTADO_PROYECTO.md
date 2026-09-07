@@ -2837,3 +2837,198 @@ CI volvió a ejecutar el gate completo canónico `npm run verify` sin requerir h
 
 La verificación final compara el contenido candidato en memoria, independiente de finales de línea;
 la prueba de ejecución definitiva queda en CI Linux.
+
+## 93. Plan integral de Propuesta Formal y Maquinarias consolidado (2026-08-25)
+
+Se creó `docs/PLAN_PROPUESTA_FORMAL.md` como documento específico y autosuficiente de planificación,
+enlazado desde la sección de Propuesta Formal de `docs/PLAN_DESARROLLO.md`. El trabajo fue
+exclusivamente documental: no se modificaron código, migraciones, configuración, base de datos ni
+estado de despliegue.
+
+El plan conserva las 22 secciones del análisis original y registra como decisiones aprobadas: dos
+entradas a un único módulo (Cotizador/Bienvenida), elegibilidad estricta de Carta Oferta, cero parseo
+de PDF, borradores persistentes, snapshots inmutables y versionados, PDF privado con hash y auditoría,
+recotización ante cambios comerciales, selección de variante/pago por referencias persistidas y un
+núcleo común con adapters por producto. MRC queda como primera implementación recomendada; Hogar se
+prepara sin habilitarse hasta disponer de su flujo previo, con su modelo oficial ya aportado y
+pendiente de archivo trazable en el repositorio.
+
+También se consolidó Maquinarias como familia de navegación con `Sección Automóvil` y `Sección
+Incendio`, cotizaciones/pólizas independientes, utilidades y schema base compartidos, y artefactos
+propios por sección. Quedaron registradas la tabla autoritativa de tasas anuales, depreciación
+compuesta, cálculo plurianual con mínimo único, estrategia recomendada de precisión/redondeo y las
+deudas técnicas actuales de moneda, formato y snapshot anual. El Excel
+`docs/insumos/Cotizacion maquinarias.xlsx` queda explícitamente como referencia legacy, no como
+especificación ejecutable.
+
+Pendientes de negocio preservados sin inventar valores: RPF de Maquinarias, franquicias canónicas de
+Fuerte/Básico, antigüedad máxima, reconciliación visible del redondeo anual, precarga opcional entre
+secciones, política de tipo de cambio y textos oficiales de Carta/Propuesta. Los modelos oficiales
+completos de Propuesta Formal MRC y Hogar fueron aportados durante la planificación mediante texto e
+imágenes, aunque no están almacenados como archivos en `docs/insumos`; el plan incorpora sus campos y
+diferencias reales y deja “Por confirmar” solo donde todavía falta una regla precisa.
+
+## 94. PF-1 — Fundamento documental de Carta Oferta (2026-08-25)
+
+Se agregó la migración `066_cartas_oferta_documentales.sql` y la implementación backend mínima para
+convertir la Carta Oferta actual en un documento histórico. Cada solicitud autorizada de PDF ahora
+construye un snapshot canónico de la cotización, plan, ramo, coberturas, servicios, cláusulas,
+variantes y planes de pago;
+calcula su hash SHA-256; persiste versión, versiones de schema/template/calculator y el PDF en el
+bucket privado `cartas-oferta-privadas`. Una solicitud repetida con el mismo snapshot reutiliza el
+PDF privado ya emitido. La generación usa estados `generando`/`emitida`/`error_pdf`, registra solo
+códigos de error sanitizados y elimina el objeto privado si falla la confirmación de base de datos.
+El snapshot y su verificación de vigencia incluyen explícitamente `agente_id`, `fecha` y
+`vigencia_dias`, más todas las relaciones persistidas que aportan contenido comercial o contractual
+en las Cartas actualmente implementadas:
+`cotizacion_coberturas`, `cotizacion_servicios`, `cotizacion_clausulas`, `cotizacion_variantes`,
+`cotizacion_plan_pago` y `cotizacion_ajustes`. Cambios directos, inserciones, eliminaciones o
+reparenting en cualquiera de esos límites reemplazan la Carta vigente.
+
+La generación renderiza exclusivamente desde `cartas_oferta.snapshot_json` devuelto por el RPC de
+creación, nunca desde los objetos mutables ni desde el payload saliente usado para construirlo.
+Además del núcleo de cotización, el snapshot captura el
+código y nombre de cada forma de pago, los campos renderizados de plan/ramo, los sublímites y
+códigos de `plan_coberturas`, y el perfil visible del agente (nombre, email, teléfono y rol). Un
+timestamp emitido por el servidor, la zona `America/Asuncion` y el locale `es-PY` quedan fijados y
+se entregan a ambos builders activos (MRC/Incendio). Los cambios a cualquiera de esos catálogos o
+perfiles invalidan de forma ordenada la Carta en generación o emitida, por lo que tampoco pueden
+cruzarse con la emisión después de la verificación de frescura.
+
+La identidad de renderer es una revisión manual explícita, no un hash ficticio del contenido de
+plantillas. Cada cambio a los builders, layout o comportamiento de Puppeteer de Carta Oferta exige
+incrementar `CARTA_OFERTA_RENDERER_REVISION` antes de desplegar; la revisión queda persistida junto
+al snapshot para identificar exactamente la versión operativa usada.
+
+La migración protege los campos de snapshot/PDF contra cambios posteriores, bloquea una Carta emitida
+incompleta y marca como `reemplazada` cualquier Carta asociada cuando una recotización cambia datos
+comerciales de la cotización. El número de Carta reutiliza el correlativo ya autoritativo de la
+cotización y la versión es correlativa dentro de esa cotización; no se inventó un correlativo de
+negocio independiente. El endpoint de descarga sigue pasando por autenticación y ownership antes de
+leer del bucket privado, y ahora valida el parámetro `id` con Zod.
+
+No se hizo backfill de PDFs o Cartas anteriores: permanecen como legado no reproducible porque el
+repositorio no conserva el snapshot completo ni el artefacto privado necesarios para reconstruirlos
+sin inventar datos. Solo las Cartas emitidas después de aplicar la migración adquieren linaje documental.
+
+La elegibilidad, borradores y selección de Carta para Propuesta Formal permanecen deliberadamente
+fuera de PF-1 y se implementarán en PF-2/PF-3.
+
+Verificación focalizada ejecutada: `node --experimental-test-module-mocks --test
+src/services/document-snapshot.service.test.js src/repositories/cotizaciones.repository.test.js
+src/repositories/cartas-oferta.repository.test.js
+src/services/carta-oferta.service.test.js src/services/cotizacion.service.ownership.test.js
+src/templates/oferta/mrc.test.js src/templates/oferta/incendio.test.js
+../backend/migrations/066_cartas_oferta_documentales.test.js`
+y `npm run verify:migrations` desde `backend` (59 pruebas, todas en verde). No se inició la aplicación, no se aplicó la migración
+contra Supabase, no se desplegó y no se modificaron los artefactos de planificación preexistentes.
+
+PF-0 no se considera cerrado: siguen pendientes el archivo trazable de los modelos oficiales MRC/Hogar,
+la validación Compliance, la política de retención y los textos/firma oficiales. No se implementaron
+Maquinarias, UI de Propuesta, borradores, KYC/PLA-FT ni emisión de Propuesta Formal.
+
+## 95. QA controlado de PF-1 — infraestructura documental y emisión MRC (2026-08-26)
+
+La sesión de QA cerró la verificación controlada de PF-1 para MRC. Primero se aplicó manualmente y se
+verificó la migración `044_seed_tasas_incendio_rubros.sql` en el entorno de QA. A continuación se
+aplicaron de forma controlada las migraciones `045` a `068`; dentro de esa secuencia,
+`066_cartas_oferta_documentales.sql` creó la infraestructura documental de Carta Oferta y
+`067_fix_iniciar_carta_oferta_generacion_ambiguous_id.sql` junto con
+`068_fix_iniciar_carta_oferta_generacion_ambiguous_estado_version.sql` corrigieron referencias SQL
+ambiguas del RPC `iniciar_carta_oferta_generacion`.
+
+La verificación funcional concluida corresponde únicamente a MRC: la cotización de QA `MRC-1` generó
+su Carta Oferta con respuesta HTTP 200 y PDF privado. La Carta quedó en estado `emitida`, con hash,
+ruta de almacenamiento, tamaño y fecha de emisión persistidos; se confirmó el bucket privado y el
+trigger de inmutabilidad de los datos documentales. Esto confirma el recorrido documental de Carta
+Oferta de PF-1 para ese ramo, sin extender la conclusión a otros productos.
+
+También quedó aplicado en QA `060_mrc_quitar_murallas_cercos.sql`, por lo que Murallas/Cercos está
+desactivado. La migración `059_activar_rpf_por_cuotas.sql` mantiene activo el RPF por cuotas para MRC,
+Incendio y Vida/AP; sin embargo, la verificación funcional de esta sesión se completó solo para MRC.
+No se registran logros funcionales equivalentes para Incendio ni Vida/AP.
+
+No existe todavía un flujo end-to-end de Propuesta Formal ni de KYC/PLA-FT: PF-2 y PF-3 continúan como
+stubs, sin elegibilidad expuesta, borradores, selección por referencia ni emisión de Propuesta Formal.
+PF-0 sigue abierto por el archivo trazable de modelos oficiales, la validación de Compliance, la
+política de retención y los textos/firma oficiales.
+
+## 96. PF-2 — Elegibilidad y borradores persistentes de Propuesta Formal MRC (2026-08-27)
+
+Se implementó localmente PF-2 solo para `producto_codigo = 'mrc'`, sin iniciar PF-3. La migración
+`069_propuestas_formales_borradores.sql` crea `propuestas_formales` con RLS habilitado y sin policies
+(default-deny para clientes de navegador), un único borrador activo por Carta, límite de 256 KiB para
+`draft_json`, selección tipada por FK a `cotizacion_variantes`/`cotizacion_plan_pago` y control de
+concurrencia mediante `revision`. Un trigger comprueba que variante y pago pertenezcan entre sí y a la
+misma cotización de la Carta. Los RPCs de crear-o-recuperar y actualizar bloquean/serializan la fila
+correspondiente; una revisión vieja se traduce a HTTP 409. El backend nunca recibe importes como fuente
+de autoridad: expone los importes persistidos dentro del snapshot de Carta y solo acepta los IDs de la
+selección.
+
+La elegibilidad exige Carta `emitida`, completa, vigente, no reemplazada/anulada, MRC y propiedad del
+agente; el rol `admin` conserva acceso transversal. La regla vive una sola vez en la función SQL y los
+servicios la consumen para listado, detalle, mutaciones y readiness; las pruebas focalizadas verifican
+esa delegación. Un
+borrador ya creado se conserva y puede seguir guardándose si la Carta vence o queda reemplazada; en ese
+caso readiness informa el bloqueo documental en lugar de borrar el trabajo. `cliente_kyc` legacy no se
+usa como autoridad: PF-2 persiste un `draft_json` validado mínimamente con partes, contacto, KYC, PEP,
+sujeto obligado y origen de fondos. Readiness es estrictamente informativo y mantiene
+`emision_habilitada = false`.
+
+Se agregó el módulo Express autenticado `/api/propuestas` con capas separadas de rutas, controller,
+schemas, servicios de elegibilidad/borradores/readiness y repository. Expone listado y detalle de
+Cartas aptas, creación o recuperación idempotente del borrador, lectura del borrador y actualización
+optimista. Los stubs legacy `/cotizaciones/:id/aceptar` y `/pdf-propuesta` permanecen sin convertirse en
+emisión.
+
+El frontend nuevo `/propuestas/` reutiliza el app shell, sesión, API/CSRF, tokens visuales y helpers
+existentes. Permite buscar una Carta apta, crear o reabrir su borrador, elegir variante/forma de pago,
+guardar explícitamente o por autosave, completar datos básicos y revisar faltantes. Un conflicto 409
+detiene el autosave y ofrece recargar la versión vigente. El botón **“Emitir Propuesta Formal”** está
+deshabilitado y rotulado como funcionalidad de PF-3. Bienvenida enlaza al módulo y el Historial muestra
+“Preparar/Reabrir propuesta” únicamente cuando el backend devuelve una Carta apta para esa cotización.
+
+**Verificación local:** Prettier dirigido (SQL excluido porque el repositorio no tiene parser SQL),
+ESLint y `node --check` en verde; `npm run verify:migrations --prefix backend` confirma 69 migraciones
+sin colisiones; 12/12 pruebas focalizadas backend más 1/1 contrato frontend en verde;
+`npm test --prefix backend` 305/305 y `npm test --prefix frontend` 74/74. `git diff --check` no
+reportó errores, solo avisos CRLF/LF sobre archivos PF-1 preexistentes.
+
+El smoke E2E aislado también se actualizó para emular el repositorio documental privado de Carta
+Oferta sin acceder a Supabase. `npm run verify:e2e` completó con 1/1 escenario en verde, dos
+cotizaciones de fixture y PDFs MRC/Incendio generados dentro del entorno loopback.
+
+Una corrección focalizada posterior a la verificación independiente cambió ambas FK de selección a
+`ON DELETE SET NULL`: la recotización puede eliminar variantes y planes de pago obsoletos sin borrar ni
+bloquear el borrador PF-2. Las columnas permanecen nullable y readiness informa
+`seleccion_comercial` hasta que el agente seleccione nuevamente. Como PostgreSQL puede ejecutar las dos
+acciones referenciales mediante actualizaciones internas separadas, se retiró el `CHECK` de par completo
+de la tabla y el trigger permite transitoriamente una referencia nula; el RPC de actualización conserva
+la invariancia pública rechazando que un cliente envíe solo uno de los dos IDs. La prueba focalizada de
+integración cubre las dos acciones `SET NULL`, la preservación conceptual del borrador y el bloqueo de
+readiness, sin habilitar PF-3.
+
+**Verificación QA de PF-2 (2026-08-27):** la migración 069 quedó aplicada en QA. La Carta `MRC-1`
+resultó apta y se creó o recuperó el borrador ID 1. La API de propuestas pasó listado, detalle,
+creación o recuperación, actualización con avance de revisión 1→2, conflicto optimista HTTP 409,
+idempotencia y readiness no listo con `emision_habilitada = false`. La base quedó con exactamente un
+borrador activo para esa Carta y RLS habilitada. No se emitió una Propuesta Formal ni se generó su PDF.
+
+La verificación visual cubrió Bienvenida, Historial y `/propuestas/`, con capturas temporales. El único
+HTTP 401 observado fue la consulta esperada a `/auth/me` antes del inicio de sesión; después del login,
+todas las solicitudes autenticadas verificadas respondieron HTTP 200, sin errores CORS o HTTP 500 y sin
+acceso a producción.
+
+Esta verificación funcional corresponde exclusivamente a PF-2 para MRC. No acredita un recorrido
+equivalente para Incendio ni Vida/AP.
+
+**Checklist operativo de Fase 4:**
+
+- [ ] **PF-0:** archivar de forma trazable los modelos oficiales y cerrar Compliance, retención
+      documental y textos/firma oficiales.
+- [x] **PF-1:** fundamento documental y emisión de Carta Oferta de MRC verificados en QA.
+- [x] **PF-2 para MRC:** migración, API, persistencia y UI verificadas en QA, sin habilitar emisión.
+- [ ] **PF-3:** no iniciado; permanece bloqueado por PF-0.
+
+**Próximo paso operativo:** cerrar PF-0 con los insumos oficiales y Compliance. Solo después puede
+comenzar PF-3 para MRC. La Carta Oferta de Vida/AP continúa pendiente de texto oficial.

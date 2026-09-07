@@ -1,4 +1,4 @@
-FROM node:22-slim
+FROM node:24-slim
 
 # Dependencias de sistema que Chromium necesita para correr (Puppeteer las requiere
 # para generar los PDF de Carta Oferta / Propuesta Formal).
@@ -33,6 +33,7 @@ COPY backend/package.json ./backend/package.json
 RUN npm ci --omit=dev --workspace=backend --ignore-scripts
 
 COPY backend ./backend
+COPY frontend/login/assets/logo-rojo-con-negro.svg ./backend/src/assets/tajy-logo.svg
 
 ENV NODE_ENV=production
 EXPOSE 3000

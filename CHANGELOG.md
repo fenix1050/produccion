@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.1.63](https://github.com/fenix1050/produccion/compare/v0.1.62...v0.1.63) (2026-09-07)
+
+
+### Features
+
+* integrate PF-1/PF-2 MRC rollout ([3cf5627](https://github.com/fenix1050/produccion/commit/3cf5627fca02e30eaf242a42f8e7afa5582460e8))
+* isolate test environment from production ([22c7f4e](https://github.com/fenix1050/produccion/commit/22c7f4e7912a9ebae4ace29aa2f5a4a150722ad6))
+* **propuestas:** add MRC proposal draft foundation ([96c5c97](https://github.com/fenix1050/produccion/commit/96c5c97df4ff7b707af1f34dbea881f089b885e1))
+* **propuestas:** integrate PF3 MRC formal issuance ([c1c16a9](https://github.com/fenix1050/produccion/commit/c1c16a9feab6ac79f1071e61a2b413c13ef4b478))
+* **propuestas:** restore rollout and integrate PF3 MRC formal issuance ([4ba839f](https://github.com/fenix1050/produccion/commit/4ba839fc908e1bfd95a60b123b889fb83fc4efe4))
+* restore PF-1/PF-2 MRC rollout after revert ([2cf7fd0](https://github.com/fenix1050/produccion/commit/2cf7fd0ae03ca61a92f1d71c9eb65f126d909196))
+* serve frontend from VPS with prod and test environments ([ad168b3](https://github.com/fenix1050/produccion/commit/ad168b372ddc105f88cdc4671b80da0cabef54c7))
+
+
+### Bug Fixes
+
+* **cartas-oferta:** persist rpc hotfix and acl ([9495397](https://github.com/fenix1050/produccion/commit/94953978a94b0bc228589c8738dbb68d91e52f3f))
+* **cartas-oferta:** stabilize snapshot identity ([26de4b0](https://github.com/fenix1050/produccion/commit/26de4b0f3750696b2da82efc02199195e1e3b31e))
+
+
+### Reverts
+
+* keep MRC proposal work out of main ([29c3975](https://github.com/fenix1050/produccion/commit/29c3975282a246aa9f09779250fec297a8150429))
+
 ## [0.1.62](https://github.com/fenix1050/produccion/compare/v0.1.61...v0.1.62) (2026-08-24)
 
 

@@ -36,3 +36,17 @@ test('PF-3 frontend converges both entries and issues only through the authorita
   assert.match(moduleSource, /<textarea name="direccion" rows="2" required>/)
   assert.match(moduleSource, /valor\('partes\.asegurado\.tipo_persona'\),\s*true/)
 })
+
+test('PF-3 retry skips draft persistence and reserves conflicts for PF_REVISION_CONFLICT', async () => {
+  const moduleSource = await readFile(moduleUrl, 'utf8')
+
+  assert.match(
+    moduleSource,
+    /const debeGuardarAntesDeEmitir = state\.propuesta\.estado !== 'error_pdf'/
+  )
+  assert.match(moduleSource, /const saved = debeGuardarAntesDeEmitir \? await guardar\(\) : true/)
+  assert.match(
+    moduleSource,
+    /error\.status === 409 && error\.body\?\.code === 'PF_REVISION_CONFLICT'/
+  )
+})

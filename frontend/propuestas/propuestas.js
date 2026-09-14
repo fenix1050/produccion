@@ -199,7 +199,7 @@ async function guardar() {
     render()
     return true
   } catch (error) {
-    if (error.status === 409) {
+    if (error.status === 409 && error.body?.code === 'PF_REVISION_CONFLICT') {
       state.conflicto = true
       state.saveState = 'Conflicto de revisión'
       state.banner = {
@@ -222,7 +222,8 @@ async function guardar() {
 async function emitir() {
   const form = app.querySelector('#propuesta-form')
   if (!form?.reportValidity()) return
-  const saved = await guardar()
+  const debeGuardarAntesDeEmitir = state.propuesta.estado !== 'error_pdf'
+  const saved = debeGuardarAntesDeEmitir ? await guardar() : true
   if (!saved || state.conflicto) return
   state.saving = true
   state.saveState = 'Emitiendo PDF…'

@@ -1,7 +1,11 @@
 import * as propuestasRepository from '../../repositories/propuestas.repository.js'
 import { httpError } from '../../utils/http-error.js'
 
-import { asegurarAccesoBorrador, motivoIneligibilidadCarta } from './elegibilidad.service.js'
+import {
+  asegurarAccesoBorrador,
+  construirDetalleCarta,
+  motivoIneligibilidadCarta,
+} from './elegibilidad.service.js'
 import { evaluarReadiness } from './readiness.service.js'
 
 const ERRORES_RPC = {
@@ -23,9 +27,25 @@ const ERRORES_RPC = {
     'La variante y la forma de pago deben pertenecer a la cotización de la Carta Oferta',
   ],
   PF_DRAFT_INVALIDO: [400, 'Los datos del borrador no son válidos'],
+  PF_DATOS_INCOMPLETOS: [422, 'Faltan datos obligatorios para emitir la Propuesta Formal'],
+  PF_TEXTOS_NO_PUBLICADOS: [409, 'No hay textos MRC publicados para emitir la Propuesta Formal'],
+  PF_PROPUESTA_YA_EMITIDA: [409, 'La Propuesta Formal ya fue emitida'],
+  PF_CARTA_YA_TIENE_PROPUESTA_EMITIDA: [
+    409,
+    'La Carta Oferta ya tiene una Propuesta Formal emitida',
+  ],
+  PF_EMISION_EN_PROGRESO: [409, 'La emisión de la Propuesta Formal está en progreso'],
+  PF_ANULACION_INVALIDA: [409, 'Solo se puede anular una Propuesta Formal emitida'],
+  PF_MOTIVO_ANULACION_REQUERIDO: [400, 'El motivo de anulación es obligatorio'],
+  PF_ANULACION_SIN_PERMISO: [403, 'No tenés permiso para anular esta Propuesta Formal'],
 }
 
 export function traducirErrorRpc(error) {
+  if (error?.code === '23505') {
+    const traducido = httpError(409, 'La Carta Oferta ya tiene una Propuesta Formal emitida')
+    traducido.code = 'PF_CARTA_YA_TIENE_PROPUESTA_EMITIDA'
+    return traducido
+  }
   const codigo = Object.keys(ERRORES_RPC).find((key) => error?.message?.includes(key))
   if (!codigo) return error
   const [status, message] = ERRORES_RPC[codigo]
@@ -45,6 +65,7 @@ function respuestaBorrador(propuesta, carta, motivo) {
       cliente_nombre:
         carta.snapshot_json?.cotizacion?.cliente_nombre ?? carta.cotizaciones?.cliente_nombre,
     },
+    carta_detalle: construirDetalleCarta(carta),
     readiness: evaluarReadiness({ propuesta, carta, motivoIneligibilidad: motivo }),
   }
 }

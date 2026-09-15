@@ -29,7 +29,8 @@ mock.module('../../repositories/propuestas.repository.js', {
   },
 })
 
-const { actualizarBorrador, obtenerBorrador } = await import('./borradores.service.js')
+const { actualizarBorrador, obtenerBorrador, traducirErrorRpc } =
+  await import('./borradores.service.js')
 
 test('draft update forwards selection IDs and expected revision without accepting monetary authority', async () => {
   let payload
@@ -88,6 +89,18 @@ test('stale revision becomes an HTTP 409 conflict', async () => {
   )
 })
 
+test('emitted-Carta domain and native unique conflicts share the HTTP 409 API contract', () => {
+  for (const source of [
+    Object.assign(new Error('PF_CARTA_YA_TIENE_PROPUESTA_EMITIDA'), { code: 'P0001' }),
+    Object.assign(new Error('duplicate key value violates unique constraint'), { code: '23505' }),
+  ]) {
+    const error = traducirErrorRpc(source)
+    assert.equal(error.status, 409)
+    assert.equal(error.code, 'PF_CARTA_YA_TIENE_PROPUESTA_EMITIDA')
+    assert.equal(error.publicMessage, 'La Carta Oferta ya tiene una Propuesta Formal emitida')
+  }
+})
+
 test('getting a draft enforces Carta ownership while allowing admin transversal access', async () => {
   repositoryState.findPropuestaContextById = async () => ({
     id: 8,
@@ -104,4 +117,5 @@ test('getting a draft enforces Carta ownership while allowing admin transversal 
   )
   const result = await obtenerBorrador(8, { id: 99, rol: 'admin' })
   assert.equal(result.id, 8)
+  assert.equal(result.carta_detalle.id, carta.id)
 })

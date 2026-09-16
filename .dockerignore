@@ -3,5 +3,8 @@ node_modules
 .env
 **/.env
 .git
-frontend
+frontend/*
+!frontend/login/
+!frontend/login/assets/
+!frontend/login/assets/logo-rojo-con-negro.svg
 docs

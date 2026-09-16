@@ -191,6 +191,9 @@ export function renderModalRol() {
               Puede seleccionar franquicia en MRC
             </label>
           </div>
+          <div class="admin-modal__field"><label class="admin-modal__checkbox"><input type="checkbox" name="puede_gestionar_textos_propuesta" ${m.puede_gestionar_textos_propuesta ? 'checked' : ''} /> Puede publicar textos de Propuesta Formal</label></div>
+          <div class="admin-modal__field"><label class="admin-modal__checkbox"><input type="checkbox" name="puede_descargar_propuestas" ${m.puede_descargar_propuestas ? 'checked' : ''} /> Puede descargar Propuestas Formales ajenas</label></div>
+          <div class="admin-modal__field"><label class="admin-modal__checkbox"><input type="checkbox" name="puede_anular_propuestas" ${m.puede_anular_propuestas ? 'checked' : ''} /> Puede anular Propuestas Formales</label></div>
           <div class="admin-modal__actions">
             <button type="button" class="btn-outline" data-action="cerrar-modal-rol">Cancelar</button>
             <button type="submit" class="btn-primary" ${m.guardando ? 'disabled' : ''}>${m.guardando ? 'Guardando…' : 'Guardar'}</button>

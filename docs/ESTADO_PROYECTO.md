@@ -1391,7 +1391,9 @@ resumido abajo — Kevin lo va resolviendo antes de lanzar a producción sin res
 ## 30. Roadmap pre-producción — pendientes de la auditoría integral (2026-07-24, reconfirmado y ampliado por issue #87 del 2026-08-02)
 
 Los 2 🔴 críticos de la auditoría del 2026-07-24 ya se cerraron (sección 29). El 2026-08-02 el issue
-#87 (revisión arquitectónica independiente, 29 mejoras propuestas) re-auditó el repo y **confirmó que
+
+# 87 (revisión arquitectónica independiente, 29 mejoras propuestas) re-auditó el repo y **confirmó que
+
 varios ítems de este roadmap seguían sin resolver** además de sumar hallazgos nuevos — se marcan abajo
 como `(issue #87: X)`. Repasado y actualizado contra el código real el 2026-08-03: se verificó cada
 ítem contra el estado actual del repo, no solo contra lo que decían las notas — varios quedaron
@@ -3032,3 +3034,559 @@ equivalente para Incendio ni Vida/AP.
 
 **Próximo paso operativo:** cerrar PF-0 con los insumos oficiales y Compliance. Solo después puede
 comenzar PF-3 para MRC. La Carta Oferta de Vida/AP continúa pendiente de texto oficial.
+
+## 97. PF-0 — Cierre documental para MRC por autoridad designada (2026-09-01)
+
+PF-0 quedó cerrado exclusivamente para habilitar la implementación de PF-3 de MRC. La autoridad
+designada del proyecto aprobó las decisiones de producto, Compliance y Legal documentadas en
+`docs/PF0_MATRIZ_COMPLIANCE.md`; esa matriz identifica expresamente la aprobación como interna a la
+autoridad designada y no alega aprobación externa. El manifiesto
+`docs/PF0_MANIFIESTO_FUENTES.md` confirma la custodia restringida de las fuentes MRC/Hogar en OneDrive
+corporativo privado, bajo la ruta lógica `/Documentos Cotizador/insumos`, sin almacenar URLs compartibles
+ni PII en el repositorio.
+
+Hogar permanece fuera de alcance. PF-1 y PF-2 de MRC continúan verificados en QA; para PF-2, la
+migración 069 está aplicada en QA, sin afirmación de aplicación en producción. PF-3 MRC queda habilitado
+como siguiente fase de implementación, pero no está implementado, no se emitió una Propuesta Formal y no
+se generó su PDF.
+
+**Gate de promoción:** esta actualización documental no autoriza producción, QA adicional, migraciones,
+ni Git remoto. No se evaluó ni se autoriza el merge de `#364`; cualquier decisión al respecto requiere
+primero un rollout de producción explícito y reversible.
+
+**Checklist operativo de Fase 4:**
+
+- [x] **PF-0 para MRC:** cerrado el 2026-09-01 por aprobación de la autoridad designada; Hogar fuera de alcance.
+- [x] **PF-1:** fundamento documental y emisión de Carta Oferta de MRC verificados en QA.
+- [x] **PF-2 para MRC:** migración 069, API, persistencia y UI verificadas en QA, sin habilitar emisión.
+- [ ] **PF-3 para MRC:** habilitado como siguiente fase de implementación; no iniciado.
+
+**Próximo paso operativo:** implementar PF-3 para MRC. Antes de cualquier decisión de merge o promoción,
+debe existir un rollout de producción explícito y reversible. La Carta Oferta de Vida/AP continúa
+pendiente de texto oficial.
+
+## 98. PF-3 — Implementación local de emisión MRC (2026-09-01)
+
+Se implementó localmente PF-3 exclusivamente para MRC. La migración 070 agrega emisión documental,
+correlativo atómico de `Propuesta N°`, snapshots canónicos con hashes, PDF privado, versionado de textos,
+auditoría de eventos, anulación con motivo y vínculo de reemplazo. Las tablas nuevas quedan con RLS
+default-deny y los RPC usan `SECURITY INVOKER`, `search_path` restringido y revocación de ejecución pública.
+
+La API `/api/propuestas` ahora expone emisión, descarga autorizada con verificación de hash, anulación y
+publicación versionada de textos MRC. La UI `/propuestas/` reúne los campos obligatorios de personas físicas
+y jurídicas, tomador distinto, representante legal, firma manual/digital, revisión, descarga y ruta de
+reemplazo. Los importes, cobertura, vigencia, riesgo y ubicación se derivan de la Carta Oferta persistida;
+no se aceptan importes enviados por el navegador. No se agregaron envío automático, enlaces públicos, firma
+integrada, adjuntos, datos de tarjeta/cuenta, beneficiarios finales ni renovación.
+
+**Estado:** implementación local terminada; **QA pendiente**. Esta sección no afirma aplicación de la
+migración 070, generación de PDF, verificación funcional, despliegue, producción, merge ni promoción en
+ningún entorno remoto. La publicación inicial de textos contractuales MRC deberá usar el flujo autorizado y
+las fuentes bajo custodia antes de una emisión de QA.
+
+**Checklist operativo de Fase 4:**
+
+- [x] **PF-0 para MRC:** cerrado el 2026-09-01 por aprobación de la autoridad designada; Hogar fuera de alcance.
+- [x] **PF-1:** fundamento documental y emisión de Carta Oferta de MRC verificados en QA.
+- [x] **PF-2 para MRC:** migración 069, API, persistencia y UI verificadas en QA, sin habilitar emisión.
+- [x] **PF-3 para MRC:** implementado localmente; QA pendiente.
+
+**Próximo paso operativo:** ejecutar QA controlado de PF-3 para MRC, incluyendo publicación autorizada de
+los textos iniciales, emisión, descarga, anulación y reemplazo. Antes de cualquier decisión de merge o
+promoción, debe existir un rollout de producción explícito y reversible.
+
+## 99. PF-3 MRC — Historial de propuesta reemplazante (2026-09-01)
+
+Se completó localmente el historial navegable de una Propuesta Formal anulada hacia su reemplazo vigente.
+El contexto de una propuesta anulada ahora obtiene únicamente la propuesta emitida cuyo
+`reemplaza_propuesta_id` apunta a ella y expone su identificador, número y estado como
+`reemplazada_por_propuesta`. La UI muestra ese vínculo con número y estado y permite abrir la propuesta
+reemplazante mediante una lectura directa, sin crear borradores ni mutar propuestas.
+
+Para que la navegación de una propuesta emitida o anulada no dependa de que su Carta Oferta siga siendo
+apta para crear borradores, la respuesta de lectura incorpora `carta_detalle` derivado del snapshot
+persistido. El control de acceso existente por Carta Oferta se conserva antes de devolver el contexto.
+
+No se crearon ni modificaron migraciones, no se usó QA/producción, no se iniciaron servicios locales y no
+se modificaron referencias a Google Fonts. La verificación local fue `npm test` (312 pruebas backend y 74
+frontend), tests focalizados del repositorio/servicio/UI, ESLint, Prettier, sintaxis de Node y
+`git diff --check`.
+
+**Estado:** cambio local pendiente de QA controlado; esta sección no acredita despliegue, migración,
+emisión, anulación, reemplazo ni promoción en entornos remotos.
+
+## 100. PF-3 MRC — QA controlado de emisión, anulación y reemplazo (2026-09-01)
+
+PF-3 para MRC quedó implementado y verificado en QA. La migración 070 fue aplicada en ese entorno y
+la migración 071 corrigió los permisos explícitos de los RPC de PF-3: los roles `anon` y
+`authenticated` quedaron sin `EXECUTE`, mientras que `service_role` conserva el acceso requerido por
+el backend. Esta conclusión se limita al entorno de QA.
+
+La API sintética verificó el recorrido completo: Carta Oferta, borrador, emisión de PDF privado y
+asignación del correlativo `Propuesta N° 1`. Un segundo intento de emisión devolvió HTTP 409. La
+anulación sin motivo devolvió HTTP 400; con el permiso controlado y el motivo correspondiente, la
+anulación fue autorizada y se emitió `Propuesta N° 2` vinculada como reemplazo. Los snapshots, el PDF
+privado, la auditoría y los seis hashes de texto quedaron preservados durante la secuencia.
+
+La verificación visual confirmó que una propuesta anulada enlaza a su reemplazo y que una propuesta
+vigente permite descargar su PDF privado. No se observaron errores CORS, HTTP 500 ni acceso a
+producción. Las solicitudes externas a Google Fonts se registran como seguimiento de la línea base y
+no constituyen una falla de PF-3.
+
+Para probar exclusivamente la anulación controlada, al usuario de QA 2 se le otorgó
+`puede_anular_propuestas = true`. No se documenta con ello ninguna autorización adicional ni una
+asignación permanente de permisos.
+
+No se acredita migración, despliegue, merge ni promoción en producción, ni firma externa o
+distribución de documentos. Hogar permanece fuera de alcance.
+
+**Checklist operativo de Fase 4:**
+
+- [x] **PF-0 para MRC:** cerrado el 2026-09-01 por aprobación de la autoridad designada; Hogar fuera de alcance.
+- [x] **PF-1:** fundamento documental y emisión de Carta Oferta de MRC verificados en QA.
+- [x] **PF-2 para MRC:** migración 069, API, persistencia y UI verificadas en QA, sin habilitar emisión.
+- [x] **PF-3 para MRC:** migraciones 070 y 071, API y UI verificadas en QA; Hogar fuera de alcance.
+
+**Próximo paso operativo:** preparar y ejecutar un rollout de producción explícito y reversible antes
+de cualquier decisión de merge o promoción.
+
+## 101. PF-3 MRC — Rediseño visual local del PDF de Propuesta Formal (2026-09-01)
+
+El renderer emitido de Propuesta Formal MRC fue reconstruido para seguir la referencia Tajy aprobada de dos páginas A4: encabezado institucional con logo, código visual y paginación; formularios y tablas densos con reglas negras; datos del asegurado, modalidad, riesgo, coberturas y declaraciones en la primera página; y condiciones, costo, forma de pago, observaciones y firmas en la segunda. Se preservaron el alcance y la integridad del documento: los campos de póliza, tarjeta, operador, vigencia y firma que el modelo emitido no provee se muestran como no disponibles, sin inventar valores ni reproducir datos personales de la referencia.
+
+La verificación focalizada pasó 12/12 pruebas y un PDF sintético local confirmó dos páginas A4 mediante inspección visual. No se realizaron cambios en QA, producción, migraciones, secretos, remotos ni commits.
+
+## 102. PF-3 MRC — Prevención de emisión duplicada antes de generar PDF (2026-09-01)
+
+Se corrigió localmente un incidente de emisión duplicada: un borrador de una Carta Oferta que ya tenía
+una Propuesta Formal emitida podía alcanzar la generación y carga del PDF antes de que el índice único
+parcial rechazara el cambio final de estado con `23505`. La nueva migración secuencial 072 redefine los
+RPC de inicio y confirmación para serializar por Carta Oferta, rechazar explícitamente una propuesta ya
+emitida y bloquear una segunda emisión que esté en generación. El control ocurre antes del renderer y del
+almacenamiento; el artefacto de la propuesta emitida permanece inmutable.
+
+La API traduce tanto el conflicto de dominio como una eventual violación nativa `23505` al contrato HTTP
+409 con un mensaje claro. Las pruebas focalizadas cubren el rechazo de una Carta ya emitida, la ausencia de
+invocación al renderer, carga o confirmación en ese caso, la conservación del recorrido válido de primera
+emisión y la protección de la confirmación ante estados heredados concurrentes.
+
+Tras autorización explícita, la migración 072 se aplicó únicamente en QA. Una invocación negativa y
+segura del RPC confirmó `PF_CARTA_YA_TIENE_PROPUESTA_EMITIDA` antes de cualquier transición de estado o
+trabajo de generación y almacenamiento de PDF. Producción permanece sin cambios.
+
+No se accedió a secretos, no se usó `backend/.env.qa`, no se tocaron remotos Git ni se crearon commits.
+El cambio queda pendiente de un rollout explícito y reversible para producción, conforme al próximo paso
+operativo de la Fase 4.
+
+## 103. PF-3 MRC — Refinamiento visual local del PDF de Propuesta Formal (2026-09-01)
+
+Se refinó localmente el renderer de Propuesta Formal MRC tomando como referencia visual el libro
+`Version 2023 - Propuesta Automovil Normal.xlsx`. La inspección se limitó a la geometría de impresión,
+rangos combinados, proporciones de filas y columnas, bordes, tipografías, colores y jerarquía de
+secciones; no se incorporaron ni se registran en este documento datos personales, valores de póliza ni
+reglas de negocio propias de Automóvil.
+
+El PDF MRC conserva su modelo y textos oficiales almacenados. Se reforzó el formato de formulario impreso
+con encabezado institucional, cuadrícula de metadatos, bandas de sección, bordes y reglas, tabla de
+riesgo y totales, bloques de costo y pago, presentación de tarjeta sin datos inventados, firmas y pie de
+página. Los campos no cubiertos por el modelo MRC continúan presentándose como no disponibles o no
+aplicables según corresponda. Se incrementó la revisión declarada del renderer a `pf3-mrc-renderer-r4`
+para que los snapshots emitidos identifiquen el diseño activo.
+
+La verificación focalizada pasó 10/10 pruebas de renderer y snapshot. Además, se generó y rasterizó un PDF
+sintético local de dos páginas A4; la inspección visual confirmó la jerarquía de dos páginas, la cuadrícula
+de campos, las bandas de sección, los bloques de totales/pago/firma y los pies de página. No se realizaron
+cambios en QA, producción, migraciones, secretos, `backend/.env.qa`, remotos Git ni commits.
+
+## 104. PF-3 MRC — Validación QA controlada del renderer alineado al formulario impreso (2026-09-01)
+
+La Carta Oferta sintética `MRC-9` generó la Propuesta Formal N.º 6 en QA. Se verificó la descarga autenticada
+del PDF privado, con dos páginas A4, layout de formulario impreso alineado al libro de referencia y el logo
+oficial de Tajy visible como imagen, sin usar el fallback textual. Producción permaneció sin cambios.
+
+Una selección inicial equivocada creó el borrador 7 sobre una Carta que ya tenía una Propuesta Formal emitida.
+Ese borrador se conserva intencionalmente como evidencia de QA y no se modificó durante la validación correcta.
+
+## 105. PF-3 MRC — Refinamiento monocromático local del PDF de Propuesta Formal (2026-09-01)
+
+Se ajustó localmente el renderer de Propuesta Formal MRC para respetar el tratamiento de formulario
+impreso: página blanca, tipografía y reglas negras, con gris neutro y contenido únicamente donde ayuda a
+separar encabezados de sección. Se eliminaron las bandas, acentos y variables de color rojo del layout,
+incluido el pie de página. El logo institucional se carga ahora desde el SVG oficial de tema claro usado
+por el frontend y se incorpora como URI de datos SVG; el fallback textual solo permanece para el caso de
+que ese activo no pueda cargarse.
+
+También se eliminó por completo el código de barras y su numeración, conservando el identificador normal
+de la Propuesta en la fila de metadatos y recuperando el espacio del encabezado para la paginación. Se
+incrementó la revisión declarada del renderer a `pf3-mrc-renderer-r5` para mantener la trazabilidad de
+snapshots inmutables. Las pruebas focalizadas cubren el SVG oficial como URI de datos, la ausencia de
+barcode y el estilo monocromático; no se alteraron los datos MRC, textos oficiales, flujo privado,
+migraciones, QA, producción, secretos, `backend/.env.qa`, remotos Git ni commits.
+
+## 106. PF-3 MRC — Verificación visual QA del renderer monocromático r5 (2026-09-01)
+
+Se ejecutó un único flujo sintético de QA para MRC y se verificó la descarga privada de la Propuesta
+Formal desde la aplicación autenticada. El PDF emitido tiene exactamente dos páginas A4; el logo oficial
+de Tajy en SVG de tema claro se renderiza como imagen, sin fallback textual; no contiene código de barras
+ni numeración de código de barras; y no presenta estilo rojo fuera del color intrínseco del logo. Producción
+permaneció sin cambios.
+
+## 107. PF-3 MRC — Pasada local de precisión geométrica del PDF (2026-09-01)
+
+Se realizó una pasada de precisión local y medida contra el modelo oficial de dos páginas de Propuesta
+Formal MRC. Se rasterizaron ambos documentos a 144 DPI (1191 × 1684 píxeles por página) y se
+compararon reglas, celdas, anchos y alturas mediante imágenes lado a lado, superposiciones, diferencias
+y coordenadas temporales fuera del repositorio. La plantilla conserva el tratamiento monocromático, el
+SVG institucional de tema claro, dos páginas A4 y la ausencia de código de barras.
+
+El encabezado se reconstruyó con las dos filas y celdas fijas del modelo; los datos del asegurado ahora
+usan una cuadrícula canónica que conserva celdas vacías; y la tabla de riesgo, totales, declaraciones y
+coberturas tienen alturas y proporciones fijas. En la segunda página las condiciones comienzan directamente
+con su texto, sin el encabezado inventado; se restablecieron los paneles de costo y pago, el formulario de
+autorización de débito, una única cláusula adicional de cobranzas, observaciones con renglones, firmas con
+columnas no uniformes y el formulario de póliza digital con casillas y línea de correo.
+
+La revisión declarada del renderer pasó a `pf3-mrc-renderer-r6` para distinguir de manera inmutable esta
+geometría de r5. Las pruebas focalizadas de plantilla, PDF y snapshot, además de `npm test` del backend
+(321 pruebas), quedaron en verde. La comparación final registró diferencias estructurales máximas de 4
+píxeles y secundarias de 9 píxeles; las diferencias restantes corresponden a densidad de texto sintético,
+métricas tipográficas y proporciones intrínsecas del activo de logo, sin modificar la geometría fija.
+
+No se accedió ni modificó QA, producción, migraciones, secretos, `backend/.env.qa`, remotos Git ni se
+crearon commits. La validación corresponde únicamente al render local con datos sintéticos.
+
+## 108. PF-3 MRC — Validación visual QA del renderer medido r6 (2026-09-02)
+
+Se ejecutó un único flujo sintético controlado en QA para MRC. La descarga autenticada del PDF privado
+se completó correctamente y la inspección visual confirmó exactamente dos páginas A4, el logo oficial
+de Tajy en SVG de tema claro, la ausencia de código de barras y la geometría fija del formulario medida
+para `pf3-mrc-renderer-r6`.
+
+Producción permaneció sin cambios.
+
+## 109. PF-3 MRC — Pasada local de precisión visual r7 (2026-09-02)
+
+Se realizó una pasada local y acotada de precisión sobre el renderer de Propuesta Formal MRC, sin
+rediseñar ni reestructurar el formulario fijo de dos páginas. El PDF emitido `propuesta-8.pdf` no
+estaba disponible localmente; se buscó por ese nombre en el repositorio, `C:\Visual Studio` y el
+árbol temporal autorizado, sin acceder a QA, producción, credenciales ni almacenamiento remoto. Como
+línea base reproducible se generó un candidato dinámico local desde el renderer r6, con datos
+sintéticos, textos declarativos extensos y la cláusula almacenada con su título.
+
+El modelo oficial `docs/insumos/Propuesta formal mrc.pdf` y el candidato se rasterizaron a 144 DPI.
+La referencia mide 1190 × 1684 píxeles y el PDF de Chromium 1192 × 1684 por la diferencia de cajas
+de medios A4 (595,00pt frente a 595,92pt); las superposiciones y medidas normalizaron únicamente el
+canvas de comparación a 1190 × 1684, sin alterar el contenido del PDF. Se preservaron el logo SVG
+oficial, el estilo monocromático, los dos folios, los campos dinámicos y la ausencia de código de
+barras.
+
+Se ensanchó la columna de Hora Inicio para que el valor ausente completo no se trunque; se ajustaron
+milimétricamente la cabecera de riesgo, el ancho final de la tabla de riesgo, el espacio entre pago y
+autorización, la cláusula, observaciones, renglón interno de firmas, fila de póliza digital y los pies.
+Las coordenadas finales alinean el cuerpo y total de riesgo, declaraciones y coberturas; condiciones,
+costo/pago, firma interna, fila digital y footer de la segunda página quedan dentro de 0–1 píxel de
+las reglas de referencia. La cuadrícula interna del asegurado no se reestructuró porque su borde
+externo ya estaba dentro de 2 píxeles y cambiar la propiedad de las celdas excedería el alcance.
+
+También se corrigió estructuralmente la duplicación de la cláusula de cobranzas. La migración 070
+publica ese título como primera línea del texto contractual y el renderer ya generaba el `h2`
+canónico. El renderer ahora elimina las variantes acentuada, sin acento, con o sin espacios y con
+separadores antes de emitir el cuerpo; no se oculta contenido con CSS. La prueba focalizada cubre
+esas variantes y el PDF final contiene exactamente un `CLÁUSULA ADICIONAL DE COBRANZAS` tanto en DOM
+como en texto extraído.
+
+Verificaciones locales: `node --experimental-test-module-mocks --test
+src/templates/propuesta/mrc.test.js src/services/propuesta-pdf.service.test.js
+src/services/document-snapshot.service.test.js` pasó 14/14; `npm test` en `backend/` pasó 322/322.
+`pdfinfo` confirmó 2 páginas A4; la extracción verificó una ocurrencia del título canónico, cero
+variantes duplicadas y una ocurrencia de cada punto 1.2.1–1.2.3. La revisión raster confirmó que no
+hay barras rojas fuera del logo en ambas páginas y que no hay código de barras. Los artefactos
+renderizados, superposiciones, comparativas y reporte de coordenadas quedaron exclusivamente en
+`C:\Users\KEVINR~1\AppData\Local\Temp\opencode\pf3-mrc-precision-20260902\`.
+
+No se accedió ni modificó QA, producción, migraciones, Supabase, secretos, `backend/.env.qa`, remotos
+Git ni commits; tampoco se ejecutaron operaciones mutantes de Git. La diferencia pendiente es la
+densidad de datos sintéticos, métricas de fuente y la caja A4 de Chromium frente al formulario
+oficial, no una diferencia de geometría fija.
+
+## 110. PF-3 MRC — Corrección local de firmas r8 basada en evidencia visual (2026-09-02)
+
+Una revisión visual adicional de la superposición, comparativa lado a lado y cajas de texto del PDF
+en la zona de firmas de la segunda página corrigió una afirmación incompleta de la pasada r7: el
+formulario oficial no tiene separadores verticales completos entre las tres áreas de firma. Conserva
+los bordes externos y un único separador interno en x=893–895, desde debajo del espacio en blanco de
+firma hasta el borde inferior. El candidato r7 tenía dos separadores completos en x=492–493 y
+x=873–874.
+
+El renderer local ahora conserva las tres invocaciones y el orden semántico de firma (agente,
+titular de tarjeta y titular del seguro), elimina los bordes verticales genéricos y dibuja el único
+separador del titular del seguro después del espacio de firma. Se ajustaron únicamente los anchos,
+márgenes y desplazamientos existentes de las líneas, etiquetas y aclaraciones. El candidato r8 mide
+su separador interno en x=893–894; las tres etiquetas extraídas quedan a menos de 0,1pt de los
+centros de sus equivalentes en el formulario oficial y las líneas de firma tienen residuales de
+hasta 1 píxel en el canvas normalizado. También se corrigió la evidencia: el JSON final distingue
+explícitamente `reference` de `candidate`, y el reporte de coordenadas incluye el divisor de detalle
+de riesgo de la primera página (referencia x=1044; candidato x=1045).
+
+La revisión declarada del renderer pasó a `pf3-mrc-renderer-r8`. La suite focalizada de plantilla,
+PDF y snapshot pasó 14/14. El PDF sintético local final conserva dos páginas A4, un único título
+canónico de cláusula de cobranzas, ausencia de código de barras, cero píxeles rojos fuera del logo y
+una ocurrencia de cada punto 1.2.1–1.2.3. Los artefactos finales permanecen exclusivamente en
+`C:\Users\KEVINR~1\AppData\Local\Temp\opencode\pf3-mrc-precision-20260902\`.
+
+No se accedió ni modificó QA, producción, Supabase, migraciones, secretos, `backend/.env.qa`,
+remotos Git ni commits. Esta corrección sigue siendo una verificación local con datos sintéticos; no
+acredita emisión, despliegue ni promoción.
+
+## 111. PF-3 MRC — Corrección local del divisor de la tabla de riesgo r9 (2026-09-02)
+
+Se corrigió exclusivamente el divisor interno entre `Suma Asegurada Gs.` y `Prima Gs.` en el cuerpo
+de la tabla de riesgo. La causa fue que los dos `<b>` monetarios tenían `align-self: center`: como
+sus bordes derechos pertenecen a esos ítems de cuadrícula, Chromium reducía su altura a la del texto.
+El resultado era un segmento flotante; los importes ahora se centran verticalmente dentro de ítems
+`flex` que conservan la altura completa de las cuatro columnas estructurales.
+
+Una línea base local r8 a 144 DPI confirmó el divisor en x=1047, continuo en encabezado y total,
+pero limitado al rango y=543–564 en el cuerpo. El candidato local r9 conserva x=1047 y lo hace
+continuo desde y=430 hasta y=677 en el cuerpo, conectado con encabezado y total. La prueba focalizada
+verifica las cuatro celdas directas, el borde estructural y la ausencia de `align-self: center` en
+la propiedad del borde. Los PDF, rasteres, comparación y mediciones permanecen únicamente en
+`C:\Users\KEVINR~1\AppData\Local\Temp\opencode\pf3-mrc-risk-divider-20260902\`.
+
+Se ejecutaron las pruebas focalizadas del renderer, PDF y snapshot, además de `npm test` del backend.
+También se ejecutó `git diff --check` acotado a los archivos de esta corrección. No se accedió a QA,
+producción, Supabase, migraciones, secretos, credenciales, remotos ni commits.
+
+## 112. PF-3 MRC — Pasadas locales r10/r11 para metadatos y entrega digital (2026-09-02)
+
+La corrección r10 de metadatos permanece intacta. En el encabezado, se eliminó el desplazamiento vertical de 1 mm que empujaba los rótulos hacia los bordes inferiores; las dos filas quedan en 3,8 mm y 4 mm, con padding horizontal de 1,3 mm solo en las celdas secundarias. Las columnas primarias, el divisor secundario (x≈986 a 144 DPI), y el resto del encabezado no se tocaron en r11.
+
+La pasada r11 se limitó al bloque de entrega digital. Antes de editarlo se midió la referencia oficial a 144 DPI: límites x=56–1149, y=1138–1183 (46 px); línea punteada de correo en y=1178; y celdas de los campos `SI`/`NO` de 32 × 40 y 35 × 40 px que atraviesan visualmente las dos filas. Estas últimas son celdas altas del formulario fuente, no casillas independientes cuadradas. El candidato r10 había extendido indebidamente el formulario a 57 px (y=1141–1197) y usaba casillas de 29 × 28/28 × 28 px.
+
+Sin cambiar el HTML semántico de dos filas, la línea de correo de ancho mínimo 78 mm ni las áreas externas al bloque, r11 restauró altura fija de 7,65 mm. Las filas compactas quedan en 4,3 mm y 1,7 mm con separación de 0,15 mm; las casillas CSS son 4,3 mm. En el raster local, Fixture A y Fixture B coinciden en y=1141–1185 (45 px), con casillas de 24 × 24 y 26 × 24 px —menores que las de r9— y línea de correo y=1180–1181, contenida. Se preservan la etiqueta, el valor y la línea en la misma base, incluso con correo no disponible, sin solapamiento. La diferencia residual de dos a tres píxeles respecto de la posición vertical de la referencia procede del ancla de firmas no modificada; corregirla requeriría tocar un área fuera de alcance.
+
+La referencia y los candidatos se rasterizaron localmente a 144 DPI. Se regeneraron los PDF r11 de Fixture A y Fixture B, sus páginas completas, crops, overlays y mediciones en `C:\Users\KEVINR~1\AppData\Local\Temp\opencode\pf3-mrc-metadata-digital-20260902\`. Fixture B, sintético y local, conserva declaraciones, autorización, coberturas, sub-límites, franquicias, exclusiones, obligaciones y cláusula de cobranzas completas. `pdfinfo`, revisión visual y extracción de texto confirmaron dos páginas A4 sin clipping, overflow ni regresión de página.
+
+La revisión declarada pasó a `pf3-mrc-renderer-r11`. Pruebas focalizadas: 17/17; `npm test` del backend: 325/325; `git diff --check` acotado: sin errores. No se modificaron QA, producción, Supabase, migraciones, secretos, credenciales, remotos ni commits. Permanecen las diferencias de métricas de fuente, contenido sintético/no disponible, la diferencia conocida de dos píxeles de ancho de la caja A4 de Chromium, y el desfase vertical residual ya documentado. No se alteraron tabla de riesgo, grilla del asegurado, pago/autorización, cláusula, observaciones, firmas, footer, logo, tratamiento monocromático ni la arquitectura fija de dos páginas.
+
+## 113. PF-3 MRC — Calibración tipográfica, flujo legal y continuidad de bordes r12 (2026-09-02)
+
+La pasada local r12 midió la referencia oficial, el candidato r10 y un Fixture B realista a 144 DPI antes de ajustar tipografía. Se definieron roles tipográficos explícitos A–N para metadatos, asegurado, modalidad, riesgo, declaraciones, coberturas, condiciones, pago, autorización, cláusula, observaciones, firmas y footer. El riesgo conserva Courier New, la cláusula conserva Calibri y el resto mantiene Arial. Los saltos simples almacenados en textos legales ahora fluyen como espacios, mientras los párrafos y subtítulos semánticos permanecen separados; no se modificó el texto de negocio ni su escape dinámico.
+
+Se agregó un ajuste acotado y determinista solo para descripción de riesgo, declaraciones, coberturas principales, condiciones y cláusula de cobranzas. El renderer prueba primero el tamaño objetivo, reduce por pasos documentados sin cruzar el mínimo y publica métricas y estado de overflow antes de imprimir. Fixture B terminó en los cinco tamaños objetivo, sin overflow. Una sonda extrema llevó las cinco secciones exactamente a sus mínimos y las marcó explícitamente como `overflow`; la geometría fija medida fue idéntica a la del caso normal. Una validación posterior detectó que el servicio real esperaba esa finalización, pero todavía imprimía cuando el estado terminal era `overflow`. La corrección acotada ahora aborta antes de `page.pdf()` y antes de cualquier carga a Storage con el código tipado `PF_PDF_FIT_OVERFLOW`. El contrato terminal quedó alineado con los estados canónicos `target`, `reduced` y `overflow`: `reduced` permite imprimir solamente cuando el tamaño final es menor que el objetivo y permanece entre el mínimo y el objetivo; estados desconocidos, métricas inconsistentes y tamaños fuera de rango fallan antes de producir bytes con `PF_PDF_FIT_FAILED`. La evidencia del error contiene únicamente identificadores de las cinco secciones y tamaños objetivo, mínimo y final; no incluye texto legal ni datos del documento. Timeout, estado fallido y métricas incompletas también permanecen cerrados y producen errores acotados.
+
+En la segunda página se asignó un único propietario estructural a cada unión entre condiciones, pago/autorización, cláusula y observaciones. A 144 DPI, las reglas de las tres transiciones cubren sin huecos los 1093 píxeles esperados. El divisor `Suma Asegurada`/`Prima` de r9 permanece continuo en x=1047 durante los 249 píxeles del cuerpo. El bloque ecológico r11 conserva exactamente sus coordenadas CSS, casillas y línea de correo. La salida final mantiene dos páginas A4, un solo título canónico de cláusula, ausencia de código de barras, cero píxeles rojos fuera del logo y presencia de las oraciones terminales de todas las secciones ajustables.
+
+La revisión declarada permanece en `pf3-mrc-renderer-r12` porque no cambió ningún byte visual de plantilla. Las pruebas focalizadas pasaron 33/33 y `npm test` del backend pasó 335/335. El PDF normal posterior al gate conserva dos páginas A4 y el mismo tamaño de archivo; su hash PDF cambia por la fecha de creación de Chromium, pero los PNG de ambas páginas a 144 DPI son byte por byte idénticos a los de r12 previos (`9a7519b1...` y `48889f2d...`). La sonda extrema ya no genera un PDF por la ruta real: produce `mrc-propuesta-r12-overflow-rejection.json` con `accepted: false`. El PDF recortado anterior se conserva solo como evidencia visual diagnóstica previa al gate y no representa una salida aceptable. PDF normal, reporte de rechazo, rasteres, comparaciones, métricas e informes quedaron exclusivamente en `C:\Users\KEVINR~1\AppData\Local\Temp\opencode\pf3-mrc-typography-flow-20260902\`. No se accedió ni modificó QA, producción, Supabase, migraciones, secretos, credenciales, remotos Git ni commits; esta evidencia no acredita despliegue ni promoción.
+
+## 114. Fase 4 / PF-3 MRC — Pasada local final de fidelidad visual r13 (2026-09-02)
+
+La fuente visual y textual autoritativa de esta pasada fue exclusivamente `docs/insumos/Propuesta formal mrc.pdf` —sin sufijo `(1)`—, comparada con el baseline r12 a 144 DPI antes de editar. La causa principal del desvío era estructural: el renderer r12 trataba declaraciones, coberturas y condiciones como prosa legal genérica, por lo que perdía filas de formulario, jerarquías, distribuciones y secciones reconocibles; además, el padding común hacía que `Suma Asegurada Gs.` se partiera en dos líneas y las firmas/ecología permanecían tipográficamente menores que la referencia.
+
+La revisión `pf3-mrc-renderer-r13` incorpora un formateador semántico acotado que transforma únicamente tokens y líneas reconocibles de los textos versionados de `snapshot.texts`, siempre después de escapar el contenido. No se incrustó el documento legal completo ni dato personal en el renderer. Las declaraciones conservan prosa continua, subtítulos, énfasis, opciones `SI ( ) NO ( )`, líneas de motivo, modos de firma, mecanismos de entrega y numeración 1.2–1.2.3. Las coberturas recuperan los bloques de incendio y robo, una distribución compacta 50/50, sublímites y una distribución de robo 60/10/30. Las condiciones fluyen como sublímites → `Franquicias:` → `Exclusiones:` → párrafos finales, sin título global inventado. El Fixture C local contiene el texto estático oficial y exclusivamente datos dinámicos sintéticos; no se modificaron registros remotos ni migraciones.
+
+La corrección del encabezado de riesgo se limitó a `white-space: nowrap` en las dos celdas numéricas y padding horizontal de 0,35 mm; no se cambió el ancho exterior, las cuatro columnas ni sus divisores. Ambas etiquetas se extraen como una sola línea, comparten caja vertical y quedan centradas con deltas de −0,750 px y −0,022 px a 144 DPI. La modalidad conserva 11,8 px frente a 9,2 px del encabezado. Se ajustaron de forma medida el costo/pago y observaciones en +0,5 pt; las firmas avanzaron primero +0,5 pt y finalmente +1 pt, con interlínea compensada sin mover líneas, cajas, columnas ni geometría total; ecología quedó en +0,5 pt, preservando exactamente el contenedor, las dos filas y los tamaños de casilla r11/r12. La autorización mantuvo su padding izquierdo y las uniones de página 2 conservaron propietario único.
+
+Se ejecutaron dos ciclos completos de edición → render → comparación → overlay, más un render final de confirmación. El PDF final conserva exactamente dos páginas A4, logo existente, ausencia de código de barras, cero píxeles rojos fuera del logo, un solo título de cobranzas, geometría fija r12 y divisor Suma/Prima continuo en x=1047 durante encabezado, cuerpo y total. Las tres uniones de página 2 presentan una fila continua de 1093/1093 píxeles y cuentan con prueba a 576 DPI. Los cinco ajustes acotados terminaron en estado `target`; la sonda extrema volvió a ser rechazada por el servicio con `PF_PDF_FIT_OVERFLOW` antes de generar bytes o permitir una carga. Las pruebas focalizadas pasaron 38/38 y la suite completa del backend 340/340; las comprobaciones de espacios en blanco acotadas quedaron sin diagnósticos.
+
+El PDF, comparaciones completas, overlays al 50 %, ampliaciones, prueba de bordes, métricas, informes de contenido/coordenadas/tipografía/fit/invariantes y manifiesto están en `C:\Users\KEVINR~1\AppData\Local\Temp\opencode\pf3-mrc-final-fidelity-20260902\`. Permanecen diferencias deliberadas: datos dinámicos sintéticos frente a los de la referencia, ausencia del código de barras por contrato, caja A4 de Chromium de 595,92 pt frente a 595,00 pt, métricas de fuentes disponibles y los offsets externos de r12 que no podían alterarse en esta pasada. La firma final queda en 5,16 pt frente a 6 pt de referencia y ecología en 5,22 pt frente a 7 pt para respetar el incremento máximo y la geometría aceptada. No hubo acceso ni acción sobre QA, producción, Supabase, credenciales, migraciones, remotos Git, commits, push, despliegue o promoción.
+
+La compuerta final de aceptación detectó y corrigió un único desvío de fidelidad de contenido: el token truncado `Vía Teléfono Móvi` pasó a `Vía Teléfono Móvil` en el reconocedor, el Fixture C y la prueba principal. El reconocedor conserva compatibilidad acotada con snapshots versionados que contengan la variante truncada, pero normaliza exclusivamente ese rótulo dentro del grupo semántico de mecanismos de entrega; el escape dinámico y el texto no relacionado permanecen intactos. La evidencia final extrae `Vía Teléfono Móvil` exactamente una vez y registra su contención visual (`scrollWidth = clientWidth = 68 px`). Los dos prompts de motivo producen dos elementos de renglón independientes en el DOM, ambos contenidos en declaraciones; el informe ya no cuenta la única expresión fuente del renderer.
+
+Se regeneraron en la misma raíz temporal el PDF final r13, las declaraciones, las páginas completas, los informes afectados y el manifiesto con hashes nuevos. El PDF final tiene SHA-256 `3e873d704fd964a6dd7e43c63302ed6237ad7ec2660efe3a5eb509ed89ccbd13`, exactamente dos páginas A4 y los cinco ajustes en estado `target`, sin overflow. Las trece comparaciones de geometría protegida contra r12 continúan en `true`; no se modificaron layout, fuentes, cajas, reglas de ajuste, bordes ni regiones protegidas. Las pruebas focalizadas pasaron 32/32 y la suite completa del backend 341/341; las comprobaciones de sintaxis y `git diff --check` acotado quedaron sin diagnósticos. Esta corrección fue exclusivamente local, sin acciones en QA, producción, Supabase, migraciones, remotos Git ni commits.
+
+## 115. Fase 4 / PF-3 MRC — Pasada tipográfica local acotada r14 (2026-09-02)
+
+Se compararon la referencia oficial y el baseline r13 a 144 DPI antes de editar, con crops y overlays específicos para metadatos, datos del asegurado y firmas. La pasada r14 modifica únicamente esas tres zonas: metadatos de `4,650 pt` a `5,145 pt`, cuerpo de datos del asegurado de `4,087 pt` a `4,582 pt`, título de asegurado de `5,400 pt` a `5,895 pt`, y firmas/detalles de `5,160 pt` a `5,663 pt`. La referencia mide predominantemente `6 pt` en las tres zonas. Se probó `+0,75 pt` en metadatos, pero se descartó porque la celda `Hora Inicio` dejó de contener su valor sin alterar anchos; el incremento final queda en `+0,5 pt`. Las dos filas, ocho celdas, divisores y alturas del encabezado permanecen idénticos.
+
+La grilla del asegurado conserva 23 campos, 16 columnas, filas de `4,65 mm` y cuatro casillas de `3 × 3 mm` (`11,328 × 11,328 px` CSS). Un fixture adicional, exclusivamente sintético, verificó nombres, direcciones y correo deliberadamente extensos junto con valores ausentes: no hubo wrap, clipping ni overflow y no fue necesario reducir tipografía ni padding. Las firmas mantienen las tres columnas, líneas, divisores y caja exterior de `19,15 mm`; se agregó un margen explícito de `1 mm` después de cada rótulo `Firma del...`. El despeje medido entre cajas de glifos pasó de `−0,182 mm` en r13 a `0,414 mm` en r14, frente a `0,546 mm` en la referencia. Para contener la primera columna sin mover su línea se redujo únicamente la interlínea interna de sus detalles; las tres columnas y el fixture extenso quedaron contenidos.
+
+Los crops de logo/encabezado principal, modalidad+risk, declaraciones, coberturas, condiciones, pago, cláusula, observaciones, ecología y ambos footers son byte por byte idénticos a r13 a 144 DPI (`changedChannelRatio = 0`). El bloque ecológico conserva exactamente contenedor, filas, casillas, texto y coordenadas. La geometría fija de riesgo, contratos, condiciones, pago, cláusula, observaciones y firmas también coincide con r13. Los cinco ajustes de contenido permanecen en estado `target`, sin modificar umbrales ni estados del contrato de fit.
+
+La revisión inmutable avanzó a `pf3-mrc-renderer-r14`. Las pruebas focalizadas pasaron 33/33 y la suite completa del backend 342/342. PDF final, renders completos, comparaciones, overlays, informes y manifiesto quedaron en `C:\Users\KEVINR~1\AppData\Local\Temp\opencode\pf3-mrc-local-typography-20260902\`. Persisten únicamente las diferencias ya aceptadas respecto de la referencia: datos dinámicos sintéticos, fuentes disponibles, ausencia contractual del código de barras, caja A4 de Chromium de `595,92 pt` frente a `595,00 pt` y tipografía todavía algo menor en las tres zonas objetivo. No hubo acceso ni acción sobre QA, producción, Supabase, credenciales, migraciones, remotos Git, commits, push, despliegue o promoción.
+
+## 116. Fase 4 / PF-3 MRC — Corrección local acotada de interlínea en la primera firma r15 (2026-09-03)
+
+Se aumentó exclusivamente la interlínea de `Aclaración`, `Matrícula Nro.` y `Lugar y Fecha` en la primera columna de firmas, de `.78` a la interlínea normal `.88`. Para conservar el bloque fijo se desplazaron conjuntamente el rótulo y sus tres detalles `0,5 mm` hacia arriba, sin mover la línea de firma ni modificar tipografía, textos, columnas, altura de `19,15 mm`, bloque ecológico o cualquier otra región. El margen configurado de `1 mm` entre `Firma del Agente` y `Aclaración` permanece intacto: la separación medida entre cajas de glifos es `1,312 px`, frente a `1,313 px` en r14. Los pasos verticales entre detalles son `6,641 px` y `6,640 px`, y el último detalle conserva `0,625 px` de despeje positivo respecto del borde inferior.
+
+La revisión inmutable avanzó mecánicamente a `pf3-mrc-renderer-r15`. El PDF sintético local conserva exactamente dos páginas A4; a 144 DPI la primera página es idéntica a r14 y las `3.938` diferencias de la segunda quedan limitadas al rectángulo de rótulo/detalles de la primera firma (`x=63–339`, `y=1093–1140`). Las otras dos columnas, la geometría exterior, el bloque ecológico y las métricas de ajuste permanecen iguales. Las pruebas focalizadas pasaron 33/33 y la suite completa del backend 342/342. La evidencia quedó fuera del repositorio en `C:\Users\KEVINR~1\AppData\Local\Temp\opencode\pf3-mrc-signature-spacing-20260903\`. No se accedió a QA, producción, Supabase, credenciales, migraciones ni remotos Git; tampoco se crearon commits ni se cambió la fase o el próximo paso operativo.
+
+## 117. Fase 4 / PF-3 MRC — Preparación local del contenedor y gate de migraciones (2026-09-03)
+
+Se prepararon localmente tres aspectos técnicos previos al rollout: el Dockerfile configura Node 24, en coherencia con `engines` y CI; incorpora el SVG institucional en `backend/src/assets/tajy-logo.svg`, que es la ruta de ejecución del renderer; y el gate explícito `npm run verify:migrations:pf3` valida la numeración y ejecuta únicamente las pruebas estáticas de las migraciones 069–072. El fallback del activo queda limitado al desarrollo local; la configuración de producción no depende del árbol del frontend durante la ejecución.
+
+La verificación local pasó el gate de migraciones (12/12), las pruebas focalizadas de propuestas (34/34) y la suite del backend (343/343). Docker no estaba disponible localmente, por lo que no se verificaron el build ni la imagen del contenedor. Quedan pendientes esa validación y la prueba posterior en la VPS antes de considerar el candidato para rollout.
+
+No se modificaron reglas de elegibilidad, permisos de emisión, SQL de migraciones, plantilla, snapshots ni la identidad `pf3-mrc-renderer-r15`. La preparación es exclusivamente local y no desplegada: no se accedió a QA, producción, Supabase, credenciales ni `backend/.env.qa`; tampoco se ejecutaron migraciones, build de Docker, commits, push ni operaciones de stage.
+
+## 118. Fase 4 / PF-3 MRC — Corrección incremental localizada del formulario PDF
+
+Se aplicó una corrección visual acotada al renderer de Propuesta Formal MRC, sin modificar snapshots, datos persistidos, flujo de emisión, Puppeteer ni las secciones contractuales. En `backend/src/templates/propuesta/mrc.js`, el bloque **DATOS DEL ASEGURADO** conserva su contorno y tres separadores horizontales estructurales, pero elimina los bordes por campo y los divisores verticales interiores. El encabezado preserva sus divisores verticales, su separación secundaria y la regla punteada inferior, pero elimina exclusivamente la línea horizontal entre las dos filas. La segunda fila usa `87,25% / 12,75%`, por lo que el inicio de `Póliza Nro.` coincide con el inicio de la columna `Hora Fin`.
+
+La presentación de `draft.descripcion_detallada` ahora omite el fallback visual cuando el valor es nulo, vacío, espacios o una variante normalizada de `No disponible`; la ubicación y el detalle de sumas pasan a ocupar el inicio del cuadro. El fallback genérico se mantiene para los demás campos y una descripción real continúa imprimiéndose sin cambios. Las pruebas de plantilla cubren estas alternativas junto con la geometría protegida.
+
+Verificación local: `node --experimental-test-module-mocks --test src/templates/propuesta/mrc.test.js` pasó 21/21. Se generó `backend/tmp/mrc-propuesta-incremental.pdf`, con dos páginas A4; los cinco bloques de fit quedaron en estado `target`, sin overflow. La revisión visual de sus PNG a 150 DPI confirmó la ausencia de cajas por campo en el asegurado, los separadores requeridos del encabezado, la alineación de `Póliza Nro.` bajo `Hora Fin` y la preservación visible de las secciones protegidas. No se realizaron cambios en QA, producción, Supabase, migraciones, secretos, remotos ni commits.
+
+## 119. Fase 4 / PF-3 MRC — Restauración local de tres bloques contractuales (2026-09-10)
+
+Se restauraron exclusivamente los contenidos contractuales de **DECLARACIONES**, **COBERTURAS PRINCIPALES** y **Sub-límites / Franquicias / Exclusiones** del fixture local de Propuesta Formal MRC. El origen del contenido resumido era `referenceLengthFixture` (fixture `b`) en `backend/scripts/render-mrc-propuesta-local.js`; sus tres textos se reemplazaron por las fuentes oficiales ya presentes en `officialFormFixture` (fixture `c`). No se modificó `backend/src/templates/propuesta/mrc.js`, CSS ni la geometría o los bloques visuales mejorados del documento.
+
+La cobertura focalizada comprueba que los tres textos de fixture `b` coinciden con los oficiales y que el PDF contiene los anclajes contractuales requeridos. Se generó `backend/tmp/mrc-propuesta-official-content-corrected.pdf`, de dos páginas A4. Una comparación a 150 DPI entre dos renders del mismo renderer actual, variando solamente esos tres campos, confirmó que todos los píxeles modificados quedan dentro de Declaraciones y Coberturas Principales de la página 1, y de Sub-límites / Franquicias / Exclusiones de la página 2; no hubo diferencias fuera de esos bloques. Las pruebas focalizadas pasaron 38/38. El trabajo permanece estrictamente local: sin QA, producción, Supabase, migraciones, secretos, commits ni despliegue.
+
+## 120. Fase 4 / PF-3 MRC — Restauración local literal de Declaraciones (2026-09-10)
+
+Se corrigieron exclusivamente los dos contenidos sintéticos que persistían dentro de **DECLARACIONES** del fixture local base: `declaracion_jurada_origen_fondos` y `autorizaciones_tomador_poliza_digital`. El PDF guía `docs/insumos/Propuesta formal mrc.pdf` verificó el SHA-256 registrado en el manifiesto (`aa7baa45786d8104d23999f20c9ef957576cc333900278e2ea8903d204660433`); sus textos oficiales ya estaban representados literalmente en `officialFormFixture` (fixture `c`), desde donde se copiaron sin normalización al fixture `b`. `declaraciones_generales`, Coberturas Principales, página 2, renderer, CSS y geometría permanecieron sin cambios.
+
+La prueba focalizada falló primero al comprobar la desigualdad de Declaración Jurada y Autorizaciones entre los fixtures, y luego pasó 23/23 tras la sustitución literal; cubre las tres claves de Declaraciones y los anclajes hasta `1.2.3` y `(Art. 1.556 CC).`. Se generó `backend/tmp/mrc-propuesta-declarations-official-corrected.pdf`, de dos páginas A4. La comparación a 144 DPI contra `backend/tmp/mrc-propuesta-official-content-corrected.pdf` encontró 102.425 píxeles distintos sólo dentro del rectángulo de Declaraciones de la página 1; la página 2 fue idéntica por hash, sin diferencias. No hubo acceso a QA, producción, Supabase, migraciones, secretos, commits ni despliegue.
+
+## 121. Fase 4 / PF-3 MRC — Runbook local default-deny para corrección de Declaraciones en TEST
+
+Se creó `docs/PF3_MRC_TEST_PROMOTION_RUNBOOK.md` como preparación local, en español y default-deny, para una futura promoción controlada a TEST de las correcciones de `declaracion_jurada_origen_fondos` y `autorizaciones_tomador_poliza_digital`. El documento exige nuevas versiones append-only a través del RPC auditado existente: cada publicación crea una versión nueva y marca la previamente publicada con `publicado = FALSE`, mientras preserva su contenido, número de versión y auditoría. Por ello, un rollback es siempre la publicación hacia adelante de otra versión aprobada, nunca borrar, editar o reactivar contenido histórico; el documento también separa la aprobación local de fixture/PDF de una emisión real y preserva los snapshots históricos inmutables.
+
+El runbook no ejecuta promoción ni contiene endpoints, credenciales, SQL, comandos o mecanismos remotos. Requiere valores y aprobaciones humanas explícitas para identidad y destinos TEST, actor, motivo auditado, datos sintéticos elegibles, hashes, retención, candidato inmutable y cada acción remota. Para aprobación y verificación posterior a la publicación, el hash de fuente de verdad es la forma canónica persistida y recortada (`trim`) del contenido, porque el schema/RPC recortan el contenido. Registra gates para migraciones 069–072, default-deny de roles de navegador, `service_role`, evidencia del candidato, el SHA de la guía y la prevención de emisión duplicada; prohíbe merge/push porque no existe un kit/workflow aislado conocido de TEST y un push a `main` despliega producción.
+
+## 122. Fase 4 / PF-3 MRC — Stage local autocontenido para TEST de Declaraciones (preparación solamente)
+
+Se preparó exclusivamente en `backend/tmp/pf3-mrc-declarations-test-stage/` un bundle local y autocontenido para una futura ejecución humana en TEST. El PDF guía `docs/insumos/Propuesta formal mrc.pdf` se verificó localmente contra SHA-256 `aa7baa45786d8104d23999f20c9ef957576cc333900278e2ea8903d204660433` antes de extraer los dos únicos textos aprobados desde `officialFormFixture`: `declaracion_jurada_origen_fondos` y `autorizaciones_tomador_poliza_digital`. El artefacto registra los hashes SHA-256 de su forma canónica persistida (`trim`).
+
+El contexto Docker mínimo incluye el renderer actual staged y sólo el logo frontend requerido por `backend/Dockerfile`; no incluye fixture `b` como autoridad de runtime, `.env`, migraciones, `node_modules`, metadatos Git, claves ni frontend no relacionado. El manifiesto deriva un tag nuevo e inmutable del hash agregado del renderer y fija la imagen de rollback TEST r18. Se incluyeron scripts remotos sin ejecutar para preflight de sólo lectura, deploy con `--approve-deploy`, publicación con `--approve-publish` y actor/motivo no vacíos, y rollback con `--approve-rollback`; la emisión queda fuera de todos ellos y requiere una aprobación humana futura separada por crear evidencia inmutable.
+
+Las verificaciones locales de hashes, contenido canónico, sintaxis Bash/Node, exclusiones y `git diff --check` pasaron. No se ejecutaron Docker, SSH, red, QA, producción, Supabase, migraciones, acciones remotas, publicación ni emisión; tampoco se modificó código de aplicación ni se creó un commit. Permanecen sin suministrar los valores remotos aprobados (identidad/compose/servicio/health de TEST, ruta de la guía y conexión PostgreSQL read-only de TEST, actor y motivo auditado), por lo que el stage no autoriza ni permite inferir una ejecución.
+
+## 123. Fase 4 / PF-3 MRC — Preservación de evidencia PDF aprobada
+
+Se preservó como evidencia únicamente `docs/insumos/evidencia-pf-3-mrc/mrc-propuesta-declarations-official-corrected.pdf`, junto con su manifiesto SHA-256. Esta copia no reemplaza la guía fuente de preflight; la autoridad de esa guía permanece sin resolver. No se alteró ningún checklist de fase.
+
+## 124. Fase 4 / PF-3 MRC — Despliegue backend TEST verificado
+
+El candidato staged `cotizador-test-backend:pf3-mrc-declarations-sha256-81b8a41915d1393c07db4616a9a3ef6cfc37f38d4cd0eb93a23b300cb6d6c6e2` fue construido y recreado por el script de deploy, que retornó exit 1 antes de registrar el PASS inmediato posterior al arranque. Los diagnósticos posteriores, exclusivamente de lectura, confirmaron el proyecto Compose `cotizador-backend-test`, el servicio `backend-test`, la imagen candidata, el estado Docker `healthy` y el health externo de TEST en PASS.
+
+No hubo publicación de textos, emisión de Propuesta Formal, migración, despliegue a producción, commit ni push. La publicación permanece separadamente condicionada por sus gates explícitos.
+
+## 125. Fase 4 / PF-3 MRC — QA TEST de solo lectura completado
+
+Según evidencia de capturas proporcionada por el usuario, con sesión autenticada se cargó `https://test-web.cotizador.lat/propuestas/` y se visualizaron las tarjetas de preparación de propuestas. DevTools Network registró `GET 200` para `https://test-api.cotizador.lat/api/propuestas/textos` y para `.../api/propuestas/cartas-aptas?...`. No se abrió ninguna Carta ni se realizó guardado, publicación o emisión.
+
+Esto valida la disponibilidad de lectura de la UI/API desplegada en TEST y la recuperación del estado actual de textos. No ejecuta ni prueba el renderer desplegado, ya que no existe un endpoint de render de solo lectura. La versión visible de Carta `v2` no se interpreta como publicación de textos.
+
+## 126. Fase 4 / PF-3 MRC — Publicación append-only de Declaraciones en TEST verificada
+
+La publicación controlada en TEST finalizó con exit status 0 y afectó únicamente las claves `declaracion_jurada_origen_fondos` y `autorizaciones_tomador_poliza_digital`. La versión v1 quedó sin publicar y la v2 quedó publicada, con hashes canónicos v2 `7cfe12b779f7724f4ac060ea31a2049b3fc43867de50fb6ab5c43c3529e178c1` y `fbd58dfe6468002beee02c867a733b541c953e5272058e9285d6fbdd670fd8ec`; la auditoría registra actor 2 y motivo de corrección aprobado. El script verificó `emitted_proposals: 0`.
+
+## 127. Fase 4 / PF-3 MRC — Corrección TEST de CSRF (2026-09-11)
+
+En TEST, los `POST` de calcular y logout devolvían 403 porque la configuración activa en `/opt/cotizador/frontend-test/shared/config.js` usaba `tajy_test_csrf`, mientras el backend espera `tajy_csrf`. Se cambió reversiblemente la configuración activa a `tajy_csrf`, se verificó el artefacto servido y se retuvo el respaldo en `/opt/cotizador/frontend-test/shared/config.js.pf3-csrf-backup-20260911-074852`.
+
+Validación Network confirmada por el usuario: calcular 200, logout 204 y el posterior `auth/me` 401. No hubo cambios de backend, Docker, stage, producción, publicación, emisión, migración, commit ni push. No se modificó ningún checklist de fase.
+
+No hubo emisión de Propuesta Formal, migración, despliegue a producción, commit ni push. La emisión continúa condicionada por una compuerta separada.
+
+## 128. Fase 4 / PF-3 MRC — Corrección local del renderer tras overflow en TEST draft 12
+
+El draft 12 de TEST falló con `PF_PDF_FIT_OVERFLOW` en `risk-description@8px`. La corrección local fue acotar `.risk-columns--body .risk-description p { margin: 0; }`; preserva el texto y contenido legal, la geometría exterior, el algoritmo de fit y el mínimo de 8 px. Se agregó una regresión determinista que valida la cascada CSS efectiva y la prueba focalizada `node --test backend/src/templates/propuesta/mrc.test.js` pasó 24/24.
+
+Después de esta corrección no hubo una nueva etapa TEST, despliegue, reintento, publicación, emisión, migración, acción en producción, commit ni push. Cualquier despliegue o reintento requiere una compuerta explícita separada. No se modificó ningún checklist de fase.
+
+## 129. Fase 4 / PF-3 MRC — Etapa local inmutable renderer-fit TEST reconciliada
+
+La verificación independiente detectó que los manifiestos iniciales habían quedado obsoletos por formateo automático. Se corrigió localmente antes del cierre: cada byte del contexto Docker fue reconciliado contra su fuente autorizada actual, incluido `backend/src/templates/oferta/pdf-utils.js`, y se preservó el selector corregido `.risk-columns--body .risk-description p { margin: 0; }` de `mrc.js`.
+
+Desde esos bytes finales se regeneraron los manifiestos de fuentes del renderer, su agregado, el tag candidato fresco, el manifiesto integral de archivos y la metadata de referencia. El tag final deriva exclusivamente del agregado final y es distinto del candidato TEST desplegado `81b8a419…`. La verificación local final confirma la guía por SHA-256, la identidad del candidato anterior, los dos hashes publicados v2 exactos, el contexto sin migraciones ni tests y la ausencia de scripts de publicación, reintento o emisión. Materialización, preflight remoto, deploy, cualquier reintento de Draft 12/Carta 9 y emisión continúan requiriendo autorizaciones humanas separadas.
+
+No hubo materialización, preflight/deploy remoto, reintento, emisión, publicación, migración, producción, commit, push ni merge.
+
+## 130. Fase 4 / PF-3 MRC — Etapa local TEST renderer-fit preflight v2
+
+Se creó la etapa inmutable nueva `backend/tmp/pf3-mrc-renderer-fit-preflight-v2-test-stage/`, sin modificar las dos etapas locales existentes ni sus copias materializadas en TEST. Corrige el handoff de metadata v2: el preflight lee el JSON no secreto en el host y lo entrega al Node del contenedor únicamente mediante `PF3_EXPECTED_PUBLISHED_TEXTS_JSON`; el proceso dentro del contenedor ya no intenta leer `expected-published-texts.json` desde una ruta de host.
+
+La identidad nueva de etapa queda en su manifiesto propio. Se preservaron el agregado del renderer `05e86393a475dc05521e011984c0dfade5c80ecefea92eb3f47bf0092d92395d`, su tag derivado, la identidad TEST anterior, el hash de guía y los dos hashes exactos publicados v2. El verificador afirma el handoff, rechaza scripts de publicación/emisión/reintento y confirmó manifiestos, contexto sin migraciones ni tests y límites de solo lectura.
+
+Verificación local: prueba focalizada del renderer 24/24, verificador de etapa, manifiesto crudo, sintaxis Bash/Node y `git diff --check` aprobados. No hubo materialización, preflight/deploy remoto, Docker, red, publicación, reintento de Draft 12/Carta 9, emisión, migración, producción, commit, push ni merge.
+
+## 131. Fase 4 / PF-3 MRC — Backend renderer-fit desplegado y healthy en TEST
+
+Con autorizaciones separadas, la etapa preflight-v2 se materializó en `/opt/cotizador/backend-test/stages/pf3-mrc-renderer-fit-preflight-v2-05e86393a475` y verificó 111/111 manifiestos SHA-256. El preflight de solo lectura pasó con la guía fuente, la imagen TEST anterior, health y los dos hashes publicados v2 exactos. El primer intento de preflight se detuvo antes de Docker porque Compose requiere `BACKEND_IMAGE` para interpolar; se reintentó de forma explícita y no secreta usando la identidad anterior fijada en el manifiesto.
+
+El deploy autorizado volvió a ejecutar ese preflight, construyó el candidato `cotizador-test-backend:pf3-mrc-renderer-fit-sha256-05e86393a475dc05521e011984c0dfade5c80ecefea92eb3f47bf0092d92395d` y recreó únicamente `backend-test`. La comprobación posterior de solo lectura confirmó esa imagen con estado Docker `healthy` y `https://test-api.cotizador.lat/health` devolvió `{"status":"ok"}`. No hubo publicación, retry de Draft 12/Carta 9, emisión, migración, producción, commit, push ni merge; el retry y la emisión siguen sujetos a autorizaciones finales independientes.
+
+## 132. Fase 4 / PF-3 MRC — Etapa local TEST renderer-fit preflight v3
+
+Se preparó únicamente la etapa local inmutable `backend/tmp/pf3-mrc-renderer-fit-preflight-v3-test-stage/`. Fija como identidad previa y rollback TEST `cotizador-test-backend:pf3-mrc-renderer-fit-sha256-05e86393a475dc05521e011984c0dfade5c80ecefea92eb3f47bf0092d92395d`; el procedimiento de rollback queda versionado y exige aprobación deliberada, limitado al backend TEST. No hubo acción remota, preflight remoto, deploy, retry, emisión, migración, producción, commit, push ni merge.
+
+## 133. Fase 4 / PF-3 MRC — Cierre controlado sin emisión en TEST
+
+La etapa inmutable `renderer-fit TEST v3` fue materializada, pasó preflight y quedó desplegada exclusivamente en TEST. La imagen activa confirmada es `cotizador-test-backend:pf3-mrc-renderer-fit-sha256-1f1d264a44a260fa6e09b6c894a712ecb23578a1db0406b517ca7ac61ade6418`; el rollback explícito permanece fijado a `cotizador-test-backend:pf3-mrc-renderer-fit-sha256-05e86393a475dc05521e011984c0dfade5c80ecefea92eb3f47bf0092d92395d`. El contenedor quedó `healthy` y el health HTTP de TEST pasó.
+
+El precheck remoto de solo lectura, limitado a metadatos de `propuestas_formales` de la Carta 9, confirmó que el Draft 12 sigue en `error_pdf`, revisión 31, sin emisión histórica y sin proceso o borrador activo competidor. No se leyeron ni expusieron secretos, PII, textos, snapshots ni PDFs.
+
+La UI no tiene un retry de renderer separado: sobre un borrador `error_pdf`, la acción disponible es “Emitir Propuesta Formal”; si el render funciona, emite la propuesta. Por decisión explícita se cerró este tramo sin pulsar esa acción. No hubo retry, emisión, POST manual, migración, producción, commit, push ni merge. Cualquier emisión o validación adicional del renderer requiere una autorización nueva y explícita.
+
+## 134. Fase 4 / PF-3 MRC — Sonda local TEST-only de render sin emisión
+
+Se agregó localmente una sonda administrativa `POST /api/propuestas/:id/test-render-error-pdf` para validar, exclusivamente en un entorno no productivo con `PF3_TEST_RENDER_PROBE_ENABLED=true`, el renderer de un borrador MRC en `error_pdf`. La sonda exige administrador y `snapshot_json`, renderiza el snapshot sólo en memoria, descarta el `Buffer` y responde `204` sin cuerpo; los errores se sanitizan.
+
+La sonda no invoca RPCs de emisión ni de registro de error, no modifica estado o revisión, no reserva correlativos, no usa storage y no expone PDF, snapshot, textos ni errores crudos. La emisión existente permanece sin cambios. La suite focalizada ejecutada directamente con el Node instalado pasó 16/16, sin `npm`, red ni instalación de paquetes. No hubo despliegue, acción remota, retry, emisión, migración, producción, commit, push ni merge.
+
+## 135. Fase 4 / PF-3 MRC — Control UI TEST-only y cierre de exposición de snapshots
+
+La pantalla de Propuesta Formal incorpora localmente un control diagnóstico separado para administradores, visible únicamente cuando el backend devuelve la capability explícita `puede_probar_render_error_pdf`. El cliente usa el wrapper autenticado con CSRF para invocar exclusivamente la sonda TEST; mantiene estado pendiente y feedback genérico, sin manejar blobs, descargas, PDFs, snapshots, textos ni errores crudos. La fuente de autoridad continúa en el backend: entorno no productivo, opt-in exacto, admin literal, `error_pdf` y snapshot persistido.
+
+La revisión detectó que el GET de propuesta usaba un spread que filtraba `snapshot_json` y metadatos internos. Se reemplazó únicamente su serialización controller-local por un DTO con los 11 campos requeridos por el editor, tras calcular la capability sobre el contexto interno completo. Quedan excluidos snapshots, hashes/versiones, datos de PDF/storage, emisión/anulación/error/auditoría y relaciones internas. No se redujo la selección interna del repositorio ni se modificaron contratos POST/PUT.
+
+La suite focalizada final pasó 21/21 directamente con Node, sin npm, red ni instalación de paquetes; sólo emitió advertencias preexistentes de module mocking experimental y `namedExports` deprecado. No hubo despliegue, acción remota, retry, emisión, migración, producción, commit, push ni merge.
+
+## 136. Fase 4 / PF-3 MRC — Bundles locales inmutables para sonda TEST
+
+Las etapas backend y frontend para la sonda se encapsularon como bundles `.tar.gz` hash-pinned, porque el autoformateador local podía mutar scripts fuente de una etapa luego de verificarla. Los directorios fuente ya no son la unidad entregable: los bundles congelan manifiestos, scripts, contexto Docker archivado y artefacto estático en los bytes ya verificados.
+
+El bundle backend `backend/tmp/pf3-mrc-test-render-probe-ui-v1-backend-stage.bundle.tar.gz` tiene SHA-256 `8371512047d4a2da0a8866e66bb166b922c7f84aff6c7a0dfa9c5955dc89805d`; deriva de la identidad v3 activa y añade únicamente los deltas aprobados de ruta, controller y servicio. Su candidato TEST previsto es `cotizador-test-backend:pf3-mrc-test-render-probe-ui-v1-sha256-a5896ef230cd6bfce092c59f2b60473b5eb95bd3e70587ee5d3b60b59aa42f56`. El bundle frontend `backend/tmp/pf3-mrc-test-render-probe-ui-v1-frontend-stage.bundle.tar.gz` tiene SHA-256 `347cd4ab9115d8f98d173aace72b2000d5acc55e2522b5dfd2870a2233dc43b0`, contiene como único asset de aplicación `propuestas.js` y exige el baseline TEST público `63687cca892bdfe65aaab986f4f02331e7a9b649986bb5b5b43744eff55e12bf`.
+
+La verificación independiente confirmó ambos hashes, que el backend no contiene migraciones ni tests y que el frontend no amplía la superficie de assets. La suite focalizada pasó 21/21. No hubo materialización, preflight remoto, despliegue, ejecución de sonda, retry, emisión, migración, producción, commit, push ni merge; cada una sigue siendo una aprobación separada.
+
+## 137. Fase 4 / PF-3 MRC — Bundles de sonda materializados en TEST
+
+Con autorización separada se materializaron exclusivamente los dos bundles congelados bajo `/opt/cotizador/backend-test/stages/bundles/`. La verificación local previa y la verificación remota de los archivos `.partial` confirmaron los hashes esperados antes del renombrado final: backend `8371512047d4a2da0a8866e66bb166b922c7f84aff6c7a0dfa9c5955dc89805d` y frontend `347cd4ab9115d8f98d173aace72b2000d5acc55e2522b5dfd2870a2233dc43b0`.
+
+La materialización no extrajo los bundles, no ejecutó scripts internos, no hizo preflight, no reinició servicios, no cambió assets activos ni ejecutó la sonda. Preflight remoto, despliegue backend/frontend, ejecución de sonda, rollback, retry y emisión continúan como compuertas independientes.
+
+## 138. Fase 4 / PF-3 MRC — Bundle backend v2 para override de runtime TEST
+
+El runtime TEST activo confirmó `NODE_ENV=production` y ausencia de `PF3_TEST_RENDER_PROBE_ENABLED`; por lo tanto, el bundle backend v1 no podía validar ni habilitar la sonda correctamente. Se creó un bundle backend v2 local, derivado byte a byte del bundle backend v1 congelado y sin modificar el contexto Docker ni el frontend. La diferencia v2 está limitada a metadatos y scripts de promoción: el preflight valida un override Compose efímero para el candidato futuro que fija `NODE_ENV=test` y `PF3_TEST_RENDER_PROBE_ENABLED=true`, sin exigir ese flag en el contenedor v3 activo. El deploy aplica el override sólo al recrear `backend-test`; el rollback usa el Compose base y vuelve a exigir `NODE_ENV=production` sin el flag.
+
+El bundle v2 `backend/tmp/pf3-mrc-test-render-probe-ui-v2-backend-stage.bundle.tar.gz` tiene SHA-256 `c39977a44902a4a7cf08851c616a4dda982d3e7a0e15127768b009016da39579`. La auditoría temporal fuera del repositorio extrajo únicamente los bundles v1/v2, verificó el v2 contra el v1 y eliminó el temporal al finalizar. La suite focalizada pasó 21/21. No hubo materialización v2, preflight remoto v2, despliegue, ejecución de sonda, retry, emisión, migración, producción, commit, push ni merge.
+
+## 139. Fase 4 / PF-3 MRC — Bundle backend v2 materializado en TEST
+
+Con autorización separada se materializó exclusivamente el bundle backend v2 bajo `/opt/cotizador/backend-test/stages/bundles/backend-probe-ui-v2.tar.gz`. La verificación local y remota del archivo `.partial` confirmó el SHA-256 `c39977a44902a4a7cf08851c616a4dda982d3e7a0e15127768b009016da39579` antes del renombrado final.
+
+No se extrajo el bundle, no se ejecutaron scripts internos, no hubo preflight, Docker, cambio del backend activo, despliegue frontend, ejecución de sonda, retry, emisión, migración, producción, commit, push ni merge. El preflight v2 sigue siendo una compuerta independiente.
+
+## 140. Fase 4 / PF-3 MRC — Preflight remoto backend v2 aprobado en TEST
+
+El preflight v2 se ejecutó de forma no persistente contra el backend v3 activo y devolvió `PASS`. Validó el archive de contexto SHA-256 `b5161b50e375ce274f5efdd941545f28f1effba8c734ee467e631d301907bf20`, el agregado renderer `a5896ef230cd6bfce092c59f2b60473b5eb95bd3e70587ee5d3b60b59aa42f56`, la imagen v3 activa, salud Docker/HTTP y el override Compose futuro con `NODE_ENV=test` y `PF3_TEST_RENDER_PROBE_ENABLED=true`.
+
+El override se creó sólo en un temporal y fue eliminado al terminar. No se construyó imagen, no se reinició ni cambió el contenedor activo, no hubo despliegue frontend, ejecución de sonda, retry, emisión, migración, producción, commit, push ni merge. El despliegue backend v2 permanece como una aprobación separada.
+
+## 141. Fase 4 / PF-3 MRC — Backend v2 desplegado y healthy en TEST
+
+El deploy autorizado reconstruyó y recreó únicamente `backend-test` desde el bundle v2, con la imagen `cotizador-test-backend:pf3-mrc-test-render-probe-ui-v1-sha256-a5896ef230cd6bfce092c59f2b60473b5eb95bd3e70587ee5d3b60b59aa42f56`. El script no alcanzó su `PASS` inmediato tras el arranque, por lo que se realizó una comprobación posterior exclusivamente de lectura: confirmó la imagen candidata, Docker `healthy`, `PF3_TEST_RENDER_PROBE_ENABLED=true`, `NODE_ENV=test` y health HTTP `200`.
+
+No se desplegó frontend, no se ejecutó la sonda, retry ni emisión; no hubo migración, producción, commit, push ni merge. Cualquier validación UI, despliegue frontend, ejecución de sonda o rollback sigue siendo una compuerta independiente.
+
+## 142. Fase 4 / PF-3 MRC — Preflight frontend TEST aprobado
+
+El preflight frontend se ejecutó de forma no persistente y devolvió `PASS`: validó el bundle frontend, el asset raíz `/opt/cotizador/frontend-test/propuestas/propuestas.js` y el asset público servido contra el baseline SHA-256 `63687cca892bdfe65aaab986f4f02331e7a9b649986bb5b5b43744eff55e12bf`.
+
+La extracción fue temporal y se eliminó al terminar. No se reemplazó ningún asset, no se reiniciaron servicios, no se ejecutó la sonda, retry ni emisión; no hubo migración, producción, commit, push ni merge. El despliegue frontend continúa como una aprobación independiente.
+
+## 143. Fase 4 / PF-3 MRC — Frontend TEST desplegado y verificado
+
+Con autorización separada se ejecutó el despliegue atómico desde el bundle frontend inmutable SHA-256 `347cd4ab9115d8f98d173aace72b2000d5acc55e2522b5dfd2870a2233dc43b0`. El deploy reemplazó únicamente `/opt/cotizador/frontend-test/propuestas/propuestas.js` y reportó `PASS`, con hash público nuevo `f4eef0c5999e2dbf54118635da150eff5129e77cb203a2ba5cd42ba50080c82b`.
+
+Una comprobación posterior exclusivamente de lectura confirmó el mismo hash para el asset activo y el asset público; el backup verificado conserva el baseline `63687cca892bdfe65aaab986f4f02331e7a9b649986bb5b5b43744eff55e12bf`. No se reiniciaron servicios, no se ejecutó la sonda, retry ni emisión; no hubo migración, producción, commit, push ni merge. La sonda UI admin TEST y cualquier rollback siguen siendo compuertas independientes.
+
+## 144. Fase 4 / PF-3 MRC — Bloqueador de cookies CSRF en TEST identificado
+
+La verificación de navegador confirmó que `POST /api/auth/logout` en TEST devuelve `403` sin header `X-CSRF-Token`; el frontend lo trata erróneamente como logout exitoso y redirige al login, cuyo bootstrap recupera la sesión aún válida mediante `GET /auth/me`.
+
+La causa es de configuración de cookies: el backend TEST ejecuta `NODE_ENV=test`, por lo que las cookies `tajy_session` y `tajy_csrf` son host-only para `test-api.cotizador.lat`. La UI `test-web.cotizador.lat` no puede leer `tajy_csrf` para enviar el header, aunque el navegador conserve la sesión para el API. Esto afecta toda mutación protegida por CSRF, incluida la sonda PF-3; no se debe eximir logout ni la sonda de CSRF. Se requiere una corrección acotada que configure cookies compartidas seguras para el dominio desplegado sin cambiar `NODE_ENV=test`, junto con manejo frontend que no redirija ante logout fallido. No se ejecutó la sonda, retry ni emisión.

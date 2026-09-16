@@ -4,10 +4,11 @@ Este documento define cómo incorporar la **Propuesta Formal** al Cotizador Tajy
 decisiones posteriores sobre la familia **Maquinarias**. Es un plan de arquitectura y producto: no
 implica que las tablas, endpoints, pantallas o plantillas aquí propuestas ya existan.
 
-> **Estado del documento (2026-08-27):** planificación consolidada. PF-1 — Carta Oferta histórica
-> — está implementada y verificada en QA para MRC. PF-2 está implementado localmente solo para MRC
-> mediante la migración 069, API modular y UI `/propuestas/`, pero todavía no fue aplicado ni
-> verificado en QA. PF-3 y los tramos posteriores siguen sin implementación. Las decisiones marcadas como **Aprobada**
+> **Estado del documento (2026-09-01):** planificación consolidada. PF-0 está cerrado para MRC por
+> aprobación de la autoridad designada; Hogar permanece fuera de alcance. PF-1 — Carta Oferta histórica
+> — y PF-2 están implementados y verificados en QA para MRC; PF-2 incluye la migración 069, API modular
+> y UI `/propuestas/`. PF-3 MRC está implementado y verificado en QA, incluidas las migraciones 070 y
+> 071; no se acredita producción, despliegue, merge ni promoción. Las decisiones marcadas como **Aprobada**
 > son obligatorias; las marcadas como **Recomendación** describen el diseño propuesto; las marcadas
 > como **Pendiente** requieren confirmación antes de implementar el tramo afectado.
 
@@ -836,18 +837,17 @@ necesariamente hoy.
 Estas son etapas internas de la **Fase 4 — Propuesta Formal** y de la preparación posterior de
 Maquinarias; no alteran por sí mismas la numeración general del proyecto.
 
-### PF-0 — Cerrar insumos y decisiones bloqueantes
+### PF-0 — Cerrado para MRC (2026-09-01)
 
-- Archivar o transcribir con trazabilidad los modelos oficiales MRC y Hogar aportados durante la
-  planificación, hoy no almacenados en `docs/insumos/`.
-- Confirmar matriz KYC/PLA-FT/PEP con Compliance.
-- Cerrar con Compliance la política de retención documental, anulación y numeración oficial.
-- Resolver textos oficiales y firmantes.
+- Cerrado por aprobación de la autoridad designada, documentada en
+  `docs/PF0_MATRIZ_COMPLIANCE.md` y `docs/PF0_MANIFIESTO_FUENTES.md`.
+- Los modelos oficiales permanecen bajo custodia restringida; no se almacenan URLs compartibles ni PII
+  en el repositorio. Hogar continúa fuera de alcance.
 
 ### PF-1 — Fundamento documental de Carta Oferta — implementado en repositorio
 
-- La migración 066 define `cartas_oferta` y su relación explícita con `cotizaciones`; queda pendiente
-  aplicarla en un entorno controlado.
+- La migración 066 define `cartas_oferta` y su relación explícita con `cotizaciones`; fue aplicada y
+  verificada en QA para MRC.
 - La Carta se emite con snapshot completo, versiones, hashes, PDF privado, descarga autorizada y
   pruebas de inmutabilidad/reproducción.
 - Las Cartas previas permanecen como legado no reproducible: no se hace backfill ni se inventan datos
@@ -855,7 +855,7 @@ Maquinarias; no alteran por sí mismas la numeración general del proyecto.
 
 ### PF-2 — Núcleo de borradores y elegibilidad
 
-- ✅ API y persistencia de borradores MRC implementadas; migración 069 pendiente de QA.
+- ✅ API y persistencia de borradores MRC implementadas; migración 069 aplicada y verificada en QA.
 - ✅ Dos entradas al mismo módulo desde Bienvenida e Historial.
 - ✅ Selector de Carta apta con ownership, vigencia y estado derivados en backend/DB.
 - ✅ Selección por referencias de variante/pago, sin aceptar importes del frontend.
@@ -863,12 +863,21 @@ Maquinarias; no alteran por sí mismas la numeración general del proyecto.
 - 🔲 Auditoría append-only y modelo completo de partes/declaraciones quedan para el cierre previo a
   emisión; PF-2 no crea PDF ni snapshots de Propuesta Formal.
 
-### PF-3 — MRC end-to-end
+### PF-3 — MRC end-to-end — implementado y verificado en QA (2026-09-01)
 
-- Adapter MRC, PEP y validaciones específicas.
-- Plantilla oficial de Propuesta MRC.
-- Emisión atómica, almacenamiento privado, hashes y descarga.
-- E2E desde Cotizador y Bienvenida.
+- ✅ Adapter MRC, PEP y validaciones específicas.
+- ✅ Plantilla de Propuesta MRC.
+- ✅ Emisión atómica, almacenamiento privado, hashes, auditoría, anulación controlada y reemplazo.
+- ✅ API sintética y UI verificadas en QA: emisión `Propuesta N° 1`, bloqueo HTTP 409 de una segunda
+  emisión, rechazo HTTP 400 de anulación sin motivo, anulación autorizada y reemplazo vinculado
+  `Propuesta N° 2`.
+- ✅ Migración 070 aplicada en QA; la migración 071 revocó explícitamente `EXECUTE` para `anon` y
+  `authenticated` y mantuvo el acceso de `service_role`.
+- La verificación preservó snapshots, PDF privado, auditoría y seis hashes de texto. La propuesta
+  anulada enlaza a su reemplazo y la vigente descarga su PDF privado.
+- Las solicitudes externas a Google Fonts son un seguimiento de línea base independiente, no una falla
+  de PF-3. Hogar permanece fuera de alcance.
+- No se acredita producción, despliegue, merge, promoción, firma externa ni distribución de documentos.
 
 ### PF-4 — Preparación de Hogar
 
@@ -899,19 +908,12 @@ Maquinarias; no alteran por sí mismas la numeración general del proyecto.
 
 ## 20. Orden recomendado
 
-1. Archivar los modelos oficiales MRC/Hogar aportados y confirmar con Compliance los campos todavía
-   marcados “Por confirmar”.
-2. Aplicar y verificar en un entorno controlado la entidad histórica de Carta Oferta y el almacenamiento
-   privado ya implementados en PF-1.
-3. Mantener la Carta inmutable/versionada de PF-1 antes de tocar el formulario de Propuesta.
-4. Implementar elegibilidad, borradores y selección por referencia.
-5. Implementar partes/KYC/PLA-FT común.
-6. Implementar adapter y PDF de MRC.
-7. Verificar ambos puntos de entrada end-to-end.
-8. Preparar el adapter de Hogar sin habilitarlo hasta completar su flujo previo.
-9. Resolver deudas de moneda/redondeo y decisiones abiertas de Maquinarias.
-10. Implementar Maquinaria Automóvil y luego Maquinaria Incendio como productos independientes.
-11. Conectar sus Propuestas solo después de que cada Carta estructurada sea estable.
+1. Preparar y ejecutar un rollout de producción explícito y reversible antes de cualquier decisión de
+   merge o promoción.
+2. Preparar el adapter de Hogar sin habilitarlo hasta completar su flujo previo.
+3. Resolver deudas de moneda/redondeo y decisiones abiertas de Maquinarias.
+4. Implementar Maquinaria Automóvil y luego Maquinaria Incendio como productos independientes.
+5. Conectar sus Propuestas solo después de que cada Carta estructurada sea estable.
 
 Este orden evita construir el techo antes de la estructura: la Propuesta depende de una Carta
 inmutable; Maquinarias depende de un motor monetario/plurianual correcto; Hogar depende de su flujo de

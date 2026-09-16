@@ -1,166 +1,192 @@
 # AGENTS.md — Cotizador Aseguradora Tajy
 
-Este archivo es el contexto de arranque para agentes de IA (Claude Code, Codex, OpenCode y similares) en este repositorio. Léelo completo antes de tocar código. El detalle completo de arquitectura, schema SQL y reglas de negocio está en `docs/PLAN_DESARROLLO.md` — este archivo es un resumen operativo, no lo reemplaza. El estado real de avance (qué está implementado, decisiones tomadas y por qué, pendientes abiertos) está en `docs/ESTADO_PROYECTO.md`.
+Este archivo define reglas operativas permanentes para cualquier agente de IA que trabaje en este repositorio, incluidos Codex, OpenCode y Claude Code. No es un historial del proyecto ni reemplaza la documentación principal.
 
-## Qué es este proyecto
+## 1. Fuentes de verdad
 
-Sistema web para que los agentes de **Aseguradora Tajy** (Paraguay) coticen pólizas de seguro de varios ramos (Auto individual, Auto Flota, Incendio, Multirriesgo Hogar, Multirriesgo Comercio, Todo Riesgo Operativo, Transporte de Mercadería, Vida y Accidentes Personales), generen un PDF de **Carta Oferta** al cotizar y una **Propuesta Formal** (con KYC/PLA-FT) cuando el cliente acepta, y mantengan historial con numeración correlativa.
+Antes de realizar cambios, distinguir claramente entre:
 
-Es un proyecto **independiente**, separado de otros sistemas de Tajy (Siniestros Tajy, gestion-tajy) que Kevin ya tiene en desarrollo, aunque comparte el mismo stack y convenciones.
+- `AGENTS.md`: reglas permanentes para trabajar en el repositorio.
+- `docs/PLAN_DESARROLLO.md`: arquitectura, diseño, schema y reglas de negocio generales.
+- `docs/PLAN_PROPUESTA_FORMAL.md`: especificación vigente de Propuesta Formal; prevalece sobre resúmenes históricos de ese módulo.
+- `docs/ESTADO_PROYECTO.md`: estado actual, decisiones tomadas, cambios, verificaciones y pendientes.
+- Código, migraciones y tests: implementación real existente.
 
-## Stack
+No duplicar aquí checklists temporales, migraciones aplicadas, bugs resueltos, próximos pasos ni historial de cambios.
 
-| Capa                 | Herramienta                                                      |
-| -------------------- | ---------------------------------------------------------------- |
-| Backend              | Node.js + Express                                                |
-| Base de datos        | Supabase (PostgreSQL)                                            |
-| Validación           | Zod (un schema por ramo para los datos de riesgo)                |
-| Frontend             | Vanilla JS (sin framework), Netlify                              |
-| Importación de Excel | SheetJS                                                          |
-| Generación de PDF    | Puppeteer (HTML/CSS → PDF)                                       |
-| Deploy backend       | Railway o Render (Puppeteer necesita más RAM/CPU que serverless) |
-| Organización         | Monorepo GitHub                                                  |
+### Prioridad ante discrepancias
 
-## Estructura del monorepo
+1. No inventar una resolución.
+2. Revisar la implementación, migraciones y tests actuales.
+3. Consultar la entrada más reciente relacionada en `docs/ESTADO_PROYECTO.md`.
+4. Consultar la especificación de Propuesta Formal cuando aplique y `docs/PLAN_DESARROLLO.md` para arquitectura y negocio.
+5. Si la contradicción sigue siendo relevante y no puede resolverse con evidencia del repositorio, preguntar antes de un cambio de riesgo.
 
-```
+## 2. Proyecto y stack
+
+Sistema web para que agentes de **Aseguradora Tajy** (Paraguay) coticen pólizas de distintos ramos, generen Carta Oferta y Propuesta Formal con KYC/PLA-FT según el flujo, y mantengan historial con numeración correlativa.
+
+Ramos contemplados: Auto individual y Flota, Incendio, Multirriesgo Hogar, Multirriesgo Comercio, Todo Riesgo Operativo, Transporte de Mercadería, Vida y Accidentes Personales.
+
+| Capa              | Tecnología                                          |
+| ----------------- | --------------------------------------------------- |
+| Backend           | Node.js + Express                                   |
+| Base de datos     | PostgreSQL / Supabase                               |
+| Validación        | Zod                                                 |
+| Frontend          | Vanilla JavaScript                                  |
+| Importación Excel | SheetJS                                             |
+| Generación PDF    | Puppeteer (HTML/CSS → PDF)                          |
+| Organización      | Monorepo                                            |
+| Deploy            | VPS mediante los workflows vigentes del repositorio |
+
+Antes de modificar infraestructura, CI/CD o despliegues, verificar la configuración actual. La documentación histórica no sustituye a los workflows ni al estado real de un entorno.
+
+## 3. Estructura y arquitectura
+
+```text
 /backend
-  /src
-    /routes          -- definición de endpoints Express
-    /controllers      -- reciben request, llaman a services, devuelven response
-    /services         -- lógica de negocio (motor de cotización, generación de PDF)
-    /repositories      -- acceso a Supabase
-    /calculators       -- un archivo por ramo: auto.js, auto-flota.js, incendio.js,
-                          hogar.js, mrc.js, tro.js, transporte.js, vida-ap.js
-                          (todos implementan la misma interfaz RamoCalculator)
-    /schemas           -- validaciones Zod, una por ramo para riesgo_datos
-    /templates         -- plantillas HTML para los 3 documentos PDF
-  /migrations          -- SQL de Supabase, un archivo por cambio de schema
+  /src/routes
+  /src/controllers
+  /src/services
+  /src/repositories
+  /src/calculators
+  /src/schemas
+  /src/templates
+  /migrations
 
 /frontend
-  /cotizar             -- flujo de cotización (selección ramo → plan → coberturas → pago)
-  /historial           -- listado y búsqueda
-  /admin               -- gestión de planes, coberturas, tasas
-  /shared              -- componentes/utilidades comunes (sidebar, fetch wrapper, etc.)
+  /cotizar
+  /historial
+  /admin
+  /shared
 
-docs/PLAN_DESARROLLO.md  -- arquitectura completa, schema SQL, motor de cálculo por ramo
-docs/ESTADO_PROYECTO.md  -- estado real de avance: qué está hecho, decisiones y por qué, pendientes
-AGENTS.md                -- este archivo (contexto multi-agente)
-CLAUDE.md                -- mismo contenido, específico para Claude Code
+/docs
+  PLAN_DESARROLLO.md
+  PLAN_PROPUESTA_FORMAL.md
+  ESTADO_PROYECTO.md
 ```
 
-**Regla de arquitectura no negociable:** el frontend NUNCA habla directo con Supabase. Todo pasa por la API Express, que valida con Zod antes de tocar la base — mismo patrón que gestion-tajy y Siniestros Tajy.
+Patrón principal:
 
-## Metodología: desarrollo por fases
-
-**Última actualización:** 2026-07-24.
-
-Este proyecto se construye **fase por fase**, en este orden fijo (detalle completo de cada una en la sección 10 de `PLAN_DESARROLLO.md`):
-
-1. Base del sistema (monorepo, schema, importadores de tasas Auto)
-2. Cotizador de Auto end-to-end (individual + flota)
-3. Coberturas, Servicios, Descuentos/Recargos y Cláusulas
-4. Propuesta Formal (KYC)
-5. Historial y administración
-6. Incendio / Multirriesgo Hogar / MRC / TRO / Transporte
-7. Vida y Accidentes Personales
-8. Deploy
-
-**Reglas para cualquier agente de IA que trabaje en este repo:**
-
-- No adelantar trabajo de una fase futura aunque parezca rápido de hacer — cada fase se cierra completa antes de pasar a la siguiente, salvo que Kevin pida explícitamente saltar.
-- Al empezar una sesión, decir en qué fase se está y qué falta de esa fase antes de escribir código.
-- Al terminar una tarea de la fase actual, marcarla como hecha (editar el checklist de este archivo) y decir qué queda pendiente de la fase.
-- Si una tarea de la fase actual depende de un pendiente de la sección 11 de `PLAN_DESARROLLO.md` que todavía no está confirmado (ej. RPF de Incendio en Fase 6), avisar y proponer seguir con otra tarea de la misma fase mientras se confirma — no bloquear todo el trabajo por un solo dato faltante.
-- No mezclar código de dos fases en el mismo commit/PR cuando se pueda evitar — facilita revisar el avance real.
-- Cuando termines una tarea: marcá el checklist de fase correspondiente como hecho, y registrá el detalle completo (qué se hizo, por qué, cómo se verificó) como una entrada nueva en `docs/ESTADO_PROYECTO.md` — no en este archivo. Actualizá el resumen de "Estado actual del proyecto" de acá abajo solo si cambió la fase activa o el próximo paso.
-- No intentes adivinar, si no sabes algo pregunta.
-- Cuando encuentres una suposición errónea, o una mejora posible para este archivo, sugerila explícitamente en la sesión.
-
-## Estado actual del proyecto
-
-**Cambio de prioridad (2026-07-10):** el cliente pidió priorizar **MRC, Incendio y Vida/AP** por sobre Auto. Fase 2 de Auto queda **pausada tal cual está** (no se revierte, no se sigue tocando). Hogar y TRO no fueron pedidos todavía — quedan en fase futura.
-
-**Fase 4 — Propuesta Formal está activa.** Estado del checklist:
-
-- [ ] **PF-0:** siguen pendientes el archivo trazable de modelos oficiales, el cierre con Compliance, la política de retención documental y los textos/firma oficiales.
-- [x] **PF-1:** fundamento documental y emisión de Carta Oferta de MRC verificados en QA.
-- [x] **PF-2 para MRC:** migración 069 aplicada y flujo de elegibilidad/borradores verificado en QA por API y UI. Quedó exactamente un borrador activo para la Carta `MRC-1`, sin emisión de Propuesta Formal ni generación de su PDF.
-- [ ] **PF-3:** no iniciado y bloqueado hasta cerrar PF-0. La emisión continúa deshabilitada.
-
-**El detalle de cada cambio (qué se hizo, por qué, cómo se verificó) vive únicamente en `docs/ESTADO_PROYECTO.md`, en orden cronológico por sección numerada — no se repite acá para no desincronizarse.** Antes de asumir el estado de una feature, revisar ahí la sección más reciente que la mencione.
-
-**Próximo paso operativo:** cerrar PF-0 con los insumos oficiales y Compliance. Solo después puede comenzar PF-3 para MRC. Vida/AP sigue requiriendo texto oficial para su Carta Oferta; no se registra aquí una verificación de Incendio o Vida/AP equivalente a la realizada para MRC.
-
-## Versionado y despliegue automáticos (agregado 2026-08-02)
-
-- **`release-please`** (`.github/workflows/release-please.yml`, `release-please-config.json`, `release-type: simple`) corre en cada push a `main`: abre/actualiza un PR de release, y al mergearlo genera tag (`vX.Y.Z`), entrada en `CHANGELOG.md` y release de GitHub. Es rutina de CI — no requiere acción manual salvo mergear ese PR. `backend/package.json` no se actualiza por este mecanismo (queda en `0.1.0`); no confundir esa versión con el tag real del repo.
-- **`.github/workflows/deploy-backend.yml`** despliega el backend automáticamente a la VPS en cada push a `main` (`reset --hard`, no `merge --ff-only`). Esto reemplaza el flujo anterior de redeploy manual — verificar este workflow antes de asumir que un cambio de backend no llegó a producción.
-
-## Reglas de negocio clave para Auto (resumen — detalle completo en sección 5 de PLAN_DESARROLLO.md)
-
-```
-Prima_base = MAX(Capital × Tasa(plan, rango capital), plan.prima_tecnica_minima)
-Prima = Prima_base − Σ(Descuentos, tope = plan.descuento_maximo) + Σ(Recargos, tope = plan.recargo_maximo)
-RPF% = plan_formas_pago.tasa_rpf   -- FIJA por forma de pago, NO varía por cantidad de cuotas
-R.P.F. = REDONDEAR.SUP(Prima × RPF% / 100, 1000)
-IVA = (Prima × 10%) + (R.P.F. × 10%)
-Premio = Prima + R.P.F. + IVA
-Cuota = REDONDEAR.INF(Premio / (cuotas + 1), 1000)   -- hacia ABAJO, no hacia arriba
-Inicial = Premio − (cuotas × Cuota)                   -- absorbe el resto, no es igual a la Cuota
-Contado: Inicial = Premio completo, Cuota = 0
+```text
+routes → controllers → services → repositories → PostgreSQL / Supabase
 ```
 
-- **4 formas de pago SIEMPRE calculadas en simultáneo**: Contado (RPF=0), Crédito (Cobrador), Boca de Cobranza, Tarjeta de Crédito. No se elige una sola al cotizar.
-- **Franquicia dual** depende de `via_importacion` (dato del vehículo) Y `plan.cotizacion_combinada`:
-  - Importación Directa → franquicia fija Gs. 350.000 (monto base, puede variar según criterios a definir — ver pendiente #9 en PLAN_DESARROLLO.md), con opción de sacarla sumando un monto fijo a la prima (⚠ ese add-on quedó pendiente de recalcular). Una sola variante.
-  - Representante + plan con `cotizacion_combinada = true` (Premium/Superior/Fuerte) → se generan 2 variantes: sin franquicia y con franquicia (20% descuento sobre prima, franquicia = 12% de esa prima).
-  - Representante + plan con `cotizacion_combinada = false` (Noble) → una sola variante, sin franquicia.
-- **Plan Básico es distinto**: no tarifica por capital del vehículo, usa una tasa única fija (1,64%) sobre la cobertura de RC en vez de Daños Materiales.
-- El PDF de Carta Oferta debe replicar el diseño visual del modelo MAPFRE (`MODELO DE COTIZACION AUTO.pdf` en la raíz del proyecto) adaptado al branding de Tajy — ver sección 7 de `docs/PLAN_DESARROLLO.md`.
+Los calculadores viven en `backend/src/calculators`, las validaciones de entrada en `backend/src/schemas`, las plantillas de documentos en `backend/src/templates` y los cambios de schema en `backend/migrations`.
 
-## Convenciones de código (mismas que gestion-tajy / Siniestros Tajy)
+### Invariantes
 
-- Backend en capas: `routes → controllers → services → repositories`. No lógica de negocio en los controllers.
-- Validación de entrada con Zod en el borde de la API, antes de llegar a los services.
-- Cada ramo tiene su propio calculador en `/calculators`, todos implementando:
-  ```js
-  interface RamoCalculator {
-    calcularPrima(input): { prima: number, detalle: object }
-    calcularPlanPago(prima, formaPago, cuotas): { rpf, iva, premio, inicial, cuota }
-  }
-  ```
-- Frontend Vanilla JS, sin build step complejo — mismo patrón de Siniestros Tajy (sidebar, fetch wrapper simple).
-- SQL de Supabase versionado como migraciones individuales en `/backend/migrations`, nunca editar el schema a mano en producción.
-- `pip`/`npm`: nada especial, usar los gestores estándar de cada carpeta.
+- El frontend **nunca** accede directamente a Supabase/PostgreSQL; todo acceso funcional pasa por la API Express.
+- Validar con Zod toda entrada externa relevante en el borde de la API, antes de la lógica de negocio.
+- Los controllers reciben requests, invocan services, transforman errores y devuelven responses; no contienen lógica de negocio compleja.
+- La lógica de negocio pertenece a services o a componentes del dominio, como los calculadores.
+- El acceso a datos se encapsula en repositories conforme al patrón existente. No introducir consultas directas desde controllers o frontend.
 
-## Pendientes activos que pueden afectar el código
+## 4. Reglas de negocio y fases
 
-Lista corta de lo que un cambio de código puede pisar sin querer. El detalle completo de cada uno (y otros pendientes menores) está en `docs/ESTADO_PROYECTO.md` sección 8 y sección 31 — no se repite acá.
+No reimplementar fórmulas o comportamiento basándose solo en memoria o supuestos. Antes de modificar tarificación, RPF, descuentos, recargos, franquicias, pagos, planes, coberturas, documentos, correlativos o reglas de un ramo, revisar documentación aplicable, implementación actual, tests y decisiones posteriores.
 
-- **Template de Carta Oferta para Vida/AP**: no existe todavía (falta texto oficial). El de Incendio ya está (`backend/src/templates/oferta/incendio.js`, ver `docs/ESTADO_PROYECTO.md` sección 34). El calculador de Vida/AP SÍ está completo y testeado — no asumir que está "pendiente" sin verificar `backend/src/calculators/`.
-- **RPF de "COMERCIO PROTECCION TOTAL"** (MRC): no confirmado — plan desactivado (`activo = FALSE`), no aparece en el selector.
-- **Auto individual (Fase 1/2)**: pausado por prioridad del cliente, no tocar hasta que se reactive.
-- ~~RLS en Supabase: 30 tablas de `public` sin RLS~~ — **resuelto 2026-07-30.** Activado en las 34 tablas marcadas CRITICAL (migración `046_enable_rls_public_tables.sql`, aplicada contra Supabase real), sin policies (default-deny para anon/authenticated). Backend usa `SUPABASE_SERVICE_KEY` (service_role, bypasea RLS) y no hay ningún cliente Supabase en el frontend, así que no rompió nada — advisor de seguridad en 0 CRITICAL, 154/154 tests backend en verde.
-- **Migraciones 043/044 (rubro_actividad_ramo + tasas de Incendio por rubro) YA APLICADAS contra Supabase real (2026-07-29)**: el filtro por `ramo_id` ya funciona a nivel de datos. El backend ya exige `ramo_id` en el código y ya está mergeado a `main` (PR #38/#39), junto con el frontend que lo envía. **Falta confirmar que el backend de la VPS (`api.cotizador.lat`) fue redesplegado a mano con este código** — no hay CD automático para el backend, y Vercel sí auto-despliega el frontend en cada push a `main`, así que hay una ventana en la que ambos lados pueden estar desincronizados en producción. Verificación en vivo 9.3 (cotizar rubros nuevos sin 422) ya completada contra un entorno de QA — pendiente confirmar contra la VPS real.
-- **Clamp de `tasa_minima` en ~176/184 rubros nuevos de Incendio**: Kevin confirmó "apliquemos tal cual" — se acepta que el calculador clampee la tasa efectiva al mínimo histórico del pivot en vez de usar el desglose 40/60 para la mayoría de los rubros nuevos (no produce error, solo puede distorsionar la prima). Ajustable después por `UPDATE` sobre `tipos_riesgo_incendio.tasa_minima` sin cambio de código, rubro por rubro, si en el uso real aparecen primas raras.
-- **Follow-up `DROP COLUMN rubros_actividad.grupo`**: la columna queda legacy de solo lectura desde el cambio `incendio-tasas-por-rubro` (reemplazada por `rubro_actividad_ramo`), pero no se borra en ese cambio — pendiente de un DROP explícito más adelante, una vez confirmado que ningún código la lee.
+Cuando la documentación y el código difieran, investigar primero la causa. No "corregir" una decisión solamente porque parezca inusual.
 
-## Al empezar una sesión nueva
+El proyecto se organiza por fases definidas en `docs/PLAN_DESARROLLO.md`; el estado vigente de cada fase se determina desde `docs/ESTADO_PROYECTO.md`.
 
-1. Leer `docs/PLAN_DESARROLLO.md` completo si es la primera vez.
-2. Leer `docs/ESTADO_PROYECTO.md` para saber qué está hecho y qué decisiones ya se tomaron.
-3. Revisar la sección 11 de `docs/PLAN_DESARROLLO.md` (pendientes) por si hay novedades.
-4. Confirmar en qué fase estamos antes de avanzar a la siguiente.
+- No adelantar deliberadamente una fase futura ni reactivar una funcionalidad pausada sin instrucción vigente que lo autorice.
+- Evitar mezclar cambios independientes de fases distintas en un mismo commit cuando sea razonablemente posible.
+- Si falta un dato de negocio, identificar la dependencia antes de inventar un valor. Esa dependencia no debe bloquear trabajo independiente del mismo alcance.
+- Identificar internamente la fase antes de modificar una funcionalidad y mencionarla al usuario cuando afecte la decisión o el alcance.
 
-## Flujo recomendado
+## 5. Antes de modificar
+
+Primero comprender el área afectada:
+
+1. Leer la petición completa.
+2. Consultar el estado de la feature en `docs/ESTADO_PROYECTO.md`.
+3. Revisar el plan o especificación correspondiente si intervienen arquitectura o negocio.
+4. Localizar la implementación, consumidores y tests.
+5. Identificar dependencias y efectos colaterales.
+6. Modificar únicamente lo necesario.
+
+No reescribir componentes completos si un cambio localizado, compatible con la arquitectura existente, resuelve la necesidad. Buscar y reutilizar antes de crear o duplicar.
+
+### Política ante dudas
+
+Antes de preguntar por una duda técnica, intentar resolverla con evidencia disponible: código, tests, documentación, historial Git y herramientas de contexto. Preguntar cuando persista una ambigüedad que afecte negocio, datos, seguridad, producción, migraciones, compatibilidad, comportamiento visible o una decisión difícil de revertir.
+
+Para decisiones de bajo riesgo claramente inferibles desde el repositorio, avanzar con evidencia en vez de bloquear innecesariamente el trabajo.
+
+## 6. Migraciones, entornos y despliegues
+
+Todo cambio de schema debe versionarse mediante una migración nueva en `backend/migrations`.
+
+No:
+
+- editar manualmente producción como sustituto de una migración;
+- modificar una migración histórica ya aplicada para representar un cambio nuevo;
+- asumir que un archivo presente en Git fue aplicado en un entorno;
+- asumir que TEST y producción tienen el mismo estado;
+- ejecutar cambios destructivos sin comprender el impacto y la recuperación.
+
+Antes de crear una migración, revisar migraciones relacionadas, tablas, funciones, triggers, índices, policies, dependencias del backend, compatibilidad con datos existentes y rollback o recuperación cuando corresponda. Inspeccionar el estado real de Supabase/PostgreSQL cuando haya una herramienta autorizada disponible.
+
+No confundir:
+
+```text
+código implementado ≠ commit ≠ push ≠ workflow ejecutado ≠ migración aplicada ≠ deploy completado ≠ feature verificada
+```
+
+No afirmar que algo está en producción sin evidencia suficiente. Para cambios sensibles, preferir un flujo verificable y reversible.
+
+## 7. Convenciones de implementación
+
+### Backend
+
+Mantener `routes → controllers → services → repositories`; no crear capas alternativas innecesarias. Cada ramo conserva su lógica aislada en su calculador, salvo una abstracción común deliberada.
+
+### Frontend
+
+Mantener Vanilla JavaScript y las utilidades compartidas. Antes de crear un componente, helper, wrapper de `fetch`, estilo o lógica nueva, buscar un equivalente reutilizable.
+
+### SQL y dependencias
+
+Crear migraciones individuales para cambios nuevos. No modificar el schema de producción como mecanismo normal de desarrollo. No agregar dependencias si la funcionalidad se resuelve razonablemente con las existentes; justificar y evaluar el impacto de cualquier dependencia importante.
+
+## 8. Cambios mínimos y verificación
+
+En tareas localizadas, modificar solo el comportamiento solicitado. No usar una corrección pequeña para introducir refactors amplios no solicitados, especialmente en PDFs, layouts, formularios, cálculos, migraciones, autenticación o permisos.
+
+Antes de alterar código estable, identificar el comportamiento que debe preservarse. Para cambios visuales, preservar contenido y reglas no relacionadas, evitar cambios globales si basta uno localizado y comparar contra la referencia o comportamiento anterior cuando corresponda.
+
+No considerar una tarea terminada solo porque compila o parece correcta. Elegir verificaciones acordes al cambio: tests existentes o nuevos con valor, lint, sintaxis, ejecución local, pruebas de API, migraciones, comparación visual, logs y revisión del diff.
+
+No modificar tests solamente para hacerlos pasar si representan una regla vigente. Si no es posible realizar una verificación importante, indicarlo claramente.
+
+## 9. Documentación, contexto y Git
+
+`docs/ESTADO_PROYECTO.md` es el registro operativo. Registrar allí cambios significativos: decisiones de arquitectura, features completadas, cambios de comportamiento, migraciones creadas o aplicadas, verificaciones, despliegues, diferencias entre TEST/producción, problemas relevantes y pendientes que afecten trabajo posterior.
+
+Modificar este archivo únicamente cuando cambien reglas permanentes de trabajo o arquitectura base. No convertirlo en changelog.
+
+Si está disponible, usar CodeGraph preferentemente para localizar símbolos, referencias, dependencias, flujos e impacto antes de navegar extensamente el repositorio. Usar Engram para recuperar y conservar decisiones o descubrimientos de utilidad futura, sin reemplazar Git ni la documentación del repositorio.
+
+Antes de operaciones Git que puedan descartar trabajo, revisar el estado actual. Mantener commits enfocados; no incluir refactors no relacionados, temporales, artefactos accidentales, cambios ajenos ni secretos. Un push no prueba por sí mismo que los entornos quedaron actualizados.
+
+## 10. Seguridad
+
+Nunca incluir en código, documentación o commits contraseñas, tokens, API keys, claves privadas, service-role keys ni secretos de CI/CD.
+
+No debilitar autenticación, autorización, validaciones o controles de seguridad para facilitar una prueba. Tratar con especial cuidado y verificación los cambios de sesiones, JWT, cookies, CSRF, CORS, permisos, RLS, roles, credenciales o exposición de servicios.
+
+## 11. Principios generales
 
 Todo agente debe:
 
-- comprender la arquitectura antes de modificar código
-- evitar duplicación
-- preferir reutilización
-- documentar cambios relevantes
-- mantener consistencia entre frontend y backend
-- consultar CodeGraph antes de navegar archivos manualmente (si está disponible)
-- consultar Engram para recuperar decisiones previas (si está disponible)
+- comprender antes de modificar;
+- buscar antes de crear y reutilizar antes de duplicar;
+- preservar comportamiento no solicitado;
+- mantener consistencia frontend/backend y reglas de negocio centralizadas;
+- basarse en evidencia, no en suposiciones;
+- diferenciar claramente TEST de producción, e implementación de despliegue;
+- verificar antes de declarar una tarea terminada;
+- documentar decisiones relevantes.
+
+Si se detecta documentación obsoleta, contradicción, deuda técnica, vulnerabilidad u oportunidad clara de simplificación, no expandir automáticamente el alcance: informarlo y proponerlo por separado cuando corresponda.

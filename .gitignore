@@ -1,6 +1,7 @@
 node_modules/
 .env
 .env.local
+.env.*
 frontend/shared/config.js
 *.log
 .DS_Store
@@ -12,6 +13,12 @@ build/
 # Insumos con datos reales de clientes (cotizaciones, propuestas) — no confirmado
 # que el repo sea privado. Ver docs/ESTADO_PROYECTO.md antes de destrackear esto.
 docs/insumos/
+
+# Preservación aprobada y acotada de evidencia PF-3 MRC.
+!docs/insumos/
+docs/insumos/*
+!docs/insumos/evidencia-pf-3-mrc/
+!docs/insumos/evidencia-pf-3-mrc/**
 
 # Skills instaladas vía `npx skills add` — config local de herramienta,
 # .claude/skills contiene symlinks con path absoluto (no portable entre máquinas).
@@ -26,3 +33,6 @@ skills-lock.json
 
 # Playwright traces and screenshots retained only on failure.
 test-results/
+
+# Scratch de ejecuciones de tests/staging (docker-context, manifests, artifacts).
+backend/tmp/

@@ -1,6 +1,6 @@
 # CLAUDE.md — Cotizador Aseguradora Tajy
 
-Este archivo es el contexto de arranque para Claude Code en este repositorio. Léelo completo antes de tocar código. El detalle completo de arquitectura, schema SQL y reglas de negocio está en `docs/PLAN_DESARROLLO.md` — este archivo es un resumen operativo, no lo reemplaza. El estado real de avance (qué está implementado, decisiones tomadas y por qué, pendientes abiertos) está en `docs/ESTADO_PROYECTO.md`.
+Este archivo es el contexto de arranque para Claude Code en este repositorio. Léelo completo antes de tocar código. El detalle completo de arquitectura, schema SQL y reglas de negocio está en `docs/PLAN_DESARROLLO.md` — este archivo es un resumen operativo, no lo reemplaza. El estado real de avance (qué está implementado, decisiones tomadas y por qué, pendientes abiertos) está en `docs/ESTADO_PROYECTO.md`. La especificación vigente de Propuesta Formal está en `docs/PLAN_PROPUESTA_FORMAL.md` y prevalece sobre resúmenes históricos de ese módulo. Reglas permanentes compartidas con otros agentes IA (Codex, OpenCode) están en `AGENTS.md`.
 
 ## Qué es este proyecto
 
@@ -10,45 +10,22 @@ Es un proyecto **independiente**, separado de otros sistemas de Tajy (Siniestros
 
 ## Stack
 
-| Capa                 | Herramienta                                                      |
-| -------------------- | ---------------------------------------------------------------- |
-| Backend              | Node.js + Express                                                |
-| Base de datos        | Supabase (PostgreSQL)                                            |
-| Validación           | Zod (un schema por ramo para los datos de riesgo)                |
-| Frontend             | Vanilla JS (sin framework), Netlify                              |
-| Importación de Excel | SheetJS                                                          |
-| Generación de PDF    | Puppeteer (HTML/CSS → PDF)                                       |
-| Deploy backend       | Railway o Render (Puppeteer necesita más RAM/CPU que serverless) |
-| Organización         | Monorepo GitHub                                                  |
+| Capa                 | Herramienta                                                                                            |
+| -------------------- | ------------------------------------------------------------------------------------------------------ |
+| Backend              | Node.js + Express                                                                                      |
+| Base de datos        | Supabase (PostgreSQL)                                                                                  |
+| Validación           | Zod (un schema por ramo para los datos de riesgo)                                                      |
+| Frontend             | Vanilla JS (sin framework), Netlify                                                                    |
+| Importación de Excel | SheetJS                                                                                                |
+| Generación de PDF    | Puppeteer (HTML/CSS → PDF)                                                                             |
+| Deploy backend       | VPS propia (Docker + Caddy), imágenes inmutables por SHA — ver sección "Infraestructura de despliegue" |
+| Organización         | Monorepo GitHub                                                                                        |
 
 ## Estructura del monorepo
 
-```
-/backend
-  /src
-    /routes          -- definición de endpoints Express
-    /controllers      -- reciben request, llaman a services, devuelven response
-    /services         -- lógica de negocio (motor de cotización, generación de PDF)
-    /repositories      -- acceso a Supabase
-    /calculators       -- un archivo por ramo: auto.js, auto-flota.js, incendio.js,
-                          hogar.js, mrc.js, tro.js, transporte.js, vida-ap.js
-                          (todos implementan la misma interfaz RamoCalculator)
-    /schemas           -- validaciones Zod, una por ramo para riesgo_datos
-    /templates         -- plantillas HTML para los 3 documentos PDF
-  /migrations          -- SQL de Supabase, un archivo por cambio de schema
+Árbol completo de carpetas y su propósito: ver `AGENTS.md` sección 3. Resumen: `/backend/src` en capas (`routes → controllers → services → repositories`, más `/calculators`, `/schemas`, `/templates`), `/frontend` por flujo (`/cotizar`, `/historial`, `/admin`, `/shared`), `/backend/migrations` para SQL versionado.
 
-/frontend
-  /cotizar             -- flujo de cotización (selección ramo → plan → coberturas → pago)
-  /historial           -- listado y búsqueda
-  /admin               -- gestión de planes, coberturas, tasas
-  /shared              -- componentes/utilidades comunes (sidebar, fetch wrapper, etc.)
-
-docs/PLAN_DESARROLLO.md  -- arquitectura completa, schema SQL, motor de cálculo por ramo
-docs/ESTADO_PROYECTO.md  -- estado real de avance: qué está hecho, decisiones y por qué, pendientes
-CLAUDE.md                -- este archivo
-```
-
-**Regla de arquitectura no negociable:** el frontend NUNCA habla directo con Supabase. Todo pasa por la API Express, que valida con Zod antes de tocar la base — mismo patrón que gestion-tajy y Siniestros Tajy.
+**Regla de arquitectura no negociable:** el frontend NUNCA habla directo con Supabase. Todo pasa por la API Express, que valida con Zod antes de tocar la base — mismo patrón que gestion-tajy y Siniestros Tajy (detalle en `AGENTS.md` sección 3, "Invariantes").
 
 ## Metodología: desarrollo por fases
 
@@ -87,10 +64,22 @@ Este proyecto se construye **fase por fase**, en este orden fijo (detalle comple
 
 **Próximo paso confirmado con Kevin:** revisar/commitear el template de Incendio, agregar el de Vida/AP (requiere texto oficial), cerrar cambios abiertos con `sdd-verify`/archivo formal si se pide, o retomar Fase 2 (Auto) si se pide.
 
-## Versionado y despliegue automáticos (agregado 2026-08-02)
+## Versionado y despliegue (actualizado 2026-09-16 — corrige info obsoleta)
 
-- **`release-please`** (`.github/workflows/release-please.yml`, `release-please-config.json`, `release-type: simple`) corre en cada push a `main`: abre/actualiza un PR de release, y al mergearlo genera tag (`vX.Y.Z`), entrada en `CHANGELOG.md` y release de GitHub. Es rutina de CI — no requiere acción manual salvo mergear ese PR. `backend/package.json` no se actualiza por este mecanismo (queda en `0.1.0`); no confundir esa versión con el tag real del repo.
-- **`.github/workflows/deploy-backend.yml`** despliega el backend automáticamente a la VPS en cada push a `main` (`reset --hard`, no `merge --ff-only` — decisión tomada tras un fix de CI, ver `docs/ESTADO_PROYECTO.md`). Esto reemplaza el flujo anterior de redeploy manual — verificar este workflow antes de asumir que un cambio de backend no llegó a producción.
+- **`release-please`** (`.github/workflows/release-please.yml`, `release-please-config.json`, `release-type: simple`) corre en cada push a `main`: abre/actualiza un PR de release, y al mergearlo genera tag (`vX.Y.Z`), entrada en `CHANGELOG.md` y release de GitHub. Es rutina de CI, no toca ningún servidor — no requiere acción manual salvo mergear ese PR. `backend/package.json` no se actualiza por este mecanismo (queda en `0.1.0`); no confundir esa versión con el tag real del repo.
+
+### Infraestructura de despliegue (VPS, TEST y PROD separados)
+
+**IMPORTANTE — corrige una instrucción anterior de este archivo que ya no es cierta:** NO existe ningún deploy automático a producción por push a `main`. `.github/workflows/deploy-backend.yml` está deshabilitado desde el 2026-09-01 (`if: false`, comentario "LEGACY WORKFLOW - DISABLED" en el propio archivo) — antes hacía `reset --hard` automático a la VPS en cada push, ahora no hace nada. Si alguna sesión anterior (o memoria/Engram) dice lo contrario, es información vieja: verificar siempre el archivo del workflow antes de asumir que un merge a `main` despliega algo.
+
+Arquitectura real en la VPS (`docker-compose.yml` + `Caddyfile` en la raíz del repo):
+
+- **Dos backends independientes, cada uno su propio contenedor**: `backend` (producción, imagen `${BACKEND_IMAGE}`, sirve `api.cotizador.lat`) y `cotizador-test-backend` / servicio `backend-test` (TEST, sirve `test-api.cotizador.lat`). Caddy rutea por hostname a uno u otro — no comparten proceso ni imagen.
+- **Dos frontends estáticos independientes**: `frontend-prod` (`cotizador.lat`) y `frontend-test` (`test-web.cotizador.lat`), servidos por Caddy desde carpetas separadas en la VPS.
+- **Imágenes inmutables versionadas por SHA-256** (`deploy: require immutable backend image`, 2026-09-02): `docker-compose.yml` exige `BACKEND_IMAGE` explícito, ya no reconstruye sobre la marcha.
+- **El deploy a TEST requiere autorización manual explícita en cada paso** (materialización del bundle → preflight de solo lectura → `deploy-test-backend.sh --approve-deploy` → rollback solo tras decisión separada con `--approve-test-rollback`). El script de rollback de TEST está bloqueado por diseño para no poder apuntar nunca a producción.
+- **Promover a PROD es un paso separado y manual**, no documentado como workflow de GitHub Actions en este repo — no asumir que existe automatización para esto sin verificarlo primero.
+- Mergear un PR a `main` (código, dependencias, o docs) **no despliega nada por sí solo** en ninguno de los dos entornos. Solo actualiza el código fuente en el repositorio.
 
 ## Reglas de negocio clave para Auto (resumen — detalle completo en sección 5 de PLAN_DESARROLLO.md)
 
@@ -116,18 +105,14 @@ Contado: Inicial = Premio completo, Cuota = 0
 
 ## Convenciones de código (mismas que gestion-tajy / Siniestros Tajy)
 
-- Backend en capas: `routes → controllers → services → repositories`. No lógica de negocio en los controllers.
-- Validación de entrada con Zod en el borde de la API, antes de llegar a los services.
-- Cada ramo tiene su propio calculador en `/calculators`, todos implementando:
-  ```js
-  interface RamoCalculator {
-    calcularPrima(input): { prima: number, detalle: object }
-    calcularPlanPago(prima, formaPago, cuotas): { rpf, iva, premio, inicial, cuota }
-  }
-  ```
-- Frontend Vanilla JS, sin build step complejo — mismo patrón de Siniestros Tajy (sidebar, fetch wrapper simple).
-- SQL de Supabase versionado como migraciones individuales en `/backend/migrations`, nunca editar el schema a mano en producción.
-- `pip`/`npm`: nada especial, usar los gestores estándar de cada carpeta.
+Convenciones generales (capas, Zod en el borde, migraciones versionadas, frontend Vanilla JS): ver `AGENTS.md` secciones 3 y 7. Lo específico de este proyecto — la interfaz que implementa cada calculador de ramo:
+
+```js
+interface RamoCalculator {
+  calcularPrima(input): { prima: number, detalle: object }
+  calcularPlanPago(prima, formaPago, cuotas): { rpf, iva, premio, inicial, cuota }
+}
+```
 
 ## Pendientes activos que pueden afectar el código
 

@@ -1,6 +1,6 @@
 # CLAUDE.md — Cotizador Aseguradora Tajy
 
-Este archivo es el contexto de arranque para Claude Code en este repositorio. Léelo completo antes de tocar código. El detalle completo de arquitectura, schema SQL y reglas de negocio está en `docs/PLAN_DESARROLLO.md` — este archivo es un resumen operativo, no lo reemplaza. El estado real de avance (qué está implementado, decisiones tomadas y por qué, pendientes abiertos) está en `docs/ESTADO_PROYECTO.md`.
+Este archivo es el contexto de arranque para Claude Code en este repositorio. Léelo completo antes de tocar código. El detalle completo de arquitectura, schema SQL y reglas de negocio está en `docs/PLAN_DESARROLLO.md` — este archivo es un resumen operativo, no lo reemplaza. El estado real de avance (qué está implementado, decisiones tomadas y por qué, pendientes abiertos) está en `docs/ESTADO_PROYECTO.md`. La especificación vigente de Propuesta Formal está en `docs/PLAN_PROPUESTA_FORMAL.md` y prevalece sobre resúmenes históricos de ese módulo. Reglas permanentes compartidas con otros agentes IA (Codex, OpenCode) están en `AGENTS.md`.
 
 ## Qué es este proyecto
 
@@ -23,32 +23,9 @@ Es un proyecto **independiente**, separado de otros sistemas de Tajy (Siniestros
 
 ## Estructura del monorepo
 
-```
-/backend
-  /src
-    /routes          -- definición de endpoints Express
-    /controllers      -- reciben request, llaman a services, devuelven response
-    /services         -- lógica de negocio (motor de cotización, generación de PDF)
-    /repositories      -- acceso a Supabase
-    /calculators       -- un archivo por ramo: auto.js, auto-flota.js, incendio.js,
-                          hogar.js, mrc.js, tro.js, transporte.js, vida-ap.js
-                          (todos implementan la misma interfaz RamoCalculator)
-    /schemas           -- validaciones Zod, una por ramo para riesgo_datos
-    /templates         -- plantillas HTML para los 3 documentos PDF
-  /migrations          -- SQL de Supabase, un archivo por cambio de schema
+Árbol completo de carpetas y su propósito: ver `AGENTS.md` sección 3. Resumen: `/backend/src` en capas (`routes → controllers → services → repositories`, más `/calculators`, `/schemas`, `/templates`), `/frontend` por flujo (`/cotizar`, `/historial`, `/admin`, `/shared`), `/backend/migrations` para SQL versionado.
 
-/frontend
-  /cotizar             -- flujo de cotización (selección ramo → plan → coberturas → pago)
-  /historial           -- listado y búsqueda
-  /admin               -- gestión de planes, coberturas, tasas
-  /shared              -- componentes/utilidades comunes (sidebar, fetch wrapper, etc.)
-
-docs/PLAN_DESARROLLO.md  -- arquitectura completa, schema SQL, motor de cálculo por ramo
-docs/ESTADO_PROYECTO.md  -- estado real de avance: qué está hecho, decisiones y por qué, pendientes
-CLAUDE.md                -- este archivo
-```
-
-**Regla de arquitectura no negociable:** el frontend NUNCA habla directo con Supabase. Todo pasa por la API Express, que valida con Zod antes de tocar la base — mismo patrón que gestion-tajy y Siniestros Tajy.
+**Regla de arquitectura no negociable:** el frontend NUNCA habla directo con Supabase. Todo pasa por la API Express, que valida con Zod antes de tocar la base — mismo patrón que gestion-tajy y Siniestros Tajy (detalle en `AGENTS.md` sección 3, "Invariantes").
 
 ## Metodología: desarrollo por fases
 
@@ -116,18 +93,14 @@ Contado: Inicial = Premio completo, Cuota = 0
 
 ## Convenciones de código (mismas que gestion-tajy / Siniestros Tajy)
 
-- Backend en capas: `routes → controllers → services → repositories`. No lógica de negocio en los controllers.
-- Validación de entrada con Zod en el borde de la API, antes de llegar a los services.
-- Cada ramo tiene su propio calculador en `/calculators`, todos implementando:
-  ```js
-  interface RamoCalculator {
-    calcularPrima(input): { prima: number, detalle: object }
-    calcularPlanPago(prima, formaPago, cuotas): { rpf, iva, premio, inicial, cuota }
-  }
-  ```
-- Frontend Vanilla JS, sin build step complejo — mismo patrón de Siniestros Tajy (sidebar, fetch wrapper simple).
-- SQL de Supabase versionado como migraciones individuales en `/backend/migrations`, nunca editar el schema a mano en producción.
-- `pip`/`npm`: nada especial, usar los gestores estándar de cada carpeta.
+Convenciones generales (capas, Zod en el borde, migraciones versionadas, frontend Vanilla JS): ver `AGENTS.md` secciones 3 y 7. Lo específico de este proyecto — la interfaz que implementa cada calculador de ramo:
+
+```js
+interface RamoCalculator {
+  calcularPrima(input): { prima: number, detalle: object }
+  calcularPlanPago(prima, formaPago, cuotas): { rpf, iva, premio, inicial, cuota }
+}
+```
 
 ## Pendientes activos que pueden afectar el código
 

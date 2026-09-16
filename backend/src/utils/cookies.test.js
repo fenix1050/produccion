@@ -19,11 +19,15 @@ test('opcionesCsrf(): httpOnly false (legible por document.cookie), mismo maxAge
   assert.equal(csrf.maxAge, sesion.maxAge)
 })
 
-test('en producción (NODE_ENV=production): secure true y domain .cotizador.lat', async (t) => {
-  const anterior = process.env.NODE_ENV
+test('con COOKIE_DOMAIN seteado: secure true y domain igual a la variable, sin importar NODE_ENV', async (t) => {
+  const dominioAnterior = process.env.COOKIE_DOMAIN
+  const nodeEnvAnterior = process.env.NODE_ENV
+  process.env.COOKIE_DOMAIN = '.cotizador.lat'
   process.env.NODE_ENV = 'production'
   t.after(() => {
-    process.env.NODE_ENV = anterior
+    if (dominioAnterior === undefined) delete process.env.COOKIE_DOMAIN
+    else process.env.COOKIE_DOMAIN = dominioAnterior
+    process.env.NODE_ENV = nodeEnvAnterior
   })
   const { opcionesSesion, opcionesCsrf } = await import('./cookies.js?case=prod')
   const sesion = opcionesSesion()
@@ -34,11 +38,30 @@ test('en producción (NODE_ENV=production): secure true y domain .cotizador.lat'
   assert.equal(csrf.domain, '.cotizador.lat')
 })
 
-test('fuera de producción (dev/test): secure false y sin domain (para que funcione en localhost)', async (t) => {
-  const anterior = process.env.NODE_ENV
+test('COOKIE_DOMAIN seteado en NODE_ENV=test (caso TEST): igual se aplica Secure+Domain', async (t) => {
+  const dominioAnterior = process.env.COOKIE_DOMAIN
+  const nodeEnvAnterior = process.env.NODE_ENV
+  process.env.COOKIE_DOMAIN = '.cotizador.lat'
   process.env.NODE_ENV = 'test'
   t.after(() => {
-    process.env.NODE_ENV = anterior
+    if (dominioAnterior === undefined) delete process.env.COOKIE_DOMAIN
+    else process.env.COOKIE_DOMAIN = dominioAnterior
+    process.env.NODE_ENV = nodeEnvAnterior
+  })
+  const { opcionesSesion, opcionesCsrf } = await import('./cookies.js?case=test-con-dominio')
+  const sesion = opcionesSesion()
+  const csrf = opcionesCsrf()
+  assert.equal(sesion.secure, true)
+  assert.equal(sesion.domain, '.cotizador.lat')
+  assert.equal(csrf.secure, true)
+  assert.equal(csrf.domain, '.cotizador.lat')
+})
+
+test('sin COOKIE_DOMAIN (dev local, npm test): secure false y sin domain, para que funcione en localhost', async (t) => {
+  const dominioAnterior = process.env.COOKIE_DOMAIN
+  delete process.env.COOKIE_DOMAIN
+  t.after(() => {
+    if (dominioAnterior !== undefined) process.env.COOKIE_DOMAIN = dominioAnterior
   })
   const { opcionesSesion, opcionesCsrf } = await import('./cookies.js?case=dev')
   const sesion = opcionesSesion()

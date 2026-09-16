@@ -7,10 +7,13 @@ services:
       - backend/.env
     # env_file pisa el ENV NODE_ENV=production horneado en backend/Dockerfile si esa
     # variable llega a estar ausente o distinta en backend/.env de la VPS — forzarla acá
-    # asegura que cookies.js siempre trate el entorno como producción (Domain
-    # compartido .cotizador.lat entre frontend/API), sin depender del contenido del .env.
+    # asegura que el gate de negocio de PF-3 siempre trate este entorno como productivo.
+    # COOKIE_DOMAIN es independiente de NODE_ENV (ver backend/src/utils/cookies.js): es lo
+    # que le dice a cookies.js que setee Secure+Domain=.cotizador.lat para que la sesión
+    # y el CSRF viajen entre cotizador.lat y api.cotizador.lat.
     environment:
       - NODE_ENV=production
+      - COOKIE_DOMAIN=.cotizador.lat
     expose:
       - '3000'
     healthcheck:

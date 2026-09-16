@@ -11,22 +11,26 @@ export const COOKIE_CSRF = process.env.COOKIE_CSRF_NAME || 'tajy_csrf'
 // 45 minutos, alineado a JWT_EXPIRES_IN de auth.service.js.
 const MAX_AGE_MS = 45 * 60 * 1000
 
-// En producción (Docker seteando NODE_ENV=production, ver backend/Dockerfile) la cookie
-// necesita Secure + Domain para viajar entre api.cotizador.lat y cotizador.lat. En
-// desarrollo local (`npm run dev`, tests) no hay TLS ni ese dominio — Secure=true
-// bloquearía la cookie por completo sobre http://localhost, y Domain la dejaría inválida.
-function esProduccion() {
-  return process.env.NODE_ENV === 'production'
+// COOKIE_DOMAIN es independiente de NODE_ENV a propósito: NODE_ENV distingue el gate de
+// negocio de PF-3 (productivo vs. no productivo), no si el despliegue tiene TLS y un
+// dominio compartido entre frontend y API. TEST corre con NODE_ENV=test (para no pasar
+// ese gate) pero SÍ necesita Secure+Domain porque test-web.cotizador.lat y
+// test-api.cotizador.lat son subdominios distintos bajo HTTPS real — igual que PROD con
+// cotizador.lat/api.cotizador.lat. Sin COOKIE_DOMAIN seteado (dev local, npm test) la
+// cookie queda host-only y sin Secure, porque http://localhost no tiene TLS.
+function dominioCookie() {
+  return process.env.COOKIE_DOMAIN || null
 }
 
 function opcionesBase() {
+  const domain = dominioCookie()
   const base = {
-    secure: esProduccion(),
+    secure: Boolean(domain),
     sameSite: 'lax',
     path: '/',
   }
-  if (esProduccion()) {
-    base.domain = '.cotizador.lat'
+  if (domain) {
+    base.domain = domain
   }
   return base
 }

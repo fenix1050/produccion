@@ -52,12 +52,19 @@ function headersCsrf(method) {
   return csrfToken ? { 'X-CSRF-Token': csrfToken } : {}
 }
 
+// suppressCsrfRedirect: usado por logout() (ver abajo). Un 403 de CSRF en cualquier OTRA
+// llamada mutante significa que la sesión quedó en un estado roto y conviene forzar
+// re-login. Pero en el propio /auth/logout ese mismo 403 no es "tu sesión es inválida" —
+// es "no pudimos completar el logout" — y disparar acá el redirect genérico hace parecer
+// que el logout se completó (limpia la caché local y te manda a login) cuando en realidad
+// el servidor nunca invalidó la sesión. logout() ya maneja su propio best-effort.
 async function request(path, options = {}) {
-  const method = (options.method || 'GET').toUpperCase()
+  const { suppressCsrfRedirect, ...fetchOptions } = options
+  const method = (fetchOptions.method || 'GET').toUpperCase()
   const res = await fetch(`${API_BASE_URL}${path}`, {
     credentials: 'include',
     headers: { 'Content-Type': 'application/json', ...headersCsrf(method) },
-    ...options,
+    ...fetchOptions,
   })
 
   if (res.status === 401) {
@@ -69,7 +76,11 @@ async function request(path, options = {}) {
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
 
-    if (res.status === 403 && body.error === 'Token CSRF inválido o ausente') {
+    if (
+      res.status === 403 &&
+      body.error === 'Token CSRF inválido o ausente' &&
+      !suppressCsrfRedirect
+    ) {
       clearSession()
       redirectToLogin()
     }
@@ -104,7 +115,8 @@ async function requestBlob(path) {
 
 export const api = {
   get: (path) => request(path),
-  post: (path, body) => request(path, { method: 'POST', body: JSON.stringify(body) }),
+  post: (path, body, opts) =>
+    request(path, { method: 'POST', body: JSON.stringify(body), ...opts }),
   put: (path, body) => request(path, { method: 'PUT', body: JSON.stringify(body) }),
   delete: (path) => request(path, { method: 'DELETE' }),
   getBlob: (path) => requestBlob(path),
@@ -163,7 +175,7 @@ async function cargarSesion() {
 // modos).
 async function logout() {
   try {
-    await api.post('/auth/logout')
+    await api.post('/auth/logout', undefined, { suppressCsrfRedirect: true })
   } catch {
     // intencional: logout del cliente sigue adelante pase lo que pase acá
   } finally {

@@ -40,6 +40,9 @@ async function browserRequest(page, path, { method = 'GET', body, csrf = true } 
 }
 
 async function fillMrc(page) {
+  const addCoberturaLinea = page.locator('[data-action="add-cobertura-linea"]')
+  await expect(addCoberturaLinea).toBeAttached()
+  await expect(addCoberturaLinea).toBeEnabled()
   await page.locator('#campo-cliente-nombre').fill(FIXTURES.request.mrc.cliente_nombre)
   await page.locator('#campo-cedula').fill('1234567')
   await page.locator('#campo-direccion').fill('Av. Mariscal López 1234')
@@ -47,7 +50,7 @@ async function fillMrc(page) {
   await page.locator('[data-field="ciudad"]').selectOption('Asunción')
   await page.locator('#campo-capital-edificio').fill('100000000')
   await page.locator('#campo-capital-contenido').fill('50000000')
-  await page.locator('[data-action="add-cobertura-linea"]').click()
+  await addCoberturaLinea.click()
   await page.locator('[data-linea-field="codigo"]').selectOption('robo_contenido')
   const preview = page.waitForResponse((response) => {
     if (

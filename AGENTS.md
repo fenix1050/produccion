@@ -134,6 +134,8 @@ No confundir:
 código implementado ≠ commit ≠ push ≠ workflow ejecutado ≠ migración aplicada ≠ deploy completado ≠ feature verificada
 ```
 
+**Mergear un PR a `main` no despliega nada por sí solo.** Backend y frontend tienen entornos TEST y PRODUCCIÓN completamente separados en la VPS (contenedores, imágenes y hostnames distintos — ver `docker-compose.yml` y `Caddyfile` en la raíz del repo). El deploy a producción es un paso manual y explícito, no automático por push; verificar siempre `.github/workflows/deploy-backend.yml` y el estado real de la VPS antes de asumir que un cambio llegó a producción — no confiar en documentación histórica sobre este punto.
+
 No afirmar que algo está en producción sin evidencia suficiente. Para cambios sensibles, preferir un flujo verificable y reversible.
 
 ## 7. Convenciones de implementación

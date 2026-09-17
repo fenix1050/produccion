@@ -1,6 +1,8 @@
 node_modules/
 .env
 .env.local
+backend/.env.qa
+backend/tmp/
 frontend/shared/config.js
 *.log
 .DS_Store

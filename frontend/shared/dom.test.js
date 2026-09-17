@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { JSDOM } from 'jsdom'
-import { activarConTeclado } from './dom.js'
+import { activarConTeclado, escapeHtml, renderBanner } from './dom.js'
 
 const { window } = new JSDOM('<!doctype html><html><body></body></html>')
 
@@ -14,6 +14,25 @@ function disparar(el, key) {
   el.dispatchEvent(evento)
   return evento
 }
+
+test('escapeHtml escapes markup characters', () => {
+  const malicious = '<img src=x onerror="alert(1)">'
+  assert.equal(escapeHtml(malicious), '&lt;img src=x onerror=&quot;alert(1)&quot;&gt;')
+})
+
+test('renderBanner escapes text and allowlists its CSS modifier', () => {
+  const container = window.document.createElement('div')
+  container.innerHTML = renderBanner({ tipo: 'success', texto: '<img src=x onerror=alert(1)>' })
+  const banner = container.firstElementChild
+
+  assert.equal(banner.className, 'admin-banner admin-banner--success')
+  assert.equal(banner.textContent, '<img src=x onerror=alert(1)>')
+  assert.equal(banner.querySelector('img'), null)
+
+  container.innerHTML = renderBanner({ tipo: '" onmouseover="alert(1)', texto: 'Mensaje' })
+  assert.equal(container.firstElementChild.className, 'admin-banner')
+  assert.equal(container.firstElementChild.attributes.length, 1)
+})
 
 test('activarConTeclado agrega tabindex y role=button a un elemento sin esos atributos', () => {
   const el = crearDiv()

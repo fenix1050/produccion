@@ -36,3 +36,25 @@ test('PF-3 frontend converges both entries and issues only through the authorita
   assert.match(moduleSource, /<textarea name="direccion" rows="2" required>/)
   assert.match(moduleSource, /valor\('partes\.asegurado\.tipo_persona'\),\s*true/)
 })
+
+test('PF-3 frontend escapes proposal metadata and fallback text before HTML interpolation', async () => {
+  const moduleSource = await readFile(moduleUrl, 'utf8')
+
+  assert.match(
+    moduleSource,
+    /\(state\.textos\.faltantes \?\? \[\]\)\.map\(\(item\) => escapeHtml\(item\)\)\.join\(', '\)/
+  )
+  assert.match(moduleSource, /const INPUT_TYPES = new Set\(\['text', 'email', 'date', 'number'\]\)/)
+  assert.match(moduleSource, /escapeHtml\(label\).*escapeHtml\(name\)/s)
+  assert.match(moduleSource, /const selectedValue = String\(selected \?\? ''\)/)
+  assert.match(moduleSource, /const optionValue = String\(value \?\? ''\)/)
+  assert.match(moduleSource, /escapeHtml\(optionValue\).*escapeHtml\(text\)/s)
+})
+
+test('PF-3 logout keeps its fixed internal login redirect', async () => {
+  const moduleSource = await readFile(moduleUrl, 'utf8')
+
+  assert.match(moduleSource, /const LOGIN_PATH = '\.\.\/login\/'/)
+  assert.match(moduleSource, /window\.location\.assign\(loginUrl\.pathname\)/)
+  assert.match(moduleSource, /auth\.logout\(\)\.then\(redirectToLogin\)/)
+})

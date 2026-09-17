@@ -584,7 +584,10 @@ test('MRC formal proposal declares calibrated A-N typography tokens and local fi
   assert.match(html, /size = Math\.max\(minimum, Number\(\(size - step\)\.toFixed\(2\)\)\)/)
   assert.match(html, /element\.dataset\.fitOverflow = String\(overflow\)/)
   assert.match(html, /document\.documentElement\.dataset\.proposalFit = 'complete'/)
-  assert.match(html, /\.risk-description \{[^}]*height: 100%; min-height: 0; overflow: hidden;/)
+  assert.match(
+    html,
+    /\.risk-description \{[^}]*height: 100%; min-height: 0; padding-block: \.1mm; overflow: hidden;/
+  )
 })
 
 test('MRC formal proposal applies only the r16 frozen border patch around insured, cost, and payment', () => {

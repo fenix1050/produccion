@@ -21,6 +21,13 @@ const state = {
 }
 
 let autosaveTimer = null
+const LOGIN_PATH = '../login/'
+
+function redirectToLogin() {
+  const loginUrl = new URL(LOGIN_PATH, window.location.href)
+  if (loginUrl.origin !== window.location.origin) return
+  window.location.assign(loginUrl.pathname)
+}
 
 function booleanoFormulario(value) {
   if (value === 'true') return true
@@ -313,8 +320,26 @@ function renderSaveIndicator() {
   if (indicator) indicator.textContent = state.saveState
 }
 
+function sanitizarMarkup(markup) {
+  const parsed = new DOMParser().parseFromString(markup, 'text/html')
+  parsed
+    .querySelectorAll('script, iframe, object, embed, style')
+    .forEach((element) => element.remove())
+  parsed.querySelectorAll('*').forEach((element) => {
+    Array.from(element.attributes).forEach((attribute) => {
+      const name = attribute.name.toLowerCase()
+      if (name.startsWith('on') || ['href', 'src', 'action'].includes(name)) {
+        if (name.startsWith('on') || /^\s*javascript:/i.test(attribute.value)) {
+          element.removeAttribute(attribute.name)
+        }
+      }
+    })
+  })
+  return Array.from(parsed.body.childNodes)
+}
+
 function render() {
-  app.innerHTML = `
+  const markup = `
     ${renderTopbarShell({
       sidebarAbierta: state.sidebarAbierta,
       active: 'propuestas',
@@ -336,15 +361,16 @@ function render() {
           ${state.loading ? '<div class="pf-loading"><span class="spinner"></span> Cargando…</div>' : state.propuesta ? renderEditor() : renderSelector()}
         </div>
       </main>
-    </div>`
+        </div>`
+  app.replaceChildren(...sanitizarMarkup(markup))
 }
 
 function renderSelector() {
   const cartas = state.cartas
     .map(
       (carta) => `
-      <button type="button" class="pf-carta" data-action="abrir-carta" data-id="${carta.id}">
-        <div><span class="pf-carta__numero">${escapeHtml(carta.numero_carta)} · v${carta.version}</span><strong>${escapeHtml(carta.cliente_nombre || 'Sin cliente')}</strong></div>
+      <button type="button" class="pf-carta" data-action="abrir-carta" data-id="${escapeHtml(carta.id)}">
+        <div><span class="pf-carta__numero">${escapeHtml(carta.numero_carta)} · v${escapeHtml(carta.version)}</span><strong>${escapeHtml(carta.cliente_nombre || 'Sin cliente')}</strong></div>
         <div class="pf-carta__meta"><span>Vence ${fmtFecha(carta.fecha_vencimiento)}</span><span>${carta.propuesta_borrador_id ? 'Borrador existente' : 'Sin iniciar'}</span></div>
       </button>`
     )
@@ -376,7 +402,7 @@ function renderEditor() {
       <div class="pf-main">
         <section class="pf-origin">
           <button type="button" class="pf-back" data-action="volver-selector">← Cambiar Carta</button>
-          <div><span>Carta Oferta</span><strong>${escapeHtml(carta.numero_carta)} · versión ${carta.version}</strong><small>${escapeHtml(carta.cliente_nombre || 'Sin cliente')} · ${escapeHtml(carta.plan?.nombre || 'MRC')}</small></div>
+          <div><span>Carta Oferta</span><strong>${escapeHtml(carta.numero_carta)} · versión ${escapeHtml(carta.version)}</strong><small>${escapeHtml(carta.cliente_nombre || 'Sin cliente')} · ${escapeHtml(carta.plan?.nombre || 'MRC')}</small></div>
         </section>
         ${state.conflicto ? '<button type="button" class="btn-outline" data-action="recargar-borrador">Recargar versión actual</button>' : ''}
          <form id="propuesta-form" class="pf-form"><fieldset class="pf-form__fieldset" ${emitted ? 'disabled' : ''}>
@@ -469,11 +495,11 @@ function renderEditor() {
       </div>
       <aside class="pf-review">
         <div class="pf-review__eyebrow">Revisión informativa</div>
-         <h2>${propuesta.estado === 'emitida' ? `Propuesta N° ${propuesta.numero_propuesta} emitida` : propuesta.estado === 'anulada' ? `Propuesta N° ${propuesta.numero_propuesta} anulada` : readiness.listo ? 'Borrador completo para revisión' : 'Información pendiente'}</h2>
-        <p>${readiness.pendientes.length ? `${readiness.pendientes.length} punto(s) por completar.` : 'Los controles básicos de PF-2 están completos.'}</p>
+         <h2>${propuesta.estado === 'emitida' ? `Propuesta N° ${escapeHtml(propuesta.numero_propuesta)} emitida` : propuesta.estado === 'anulada' ? `Propuesta N° ${escapeHtml(propuesta.numero_propuesta)} anulada` : readiness.listo ? 'Borrador completo para revisión' : 'Información pendiente'}</h2>
+        <p>${readiness.pendientes.length ? `${escapeHtml(readiness.pendientes.length)} punto(s) por completar.` : 'Los controles básicos de PF-2 están completos.'}</p>
         <ul>${readiness.pendientes.map((item) => `<li>${escapeHtml(etiquetaPendiente(item))}</li>`).join('')}</ul>
         ${renderReplacementHistory(propuesta)}
-         ${!emitted ? `<button type="button" class="btn-primary pf-save-button" data-action="guardar" ${state.saving || state.conflicto ? 'disabled' : ''}>Guardar borrador</button><button type="button" class="btn-outline pf-emit" data-action="emitir" ${!readiness.emision_habilitada || !state.textos.emision_habilitada || state.saving || state.conflicto ? 'disabled' : ''}>Emitir Propuesta Formal</button><small>${state.textos.emision_habilitada ? 'La emisión genera y conserva un PDF interno sin firma.' : `Faltan textos oficiales MRC: ${(state.textos.faltantes ?? []).join(', ') || 'cargando textos'}.`}</small>` : `<button type="button" class="btn-primary" data-action="descargar-pdf">Descargar PDF</button>${propuesta.estado === 'emitida' ? '<button type="button" class="btn-outline" data-action="anular">Anular Propuesta</button>' : '<button type="button" class="btn-outline" data-action="reemplazar">Preparar reemplazo</button>'}`}
+         ${emitted ? `<button type="button" class="btn-primary" data-action="descargar-pdf">Descargar PDF</button>${propuesta.estado === 'emitida' ? '<button type="button" class="btn-outline" data-action="anular">Anular Propuesta</button>' : '<button type="button" class="btn-outline" data-action="reemplazar">Preparar reemplazo</button>'}` : `<button type="button" class="btn-primary pf-save-button" data-action="guardar" ${state.saving || state.conflicto ? 'disabled' : ''}>Guardar borrador</button><button type="button" class="btn-outline pf-emit" data-action="emitir" ${!readiness.emision_habilitada || !state.textos.emision_habilitada || state.saving || state.conflicto ? 'disabled' : ''}>Emitir Propuesta Formal</button><small>${state.textos.emision_habilitada ? 'La emisión genera y conserva un PDF interno sin firma.' : `Faltan textos oficiales MRC: ${(state.textos.faltantes ?? []).map((item) => escapeHtml(item)).join(', ') || 'cargando textos'}.`}</small>`}
          ${state.textos.puede_gestionar ? renderTextControls() : ''}
       </aside>
     </div>`
@@ -488,14 +514,17 @@ function renderReplacementHistory(propuesta) {
 
 function renderSeleccion(variantes, varianteActual, pagos, pagoSeleccionado, moneda) {
   return `<section class="panel card"><div class="card__title">Selección comercial</div><div class="card__body pf-selection">
-    <label class="pf-field"><span>Variante</span><select id="cotizacion-variante-id" class="field-input"><option value="">Seleccione</option>${variantes.map((v) => `<option value="${v.id}" ${v.id === varianteActual?.id ? 'selected' : ''}>${escapeHtml(v.numero_variante || `Variante ${v.id}`)} · ${fmtMoneda(v.prima, moneda)}</option>`).join('')}</select></label>
-    <label class="pf-field"><span>Forma de pago</span><select id="cotizacion-plan-pago-id" class="field-input"><option value="">Seleccione</option>${pagos.map((p) => `<option value="${p.id}" ${p.id === pagoSeleccionado ? 'selected' : ''}>${escapeHtml(p.formas_pago?.nombre_display || 'Forma de pago')} · ${fmtMoneda(p.premio_total, moneda)}</option>`).join('')}</select></label>
+    <label class="pf-field"><span>Variante</span><select id="cotizacion-variante-id" class="field-input"><option value="">Seleccione</option>${variantes.map((v) => `<option value="${escapeHtml(v.id)}" ${v.id === varianteActual?.id ? 'selected' : ''}>${escapeHtml(v.numero_variante || `Variante ${v.id}`)} · ${fmtMoneda(v.prima, moneda)}</option>`).join('')}</select></label>
+    <label class="pf-field"><span>Forma de pago</span><select id="cotizacion-plan-pago-id" class="field-input"><option value="">Seleccione</option>${pagos.map((p) => `<option value="${escapeHtml(p.id)}" ${p.id === pagoSeleccionado ? 'selected' : ''}>${escapeHtml(p.formas_pago?.nombre_display || 'Forma de pago')} · ${fmtMoneda(p.premio_total, moneda)}</option>`).join('')}</select></label>
     <p>Los importes son de solo lectura y provienen de la cotización persistida.</p>
   </div></section>`
 }
 
+const INPUT_TYPES = new Set(['text', 'email', 'date', 'number'])
+
 function inputField(name, label, value, type = 'text', required = false) {
-  return `<label class="pf-field"><span>${label}</span><input class="field-input" type="${type}" name="${name}" value="${escapeHtml(value)}" ${required ? 'required' : ''} /></label>`
+  const safeType = INPUT_TYPES.has(type) ? type : 'text'
+  return `<label class="pf-field"><span>${escapeHtml(label)}</span><input class="field-input" type="${safeType}" name="${escapeHtml(name)}" value="${escapeHtml(value)}" ${required ? 'required' : ''} /></label>`
 }
 
 function renderTextControls() {
@@ -503,7 +532,13 @@ function renderTextControls() {
 }
 
 function selectField(name, label, options, selected, required = false) {
-  return `<label class="pf-field"><span>${label}</span><select class="field-input" name="${name}" ${required ? 'required' : ''}>${options.map(([value, text]) => `<option value="${value}" ${String(selected) === value ? 'selected' : ''}>${text}</option>`).join('')}</select></label>`
+  const selectedValue = String(selected ?? '')
+  return `<label class="pf-field"><span>${escapeHtml(label)}</span><select class="field-input" name="${escapeHtml(name)}" ${required ? 'required' : ''}>${options
+    .map(([value, text]) => {
+      const optionValue = String(value ?? '')
+      return `<option value="${escapeHtml(optionValue)}" ${selectedValue === optionValue ? 'selected' : ''}>${escapeHtml(text)}</option>`
+    })
+    .join('')}</select></label>`
 }
 
 function etiquetaPendiente(code) {
@@ -586,7 +621,7 @@ app.addEventListener('click', (event) => {
     state.sidebarAbierta = false
     render()
   }
-  if (action === 'logout') auth.logout().then(() => (window.location.href = '../login/'))
+  if (action === 'logout') auth.logout().then(redirectToLogin)
 })
 
 async function init() {

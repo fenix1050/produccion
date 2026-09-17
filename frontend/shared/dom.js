@@ -17,9 +17,12 @@ export function escapeHtml(value) {
 // Banner de feedback (éxito/error) tras una acción — mismo markup en cotizar/historial/admin.
 // `banner` es `{ tipo, texto } | null` (estado propio de cada módulo, se pasa explícito porque
 // cada uno tiene su propio `state` de módulo).
+const BANNER_TYPES = new Set(['error', 'success'])
+
 export function renderBanner(banner) {
   if (!banner) return ''
-  return `<div class="admin-banner admin-banner--${banner.tipo}">${escapeHtml(banner.texto)}</div>`
+  const modifier = BANNER_TYPES.has(banner.tipo) ? ` admin-banner--${banner.tipo}` : ''
+  return `<div class="admin-banner${modifier}">${escapeHtml(banner.texto)}</div>`
 }
 
 // ---------------------------------------------------------------------------

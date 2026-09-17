@@ -554,7 +554,7 @@ export function buildMrcPropuestaHtml(snapshot, { tajyLogoDataUri = null } = {})
   .risk-columns--head > * { display: flex; align-items: center; justify-content: center; }
   .risk-columns--head > .risk-heading--numeric { padding-left: .35mm; padding-right: .35mm; white-space: nowrap; overflow-wrap: normal; }
   .risk-columns--body { height: 43.9mm; border-top: .65px solid var(--rule); }
-  .risk-description { width: 100%; max-width: none; height: 100%; min-height: 0; overflow: hidden; font-family: var(--type-e-family); font-size: var(--type-e-size); line-height: var(--type-e-line); white-space: normal; overflow-wrap: break-word; word-break: normal; }
+  .risk-description { width: 100%; max-width: none; height: 100%; min-height: 0; padding-block: .1mm; overflow: hidden; font-family: var(--type-e-family); font-size: var(--type-e-size); line-height: var(--type-e-line); white-space: normal; overflow-wrap: break-word; word-break: normal; }
    .risk-columns--body > b { display: flex; align-items: center; justify-content: flex-end; text-align: right; }
   .risk-columns--body p { margin: 0 0 1mm; }
   .risk-columns--total { height: 5.8mm; border-top: .65px solid var(--rule); background: var(--shade); font-family: var(--type-d-family); font-size: var(--type-d-size); line-height: var(--type-d-line); }

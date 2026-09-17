@@ -15,7 +15,7 @@ Es un proyecto **independiente**, separado de otros sistemas de Tajy (Siniestros
 | Backend              | Node.js + Express                                                                                      |
 | Base de datos        | Supabase (PostgreSQL)                                                                                  |
 | Validación           | Zod (un schema por ramo para los datos de riesgo)                                                      |
-| Frontend             | Vanilla JS (sin framework), Netlify                                                                    |
+| Frontend             | Vanilla JS (sin framework) — ver sección "Infraestructura de despliegue" para dónde se sirve           |
 | Importación de Excel | SheetJS                                                                                                |
 | Generación de PDF    | Puppeteer (HTML/CSS → PDF)                                                                             |
 | Deploy backend       | VPS propia (Docker + Caddy), imágenes inmutables por SHA — ver sección "Infraestructura de despliegue" |
@@ -64,7 +64,7 @@ Este proyecto se construye **fase por fase**, en este orden fijo (detalle comple
 
 **Próximo paso confirmado con Kevin:** revisar/commitear el template de Incendio, agregar el de Vida/AP (requiere texto oficial), cerrar cambios abiertos con `sdd-verify`/archivo formal si se pide, o retomar Fase 2 (Auto) si se pide.
 
-## Versionado y despliegue (actualizado 2026-09-16 — corrige info obsoleta)
+## Versionado y despliegue (actualizado 2026-09-17 — corrige info obsoleta, incluye nota sobre Vercel/Render legacy)
 
 - **`release-please`** (`.github/workflows/release-please.yml`, `release-please-config.json`, `release-type: simple`) corre en cada push a `main`: abre/actualiza un PR de release, y al mergearlo genera tag (`vX.Y.Z`), entrada en `CHANGELOG.md` y release de GitHub. Es rutina de CI, no toca ningún servidor — no requiere acción manual salvo mergear ese PR. `backend/package.json` no se actualiza por este mecanismo (queda en `0.1.0`); no confundir esa versión con el tag real del repo.
 
@@ -80,6 +80,7 @@ Arquitectura real en la VPS (`docker-compose.yml` + `Caddyfile` en la raíz del 
 - **El deploy a TEST requiere autorización manual explícita en cada paso** (materialización del bundle → preflight de solo lectura → `deploy-test-backend.sh --approve-deploy` → rollback solo tras decisión separada con `--approve-test-rollback`). El script de rollback de TEST está bloqueado por diseño para no poder apuntar nunca a producción.
 - **Promover a PROD es un paso separado y manual**, no documentado como workflow de GitHub Actions en este repo — no asumir que existe automatización para esto sin verificarlo primero.
 - Mergear un PR a `main` (código, dependencias, o docs) **no despliega nada por sí solo** en ninguno de los dos entornos. Solo actualiza el código fuente en el repositorio.
+- `render.yaml` y `frontend/vercel.json` en la raíz del repo son artefactos legacy de una estrategia de deploy anterior (Render.com / Vercel) que precedió a la VPS actual — no reflejan la infraestructura real descrita arriba. No asumir que Render o Vercel siguen desplegando algo relevante para producción sin verificarlo primero.
 
 ## Reglas de negocio clave para Auto (resumen — detalle completo en sección 5 de PLAN_DESARROLLO.md)
 
@@ -122,7 +123,7 @@ Lista corta de lo que un cambio de código puede pisar sin querer. El detalle co
 - **RPF de "COMERCIO PROTECCION TOTAL"** (MRC): no confirmado — plan desactivado (`activo = FALSE`), no aparece en el selector.
 - **Auto individual (Fase 1/2)**: pausado por prioridad del cliente, no tocar hasta que se reactive.
 - ~~RLS en Supabase: 30 tablas de `public` sin RLS~~ — **resuelto 2026-07-30.** Activado en las 34 tablas marcadas CRITICAL (migración `046_enable_rls_public_tables.sql`, aplicada contra Supabase real), sin policies (default-deny para anon/authenticated). Backend usa `SUPABASE_SERVICE_KEY` (service_role, bypasea RLS) y no hay ningún cliente Supabase en el frontend, así que no rompió nada — advisor de seguridad en 0 CRITICAL, 154/154 tests backend en verde.
-- **Migraciones 043/044 (rubro_actividad_ramo + tasas de Incendio por rubro) YA APLICADAS contra Supabase real (2026-07-29)**: el filtro por `ramo_id` ya funciona a nivel de datos. El backend ya exige `ramo_id` en el código y ya está mergeado a `main` (PR #38/#39), junto con el frontend que lo envía. **Falta confirmar que el backend de la VPS (`api.cotizador.lat`) fue redesplegado a mano con este código** — no hay CD automático para el backend, y Vercel sí auto-despliega el frontend en cada push a `main`, así que hay una ventana en la que ambos lados pueden estar desincronizados en producción. Verificación en vivo 9.3 (cotizar rubros nuevos sin 422) ya completada contra un entorno de QA — pendiente confirmar contra la VPS real.
+- **Migraciones 043/044 (rubro_actividad_ramo + tasas de Incendio por rubro) YA APLICADAS contra Supabase real (2026-07-29)**: el filtro por `ramo_id` ya funciona a nivel de datos. El backend ya exige `ramo_id` en el código y ya está mergeado a `main` (PR #38/#39), junto con el frontend que lo envía. **Falta confirmar que el backend de la VPS (`api.cotizador.lat`) fue redesplegado a mano con este código** — ni el backend ni el frontend de producción tienen CD automático (ver "Infraestructura de despliegue" más abajo; ambos se actualizan a mano en la VPS), así que hay una ventana en la que ambos lados pueden estar desincronizados en producción. Verificación en vivo 9.3 (cotizar rubros nuevos sin 422) ya completada contra un entorno de QA — pendiente confirmar contra la VPS real.
 - **Clamp de `tasa_minima` en ~176/184 rubros nuevos de Incendio**: Kevin confirmó "apliquemos tal cual" — se acepta que el calculador clampee la tasa efectiva al mínimo histórico del pivot en vez de usar el desglose 40/60 para la mayoría de los rubros nuevos (no produce error, solo puede distorsionar la prima). Ajustable después por `UPDATE` sobre `tipos_riesgo_incendio.tasa_minima` sin cambio de código, rubro por rubro, si en el uso real aparecen primas raras.
 - **Follow-up `DROP COLUMN rubros_actividad.grupo`**: la columna queda legacy de solo lectura desde el cambio `incendio-tasas-por-rubro` (reemplazada por `rubro_actividad_ramo`), pero no se borra en ese cambio — pendiente de un DROP explícito más adelante, una vez confirmado que ningún código la lee.
 

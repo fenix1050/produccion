@@ -3032,3 +3032,70 @@ equivalente para Incendio ni Vida/AP.
 
 **Próximo paso operativo:** cerrar PF-0 con los insumos oficiales y Compliance. Solo después puede
 comenzar PF-3 para MRC. La Carta Oferta de Vida/AP continúa pendiente de texto oficial.
+
+## 97. Fix real de overflow en risk-description de Propuesta Formal MRC (PDF PF-3) (2026-09-17)
+
+Se reintentó la emisión de una Propuesta Formal MRC que llevaba días bloqueada por un bug de
+renderizado de PDF: `ProposalFitOverflowError: MRC proposal fit overflow: risk-description@8px`
+(código interno `PF_PDF_FIT_OVERFLOW`), en la propuesta MRC-575 (Carta Oferta ID 9, Draft/
+`propuestas_formales.id` = 12, número de propuesta reservado 6). El error apareció en TEST tras
+intentos anteriores de reproducción y arreglo en desarrollo.
+
+**Primer intento, no efectivo (PR #391, `fix(propuestas): evitar overflow de risk-description en PDF
+MRC`, mergeado 2026-09-17):** se agregó `padding-block: .1mm` a la regla CSS `.risk-description` en
+`backend/src/templates/propuesta/mrc.js`. Se desplegó a TEST y **el error volvió a aparecer exactamente
+igual**. **Diagnóstico post-mortem:** ese fix se había validado antes solo contra un fixture de test con
+una sola cobertura (volumen de texto muy por debajo del caso real; la propuesta real tiene 11
+coberturas más una descripción de riesgo de 5 líneas). Además, mecánicamente el `padding-block` fue
+contraproducente: con `box-sizing: border-box` y `height: 100%` fijo en el contenedor, agregar padding
+REDUCE el área de contenido disponible en vez de darle margen — empeora el overflow en vez de resolverlo.
+
+**Segundo intento, el correcto (PR #393, `fix(propuestas): corregir overflow real de risk-description en
+PDF MRC`, mergeado 2026-09-17, commit `70593b52d6b7e1624c3bd54982a925930b54cf13`):** se revirtió el
+`padding-block`, se bajó la variable CSS `--type-e-line` de `1.08` a `0.94` (afecta solo el bloque
+monoespaciado de `risk-description`) y se eliminó un `<br />` redundante (doble salto de línea antes de
+"DETALLE DE SUMAS ASEGURADAS:"). **Verificación con Puppeteer real** contra contenido denso (13
+coberturas simuladas, por encima de las 11 reales): el algoritmo de auto-ajuste de tamaño de fuente
+converge en 8.2px sin llegar al piso mínimo de 8px (antes, con el CSS del PR #391, seguía desbordando
+21px incluso en el piso de 8px). Se agregó un test de regresión en `backend/src/templates/propuesta/mrc.test.js`
+con un fixture de contenido denso para prevenir que este caso vuelva a pasar desapercibido con fixtures
+chicos.
+
+**Despliegue a TEST:** se armó y desplegó un bundle Docker (patrón ya establecido de preflight de solo
+lectura + deploy con imagen inmutable pineada por hash) con el código del commit
+`70593b52d6b7e1624c3bd54982a925930b54cf13`, imagen final
+`cotizador-test-backend:mrc-lineheight-70593b52d6b7`. El script de deploy volvió a mostrar el falso
+negativo de timing ya documentado (termina con `exit 1` sin imprimir su "PASS" final aunque el contenedor
+sí queda `healthy` segundos después) — se verificó manualmente salud de Docker y `/health` antes de
+continuar.
+
+**Resultado:** tras el segundo fix, la emisión de la propuesta MRC-575 (Draft 12 / Carta 9) se completó
+exitosamente en TEST, confirmado en vivo por Kevin.
+
+**Aprendizajes documentados para futuras sesiones (registrados también en Engram, observación 1622):**
+
+1. Nunca validar un fix de overflow de renderizado de PDF contra un fixture con volumen de contenido muy
+   por debajo del caso real — usar contenido real o una aproximación con volumen igual o mayor al real
+   antes de dar el fix por bueno.
+2. `padding`/`padding-block` en un elemento con `height` fija y `box-sizing: border-box` reduce el
+   espacio de contenido disponible en vez de aumentarlo — no usarlo como "fix" de overflow sin verificar
+   esa mecánica primero.
+3. El nombre real del proyecto Docker Compose del backend de TEST es `cotizador-backend-test` (no
+   `cotizador-test`) — usar el nombre incorrecto hace que el preflight (con `set -euo pipefail`) aborte
+   en silencio con exit code 1 sin ningún mensaje.
+4. Los scripts `.sh` de los bundles de deploy deben tener finales de línea LF puro — si se editan en
+   Windows pueden quedar con CRLF, lo que rompe `set -euo pipefail` con el error "pipefail: nombre de
+   opción no válido".
+5. El hash SHA-256 del `docker-context.tar.gz` queda hardcodeado como constante dentro del propio script
+   `deploy-test-backend.sh` — al reutilizar el script de un bundle anterior para armar uno nuevo, hay que
+   actualizar ese valor manualmente o el deploy falla con `context_archive_hash_mismatch`, aunque la
+   verificación de integridad general del bundle (`sha256sum --check manifests/stage-files.sha256`) dé
+   OK (son dos verificaciones independientes).
+
+**Nota transversal:** durante esta misma sesión se detectó que Codex estaba trabajando en paralelo sobre
+el mismo checkout local del repositorio (2 commits directos a `main` sin PR: `chore(repo): protect local
+artifacts and align Puppeteer allowlist` y `docs: add shared Claude Codex handoff`, este último agregando
+`docs/CONTEXTO_COMPARTIDO_CLAUDE_CODEX.md` — un documento de handoff con contexto consolidado de Engram
+para que cualquier agente de código retome el proyecto sin depender de haber vivido las sesiones
+originales). Ambos commits se sincronizaron a `origin/main` por separado, antes de abrir el PR del fix
+real, para no mezclar cambios no relacionados en el mismo PR.

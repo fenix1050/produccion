@@ -544,7 +544,7 @@ test('MRC formal proposal declares calibrated A-N typography tokens and local fi
     ['b', 'Arial, Helvetica, sans-serif', '6.1167px', '1.05'],
     ['c', 'Arial, Helvetica, sans-serif', '11.8px', '1'],
     ['d', 'Arial, Helvetica, sans-serif', '9.2px', '1'],
-    ['e', '"Courier New", Courier, monospace', '9.2px', '1.08'],
+    ['e', '"Courier New", Courier, monospace', '9.2px', '0.94'],
     ['f', 'Arial, Helvetica, sans-serif', '6.8px', '1.1'],
     ['g', 'Arial, Helvetica, sans-serif', '10.6px', '1.12'],
     ['h', 'Arial, Helvetica, sans-serif', '10.6px', '1.12'],
@@ -584,10 +584,52 @@ test('MRC formal proposal declares calibrated A-N typography tokens and local fi
   assert.match(html, /size = Math\.max\(minimum, Number\(\(size - step\)\.toFixed\(2\)\)\)/)
   assert.match(html, /element\.dataset\.fitOverflow = String\(overflow\)/)
   assert.match(html, /document\.documentElement\.dataset\.proposalFit = 'complete'/)
-  assert.match(
-    html,
-    /\.risk-description \{[^}]*height: 100%; min-height: 0; padding-block: \.1mm; overflow: hidden;/
+  assert.match(html, /\.risk-description \{[^}]*height: 100%; min-height: 0; overflow: hidden;/)
+})
+
+test('MRC formal proposal keeps risk-description compact for dense real-world content (long description + many coverages)', () => {
+  const html = buildMrcPropuestaHtml(
+    fixture({
+      draft: {
+        ...fixture().draft,
+        descripcion_detallada:
+          'Local comercial destinado a Oficina administrativa, que se encuentra ocupando un edificio\n' +
+          'levantado de planta baja, construidos sus paredes de ladrillo comun vistos, posee acceso\n' +
+          'principal de vidrios de blindex y salida lateral con puerta de metal con vidrios, el baño\n' +
+          'posee puerta de madera, techo de tejas sobre tejuelones y piso de porcelanato y techo de\n' +
+          'losa.',
+      },
+      carta: {
+        ...fixture().carta,
+        coberturas: [
+          { nombre_snapshot: 'Sublímite Daños por Agua', monto: 2500000, franquicia: null },
+          { nombre_snapshot: 'Sublímite Equipos Electrónicos', monto: 5000000, franquicia: 500000 },
+          { nombre_snapshot: 'Sublímite Granizo', monto: 5000000, franquicia: null },
+          { nombre_snapshot: 'Robo de Contenido', monto: 100000000, franquicia: 500000 },
+          { nombre_snapshot: 'Robo en Tránsito', monto: 10000000, franquicia: 500000 },
+          { nombre_snapshot: 'Equipos Electrónicos', monto: 15000000, franquicia: null },
+          { nombre_snapshot: 'Incendio Edificio', monto: 100000000, franquicia: null },
+          { nombre_snapshot: 'Robo de Caja Registradora', monto: 10000000, franquicia: 500000 },
+          { nombre_snapshot: 'Cristales', monto: 5000000, franquicia: 500000 },
+          { nombre_snapshot: 'Responsabilidad Civil', monto: 25000000, franquicia: 500000 },
+          { nombre_snapshot: 'Incendio Contenido', monto: 250000000, franquicia: null },
+          { nombre_snapshot: 'Robo de Valores en Ventanilla', monto: 3000000, franquicia: 500000 },
+          { nombre_snapshot: 'Incendio Mobiliario y Equipos', monto: 20000000, franquicia: null },
+        ],
+      },
+    })
   )
+  const body = html.slice(
+    html.indexOf('<div class="risk-columns risk-columns--body">'),
+    html.indexOf('<div class="risk-columns risk-columns--total">')
+  )
+
+  // 13 coverage lines joined by <br /> (12 breaks) + 1 after "UBICACIÓN DEL RIESGO:" +
+  // 1 single break before "DETALLE DE SUMAS ASEGURADAS:" (not a double break) +
+  // 1 after "DETALLE DE SUMAS ASEGURADAS:" itself = 15.
+  assert.equal((body.match(/<br \/>/g) ?? []).length, 15)
+  assert.doesNotMatch(body, /<br \/><br \/>/)
+  assert.match(body, /Incendio Mobiliario y Equipos, hasta la suma de Gs\. 20\.000\.000/)
 })
 
 test('MRC formal proposal applies only the r16 frozen border patch around insured, cost, and payment', () => {

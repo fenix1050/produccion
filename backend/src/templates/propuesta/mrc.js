@@ -438,7 +438,7 @@ export function buildMrcPropuestaHtml(snapshot, { tajyLogoDataUri = null } = {})
       <section class="modality"><b>Modalidad de la Cobertura Solicitada : 1020 (RIESGOS VARIOS / MULTIRRIESGO COMERCIO)</b></section>
       <section class="risk-table">
         <div class="risk-columns risk-columns--head"><span>Art.</span><span>Descripción</span><span class="risk-heading--numeric">Suma Asegurada Gs.</span><span class="risk-heading--numeric">Prima Gs.</span></div>
-        <div class="risk-columns risk-columns--body"><span>1</span><div class="risk-description fit-box" data-fit-section="risk-description" data-fit-target="9.2" data-fit-minimum="8" data-fit-step="0.2"><p>${text(draft.descripcion_detallada)}</p><b>UBICACIÓN DEL RIESGO:</b><br />${text(risk.direccion)}${risk.ciudad ? `, ${text(risk.ciudad)}` : ''}<br /><br /><b>DETALLE DE SUMAS ASEGURADAS:</b><br />${coverageSummary(coverages)}</div><b>${money(totalCoverage)}</b><b>${money(commercial.variante?.prima)}</b></div>
+        <div class="risk-columns risk-columns--body"><span>1</span><div class="risk-description fit-box" data-fit-section="risk-description" data-fit-target="9.2" data-fit-minimum="8" data-fit-step="0.2"><p>${text(draft.descripcion_detallada)}</p><b>UBICACIÓN DEL RIESGO:</b><br />${text(risk.direccion)}${risk.ciudad ? `, ${text(risk.ciudad)}` : ''}<br /><b>DETALLE DE SUMAS ASEGURADAS:</b><br />${coverageSummary(coverages)}</div><b>${money(totalCoverage)}</b><b>${money(commercial.variante?.prima)}</b></div>
         <div class="risk-columns risk-columns--total"><span></span><b>TOTAL SUMA ASEGURADA</b><b>${money(totalCoverage)}</b><b>${money(commercial.variante?.prima)}</b></div>
       </section>
       <section class="contract-stack">
@@ -493,7 +493,7 @@ export function buildMrcPropuestaHtml(snapshot, { tajyLogoDataUri = null } = {})
     --type-b-family: Arial, Helvetica, sans-serif; --type-b-size: 6.1167px; --type-b-line: 1.05;
     --type-c-family: Arial, Helvetica, sans-serif; --type-c-size: 11.8px; --type-c-line: 1;
     --type-d-family: Arial, Helvetica, sans-serif; --type-d-size: 9.2px; --type-d-line: 1;
-    --type-e-family: "Courier New", Courier, monospace; --type-e-size: 9.2px; --type-e-line: 1.08;
+    --type-e-family: "Courier New", Courier, monospace; --type-e-size: 9.2px; --type-e-line: 0.94;
     --type-f-family: Arial, Helvetica, sans-serif; --type-f-size: 6.8px; --type-f-line: 1.1;
     --type-g-family: Arial, Helvetica, sans-serif; --type-g-size: 10.6px; --type-g-line: 1.12;
     --type-h-family: Arial, Helvetica, sans-serif; --type-h-size: 10.6px; --type-h-line: 1.12;
@@ -554,7 +554,7 @@ export function buildMrcPropuestaHtml(snapshot, { tajyLogoDataUri = null } = {})
   .risk-columns--head > * { display: flex; align-items: center; justify-content: center; }
   .risk-columns--head > .risk-heading--numeric { padding-left: .35mm; padding-right: .35mm; white-space: nowrap; overflow-wrap: normal; }
   .risk-columns--body { height: 43.9mm; border-top: .65px solid var(--rule); }
-  .risk-description { width: 100%; max-width: none; height: 100%; min-height: 0; padding-block: .1mm; overflow: hidden; font-family: var(--type-e-family); font-size: var(--type-e-size); line-height: var(--type-e-line); white-space: normal; overflow-wrap: break-word; word-break: normal; }
+  .risk-description { width: 100%; max-width: none; height: 100%; min-height: 0; overflow: hidden; font-family: var(--type-e-family); font-size: var(--type-e-size); line-height: var(--type-e-line); white-space: normal; overflow-wrap: break-word; word-break: normal; }
    .risk-columns--body > b { display: flex; align-items: center; justify-content: flex-end; text-align: right; }
   .risk-columns--body p { margin: 0 0 1mm; }
   .risk-columns--total { height: 5.8mm; border-top: .65px solid var(--rule); background: var(--shade); font-family: var(--type-d-family); font-size: var(--type-d-size); line-height: var(--type-d-line); }

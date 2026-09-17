@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.64](https://github.com/fenix1050/produccion/compare/v0.1.63...v0.1.64) (2026-09-17)
+
+
+### Bug Fixes
+
+* CSRF de TEST y logout que simulaba sesión cerrada ([#390](https://github.com/fenix1050/produccion/issues/390)) ([7af0540](https://github.com/fenix1050/produccion/commit/7af054038bf5c7e4a336c6c041f421b22313be44))
+* **deps:** forzar qs@6.16.0 vía overrides (2 CVE de DoS, transitiva de Express) ([#388](https://github.com/fenix1050/produccion/issues/388)) ([4587639](https://github.com/fenix1050/produccion/commit/45876398891426696578790785d95fc933002dbd))
+* **propuestas:** evitar overflow de risk-description en PDF MRC ([#391](https://github.com/fenix1050/produccion/issues/391)) ([f570669](https://github.com/fenix1050/produccion/commit/f5706690e571ae656bfda49ea1fabff74553de5d))
+
 ## [0.1.63](https://github.com/fenix1050/produccion/compare/v0.1.62...v0.1.63) (2026-09-16)
 
 

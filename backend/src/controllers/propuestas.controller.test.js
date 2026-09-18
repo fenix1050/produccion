@@ -25,8 +25,20 @@ async function ejecutarConNext(handler, req, res) {
   return errorPasadoANext
 }
 
+// propuestas.controller.js importa estáticamente borradores/elegibilidad/emision/listado
+// service.js; los tres primeros cargan propuestas.repository.js -> config/supabase.js en
+// el scope del módulo (cliente real), que revienta si faltan las env vars. Mockear
+// config/supabase.js (mismo patrón que propuestas.repository.test.js) evita que ese import
+// eager toque la config real, aunque el caso solo ejercite listadoService.
+function mockearSupabaseConfig(t) {
+  t.mock.module('../config/supabase.js', {
+    namedExports: { supabase: {} },
+  })
+}
+
 describe('listar', () => {
   test('invalid query (limit=0) rejects with a 400 error passed to next(), service never called', async (t) => {
+    mockearSupabaseConfig(t)
     let servicioLlamado = false
     t.mock.module('../services/propuestas/listado.service.js', {
       namedExports: {
@@ -49,6 +61,7 @@ describe('listar', () => {
   })
 
   test('invalid estado rejects with a 400 error', async (t) => {
+    mockearSupabaseConfig(t)
     t.mock.module('../services/propuestas/listado.service.js', {
       namedExports: {
         listarPropuestas: async () => ({ data: [], count: 0 }),
@@ -65,6 +78,7 @@ describe('listar', () => {
   })
 
   test('valid query passes the service result through as res.json({ data, count })', async (t) => {
+    mockearSupabaseConfig(t)
     const respuestaServicio = { data: [{ id: 1, estado: 'emitida' }], count: 1 }
     let queryRecibida
     let usuarioRecibido
@@ -93,6 +107,7 @@ describe('listar', () => {
   })
 
   test('service errors propagate to next(err)', async (t) => {
+    mockearSupabaseConfig(t)
     const errorServicio = new Error('boom')
     t.mock.module('../services/propuestas/listado.service.js', {
       namedExports: {

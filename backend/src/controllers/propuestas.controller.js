@@ -1,6 +1,7 @@
 import {
   actualizarBorradorSchema,
   listarCartasAptasQuerySchema,
+  listarPropuestasQuerySchema,
   propuestaIdParamsSchema,
   emitirPropuestaSchema,
   anularPropuestaSchema,
@@ -9,6 +10,7 @@ import {
 import * as borradoresService from '../services/propuestas/borradores.service.js'
 import * as elegibilidadService from '../services/propuestas/elegibilidad.service.js'
 import * as emisionService from '../services/propuestas/emision.service.js'
+import * as listadoService from '../services/propuestas/listado.service.js'
 import { httpError } from '../utils/http-error.js'
 
 function parsear(schema, value) {
@@ -17,6 +19,15 @@ function parsear(schema, value) {
     throw httpError(400, resultado.error.issues.map((issue) => issue.message).join('; '))
   }
   return resultado.data
+}
+
+export async function listar(req, res, next) {
+  try {
+    const query = parsear(listarPropuestasQuerySchema, req.query)
+    res.json(await listadoService.listarPropuestas(query, req.usuario))
+  } catch (error) {
+    next(error)
+  }
 }
 
 export async function listarCartas(req, res, next) {

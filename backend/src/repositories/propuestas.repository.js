@@ -12,6 +12,33 @@ export async function listarCartasAptas({ usuarioId, esAdmin, busqueda, limite =
   return data ?? []
 }
 
+export async function listarPropuestas({
+  usuarioId,
+  esAdmin,
+  busqueda,
+  estados,
+  cartaOfertaId,
+  limit,
+  offset,
+}) {
+  const { data, error } = await supabase.rpc('listar_propuestas_formales', {
+    p_usuario_id: usuarioId,
+    p_es_admin: esAdmin,
+    p_busqueda: busqueda || null,
+    p_estados: estados && estados.length > 0 ? estados : null,
+    p_carta_oferta_id: cartaOfertaId ?? null,
+    p_limite: limit,
+    p_offset: offset,
+  })
+  if (error) throw error
+  const rows = data ?? []
+  if (rows.length === 0) return { data: [], count: 0 }
+  return {
+    data: rows.map(({ total_registros, ...row }) => row),
+    count: Number(rows[0].total_registros ?? 0),
+  }
+}
+
 export async function motivoIneligibilidadCarta({ cartaId, usuarioId, esAdmin }) {
   const { data, error } = await supabase.rpc('motivo_ineligibilidad_carta_propuesta', {
     p_carta_id: cartaId,

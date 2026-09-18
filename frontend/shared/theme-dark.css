@@ -711,6 +711,20 @@ html[data-theme='dark'] .admin-modal {
   box-shadow: var(--tajy-shadow-card);
 }
 
+html[data-theme='dark'] .admin-modal--detalle {
+  background: var(--tajy-gradient-card);
+  border-color: var(--tajy-border-strong);
+}
+
+html[data-theme='dark'] .propuestas-listado-detalle__card {
+  background: var(--tajy-surface-alt);
+  border-color: var(--tajy-border);
+}
+
+html[data-theme='dark'] .propuestas-listado-detalle__footer {
+  border-top-color: var(--tajy-border);
+}
+
 html[data-theme='dark'] .admin-content .btn-primary,
 html[data-theme='dark'] .admin-modal .btn-primary {
   background: var(--tajy-red-active);

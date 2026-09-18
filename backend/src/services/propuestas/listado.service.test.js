@@ -152,6 +152,50 @@ test('flags: puede_continuar is true for each of the 4 live states and false for
   assert.equal(porId[7].puede_continuar, false)
 })
 
+test('flags: puede_continuar is false for a live-state row whose Carta already has another emitida sibling (orphaned draft)', async (t) => {
+  const filas = [
+    filaBase({ id: 1, estado: 'borrador', otra_propuesta_emitida: true }),
+    filaBase({ id: 2, estado: 'borrador', otra_propuesta_emitida: false }),
+    filaBase({ id: 3, estado: 'en_revision', otra_propuesta_emitida: true }),
+  ]
+  t.mock.module('../../repositories/propuestas.repository.js', {
+    namedExports: {
+      listarPropuestas: async () => ({ data: filas, count: filas.length }),
+    },
+  })
+  const { listarPropuestas } = await import('./listado.service.js?case=puede-continuar-huerfano')
+
+  const result = await listarPropuestas({}, AGENTE)
+  const porId = Object.fromEntries(result.data.map((row) => [row.id, row]))
+
+  assert.equal(
+    porId[1].puede_continuar,
+    false,
+    'a live draft whose Carta already has an emitida sibling always dead-ends in a 409 on emit'
+  )
+  assert.equal(porId[2].puede_continuar, true, 'no sibling emitida — continuing is still valid')
+  assert.equal(porId[3].puede_continuar, false)
+})
+
+test('listarPropuestas: otra_propuesta_emitida is removed from every output row (internal-only flag)', async (t) => {
+  t.mock.module('../../repositories/propuestas.repository.js', {
+    namedExports: {
+      listarPropuestas: async () => ({
+        data: [filaBase({ otra_propuesta_emitida: true })],
+        count: 1,
+      }),
+    },
+  })
+  const { listarPropuestas } = await import('./listado.service.js?case=strip-otra-emitida')
+
+  const result = await listarPropuestas({}, AGENTE)
+
+  assert.equal(
+    Object.prototype.hasOwnProperty.call(result.data[0], 'otra_propuesta_emitida'),
+    false
+  )
+})
+
 test('flags: puede_descargar is true only for emitida/anulada with pdf and matching authorization (mirrors canDownload)', async (t) => {
   const filas = [
     filaBase({ id: 1, estado: 'emitida', pdf_storage_path: 'p.pdf', agente_id: AGENTE.id }),

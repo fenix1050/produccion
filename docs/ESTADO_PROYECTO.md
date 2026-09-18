@@ -3114,13 +3114,14 @@ como propuesta SDD y se siguió el ciclo completo porque el cambio abarcaba migr
 de frontend, con riesgo de romper el trabajo en paralelo de Codex sobre `frontend/propuestas/*`.
 
 **Alcance real (3 PRs encadenados, todos mergeados a `main`):**
+
 - **#399** — migración `075_listado_propuestas_formales.sql`: recrea `listar_cartas_oferta_aptas_propuesta`
   de forma aditiva (DROP+CREATE porque Postgres rechaza cambiar `RETURNS TABLE` de una función existente;
   agrega `tiene_propuesta`/`propuesta_actual_id`/`_estado`/`_numero` al final, conserva
   `propuesta_borrador_id`/`propuesta_revision` sin tocar — `supabase.rpc()` mapea por nombre de columna, así
   que el wizard de Codex sigue funcionando sin cambios); función nueva `listar_propuestas_formales`
   (`SECURITY INVOKER`, scoping `p_es_admin OR c.agente_id = p_usuario_id`, `COUNT(*) OVER () AS
-  total_registros`, paginación); índice `propuestas_formales_updated_at_idx`. El `DROP FUNCTION` borra el
+total_registros`, paginación); índice `propuestas_formales_updated_at_idx`. El `DROP FUNCTION` borra el
   ACL fijado por `070_fix_carta_oferta_rpc_acl.sql` — la migración lo reaplica explícitamente
   (`REVOKE ALL ... GRANT EXECUTE ... TO service_role`) para ambas funciones, verificado con test regex
   dedicado y con `pg_proc.proacl` real post-aplicación.
@@ -3157,6 +3158,7 @@ Backend 378/378, migraciones 20/20, frontend 107/107 — 0 fallos.
 
 **Deploy a TEST (2026-09-18, con autorización manual explícita en cada paso, patrón de bundle efímero
 `backend/tmp/<cambio>-test-stage/`, gitignoreado):**
+
 - Migración 075 aplicada directo contra `cotizador-test-db` (Postgres self-hosted en la VPS, contenedor
   `supabase/postgres:17.6.1.136` — **no** un proyecto Supabase cloud, aclaración de Kevin que corrige una
   suposición inicial de la sesión) vía `docker exec cotizador-test-db psql -U supabase_admin -d postgres`.
@@ -3187,6 +3189,7 @@ Backend 378/378, migraciones 20/20, frontend 107/107 — 0 fallos.
   para no anular una propuesta real sin pedido explícito.
 
 **Aprendizajes nuevos para deploys futuros:**
+
 1. La DB de TEST es Supabase self-hosted en la VPS (`cotizador-test-db`), no un proyecto Supabase cloud —
    corrige cualquier suposición previa de que el MCP de Supabase de la sesión apunta a TEST.
 2. Pegar bloques SQL grandes directo en una sesión interactiva de `psql` por SSH puede cortarse a mitad de

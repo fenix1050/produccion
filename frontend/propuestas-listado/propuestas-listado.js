@@ -344,6 +344,7 @@ function renderFiltros() {
       <div class="historial-filtros__acciones">
         <button class="btn-primary" type="submit">Buscar</button>
         <button class="btn-outline" type="button" data-action="limpiar-filtros">Limpiar filtros</button>
+        <a class="btn-primary" href="../propuestas/" data-action="nueva-propuesta">Nueva propuesta</a>
       </div>
     </form>
   `

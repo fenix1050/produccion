@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises'
 import { test } from 'node:test'
 
 const moduleUrl = new URL('./propuestas.js', import.meta.url)
+const stylesheetUrl = new URL('./propuestas.css', import.meta.url)
 const bienvenidaUrl = new URL('../bienvenida/bienvenida.js', import.meta.url)
 const historialUrl = new URL('../historial/historial.js', import.meta.url)
 
@@ -34,7 +35,7 @@ test('PF-3 frontend converges both entries and issues only through the authorita
     /function inputField\(name, label, value, type = 'text', required = false\)/
   )
   assert.match(moduleSource, /<textarea name="direccion" rows="2" required>/)
-  assert.match(moduleSource, /valor\('partes\.asegurado\.tipo_persona'\),\s*true/)
+  assert.match(moduleSource, /selectField\(\s*'tipo_persona',\s*'Tipo de persona'/)
 })
 
 test('PF-3 frontend escapes proposal metadata and fallback text before HTML interpolation', async () => {
@@ -57,4 +58,151 @@ test('PF-3 logout keeps its fixed internal login redirect', async () => {
   assert.match(moduleSource, /const LOGIN_PATH = '\.\.\/login\/'/)
   assert.match(moduleSource, /window\.location\.assign\(loginUrl\.pathname\)/)
   assert.match(moduleSource, /auth\.logout\(\)\.then\(redirectToLogin\)/)
+})
+
+test('PF-3 proposal editor exposes a five-step accessible wizard contract', async () => {
+  const moduleSource = await readFile(moduleUrl, 'utf8')
+
+  assert.match(moduleSource, /currentStep: null/)
+  assert.match(moduleSource, /state\.currentStep = determinarPasoInicial\(propuesta\)/)
+  assert.match(moduleSource, /data-action="ir-paso"/)
+  assert.match(moduleSource, /aria-current="step"/)
+  assert.match(moduleSource, /data-action="paso-atras"/)
+  assert.match(moduleSource, /data-action="paso-continuar"/)
+  assert.match(moduleSource, /function validarPaso\(step\)/)
+  assert.match(moduleSource, /function renderStepPanel\(\s*step,\s*/)
+  assert.match(moduleSource, /function renderReviewStatuses\(readiness, currentStep\)/)
+})
+
+test('PF-3 editor keeps the reference dashboard structure and end-of-form actions', async () => {
+  const [moduleSource, stylesheetSource] = await Promise.all([
+    readFile(moduleUrl, 'utf8'),
+    readFile(stylesheetUrl, 'utf8'),
+  ])
+
+  for (const marker of [
+    'main main--propuestas',
+    'pf-progress',
+    'pf-steps',
+    'pf-origin',
+    'pf-review',
+    'pf-actions-bar',
+    'pf-group-label',
+  ]) {
+    assert.match(moduleSource, new RegExp(`class="[^"]*${marker}`))
+  }
+  assert.match(stylesheetSource, /\.pf-steps\s*\{[\s\S]*grid-template-columns: repeat\(5,/)
+  assert.match(stylesheetSource, /\.pf-review\s*\{[\s\S]*position: sticky;/)
+  assert.match(stylesheetSource, /\.pf-actions-bar\s*\{[\s\S]*position: static;/)
+  assert.match(stylesheetSource, /@media \(max-width: 900px\)/)
+  assert.match(stylesheetSource, /@media \(max-width: 640px\)/)
+})
+
+test('PF-3 wizard prioritizes the active step and starts ready proposals at review', async () => {
+  const moduleSource = await readFile(moduleUrl, 'utf8')
+
+  assert.match(
+    moduleSource,
+    /pf-review__step--\$\{current \? 'current' : complete \? 'complete' : 'pending'\}/
+  )
+  assert.match(
+    moduleSource,
+    /const status = current \? 'En progreso' : complete \? 'Completado' : 'Pendiente'/
+  )
+  assert.match(
+    moduleSource,
+    /function determinarPasoInicial\(propuesta\)[\s\S]*?for \(const step of \[1, 2, 3, 4\]\)[\s\S]*?return step[\s\S]*?return 5/
+  )
+  assert.doesNotMatch(moduleSource, /return propuesta\?\.estado === 'borrador' \? 2 : 5/)
+})
+
+test('PF-3 reference grouping keeps active presentation and readiness contracts', async () => {
+  const [moduleSource, stylesheetSource] = await Promise.all([
+    readFile(moduleUrl, 'utf8'),
+    readFile(stylesheetUrl, 'utf8'),
+  ])
+
+  for (const label of [
+    'Datos del asegurado',
+    'Completa la información de la persona o empresa que será asegurada.',
+    'Datos personales',
+    'Información básica del asegurado.',
+    'Contacto',
+    'Medios de contacto del asegurado.',
+    'Dirección',
+    'Domicilio del asegurado.',
+    'REVISIÓN INFORMATIVA',
+    'Progreso de la propuesta',
+    'Completa la información para continuar.',
+    'Completado',
+    'En progreso',
+    'Pendiente',
+    '🇵🇾 \\+595',
+  ])
+    assert.match(moduleSource, new RegExp(label.replace(/[.*+?^${}()|[\\]\\]/g, '\\\\$&')))
+
+  assert.match(
+    moduleSource,
+    /Faltan \$\{escapeHtml\(pendientes\.length\)\} \$\{pendientes\.length === 1 \? 'campo' : 'campos'\} por completar/
+  )
+  assert.match(moduleSource, /function calcularCamposRequeridos\(propuesta\)/)
+  assert.match(moduleSource, /const required = calcularCamposRequeridos\(propuesta\)/)
+  assert.doesNotMatch(moduleSource, /const total = 5/)
+  assert.match(
+    moduleSource,
+    /currentStep === 5 && state\.textos\.puede_gestionar \? `<div class="pf-step-five-support">\$\{renderTextControls\(\)\}/
+  )
+  const avanzarPasoSource = moduleSource.match(/function avanzarPaso\(\)[\s\S]*?\n\}/)?.[0] ?? ''
+  assert.match(avanzarPasoSource, /state\.currentStep \+= 1[\s\S]*?render\(\)/)
+  assert.doesNotMatch(avanzarPasoSource, /programarAutosave\(\)/)
+  assert.match(
+    stylesheetSource,
+    /\.pf-step--complete \.pf-step__number[\s\S]*?var\(--tajy-green-fg\)/
+  )
+  assert.match(
+    stylesheetSource,
+    /\.pf-step--pending \.pf-step__number[\s\S]*?var\(--tajy-text-muted\)/
+  )
+})
+
+test('PF-3 review rail and insured cards keep contextual, current-step guidance', async () => {
+  const [moduleSource, stylesheetSource] = await Promise.all([
+    readFile(moduleUrl, 'utf8'),
+    readFile(stylesheetUrl, 'utf8'),
+  ])
+
+  assert.match(moduleSource, /ICON_PHONE/)
+  assert.match(moduleSource, /ICON_LOCATION/)
+  assert.match(moduleSource, /class="pf-subcard__icon"/)
+  assert.match(moduleSource, /function pendientesDelPaso\(pendientes, step\)/)
+  assert.match(moduleSource, /Campos pendientes en este paso/)
+  assert.match(moduleSource, /function renderReviewTip\(currentStep, readiness, pendientesCount\)/)
+  assert.match(moduleSource, /class="pf-review__tip"/)
+  assert.doesNotMatch(moduleSource, /code\.replace\('carta:'/)
+  assert.match(
+    moduleSource,
+    /if \(step === 4\) return !pendientes\.some\(\(item\) => item\.startsWith\('pla_ft\.'\)\)/
+  )
+  assert.match(stylesheetSource, /\.pf-review__tip\s*\{[\s\S]*background:/)
+  assert.match(
+    stylesheetSource,
+    /\.pf-actions-bar\s*\{[\s\S]*grid-template-columns: auto minmax\(0, 1fr\) auto;/
+  )
+})
+
+test('PF-3 autosave waits for typing to settle and keeps successful background saves in place', async () => {
+  const moduleSource = await readFile(moduleUrl, 'utf8')
+
+  assert.match(moduleSource, /const AUTOSAVE_DEBOUNCE_MS = 2000/)
+  assert.match(
+    moduleSource,
+    /autosaveTimer = window\.setTimeout\(\(\) => guardar\(\{ silencioso: true \}\), AUTOSAVE_DEBOUNCE_MS\)/
+  )
+  assert.match(moduleSource, /async function guardar\(\{ silencioso = false \} = \{\}\)/)
+  assert.match(
+    moduleSource,
+    /state\.saveState = `Guardado · revisión \$\{state\.propuesta\.revision\}`[\s\S]*?if \(!silencioso\) render\(\)/
+  )
+  assert.match(moduleSource, /if \(action === 'guardar'\) guardar\(\)/)
+  assert.match(moduleSource, /function renderPreservandoVista\(\)/)
 })

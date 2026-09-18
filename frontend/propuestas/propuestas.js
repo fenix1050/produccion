@@ -17,11 +17,20 @@ const state = {
   carta: null,
   propuesta: null,
   conflicto: false,
+  currentStep: null,
   textos: { textos: [], puede_gestionar: false, faltantes: [], emision_habilitada: false },
 }
 
 let autosaveTimer = null
+const AUTOSAVE_DEBOUNCE_MS = 2000
 const LOGIN_PATH = '../login/'
+
+// Reuse the same compact, inline SVG convention as the shared Tajy shell without
+// adding a dependency or changing the proposal API surface.
+const ICON_PERSON = `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm0-6a2 2 0 1 1 0 4 2 2 0 0 1 0-4ZM12 14c-4.418 0-8 2.239-8 5v1h2v-1c0-1.304 2.691-3 6-3s6 1.696 6 3v1h2v-1c0-2.761-3.582-5-8-5Z"></path></svg>`
+const ICON_PHONE = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 3.5h3l1.5 4-2 1.5a14 14 0 0 0 7 7l1.5-2 4 1.5v3a2 2 0 0 1-2 2C11.596 20.5 3.5 12.404 3.5 5.5a2 2 0 0 1 2-2Z"></path></svg>`
+const ICON_LOCATION = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 1 1 14 0Z"></path><circle cx="12" cy="10" r="2.2"></circle></svg>`
+const ICON_SHIELD = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 7 3v5.5c0 4.3-2.7 7.8-7 9.5-4.3-1.7-7-5.2-7-9.5V6l7-3Z"></path><path d="m8.8 12.2 2.1 2.1 4.4-4.6"></path></svg>`
 
 function redirectToLogin() {
   const loginUrl = new URL(LOGIN_PATH, window.location.href)
@@ -70,6 +79,7 @@ async function abrirCarta(cartaId) {
     state.carta = await api.get(`/propuestas/cartas/${cartaId}`)
     const propuesta = await api.post(`/propuestas/cartas/${cartaId}/borrador`, {})
     state.propuesta = propuesta
+    state.currentStep = determinarPasoInicial(propuesta)
     state.saveState = propuesta.creado ? 'Borrador creado' : 'Borrador recuperado'
     const url = new URL(window.location.href)
     url.searchParams.delete('propuesta')
@@ -93,6 +103,7 @@ async function abrirPropuesta(propuestaId) {
     const propuesta = await api.get(`/propuestas/${propuestaId}`)
     state.carta = propuesta.carta_detalle
     state.propuesta = propuesta
+    state.currentStep = determinarPasoInicial(propuesta)
     state.saveState = 'Propuesta cargada'
     const url = new URL(window.location.href)
     url.searchParams.delete('carta')
@@ -112,6 +123,7 @@ async function recargarBorrador() {
   if (!state.propuesta) return
   try {
     state.propuesta = await api.get(`/propuestas/${state.propuesta.id}`)
+    state.currentStep = determinarPasoInicial(state.propuesta)
     state.conflicto = false
     state.saveState = 'Versión actual cargada'
     render()
@@ -125,60 +137,140 @@ function leerFormulario() {
   const form = app.querySelector('#propuesta-form')
   if (!form) return null
   const data = new FormData(form)
-  return {
-    partes: {
-      asegurado: {
-        tipo_persona: data.get('tipo_persona') || undefined,
-        nombre_razon_social: data.get('nombre_razon_social')?.trim(),
-        documento: data.get('documento')?.trim(),
-        telefono: data.get('telefono')?.trim(),
-        email: data.get('email')?.trim(),
-        direccion: data.get('direccion')?.trim(),
-        actividad_economica: data.get('actividad_economica')?.trim(),
-        fecha_nacimiento: data.get('fecha_nacimiento') || undefined,
-        nacionalidad: data.get('nacionalidad')?.trim(),
-        estado_civil: data.get('estado_civil')?.trim(),
-        ocupacion: data.get('ocupacion')?.trim(),
-        ciudad: data.get('ciudad')?.trim(),
-        ingreso_mensual: data.get('ingreso_mensual') ? Number(data.get('ingreso_mensual')) : null,
-        lugar_trabajo: data.get('lugar_trabajo')?.trim(),
-      },
-      tomador_igual_asegurado: data.get('tomador_igual_asegurado') === 'on',
-      tomador: {
-        nombre_razon_social: data.get('tomador_nombre')?.trim(),
-        documento: data.get('tomador_documento')?.trim(),
-        direccion: data.get('tomador_direccion')?.trim(),
-        ciudad: data.get('tomador_ciudad')?.trim(),
-        telefono: data.get('tomador_telefono')?.trim(),
-        email: data.get('tomador_email')?.trim(),
-      },
-      representante_legal: {
-        nombre: data.get('representante_nombre')?.trim(),
-        documento: data.get('representante_documento')?.trim(),
-        cargo: data.get('representante_cargo')?.trim(),
-      },
-    },
-    pla_ft: {
-      es_pep: booleanoFormulario(data.get('es_pep')),
-      pep_institucion: data.get('pep_institucion')?.trim(),
-      pep_cargo: data.get('pep_cargo')?.trim(),
-      sujeto_obligado: booleanoFormulario(data.get('sujeto_obligado')),
-      origen_fondos_descripcion: data.get('origen_fondos_descripcion')?.trim(),
-      proveedor_estado: booleanoFormulario(data.get('proveedor_estado')),
-    },
-    descripcion_detallada: data.get('descripcion_detallada')?.trim(),
-    observaciones: data.get('observaciones')?.trim(),
-    tipo_firma: data.get('tipo_firma') || undefined,
+  const has = (name) => Boolean(form.elements.namedItem(name))
+  const text = (name) => data.get(name)?.trim() || undefined
+  const previous = draftActual()
+  const previousParts = previous.partes ?? {}
+  const previousInsured = previousParts.asegurado ?? {}
+  const previousTomador = previousParts.tomador ?? {}
+  const previousRepresentative = previousParts.representante_legal ?? {}
+  const previousPlaFt = previous.pla_ft ?? {}
+  const asegurado = { ...previousInsured }
+  const tomador = { ...previousTomador }
+  const representanteLegal = { ...previousRepresentative }
+  const plaFt = { ...previousPlaFt }
+
+  const insuredFields = {
+    tipo_persona: (value) => value || undefined,
+    nombre_razon_social: () => text('nombre_razon_social'),
+    documento: () => text('documento'),
+    telefono: () => text('telefono'),
+    email: () => text('email'),
+    direccion: () => text('direccion'),
+    actividad_economica: () => text('actividad_economica'),
+    fecha_nacimiento: (value) => value || undefined,
+    nacionalidad: () => text('nacionalidad'),
+    estado_civil: () => text('estado_civil'),
+    ocupacion: () => text('ocupacion'),
+    ciudad: () => text('ciudad'),
+    ingreso_mensual: (value) => (value ? Number(value) : null),
+    lugar_trabajo: () => text('lugar_trabajo'),
   }
+  Object.entries(insuredFields).forEach(([name, transform]) => {
+    if (has(name)) asegurado[name] = transform(data.get(name))
+  })
+
+  const tomadorFields = {
+    nombre_razon_social: 'tomador_nombre',
+    documento: 'tomador_documento',
+    direccion: 'tomador_direccion',
+    ciudad: 'tomador_ciudad',
+    telefono: 'tomador_telefono',
+    email: 'tomador_email',
+  }
+  Object.entries(tomadorFields).forEach(([name, fieldName]) => {
+    if (has(fieldName)) tomador[name] = text(fieldName)
+  })
+  const representativeFields = {
+    nombre: 'representante_nombre',
+    documento: 'representante_documento',
+    cargo: 'representante_cargo',
+  }
+  Object.entries(representativeFields).forEach(([name, fieldName]) => {
+    if (has(fieldName)) representanteLegal[name] = text(fieldName)
+  })
+
+  const booleanFields = {
+    es_pep: 'es_pep',
+    sujeto_obligado: 'sujeto_obligado',
+    proveedor_estado: 'proveedor_estado',
+  }
+  Object.entries(booleanFields).forEach(([name, fieldName]) => {
+    if (has(fieldName)) plaFt[name] = booleanoFormulario(data.get(fieldName))
+  })
+  if (has('pep_institucion')) plaFt.pep_institucion = text('pep_institucion')
+  if (has('pep_cargo')) plaFt.pep_cargo = text('pep_cargo')
+  if (has('origen_fondos_descripcion'))
+    plaFt.origen_fondos_descripcion = text('origen_fondos_descripcion')
+
+  const draft = {
+    ...previous,
+    partes: {
+      ...previousParts,
+      asegurado,
+      tomador,
+      representante_legal: representanteLegal,
+    },
+    pla_ft: plaFt,
+  }
+  if (has('tomador_igual_asegurado')) {
+    draft.partes.tomador_igual_asegurado = data.get('tomador_igual_asegurado') === 'on'
+  }
+  if (has('descripcion_detallada')) draft.descripcion_detallada = text('descripcion_detallada')
+  if (has('observaciones')) draft.observaciones = text('observaciones')
+  if (has('tipo_firma')) draft.tipo_firma = data.get('tipo_firma') || undefined
+  return draft
 }
 
 function seleccionActual() {
-  const varianteId = Number(app.querySelector('#cotizacion-variante-id')?.value) || null
-  const planPagoId = Number(app.querySelector('#cotizacion-plan-pago-id')?.value) || null
+  const varianteElement = app.querySelector('#cotizacion-variante-id')
+  const planElement = app.querySelector('#cotizacion-plan-pago-id')
+  const varianteId = varianteElement
+    ? Number(varianteElement.value) || null
+    : (state.propuesta?.cotizacion_variante_id ?? null)
+  const planPagoId = planElement
+    ? Number(planElement.value) || null
+    : (state.propuesta?.cotizacion_plan_pago_id ?? null)
   return { varianteId, planPagoId }
 }
 
-async function guardar() {
+function capturarVistaFormulario() {
+  const form = app.querySelector('#propuesta-form')
+  const active = document.activeElement
+  if (!form || !active || !form.contains(active)) return null
+
+  return {
+    activeFieldId: active.id,
+    activeFieldName: active.name,
+    activeFieldIndex: Array.from(form.elements).indexOf(active),
+    selectionStart: typeof active.selectionStart === 'number' ? active.selectionStart : null,
+    selectionEnd: typeof active.selectionEnd === 'number' ? active.selectionEnd : null,
+    selectionDirection: active.selectionDirection,
+    scrollX: window.scrollX,
+    scrollY: window.scrollY,
+  }
+}
+
+function renderPreservandoVista() {
+  const vista = capturarVistaFormulario()
+  render()
+  if (!vista) return
+
+  const form = app.querySelector('#propuesta-form')
+  const field =
+    (vista.activeFieldId && document.getElementById(vista.activeFieldId)) ||
+    (vista.activeFieldIndex >= 0 ? form?.elements[vista.activeFieldIndex] : null) ||
+    (vista.activeFieldName
+      ? Array.from(form?.elements ?? []).find((element) => element.name === vista.activeFieldName)
+      : null)
+  field?.focus({ preventScroll: true })
+  if (field && vista.selectionStart !== null && typeof field.setSelectionRange === 'function') {
+    field.setSelectionRange(vista.selectionStart, vista.selectionEnd, vista.selectionDirection)
+  }
+  if (typeof window.scrollTo === 'function') window.scrollTo(vista.scrollX, vista.scrollY)
+}
+
+async function guardar({ silencioso = false } = {}) {
   if (!state.propuesta || state.saving || state.conflicto) return false
   const draft = leerFormulario()
   const { varianteId, planPagoId } = seleccionActual()
@@ -187,7 +279,7 @@ async function guardar() {
       tipo: 'error',
       texto: 'Seleccione una variante y una forma de pago compatibles.',
     }
-    render()
+    renderPreservandoVista()
     return false
   }
 
@@ -203,7 +295,7 @@ async function guardar() {
     })
     state.saveState = `Guardado · revisión ${state.propuesta.revision}`
     state.banner = null
-    render()
+    if (!silencioso) render()
     return true
   } catch (error) {
     if (error.status === 409) {
@@ -218,7 +310,7 @@ async function guardar() {
       state.saveState = 'No guardado'
       state.banner = { tipo: 'error', texto: error.message }
     }
-    render()
+    renderPreservandoVista()
     return false
   } finally {
     state.saving = false
@@ -227,8 +319,12 @@ async function guardar() {
 }
 
 async function emitir() {
-  const form = app.querySelector('#propuesta-form')
-  if (!form?.reportValidity()) return
+  const readiness = obtenerReadinessActual()
+  if (!readiness.listo) {
+    state.currentStep = [1, 2, 3, 4].find((step) => !pasoListo(step, readiness)) ?? 2
+    render()
+    return
+  }
   const saved = await guardar()
   if (!saved || state.conflicto) return
   state.saving = true
@@ -312,12 +408,13 @@ function programarAutosave() {
   }
   state.saveState = 'Cambios pendientes'
   renderSaveIndicator()
-  autosaveTimer = window.setTimeout(guardar, 900)
+  autosaveTimer = window.setTimeout(() => guardar({ silencioso: true }), AUTOSAVE_DEBOUNCE_MS)
 }
 
 function renderSaveIndicator() {
-  const indicator = app.querySelector('[data-save-indicator]')
-  if (indicator) indicator.textContent = state.saveState
+  app.querySelectorAll('[data-save-indicator]').forEach((indicator) => {
+    indicator.textContent = state.saveState
+  })
 }
 
 function sanitizarMarkup(markup) {
@@ -351,10 +448,10 @@ function render() {
       <aside class="sidebar ${state.sidebarAbierta ? 'sidebar--abierta' : ''}">
         <div class="sidebar__nav"><div class="sidebar__section-label">Gestión</div>${renderSidebarFooter('propuestas')}</div>
       </aside>
-      <main class="main">
+      <main class="main main--propuestas">
         <div class="main-header">
           <div><div class="main-header__title">Preparar Propuesta Formal</div><div class="main-header__subtitle">Borrador MRC basado en una Carta Oferta emitida</div></div>
-          ${state.propuesta ? `<div class="pf-save" data-save-indicator>${escapeHtml(state.saveState)}</div>` : ''}
+          ${state.propuesta ? `<div class="pf-save" data-save-indicator role="status" aria-live="polite">${escapeHtml(state.saveState)}</div>` : ''}
         </div>
         <div class="admin-content pf-content">
           ${renderBanner(state.banner)}
@@ -389,120 +486,494 @@ function renderSelector() {
 function renderEditor() {
   const carta = state.carta
   const propuesta = state.propuesta
-  const varianteSeleccionada = propuesta.cotizacion_variante_id
-  const pagoSeleccionado = propuesta.cotizacion_plan_pago_id
   const variantes = carta.variantes ?? []
-  const varianteActual = variantes.find((item) => item.id === varianteSeleccionada) ?? null
+  const { varianteId, planPagoId } = seleccionActual()
+  const varianteActual = variantes.find((item) => item.id === varianteId) ?? null
   const pagos = varianteActual?.cotizacion_plan_pago ?? []
-  const readiness = propuesta.readiness ?? { pendientes: [] }
+  const readiness = obtenerReadinessActual()
   const emitted = ['emitida', 'anulada'].includes(propuesta.estado)
+  const currentStep = state.currentStep ?? determinarPasoInicial(propuesta)
+  const readinessPercent = calcularWizardReadinessPercent(propuesta, readiness)
+  const pendientes = readiness.pendientes ?? []
+  const pendientesActuales = pendientesDelPaso(pendientes, currentStep)
 
   return `
-    <div class="pf-layout">
-      <div class="pf-main">
-        <section class="pf-origin">
-          <button type="button" class="pf-back" data-action="volver-selector">← Cambiar Carta</button>
-          <div><span>Carta Oferta</span><strong>${escapeHtml(carta.numero_carta)} · versión ${escapeHtml(carta.version)}</strong><small>${escapeHtml(carta.cliente_nombre || 'Sin cliente')} · ${escapeHtml(carta.plan?.nombre || 'MRC')}</small></div>
-        </section>
-        ${state.conflicto ? '<button type="button" class="btn-outline" data-action="recargar-borrador">Recargar versión actual</button>' : ''}
-         <form id="propuesta-form" class="pf-form"><fieldset class="pf-form__fieldset" ${emitted ? 'disabled' : ''}>
-          ${renderSeleccion(variantes, varianteActual, pagos, pagoSeleccionado, carta.moneda)}
-          <section class="panel card"><div class="card__title">Partes y contacto</div><div class="card__body pf-fields">
-            ${selectField(
-              'tipo_persona',
-              'Tipo de persona',
-              [
-                ['', 'Seleccione'],
-                ['fisica', 'Persona física'],
-                ['juridica', 'Persona jurídica'],
-              ],
-              valor('partes.asegurado.tipo_persona'),
-              true
-            )}
-            ${inputField('nombre_razon_social', 'Nombre o razón social', valor('partes.asegurado.nombre_razon_social'), 'text', true)}
-            ${inputField('documento', 'Documento o RUC', valor('partes.asegurado.documento'), 'text', true)}
-            ${inputField('telefono', 'Teléfono', valor('partes.asegurado.telefono'), 'text', true)}
-            ${inputField('email', 'Correo electrónico', valor('partes.asegurado.email'), 'email', true)}
-            ${inputField('actividad_economica', 'Actividad económica', valor('partes.asegurado.actividad_economica'), 'text', true)}
-            ${inputField('fecha_nacimiento', 'Fecha de nacimiento (persona física)', valor('partes.asegurado.fecha_nacimiento'), 'date')}
-            ${inputField('nacionalidad', 'Nacionalidad (persona física)', valor('partes.asegurado.nacionalidad'))}
-            ${inputField('estado_civil', 'Estado civil (persona física)', valor('partes.asegurado.estado_civil'))}
-            ${inputField('ocupacion', 'Ocupación (persona física)', valor('partes.asegurado.ocupacion'))}
-            ${inputField('ciudad', 'Ciudad', valor('partes.asegurado.ciudad'), 'text', true)}
-            ${inputField('ingreso_mensual', 'Ingreso mensual (opcional)', valor('partes.asegurado.ingreso_mensual'), 'number')}
-            ${inputField('lugar_trabajo', 'Lugar de trabajo (opcional)', valor('partes.asegurado.lugar_trabajo'))}
-            <label class="pf-field pf-field--wide"><span>Dirección</span><textarea name="direccion" rows="2" required>${escapeHtml(valor('partes.asegurado.direccion'))}</textarea></label>
-            <label class="pf-check pf-field--wide"><input type="checkbox" name="tomador_igual_asegurado" ${valor('partes.tomador_igual_asegurado', true) ? 'checked' : ''} /> El tomador es la misma persona que el asegurado</label>
-            ${inputField('tomador_nombre', 'Tomador si es distinto', valor('partes.tomador.nombre_razon_social'))}
-            ${inputField('tomador_documento', 'Documento del tomador', valor('partes.tomador.documento'))}
-            ${inputField('tomador_direccion', 'Dirección del tomador', valor('partes.tomador.direccion'))}
-            ${inputField('tomador_ciudad', 'Ciudad del tomador', valor('partes.tomador.ciudad'))}
-            ${inputField('tomador_telefono', 'Teléfono del tomador', valor('partes.tomador.telefono'))}
-            ${inputField('tomador_email', 'Correo del tomador', valor('partes.tomador.email'), 'email')}
-            ${inputField('representante_nombre', 'Representante legal (persona jurídica)', valor('partes.representante_legal.nombre'))}
-            ${inputField('representante_documento', 'Documento representante', valor('partes.representante_legal.documento'))}
-            ${inputField('representante_cargo', 'Cargo representante', valor('partes.representante_legal.cargo'))}
-          </div></section>
-          <section class="panel card"><div class="card__title">KYC y PLA-FT</div><div class="card__body pf-fields">
-            ${selectField(
-              'es_pep',
-              '¿Es una Persona Expuesta Políticamente?',
-              [
-                ['', 'Seleccione'],
-                ['false', 'No'],
-                ['true', 'Sí'],
-              ],
-              String(valor('pla_ft.es_pep', ''))
-            )}
-            ${inputField('pep_institucion', 'Institución pública', valor('pla_ft.pep_institucion'))}
-            ${inputField('pep_cargo', 'Cargo público', valor('pla_ft.pep_cargo'))}
-            ${selectField(
-              'sujeto_obligado',
-              '¿Es sujeto obligado?',
-              [
-                ['', 'Seleccione'],
-                ['false', 'No'],
-                ['true', 'Sí'],
-              ],
-              String(valor('pla_ft.sujeto_obligado', ''))
-            )}
-            ${selectField(
-              'proveedor_estado',
-              '¿Es proveedor o contratista del Estado?',
-              [
-                ['', 'Sin responder'],
-                ['false', 'No'],
-                ['true', 'Sí'],
-              ],
-              String(valor('pla_ft.proveedor_estado', ''))
-            )}
-            <label class="pf-field pf-field--wide"><span>Origen de fondos (opcional)</span><textarea name="origen_fondos_descripcion" rows="3">${escapeHtml(valor('pla_ft.origen_fondos_descripcion'))}</textarea></label>
-            ${selectField(
-              'tipo_firma',
-              'Modalidad de firma',
-              [
-                ['', 'Seleccione'],
-                ['manual', 'Manual'],
-                ['digital', 'Digital'],
-              ],
-              valor('tipo_firma'),
-              true
-            )}
-            <label class="pf-field pf-field--wide"><span>Descripción detallada (opcional)</span><textarea name="descripcion_detallada" rows="3">${escapeHtml(valor('descripcion_detallada'))}</textarea></label>
-            <label class="pf-field pf-field--wide"><span>Observaciones (opcional)</span><textarea name="observaciones" rows="3">${escapeHtml(valor('observaciones'))}</textarea></label>
-          </div></section>
-         </fieldset></form>
-      </div>
-      <aside class="pf-review">
-        <div class="pf-review__eyebrow">Revisión informativa</div>
-         <h2>${propuesta.estado === 'emitida' ? `Propuesta N° ${escapeHtml(propuesta.numero_propuesta)} emitida` : propuesta.estado === 'anulada' ? `Propuesta N° ${escapeHtml(propuesta.numero_propuesta)} anulada` : readiness.listo ? 'Borrador completo para revisión' : 'Información pendiente'}</h2>
-        <p>${readiness.pendientes.length ? `${escapeHtml(readiness.pendientes.length)} punto(s) por completar.` : 'Los controles básicos de PF-2 están completos.'}</p>
-        <ul>${readiness.pendientes.map((item) => `<li>${escapeHtml(etiquetaPendiente(item))}</li>`).join('')}</ul>
-        ${renderReplacementHistory(propuesta)}
-         ${emitted ? `<button type="button" class="btn-primary" data-action="descargar-pdf">Descargar PDF</button>${propuesta.estado === 'emitida' ? '<button type="button" class="btn-outline" data-action="anular">Anular Propuesta</button>' : '<button type="button" class="btn-outline" data-action="reemplazar">Preparar reemplazo</button>'}` : `<button type="button" class="btn-primary pf-save-button" data-action="guardar" ${state.saving || state.conflicto ? 'disabled' : ''}>Guardar borrador</button><button type="button" class="btn-outline pf-emit" data-action="emitir" ${!readiness.emision_habilitada || !state.textos.emision_habilitada || state.saving || state.conflicto ? 'disabled' : ''}>Emitir Propuesta Formal</button><small>${state.textos.emision_habilitada ? 'La emisión genera y conserva un PDF interno sin firma.' : `Faltan textos oficiales MRC: ${(state.textos.faltantes ?? []).map((item) => escapeHtml(item)).join(', ') || 'cargando textos'}.`}</small>`}
-         ${state.textos.puede_gestionar ? renderTextControls() : ''}
-      </aside>
-    </div>`
+        ${renderWizardProgress(propuesta, readiness, currentStep)}
+        <div class="pf-layout">
+          <div class="pf-main">
+            <section class="pf-origin" aria-label="Carta Oferta de origen">
+              <div class="pf-origin__icon" aria-hidden="true">▣</div>
+              <div class="pf-origin__content">
+                <div class="pf-origin__topline"><span class="pf-origin__eyebrow">Origen verificado</span><button type="button" class="pf-back" data-action="volver-selector">← Cambiar Carta</button></div>
+                <strong>${escapeHtml(carta.numero_carta)} · versión ${escapeHtml(carta.version)}</strong>
+                <small>${escapeHtml(carta.cliente_nombre || 'Sin cliente')} · ${escapeHtml(carta.plan?.nombre || 'MRC')}</small>
+                <div class="pf-origin__details"><span>Documento base de la propuesta</span><span>Estado: ${escapeHtml(carta.estado || 'Emitida')}</span></div>
+              </div>
+            </section>
+            ${state.conflicto ? '<button type="button" class="btn-outline" data-action="recargar-borrador">Recargar versión actual</button>' : ''}
+            <form id="propuesta-form" class="pf-form"><fieldset class="pf-form__fieldset" ${emitted ? 'disabled' : ''}>
+              ${renderStepPanel(currentStep, variantes, varianteActual, pagos, planPagoId, carta.moneda, propuesta)}
+            </fieldset></form>
+            ${currentStep === 5 && state.textos.puede_gestionar ? `<div class="pf-step-five-support">${renderTextControls()}</div>` : ''}
+            ${renderWizardActions(propuesta, emitted, readiness, currentStep)}
+          </div>
+          <aside class="pf-review" aria-label="Resumen de revisión">
+            <div class="pf-review__eyebrow">REVISIÓN INFORMATIVA</div>
+            <div class="pf-review__heading"><div><span class="pf-review__kicker">Estado del borrador</span><h2>Progreso de la propuesta</h2></div><span class="pf-review__status ${readiness.listo ? 'pf-review__status--ready' : ''}" aria-hidden="true">${readiness.listo ? '✓' : '!'}</span></div>
+            <div class="pf-review__meter-wrap"><div class="pf-review__meter-label"><span>Progreso de revisión</span><strong>${readinessPercent}%</strong></div><div class="pf-review__meter" role="progressbar" aria-label="Progreso de la propuesta" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${readinessPercent}"><span class="${readinessPercent === 100 ? 'pf-review__meter-fill--complete' : ''}" style="width: ${readinessPercent}%"></span></div></div>
+            <p class="pf-review__summary">${pendientes.length ? `Faltan ${escapeHtml(pendientes.length)} ${pendientes.length === 1 ? 'campo' : 'campos'} por completar` : 'Todos los campos requeridos están completos.'}</p>
+            ${pendientes.length ? '<p class="pf-review__next">Completa la información para continuar.</p>' : ''}
+            ${renderReviewStatuses(readiness, currentStep)}
+            <div class="pf-review__pending-header"><strong>Campos pendientes en este paso</strong><span>${pendientesActuales.length}</span></div>
+            <ul class="pf-pending-list">${pendientesActuales.length ? pendientesActuales.map((item) => `<li><span aria-hidden="true">!</span>${escapeHtml(etiquetaPendiente(item))}</li>`).join('') : '<li class="pf-pending-list__empty"><span aria-hidden="true">✓</span>No hay campos pendientes en este paso</li>'}</ul>
+            ${renderReviewTip(currentStep, readiness, pendientes.length)}
+            ${renderReplacementHistory(propuesta)}
+          </aside>
+        </div>`
+}
+
+function renderStepPanel(
+  step,
+  variantes,
+  varianteActual,
+  pagos,
+  pagoSeleccionado,
+  moneda,
+  propuesta
+) {
+  if (step === 1) return renderSeleccion(variantes, varianteActual, pagos, pagoSeleccionado, moneda)
+  if (step === 2) return renderAseguradoPanel()
+  if (step === 3) return renderTomadorPanel()
+  if (step === 4) return renderValidacionesPanel()
+  return renderRevisionPanel(propuesta)
+}
+
+function renderAseguradoPanel() {
+  const tipoPersona = valor('partes.asegurado.tipo_persona')
+  return `<section class="pf-step-panel">
+    <header class="pf-section-heading">
+      <span class="pf-section-heading__icon" aria-hidden="true">${ICON_PERSON}</span>
+      <div><h2>Datos del asegurado</h2><p>Completa la información de la persona o empresa que será asegurada.</p></div>
+    </header>
+    <div class="pf-subcards">
+      <section class="pf-subcard" aria-labelledby="pf-personal-title">
+        <header class="pf-subcard__header"><span class="pf-subcard__icon" aria-hidden="true">${ICON_PERSON}</span><div><h3 id="pf-personal-title">Datos personales</h3><p>Información básica del asegurado.</p></div></header>
+        <div class="pf-subcard__body pf-fields">
+          ${selectField(
+            'tipo_persona',
+            'Tipo de persona',
+            [
+              ['', 'Seleccione'],
+              ['fisica', 'Persona física'],
+              ['juridica', 'Persona jurídica'],
+            ],
+            tipoPersona,
+            true
+          )}
+          ${inputField('nombre_razon_social', 'Nombre o razón social', valor('partes.asegurado.nombre_razon_social'), 'text', true)}
+          ${inputField('documento', 'Documento o RUC', valor('partes.asegurado.documento'), 'text', true)}
+          ${inputField('actividad_economica', 'Actividad económica', valor('partes.asegurado.actividad_economica'), 'text', true)}
+          ${inputField('fecha_nacimiento', 'Fecha de nacimiento', valor('partes.asegurado.fecha_nacimiento'), 'date', tipoPersona === 'fisica')}
+          ${inputField('nacionalidad', 'Nacionalidad', valor('partes.asegurado.nacionalidad'), 'text', tipoPersona === 'fisica')}
+          ${inputField('estado_civil', 'Estado civil', valor('partes.asegurado.estado_civil'), 'text', tipoPersona === 'fisica')}
+          ${inputField('ocupacion', 'Ocupación', valor('partes.asegurado.ocupacion'), 'text', tipoPersona === 'fisica')}
+          ${inputField('ingreso_mensual', 'Ingreso mensual (opcional)', valor('partes.asegurado.ingreso_mensual'), 'number')}
+          ${inputField('lugar_trabajo', 'Lugar de trabajo (opcional)', valor('partes.asegurado.lugar_trabajo'))}
+        </div>
+      </section>
+      <section class="pf-subcard" aria-labelledby="pf-contact-title">
+        <header class="pf-subcard__header"><span class="pf-subcard__icon" aria-hidden="true">${ICON_PHONE}</span><div><h3 id="pf-contact-title">Contacto</h3><p>Medios de contacto del asegurado.</p></div></header>
+        <div class="pf-subcard__body pf-fields">
+          ${phoneField('telefono', 'Teléfono', valor('partes.asegurado.telefono'), true)}
+          ${inputField('email', 'Correo electrónico', valor('partes.asegurado.email'), 'email', true)}
+        </div>
+      </section>
+      <section class="pf-subcard" aria-labelledby="pf-address-title">
+        <header class="pf-subcard__header"><span class="pf-subcard__icon" aria-hidden="true">${ICON_LOCATION}</span><div><h3 id="pf-address-title">Dirección</h3><p>Domicilio del asegurado.</p></div></header>
+        <div class="pf-subcard__body pf-fields">
+          ${inputField('ciudad', 'Ciudad', valor('partes.asegurado.ciudad'), 'text', true)}
+          <label class="pf-field pf-field--wide"><span>Dirección</span><textarea name="direccion" rows="2" required>${escapeHtml(valor('partes.asegurado.direccion'))}</textarea></label>
+        </div>
+      </section>
+    </div>
+  </section>`
+}
+
+function renderTomadorPanel() {
+  const igual = valor('partes.tomador_igual_asegurado', true)
+  const tipoPersona = valor('partes.asegurado.tipo_persona')
+  const required = igual === false
+  return `<section class="pf-step-panel">
+    <header class="pf-section-heading">
+      <span class="pf-section-heading__icon" aria-hidden="true">${ICON_PERSON}</span>
+      <div><h2>Datos del tomador</h2><p>Confirmá la relación con el asegurado y la representación legal.</p></div>
+    </header>
+    <div class="pf-subcards">
+      <section class="pf-subcard" aria-labelledby="pf-tomador-title">
+        <header class="pf-subcard__header"><div><h3 id="pf-tomador-title">Tomador</h3><p>Indicá si es la misma persona o completá sus datos.</p></div></header>
+        <div class="pf-subcard__body pf-fields">
+          <label class="pf-check pf-field--wide"><input type="checkbox" name="tomador_igual_asegurado" ${igual ? 'checked' : ''} /> El tomador es la misma persona que el asegurado</label>
+          ${igual ? '<p class="pf-inline-note pf-field--wide">Se utilizarán los datos del asegurado para el tomador.</p>' : `${inputField('tomador_nombre', 'Nombre o razón social', valor('partes.tomador.nombre_razon_social'), 'text', required)}${inputField('tomador_documento', 'Documento del tomador', valor('partes.tomador.documento'), 'text', required)}${inputField('tomador_direccion', 'Dirección del tomador', valor('partes.tomador.direccion'), 'text', required)}${inputField('tomador_ciudad', 'Ciudad del tomador', valor('partes.tomador.ciudad'), 'text', required)}${inputField('tomador_telefono', 'Teléfono del tomador', valor('partes.tomador.telefono'), 'text', required)}${inputField('tomador_email', 'Correo del tomador', valor('partes.tomador.email'), 'email', required)}`}
+        </div>
+      </section>
+      ${tipoPersona === 'juridica' ? `<section class="pf-subcard" aria-labelledby="pf-representative-title"><header class="pf-subcard__header"><div><h3 id="pf-representative-title">Representante legal</h3><p>Completá los datos de quien firma en nombre de la persona jurídica.</p></div></header><div class="pf-subcard__body pf-fields">${inputField('representante_nombre', 'Nombre del representante', valor('partes.representante_legal.nombre'), 'text', true)}${inputField('representante_documento', 'Documento del representante', valor('partes.representante_legal.documento'), 'text', true)}${inputField('representante_cargo', 'Cargo del representante', valor('partes.representante_legal.cargo'), 'text', true)}</div></section>` : ''}
+    </div>
+  </section>`
+}
+
+function renderValidacionesPanel() {
+  return `<section class="pf-step-panel">
+    <header class="pf-section-heading">
+      <span class="pf-section-heading__icon" aria-hidden="true">✓</span>
+      <div><h2>Validaciones</h2><p>Completá los datos de cumplimiento y perfil que forman parte de la propuesta.</p></div>
+    </header>
+    <div class="pf-subcards">
+      <section class="pf-subcard" aria-labelledby="pf-pla-title">
+        <header class="pf-subcard__header"><div><h3 id="pf-pla-title">Declaraciones PLA-FT</h3><p>Respondé según la información disponible.</p></div></header>
+        <div class="pf-subcard__body pf-fields">
+          ${selectField(
+            'es_pep',
+            '¿Es una Persona Expuesta Políticamente?',
+            [
+              ['', 'Seleccione'],
+              ['false', 'No'],
+              ['true', 'Sí'],
+            ],
+            String(valor('pla_ft.es_pep', ''))
+          )}
+          ${inputField('pep_institucion', 'Institución pública', valor('pla_ft.pep_institucion'))}
+          ${inputField('pep_cargo', 'Cargo público', valor('pla_ft.pep_cargo'))}
+        </div>
+      </section>
+      <section class="pf-subcard" aria-labelledby="pf-profile-title">
+        <header class="pf-subcard__header"><div><h3 id="pf-profile-title">Perfil regulatorio</h3><p>Conservá las respuestas declaradas por el asegurado.</p></div></header>
+        <div class="pf-subcard__body pf-fields">
+          ${selectField(
+            'sujeto_obligado',
+            '¿Es sujeto obligado?',
+            [
+              ['', 'Seleccione'],
+              ['false', 'No'],
+              ['true', 'Sí'],
+            ],
+            String(valor('pla_ft.sujeto_obligado', ''))
+          )}
+          ${selectField(
+            'proveedor_estado',
+            '¿Es proveedor o contratista del Estado?',
+            [
+              ['', 'Sin responder'],
+              ['false', 'No'],
+              ['true', 'Sí'],
+            ],
+            String(valor('pla_ft.proveedor_estado', ''))
+          )}
+          <label class="pf-field pf-field--wide"><span>Origen de fondos (opcional)</span><textarea name="origen_fondos_descripcion" rows="3">${escapeHtml(valor('pla_ft.origen_fondos_descripcion'))}</textarea></label>
+        </div>
+      </section>
+    </div>
+  </section>`
+}
+
+function renderRevisionPanel(propuesta) {
+  const insured = valor('partes.asegurado.nombre_razon_social') || 'Sin completar'
+  const document = valor('partes.asegurado.documento') || 'Sin completar'
+  const signature = valor('tipo_firma') || 'Sin seleccionar'
+  return `<section class="pf-step-panel">
+    <header class="pf-section-heading">
+      <span class="pf-section-heading__icon" aria-hidden="true">05</span>
+      <div><h2>Revisión y emisión</h2><p>Verificá el resumen antes de ejecutar una acción.</p></div>
+    </header>
+    <div class="pf-subcards">
+      <section class="pf-subcard" aria-labelledby="pf-signature-title">
+        <header class="pf-subcard__header"><div><h3 id="pf-signature-title">Firma y descripción</h3><p>Completá los datos finales de la Propuesta Formal.</p></div></header>
+        <div class="pf-subcard__body pf-fields">
+          ${selectField(
+            'tipo_firma',
+            'Modalidad de firma',
+            [
+              ['', 'Seleccione'],
+              ['manual', 'Manual'],
+              ['digital', 'Digital'],
+            ],
+            valor('tipo_firma'),
+            true
+          )}
+          <label class="pf-field pf-field--wide"><span>Descripción detallada (opcional)</span><textarea name="descripcion_detallada" rows="3">${escapeHtml(valor('descripcion_detallada'))}</textarea></label>
+          <label class="pf-field pf-field--wide"><span>Observaciones (opcional)</span><textarea name="observaciones" rows="3">${escapeHtml(valor('observaciones'))}</textarea></label>
+        </div>
+      </section>
+      <section class="pf-subcard" aria-labelledby="pf-final-review-title">
+        <header class="pf-subcard__header"><div><h3 id="pf-final-review-title">Revisión final</h3><p>Estos datos se conservarán junto con la emisión.</p></div></header>
+        <div class="pf-subcard__body pf-review-summary"><div><span>Asegurado</span><strong>${escapeHtml(insured)}</strong></div><div><span>Documento</span><strong>${escapeHtml(document)}</strong></div><div><span>Firma</span><strong>${escapeHtml(signature)}</strong></div><p>${propuesta.estado === 'borrador' ? 'La emisión generará y conservará el PDF interno de la Propuesta Formal.' : 'Esta propuesta conserva sus acciones de emisión y gestión en este paso.'}</p></div>
+      </section>
+    </div>
+  </section>`
+}
+
+function renderWizardActions(propuesta, emitted, readiness, currentStep) {
+  const navigation =
+    !emitted && currentStep > 1
+      ? '<button type="button" class="btn-outline" data-action="paso-atras">Atrás</button>'
+      : ''
+  const next =
+    currentStep < 5
+      ? '<button type="button" class="btn-primary" data-action="paso-continuar">Continuar</button>'
+      : ''
+  const saveAction = `<button type="button" class="btn-primary pf-save-button" data-action="guardar" ${state.saving || state.conflicto ? 'disabled' : ''}>Guardar borrador</button>`
+  const finalActions = emitted
+    ? `<button type="button" class="btn-primary" data-action="descargar-pdf">Descargar PDF</button>${propuesta.estado === 'emitida' ? '<button type="button" class="btn-outline" data-action="anular">Anular Propuesta</button>' : '<button type="button" class="btn-outline" data-action="reemplazar">Preparar reemplazo</button>'}`
+    : currentStep === 5
+      ? `${saveAction}<button type="button" class="btn-outline pf-emit" data-action="emitir" ${!readiness.emision_habilitada || !state.textos.emision_habilitada || state.saving || state.conflicto ? 'disabled' : ''}>Emitir Propuesta Formal</button>`
+      : `${saveAction}${next}`
+  return `<div class="pf-actions-bar"><div class="pf-actions-bar__status"><span class="pf-actions-bar__dot ${emitted ? 'pf-actions-bar__dot--complete' : ''}" aria-hidden="true"></span><div><strong>${emitted ? 'Documento emitido' : 'Borrador editable'}</strong><small data-save-indicator role="status" aria-live="polite">${escapeHtml(state.saveState)}</small></div></div><div class="pf-actions-bar__back">${navigation}</div><div class="pf-actions-bar__buttons">${finalActions}</div>${!emitted && currentStep === 5 ? `<small class="pf-actions-bar__hint">${state.textos.emision_habilitada ? 'La emisión genera y conserva un PDF interno sin firma.' : `Faltan textos oficiales MRC: ${(state.textos.faltantes ?? []).map((item) => escapeHtml(item)).join(', ') || 'cargando textos'}.`}</small>` : ''}</div>`
+}
+
+function renderReviewTip(currentStep, readiness, pendientesCount) {
+  const tips = {
+    1: [
+      'Selección comercial',
+      'Elegí únicamente una variante y una forma de pago que ya estén presentes en la Carta Oferta.',
+    ],
+    2: [
+      'Datos del asegurado',
+      'Usá la información declarada en la Carta y completá los datos que falten antes de continuar.',
+    ],
+    3: [
+      'Partes de la propuesta',
+      'Si el tomador es distinto, sus datos y los de la representación legal deben quedar completos.',
+    ],
+    4: [
+      'Validaciones',
+      'Revisá las declaraciones de cumplimiento y el perfil regulatorio sin agregar información que no corresponda.',
+    ],
+    5: [
+      readiness.listo ? 'Lista para emitir' : 'Antes de emitir',
+      readiness.listo
+        ? 'Guardá el borrador y verificá el resumen final antes de emitir la Propuesta Formal.'
+        : `Todavía ${pendientesCount === 1 ? 'falta' : 'faltan'} ${pendientesCount} ${pendientesCount === 1 ? 'dato' : 'datos'} obligatorios.`,
+    ],
+  }
+  const [title, text] = tips[currentStep] ?? tips[1]
+  return `<div class="pf-review__tip"><span class="pf-review__tip-icon" aria-hidden="true">${ICON_SHIELD}</span><div><strong>${title}</strong><p>${text}</p></div></div>`
+}
+
+function pendientesDelPaso(pendientes, step) {
+  return pendientes.filter((code) => {
+    if (code === 'seleccion_comercial' || code.startsWith('carta:')) return step === 1
+    if (code.startsWith('asegurado.')) return step === 2
+    if (code.startsWith('tomador.') || code.startsWith('representante_legal')) return step === 3
+    if (code === 'tipo_firma') return step === 5
+    return step === 4
+  })
+}
+
+function renderReviewStatuses(readiness, currentStep) {
+  return `<ol class="pf-review__steps" aria-label="Estado de los pasos">${[1, 2, 3, 4, 5]
+    .map((step) => {
+      const current = step === currentStep
+      const complete = pasoListo(step, readiness)
+      const status = current ? 'En progreso' : complete ? 'Completado' : 'Pendiente'
+      return `<li class="pf-review__step pf-review__step--${current ? 'current' : complete ? 'complete' : 'pending'}"><span>${current ? step : complete ? '✓' : step}</span><div><strong>${NOMBRES_PASOS[step - 1]}</strong><small>${status}</small></div></li>`
+    })
+    .join('')}</ol>`
+}
+
+function renderWizardProgress(propuesta, readiness, currentStep) {
+  const description =
+    propuesta.estado === 'emitida'
+      ? 'Propuesta emitida'
+      : propuesta.estado === 'anulada'
+        ? 'Propuesta anulada'
+        : `Paso ${currentStep} de 5`
+  return `<section class="pf-progress" aria-label="Progreso de la Propuesta Formal"><div class="pf-progress__intro"><span>${description}</span><strong>${NOMBRES_PASOS[currentStep - 1]}</strong></div><ol class="pf-steps" aria-label="Pasos de la propuesta">${[
+    1, 2, 3, 4, 5,
+  ]
+    .map((step) => {
+      const complete = pasoListo(step, readiness)
+      const current = step === currentStep
+      const canOpen = current || complete
+      const status = current ? 'En progreso' : complete ? 'Completado' : 'Pendiente'
+      return `<li class="pf-step pf-step--${current ? 'current' : complete ? 'complete' : 'pending'}"><button type="button" class="pf-step__button" data-action="ir-paso" data-step="${step}" ${canOpen ? '' : 'disabled'} aria-label="${escapeHtml(`${NOMBRES_PASOS[step - 1]}, ${status}`)}" ${current ? 'aria-current="step"' : ''}><span class="pf-step__number">${complete && !current ? '✓' : String(step).padStart(2, '0')}</span><span class="pf-step__copy"><span class="pf-step__label">${NOMBRES_PASOS[step - 1]}</span><small class="pf-step__status">${status}</small></span></button></li>`
+    })
+    .join('')}</ol></section>`
+}
+
+const NOMBRES_PASOS = [
+  'Carta y selección',
+  'Asegurado',
+  'Tomador',
+  'Validaciones',
+  'Revisión y emisión',
+]
+
+function obtenerReadinessActual() {
+  const serverReadiness = state.propuesta?.readiness ?? { pendientes: [] }
+  const pendientes = calcularPendientesLocales()
+  return {
+    ...serverReadiness,
+    pendientes,
+    listo: pendientes.length === 0,
+    emision_habilitada: pendientes.length === 0,
+  }
+}
+
+function calcularPendientesLocales() {
+  const propuesta = state.propuesta ?? {}
+  return calcularPendientesFor(propuesta, seleccionActual())
+}
+
+function calcularPendientesFor(propuesta, selection = {}) {
+  const draft = propuesta?.draft_json ?? {}
+  const insured = draft.partes?.asegurado ?? {}
+  const pendientes = (propuesta?.readiness?.pendientes ?? []).filter((item) =>
+    item.startsWith('carta:')
+  )
+  const varianteId = selection.varianteId ?? propuesta?.cotizacion_variante_id
+  const planPagoId = selection.planPagoId ?? propuesta?.cotizacion_plan_pago_id
+  if (!varianteId || !planPagoId) pendientes.push('seleccion_comercial')
+  for (const field of [
+    'tipo_persona',
+    'nombre_razon_social',
+    'documento',
+    'direccion',
+    'ciudad',
+    'telefono',
+    'email',
+    'actividad_economica',
+  ])
+    if (!insured[field]) pendientes.push(`asegurado.${field}`)
+  if (insured.tipo_persona === 'fisica')
+    for (const field of ['fecha_nacimiento', 'nacionalidad', 'estado_civil', 'ocupacion'])
+      if (!insured[field]) pendientes.push(`asegurado.${field}`)
+  if (insured.tipo_persona === 'juridica')
+    for (const field of ['nombre', 'documento', 'cargo'])
+      if (!draft.partes?.representante_legal?.[field])
+        pendientes.push(`representante_legal.${field}`)
+  if (draft.partes?.tomador_igual_asegurado === false) {
+    for (const field of [
+      'nombre_razon_social',
+      'documento',
+      'direccion',
+      'ciudad',
+      'telefono',
+      'email',
+    ])
+      if (!draft.partes?.tomador?.[field]) pendientes.push(`tomador.${field}`)
+    if (draft.partes?.tomador?.documento === insured.documento)
+      pendientes.push('tomador.identidad_distinta')
+  }
+  if (!draft.tipo_firma) pendientes.push('tipo_firma')
+  return [...new Set(pendientes)]
+}
+
+function calcularCamposRequeridos(propuesta) {
+  const draft = propuesta?.draft_json ?? {}
+  const insured = draft.partes?.asegurado ?? {}
+  const required = new Set(
+    (propuesta?.readiness?.pendientes ?? []).filter((item) => item.startsWith('carta:'))
+  )
+  required.add('seleccion_comercial')
+  for (const field of [
+    'tipo_persona',
+    'nombre_razon_social',
+    'documento',
+    'direccion',
+    'ciudad',
+    'telefono',
+    'email',
+    'actividad_economica',
+  ])
+    required.add(`asegurado.${field}`)
+  if (insured.tipo_persona === 'fisica')
+    for (const field of ['fecha_nacimiento', 'nacionalidad', 'estado_civil', 'ocupacion'])
+      required.add(`asegurado.${field}`)
+  if (insured.tipo_persona === 'juridica')
+    for (const field of ['nombre', 'documento', 'cargo'])
+      required.add(`representante_legal.${field}`)
+  if (draft.partes?.tomador_igual_asegurado === false) {
+    for (const field of [
+      'nombre_razon_social',
+      'documento',
+      'direccion',
+      'ciudad',
+      'telefono',
+      'email',
+    ])
+      required.add(`tomador.${field}`)
+    if (draft.partes?.tomador?.documento === insured.documento)
+      required.add('tomador.identidad_distinta')
+  }
+  required.add('tipo_firma')
+  return [...required]
+}
+
+function pasoListo(step, readiness) {
+  const pendientes = readiness?.pendientes ?? []
+  if (step === 1)
+    return !pendientes.some((item) => item === 'seleccion_comercial' || item.startsWith('carta:'))
+  if (step === 2) return !pendientes.some((item) => item.startsWith('asegurado.'))
+  if (step === 3)
+    return !pendientes.some(
+      (item) => item.startsWith('tomador.') || item.startsWith('representante_legal')
+    )
+  if (step === 4) return !pendientes.some((item) => item.startsWith('pla_ft.'))
+  return Boolean(readiness?.listo)
+}
+
+function determinarPasoInicial(propuesta) {
+  if (['emitida', 'anulada'].includes(propuesta?.estado)) return 5
+  const readiness = { pendientes: calcularPendientesFor(propuesta) }
+  for (const step of [1, 2, 3, 4]) if (!pasoListo(step, readiness)) return step
+  return 5
+}
+
+function calcularWizardReadinessPercent(propuesta, readiness) {
+  const required = calcularCamposRequeridos(propuesta)
+  if (!required.length) return 100
+  const pendientes = new Set(readiness?.pendientes ?? [])
+  const complete = required.filter((field) => !pendientes.has(field)).length
+  return Math.round((complete / required.length) * 100)
+}
+
+function validarPaso(step) {
+  const form = app.querySelector('#propuesta-form')
+  if (!form) return false
+  if (state.propuesta) state.propuesta.draft_json = leerFormulario()
+  form.querySelectorAll(':invalid').forEach((field) => field.setCustomValidity(''))
+  if (step === 1) {
+    const variant = form.querySelector('#cotizacion-variante-id')
+    const payment = form.querySelector('#cotizacion-plan-pago-id')
+    if (!variant?.value) variant?.setCustomValidity('Seleccioná una variante.')
+    if (!payment?.value) payment?.setCustomValidity('Seleccioná una forma de pago.')
+    if (variant?.value && payment?.value && !seleccionActual().varianteId)
+      variant.setCustomValidity('Seleccioná una variante válida.')
+  }
+  const valid = form.reportValidity()
+  if (!valid) {
+    const firstInvalid = form.querySelector(':invalid')
+    firstInvalid?.focus()
+  }
+  return valid
+}
+
+function avanzarPaso() {
+  if (state.currentStep >= 5 || !validarPaso(state.currentStep)) return
+  state.currentStep += 1
+  render()
+}
+
+function retrocederPaso() {
+  if (state.currentStep <= 1) return
+  state.currentStep -= 1
+  render()
+}
+
+function irAPaso(step) {
+  const readiness = obtenerReadinessActual()
+  if (step < 1 || step > 5 || (step !== state.currentStep && !pasoListo(step, readiness))) return
+  state.currentStep = step
+  render()
 }
 
 function renderReplacementHistory(propuesta) {
@@ -513,18 +984,23 @@ function renderReplacementHistory(propuesta) {
 }
 
 function renderSeleccion(variantes, varianteActual, pagos, pagoSeleccionado, moneda) {
-  return `<section class="panel card"><div class="card__title">Selección comercial</div><div class="card__body pf-selection">
-    <label class="pf-field"><span>Variante</span><select id="cotizacion-variante-id" class="field-input"><option value="">Seleccione</option>${variantes.map((v) => `<option value="${escapeHtml(v.id)}" ${v.id === varianteActual?.id ? 'selected' : ''}>${escapeHtml(v.numero_variante || `Variante ${v.id}`)} · ${fmtMoneda(v.prima, moneda)}</option>`).join('')}</select></label>
-    <label class="pf-field"><span>Forma de pago</span><select id="cotizacion-plan-pago-id" class="field-input"><option value="">Seleccione</option>${pagos.map((p) => `<option value="${escapeHtml(p.id)}" ${p.id === pagoSeleccionado ? 'selected' : ''}>${escapeHtml(p.formas_pago?.nombre_display || 'Forma de pago')} · ${fmtMoneda(p.premio_total, moneda)}</option>`).join('')}</select></label>
-    <p>Los importes son de solo lectura y provienen de la cotización persistida.</p>
-  </div></section>`
+  return `<section class="panel card"><div class="card__title pf-card-title"><span class="pf-card-title__icon" aria-hidden="true">01</span><div><strong>Carta y selección</strong><small>Variante y forma de pago persistidos en la Carta Oferta</small></div></div><div class="card__body pf-selection">
+        <div class="pf-group-label pf-field--wide"><span>Selección comercial</span><small>Elegí una alternativa ya calculada, sin modificar los importes de la Carta Oferta.</small></div>
+        <label class="pf-field"><span>Variante</span><select id="cotizacion-variante-id" class="field-input" required><option value="">Seleccione</option>${variantes.map((v) => `<option value="${escapeHtml(v.id)}" ${v.id === varianteActual?.id ? 'selected' : ''}>${escapeHtml(v.numero_variante || `Variante ${v.id}`)} · ${fmtMoneda(v.prima, moneda)}</option>`).join('')}</select></label>
+        <label class="pf-field"><span>Forma de pago</span><select id="cotizacion-plan-pago-id" class="field-input" required><option value="">Seleccione</option>${pagos.map((p) => `<option value="${escapeHtml(p.id)}" ${p.id === pagoSeleccionado ? 'selected' : ''}>${escapeHtml(p.formas_pago?.nombre_display || 'Forma de pago')} · ${fmtMoneda(p.premio_total, moneda)}</option>`).join('')}</select></label>
+        <p>Los importes son de solo lectura y provienen de la cotización persistida.</p>
+      </div></section>`
 }
 
 const INPUT_TYPES = new Set(['text', 'email', 'date', 'number'])
 
 function inputField(name, label, value, type = 'text', required = false) {
   const safeType = INPUT_TYPES.has(type) ? type : 'text'
-  return `<label class="pf-field"><span>${escapeHtml(label)}</span><input class="field-input" type="${safeType}" name="${escapeHtml(name)}" value="${escapeHtml(value)}" ${required ? 'required' : ''} /></label>`
+  return `<label class="pf-field"><span>${escapeHtml(label)}</span><input class="field-input" type="${safeType}" name="${escapeHtml(name)}" value="${escapeHtml(value ?? '')}" ${required ? 'required' : ''} /></label>`
+}
+
+function phoneField(name, label, value, required = false) {
+  return `<label class="pf-field"><span>${escapeHtml(label)}</span><span class="pf-phone"><span class="pf-phone__prefix" aria-hidden="true">🇵🇾 +595</span><input class="field-input" type="text" name="${escapeHtml(name)}" value="${escapeHtml(value ?? '')}" ${required ? 'required' : ''} /></span></label>`
 }
 
 function renderTextControls() {
@@ -553,10 +1029,26 @@ function etiquetaPendiente(code) {
     'asegurado.email': 'Correo electrónico',
     'asegurado.actividad_economica': 'Actividad económica',
     representante_legal: 'Representante legal',
+    'representante_legal.nombre': 'Nombre del representante',
+    'representante_legal.documento': 'Documento del representante',
+    'representante_legal.cargo': 'Cargo del representante',
     tomador: 'Datos del tomador',
+    'tomador.nombre_razon_social': 'Nombre del tomador',
+    'tomador.documento': 'Documento del tomador',
+    'tomador.direccion': 'Dirección del tomador',
+    'tomador.ciudad': 'Ciudad del tomador',
+    'tomador.telefono': 'Teléfono del tomador',
+    'tomador.email': 'Correo del tomador',
+    'tomador.identidad_distinta': 'Documento distinto al asegurado',
+    'asegurado.fecha_nacimiento': 'Fecha de nacimiento',
+    'asegurado.nacionalidad': 'Nacionalidad',
+    'asegurado.estado_civil': 'Estado civil',
+    'asegurado.ocupacion': 'Ocupación',
     tipo_firma: 'Modalidad de firma',
   }
-  return labels[code] || code.replace('carta:', 'Carta Oferta: ')
+  if (labels[code]) return labels[code]
+  if (code.startsWith('carta:')) return 'Carta Oferta apta para continuar'
+  return 'Información requerida'
 }
 
 app.addEventListener('submit', (event) => {
@@ -589,6 +1081,12 @@ app.addEventListener('change', (event) => {
     }
     return
   }
+  if (event.target.name === 'tipo_persona' || event.target.name === 'tomador_igual_asegurado') {
+    state.propuesta.draft_json = leerFormulario()
+    programarAutosave()
+    render()
+    return
+  }
   if (event.target.closest('#propuesta-form') || event.target.id === 'cotizacion-plan-pago-id') {
     programarAutosave()
   }
@@ -604,6 +1102,9 @@ app.addEventListener('click', (event) => {
   if (action === 'descargar-pdf') descargarPdf()
   if (action === 'anular') anular()
   if (action === 'reemplazar') abrirCarta(state.carta.id)
+  if (action === 'paso-continuar') avanzarPaso()
+  if (action === 'paso-atras') retrocederPaso()
+  if (action === 'ir-paso') irAPaso(Number(target.dataset.step))
   if (action === 'recargar-borrador') recargarBorrador()
   if (action === 'volver-selector') {
     window.clearTimeout(autosaveTimer)

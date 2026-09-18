@@ -3251,3 +3251,61 @@ backend — el frontend no cambió.
 **Aprendizaje nuevo:** hay un usuario de TEST dedicado a pruebas de permisos — `qatest@test.com` / rol
 admin — separado de `test@test.com` (agente, sin `puede_anular_propuestas`). Útil para cualquier prueba en
 vivo futura que necesite permisos de admin en TEST.
+
+## 100. Ocultar botón "Anular" sin permiso en el listado de Propuestas Formales (PR #406) (2026-09-18)
+
+**Qué se hizo:** en el listado de Propuestas Formales, el botón "Anular" ahora se **oculta por completo**
+(no se renderiza) para el usuario que no tiene el permiso `puede_anular_propuestas`, en vez de mostrarse
+deshabilitado con un tooltip explicativo como antes.
+
+**Por qué:** Kevin, tras verificar en vivo el guard de permisos en la sección 99, pidió simplificar la UX —
+"los roles que no tienen permitido anular una propuesta, que directamente no les muestre el botón". Al
+preguntarle si convenía aplicar el mismo criterio a "Descargar PDF", pidió explícitamente dejarlo como está
+("Solo Anular") — ese botón sigue deshabilitado con tooltip, sin cambios.
+
+**Fix (PR #406, TDD estricto):**
+
+- `frontend/propuestas-listado/acciones.js`: `accionesDeFila(fila)` ahora solo agrega la acción `anular` al
+  arreglo de botones cuando `fila.puede_anular` es `true` — antes siempre la agregaba con
+  `enabled: Boolean(fila.puede_anular)` y `disabledTitle`. La decisión sigue siendo pura a partir del flag
+  que ya manda el backend (`listado.service.js`, sin cambios) — no se reintrodujo lógica de derivar el
+  permiso a partir del `estado` en el frontend.
+- 5 tests de `acciones.test.js` actualizados: en vez de esperar `enabled: false` con tooltip, ahora aseveran
+  `porAccion.anular === undefined` cuando no hay permiso.
+- Suite completa frontend en verde tras el cambio.
+
+**Deploy a TEST y verificación en vivo:** desplegado el bundle de frontend actualizado a
+`test-web.cotizador.lat`. Verificado con Playwright: con `test@test.com` (agente, sin permiso) el botón
+"Anular" no aparece en ninguna fila del listado; con `qatest@test.com` (admin) sigue apareciendo habilitado
+donde corresponde. "Descargar PDF" no cambió su comportamiento en ningún caso.
+
+## 101. Link "Nueva propuesta" en el listado de Propuestas Formales (PR #407) (2026-09-18)
+
+**Qué se hizo:** se agregó un link "Nueva propuesta" dentro del listado de Propuestas Formales
+(`frontend/propuestas-listado/`), ubicado en la barra de filtros junto al botón "Limpiar filtros", que
+navega a `../propuestas/` (el wizard de Propuesta Formal, que sin parámetros en la URL arranca mostrando el
+selector de Carta Oferta — confirmado leyendo `propuestas.js` sin modificarlo).
+
+**Por qué:** Kevin notó que, una vez dentro de la pantalla de listado, no había forma de iniciar una
+propuesta nueva sin volver al panel de Bienvenida — "necesito un botón para crear nueva propuesta, ya que
+actualmente veo que solo se puede crear únicamente desde el panel de bienvenida". Consultado sobre la
+ubicación exacta (encabezado de página vs. barra de filtros), eligió que quedara al lado de "Limpiar
+filtros".
+
+**Implementación (PR #407, TDD estricto):**
+
+- `frontend/propuestas-listado/propuestas-listado.js`: dentro de `renderFiltros()`, se agregó
+  `<a class="btn-primary" href="../propuestas/" data-action="nueva-propuesta">Nueva propuesta</a>` como
+  hermano de los botones "Buscar" y "Limpiar filtros" dentro de `.historial-filtros__acciones`. Es un link
+  simple de navegación (`<a>`), no dispara ningún fetch ni maneja estado — no toca `frontend/propuestas/`
+  (los archivos de Codex), solo agrega un punto de entrada nuevo hacia esa pantalla ya existente.
+- `frontend/propuestas-listado/propuestas-listado.test.js`: test nuevo que verifica que el link existe, que
+  su `href` es `../propuestas/`, que su texto es "Nueva propuesta" y que comparte el mismo contenedor padre
+  que el botón "Limpiar filtros".
+- Suite completa frontend en verde tras el cambio.
+
+**Deploy a TEST y verificación en vivo:** desplegado el bundle de frontend actualizado a
+`test-web.cotizador.lat` (ver aprendizajes de la sección 98 sobre verificación por hash en disco para
+`.html`, aplicado también acá). Verificado con Playwright: el link aparece junto a "Limpiar filtros" en el
+listado, y al hacer clic navega correctamente a `../propuestas/`, que carga el selector de Carta Oferta del
+wizard (capturas `8-nueva-propuesta.png` y `9-wizard-selector-carta.png`).

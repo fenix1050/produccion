@@ -41,6 +41,106 @@ test('proposal draft writes delegate only IDs, revision, and validated draft JSO
   assert.equal(JSON.stringify(calls).includes('premio_total'), false)
 })
 
+test('listarPropuestas calls the RPC with the expected params and unwraps total_registros into { data, count }', async (t) => {
+  const calls = []
+  const rows = [
+    { id: 1, estado: 'emitida', total_registros: 2 },
+    { id: 2, estado: 'borrador', total_registros: 2 },
+  ]
+  t.mock.module('../config/supabase.js', {
+    namedExports: {
+      supabase: {
+        rpc: async (name, payload) => {
+          calls.push({ name, payload })
+          return { data: rows, error: null }
+        },
+      },
+    },
+  })
+
+  const repository = await import('./propuestas.repository.js?case=listar-propuestas')
+  const result = await repository.listarPropuestas({
+    usuarioId: 5,
+    esAdmin: false,
+    busqueda: 'cliente',
+    estados: ['emitida', 'borrador'],
+    cartaOfertaId: null,
+    limit: 20,
+    offset: 0,
+  })
+
+  assert.deepEqual(calls, [
+    {
+      name: 'listar_propuestas_formales',
+      payload: {
+        p_usuario_id: 5,
+        p_es_admin: false,
+        p_busqueda: 'cliente',
+        p_estados: ['emitida', 'borrador'],
+        p_carta_oferta_id: null,
+        p_limite: 20,
+        p_offset: 0,
+      },
+    },
+  ])
+  assert.deepEqual(result.data, [
+    { id: 1, estado: 'emitida' },
+    { id: 2, estado: 'borrador' },
+  ])
+  assert.equal(result.count, 2)
+  assert.ok(!Object.prototype.hasOwnProperty.call(result.data[0], 'total_registros'))
+})
+
+test('listarPropuestas returns { data: [], count: 0 } when there are no matching rows', async (t) => {
+  t.mock.module('../config/supabase.js', {
+    namedExports: {
+      supabase: {
+        rpc: async () => ({ data: [], error: null }),
+      },
+    },
+  })
+
+  const repository = await import('./propuestas.repository.js?case=listar-propuestas-empty')
+  const result = await repository.listarPropuestas({
+    usuarioId: 5,
+    esAdmin: false,
+    busqueda: null,
+    estados: null,
+    cartaOfertaId: null,
+    limit: 20,
+    offset: 0,
+  })
+
+  assert.deepEqual(result, { data: [], count: 0 })
+})
+
+test('listarPropuestas passes null p_estados when the estados list is empty (not [])', async (t) => {
+  const calls = []
+  t.mock.module('../config/supabase.js', {
+    namedExports: {
+      supabase: {
+        rpc: async (name, payload) => {
+          calls.push(payload)
+          return { data: [], error: null }
+        },
+      },
+    },
+  })
+
+  const repository = await import('./propuestas.repository.js?case=listar-propuestas-empty-estados')
+  await repository.listarPropuestas({
+    usuarioId: 5,
+    esAdmin: false,
+    busqueda: null,
+    estados: [],
+    cartaOfertaId: null,
+    limit: 20,
+    offset: 0,
+  })
+
+  assert.equal(calls[0].p_estados, null)
+})
+
 test('annulled proposal context includes its emitted replacement without changing either proposal', async (t) => {
   const calls = []
   const original = { id: 9, estado: 'anulada', cartas_oferta: { id: 3 } }

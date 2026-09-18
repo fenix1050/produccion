@@ -83,6 +83,25 @@ export const anularPropuestaSchema = z.object({
   motivo: z.string().trim().min(3).max(1000),
 })
 
+export const listarPropuestasQuerySchema = z.object({
+  busqueda: z.string().trim().max(120).optional(),
+  estado: z
+    .enum([
+      'activa',
+      'borrador',
+      'en_revision',
+      'generando_pdf',
+      'emitida',
+      'error_pdf',
+      'reemplazada',
+      'anulada',
+    ])
+    .optional(),
+  carta_oferta_id: z.coerce.number().int().positive().optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional().default(20),
+  offset: z.coerce.number().int().min(0).optional().default(0),
+})
+
 export const publicarTextoPropuestaSchema = z.object({
   clave: z.string().trim().min(1).max(80),
   contenido: z.string().trim().min(1).max(30000),

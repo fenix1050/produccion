@@ -5,6 +5,7 @@ import { pdfRateLimiter } from '../middleware/rate-limit.js'
 
 export const router = Router()
 
+router.get('/', propuestasController.listar)
 router.get('/cartas-aptas', propuestasController.listarCartas)
 router.get('/cartas/:id', propuestasController.obtenerCarta)
 router.post('/cartas/:id/borrador', propuestasController.crearBorrador)

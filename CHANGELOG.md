@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.1.66](https://github.com/fenix1050/produccion/compare/v0.1.65...v0.1.66) (2026-09-18)
+
+
+### Features
+
+* **backend:** GET /propuestas para listado de Propuestas Formales ([#400](https://github.com/fenix1050/produccion/issues/400)) ([6ea7309](https://github.com/fenix1050/produccion/commit/6ea7309e6e7c8d93d1aa6d158679bd2565f0a78e))
+* **frontend:** listado de Propuestas Formales + fix de Historial/sidebar ([#401](https://github.com/fenix1050/produccion/issues/401)) ([f35215b](https://github.com/fenix1050/produccion/commit/f35215b8dccbc220188f1a183632b75d528334ba))
+* **propuestas:** agregar link "Nueva propuesta" al listado ([#407](https://github.com/fenix1050/produccion/issues/407)) ([d464839](https://github.com/fenix1050/produccion/commit/d46483937af035e8b5f69b60b507beaf13bf394a))
+* **propuestas:** migración 075 para listado de Propuestas Formales ([#399](https://github.com/fenix1050/produccion/issues/399)) ([cfb08c3](https://github.com/fenix1050/produccion/commit/cfb08c3c3767adc14441db0944089b596d292e6f))
+
+
+### Bug Fixes
+
+* **propuestas:** no ofrecer "Continuar" en borradores huérfanos ([#404](https://github.com/fenix1050/produccion/issues/404)) ([623ff23](https://github.com/fenix1050/produccion/commit/623ff23c499bc8abe9402034610cbf084e7222a4))
+* **propuestas:** ocultar el botón Anular cuando el usuario no tiene permiso ([#406](https://github.com/fenix1050/produccion/issues/406)) ([8bd2b04](https://github.com/fenix1050/produccion/commit/8bd2b04ec9bd53f2da008da15b058760813cac2c))
+* **propuestas:** ocultar selector de variante sin valor para el agente ([#410](https://github.com/fenix1050/produccion/issues/410)) ([4efc870](https://github.com/fenix1050/produccion/commit/4efc8701f231e23f956b96174b56b5d0f09ba1b6))
+
 ## [0.1.65](https://github.com/fenix1050/produccion/compare/v0.1.64...v0.1.65) (2026-09-17)
 
 

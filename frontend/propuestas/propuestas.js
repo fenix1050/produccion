@@ -392,7 +392,11 @@ function renderEditor() {
   const varianteSeleccionada = propuesta.cotizacion_variante_id
   const pagoSeleccionado = propuesta.cotizacion_plan_pago_id
   const variantes = carta.variantes ?? []
-  const varianteActual = variantes.find((item) => item.id === varianteSeleccionada) ?? null
+  // MRC/Incendio/Vida-AP siempre generan una única variante por cotización (única "sin_franquicia")
+  // — se auto-selecciona en vez de pedirle al agente que elija sobre una opción forzada
+  // (ver renderSeleccion). Auto (pausado) puede volver a generar más de una por franquicia dual.
+  const varianteUnica = variantes.length === 1 ? variantes[0] : null
+  const varianteActual = variantes.find((item) => item.id === varianteSeleccionada) ?? varianteUnica
   const pagos = varianteActual?.cotizacion_plan_pago ?? []
   const readiness = propuesta.readiness ?? { pendientes: [] }
   const emitted = ['emitida', 'anulada'].includes(propuesta.estado)
@@ -513,8 +517,15 @@ function renderReplacementHistory(propuesta) {
 }
 
 function renderSeleccion(variantes, varianteActual, pagos, pagoSeleccionado, moneda) {
+  // Con una sola variante (el caso siempre vigente hoy) no hay nada que elegir: se persiste su id
+  // vía un input oculto en vez de un <select> que solo tendría una opción real. El <select> se
+  // conserva para cuando vuelva a haber más de una variante (Auto con franquicia dual, pausado).
+  const campoVariante =
+    variantes.length === 1
+      ? `<input type="hidden" id="cotizacion-variante-id" value="${escapeHtml(variantes[0].id)}" />`
+      : `<label class="pf-field"><span>Variante</span><select id="cotizacion-variante-id" class="field-input"><option value="">Seleccione</option>${variantes.map((v) => `<option value="${escapeHtml(v.id)}" ${v.id === varianteActual?.id ? 'selected' : ''}>${escapeHtml(v.numero_variante || `Variante ${v.id}`)} · ${fmtMoneda(v.prima, moneda)}</option>`).join('')}</select></label>`
   return `<section class="panel card"><div class="card__title">Selección comercial</div><div class="card__body pf-selection">
-    <label class="pf-field"><span>Variante</span><select id="cotizacion-variante-id" class="field-input"><option value="">Seleccione</option>${variantes.map((v) => `<option value="${escapeHtml(v.id)}" ${v.id === varianteActual?.id ? 'selected' : ''}>${escapeHtml(v.numero_variante || `Variante ${v.id}`)} · ${fmtMoneda(v.prima, moneda)}</option>`).join('')}</select></label>
+    ${campoVariante}
     <label class="pf-field"><span>Forma de pago</span><select id="cotizacion-plan-pago-id" class="field-input"><option value="">Seleccione</option>${pagos.map((p) => `<option value="${escapeHtml(p.id)}" ${p.id === pagoSeleccionado ? 'selected' : ''}>${escapeHtml(p.formas_pago?.nombre_display || 'Forma de pago')} · ${fmtMoneda(p.premio_total, moneda)}</option>`).join('')}</select></label>
     <p>Los importes son de solo lectura y provienen de la cotización persistida.</p>
   </div></section>`

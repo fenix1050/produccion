@@ -58,3 +58,18 @@ test('PF-3 logout keeps its fixed internal login redirect', async () => {
   assert.match(moduleSource, /window\.location\.assign\(loginUrl\.pathname\)/)
   assert.match(moduleSource, /auth\.logout\(\)\.then\(redirectToLogin\)/)
 })
+
+test('PF-3 hides the pointless single-variant selector and auto-selects it via a hidden field, keeping the dropdown for a future multi-variant scenario', async () => {
+  const moduleSource = await readFile(moduleUrl, 'utf8')
+
+  // MRC/Incendio/Vida-AP always produce exactly one variant per cotización — the dropdown
+  // never has a real choice to make, so it auto-selects instead of asking the agent to pick.
+  assert.match(moduleSource, /variantes\.length === 1 \? variantes\[0\] : null/)
+  assert.match(
+    moduleSource,
+    /type="hidden" id="cotizacion-variante-id" value="\$\{escapeHtml\(variantes\[0\]\.id\)\}"/
+  )
+  // The <select> fallback stays in the source for a future scenario with more than one
+  // variant (e.g. Auto's dual franquicia, paused today) — it must not be deleted outright.
+  assert.match(moduleSource, /<select id="cotizacion-variante-id" class="field-input">/)
+})

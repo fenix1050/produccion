@@ -22,8 +22,13 @@ function puedeAnular(row, usuario) {
   return autorizado && row.estado === 'emitida'
 }
 
+// A live draft whose Carta already has ANOTHER propuesta_formales row in estado
+// 'emitida' can never be emitted — the backend blocks it with a 409
+// PF_CARTA_YA_TIENE_PROPUESTA_EMITIDA. These orphaned drafts are leftover data from
+// before the 075 Historial fix (which stopped creating new ones), but existing rows
+// must still not offer a dead-end "Continuar".
 function puedeContinuar(row) {
-  return ESTADOS_VIVOS.includes(row.estado)
+  return ESTADOS_VIVOS.includes(row.estado) && !row.otra_propuesta_emitida
 }
 
 export async function listarPropuestas(query, usuario) {
@@ -39,9 +44,9 @@ export async function listarPropuestas(query, usuario) {
   })
 
   return {
-    data: data.map(({ agente_id, ...row }) => ({
+    data: data.map(({ agente_id, otra_propuesta_emitida, ...row }) => ({
       ...row,
-      puede_continuar: puedeContinuar(row),
+      puede_continuar: puedeContinuar({ ...row, otra_propuesta_emitida }),
       puede_descargar: puedeDescargar({ ...row, agente_id }, usuario),
       puede_anular: puedeAnular(row, usuario),
     })),

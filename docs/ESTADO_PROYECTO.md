@@ -3204,3 +3204,50 @@ Backend 378/378, migraciones 20/20, frontend 107/107 — 0 fallos.
    `baseline.sha256`/`staged.sha256`) y backup atómico por archivo — probado localmente end-to-end
    (preflight→deploy→rollback) antes de tocar la VPS real, lo que permitió detectar y corregir el bug de
    Cloudflare sin arriesgar el entorno compartido.
+
+## 99. Fix de borrador huérfano + verificación en vivo de Anular (PR #404) (2026-09-18)
+
+**Qué se hizo:** durante el pase manual en vivo de `propuestas-formales-listado` (sección 98) se encontró,
+con datos reales de TEST, un caso no cubierto: la Carta MRC-575 tenía dos `propuestas_formales` — id 12
+(`emitida`, número 6, creada 2026-09-11) e id 13 (`borrador`, creada 2026-09-17 13:37, **antes** del deploy
+del fix de Historial). El listado seguía ofreciendo "Continuar" sobre el borrador id 13, pero intentar
+emitirlo siempre terminaba en 409 `PF_CARTA_YA_TIENE_PROPUESTA_EMITIDA` — un callejón sin salida. Es data
+vieja generada por el bug original (antes de que existiera este cambio), no algo introducido por
+`propuestas-formales-listado`.
+
+**Por qué:** Kevin decidió arreglarlo en el momento en vez de dejarlo como deuda técnica, ya que afecta
+directamente la usabilidad del listado recién entregado.
+
+**Fix (PR #404, TDD estricto):**
+
+- Migración `076_listado_propuestas_formales_otra_emitida.sql`: agrega `otra_propuesta_emitida BOOLEAN` a
+  `listar_propuestas_formales` — `EXISTS` scoped por `carta_oferta_id`, excluyendo la propia fila, filtrando
+  por `estado = 'emitida'`. DROP+CREATE aditivo (mismo patrón que 075), ACL reaplicado.
+- `listado.service.js`: `puede_continuar` ahora exige también `!otra_propuesta_emitida`, además del estado
+  vivo ya existente. Frontend sin cambios — `acciones.js` ya consumía el flag del backend sin lógica propia.
+- 5 tests nuevos de migración (25/25 total) + 2 tests nuevos de service (16/16 total) + suite completa
+  backend 380/380.
+
+**Deploy a TEST:** migración 076 aplicada (mismo método de `git clone`+`docker cp`+`md5sum` que la 075, sin
+pegado interactivo); backend redesplegado (`cotizador-test-backend:pf-orphan-623ff23c499b`, healthy). Solo
+backend — el frontend no cambió.
+
+**Verificación en vivo (con Playwright, contra `test-web.cotizador.lat`):**
+
+- Confirmado contra la DB real: `otra_propuesta_emitida` = `true` para el borrador id 13, `false` para la
+  emitida id 12 — exactamente como se esperaba.
+- El listado dejó de ofrecer "Continuar" en la fila huérfana, mostrando solo Descargar PDF/Anular
+  deshabilitados.
+- **Se probó además la función Anular end-to-end** (pendiente desde la sección 98): el usuario `test@test.com`
+  (rol agente) no tenía el permiso `puede_anular_propuestas` en TEST, así que el botón salía deshabilitado
+  correctamente (guard funcionando) — Kevin proveyó un segundo usuario de TEST para permisos,
+  `qatest@test.com` (rol admin), con el que sí se pudo anular la propuesta id 12 (`POST /propuestas/12/anular`
+  → 200, `estado: "anulada"`, `motivo_anulacion` y `anulada_at`/`anulada_por` persistidos correctamente).
+- **Hallazgo emergente confirmando el diseño del fix**: al anular la id 12, el borrador huérfano id 13
+  recuperó dinámicamente el botón "Continuar" (su Carta ya no tiene ninguna propuesta emitida vigente) — el
+  flag se recalcula en cada request, no es un estado cacheado, y el comportamiento es el correcto: ahora sí
+  tiene sentido dejar continuar ese borrador para reemplazar la anulada.
+
+**Aprendizaje nuevo:** hay un usuario de TEST dedicado a pruebas de permisos — `qatest@test.com` / rol
+admin — separado de `test@test.com` (agente, sin `puede_anular_propuestas`). Útil para cualquier prueba en
+vivo futura que necesite permisos de admin en TEST.

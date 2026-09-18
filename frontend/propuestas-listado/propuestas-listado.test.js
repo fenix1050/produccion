@@ -66,3 +66,31 @@ test('sin carta_oferta_id en la URL, el listado no lo envía (comportamiento sin
   assert.ok(llamadaPropuestas, 'debería haber llamado a GET /propuestas')
   assert.doesNotMatch(llamadaPropuestas, /carta_oferta_id/)
 })
+
+// Único punto de entrada para crear una propuesta hoy es la pantalla de Bienvenida
+// (../propuestas/ sin query arranca directo en cargarCartas(), el selector de Carta
+// Oferta elegible — ver frontend/propuestas/propuestas.js:1190-1199, archivo de Codex,
+// no tocado). Kevin pidió (2026-09-18) un link directo desde este listado, junto a
+// "Limpiar filtros", en vez de tener que pasar por Bienvenida.
+test('link "Nueva propuesta" presente junto a Limpiar filtros, apunta al selector de Carta Oferta del wizard', async () => {
+  montarEntornoDom('http://localhost/propuestas-listado/')
+
+  const llamadas = []
+  globalThis.fetch = fetchMockFabrica(llamadas)
+
+  await import('./propuestas-listado.js?case=nueva-propuesta-link')
+  await esperarCargaInicial()
+
+  const link = document.querySelector('a[data-action="nueva-propuesta"]')
+  assert.ok(link, 'debería existir un link con data-action="nueva-propuesta"')
+  assert.equal(link.getAttribute('href'), '../propuestas/')
+  assert.equal(link.textContent.trim(), 'Nueva propuesta')
+
+  const limpiarFiltros = document.querySelector('[data-action="limpiar-filtros"]')
+  assert.ok(limpiarFiltros, 'debería seguir existiendo el botón Limpiar filtros')
+  assert.equal(
+    link.parentElement,
+    limpiarFiltros.parentElement,
+    'el link debe vivir en el mismo contenedor de acciones de filtros que Limpiar filtros'
+  )
+})

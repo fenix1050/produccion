@@ -6,7 +6,6 @@
 // como exige la spec ("gated strictly by the flags returned by the backend").
 
 const TITULO_DESCARGA_DESHABILITADA = 'No tenés permiso para descargar esta propuesta.'
-const TITULO_ANULAR_DESHABILITADO = 'No tenés permiso para anular propuestas.'
 
 /**
  * @param {object} fila - una fila de `GET /propuestas` (incluye los flags del backend).
@@ -31,12 +30,16 @@ export function accionesDeFila(fila) {
     disabledTitle: TITULO_DESCARGA_DESHABILITADA,
   })
 
-  acciones.push({
-    action: 'anular',
-    label: 'Anular',
-    enabled: Boolean(fila.puede_anular),
-    disabledTitle: TITULO_ANULAR_DESHABILITADO,
-  })
+  // A diferencia de Descargar PDF (que se muestra deshabilitado con tooltip), Anular
+  // directamente no se renderiza si el usuario no puede usarlo — decisión de Kevin
+  // (2026-09-18): "sería más sencillo" que un botón visible-pero-inerte.
+  if (fila.puede_anular) {
+    acciones.push({
+      action: 'anular',
+      label: 'Anular',
+      enabled: true,
+    })
+  }
 
   acciones.push({
     action: 'ver-detalle',

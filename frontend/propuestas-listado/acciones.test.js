@@ -21,7 +21,7 @@ function fila(overrides = {}) {
   }
 }
 
-test('borrador activo: solo Continuar habilitado + Ver detalle, sin Descargar/Anular', () => {
+test('borrador activo: solo Continuar habilitado + Ver detalle, Descargar deshabilitado, Anular ausente (sin permiso)', () => {
   const acciones = accionesDeFila(fila({ estado: 'borrador', puede_continuar: true }))
   const porAccion = Object.fromEntries(acciones.map((a) => [a.action, a]))
 
@@ -29,12 +29,15 @@ test('borrador activo: solo Continuar habilitado + Ver detalle, sin Descargar/An
   assert.equal(porAccion.continuar.enabled, true)
   assert.equal(porAccion.descargar.enabled, false)
   assert.equal(porAccion.descargar.disabledTitle, 'No tenés permiso para descargar esta propuesta.')
-  assert.equal(porAccion.anular.enabled, false)
-  assert.equal(porAccion.anular.disabledTitle, 'No tenés permiso para anular propuestas.')
+  assert.equal(
+    porAccion.anular,
+    undefined,
+    'sin puede_anular, el botón Anular no se renderiza (ni siquiera deshabilitado)'
+  )
   assert.ok(porAccion['ver-detalle'])
 })
 
-test('escenario del spec: puede_continuar=false, puede_descargar=true, puede_anular=false → solo descarga habilitada', () => {
+test('escenario del spec: puede_continuar=false, puede_descargar=true, puede_anular=false → solo descarga habilitada, sin botón Anular', () => {
   const acciones = accionesDeFila(
     fila({ estado: 'emitida', puede_continuar: false, puede_descargar: true, puede_anular: false })
   )
@@ -42,27 +45,29 @@ test('escenario del spec: puede_continuar=false, puede_descargar=true, puede_anu
 
   assert.equal(porAccion.continuar, undefined)
   assert.equal(porAccion.descargar.enabled, true)
-  assert.equal(porAccion.anular.enabled, false)
+  assert.equal(porAccion.anular, undefined)
   assert.ok(porAccion['ver-detalle'])
 })
 
-test('emitida con todos los permisos: descargar y anular habilitados', () => {
+test('emitida con todos los permisos: descargar y anular habilitados, Anular presente y sin disabledTitle', () => {
   const acciones = accionesDeFila(
     fila({ estado: 'emitida', puede_continuar: false, puede_descargar: true, puede_anular: true })
   )
   const porAccion = Object.fromEntries(acciones.map((a) => [a.action, a]))
 
   assert.equal(porAccion.descargar.enabled, true)
+  assert.ok(porAccion.anular)
   assert.equal(porAccion.anular.enabled, true)
+  assert.equal(porAccion.anular.disabledTitle, undefined)
 })
 
-test('reemplazada sin ningún permiso: solo Ver detalle utilizable, resto deshabilitado', () => {
+test('reemplazada sin ningún permiso: solo Ver detalle utilizable, Descargar deshabilitado, sin botón Anular', () => {
   const acciones = accionesDeFila(fila({ estado: 'reemplazada' }))
   const porAccion = Object.fromEntries(acciones.map((a) => [a.action, a]))
 
   assert.equal(porAccion.continuar, undefined)
   assert.equal(porAccion.descargar.enabled, false)
-  assert.equal(porAccion.anular.enabled, false)
+  assert.equal(porAccion.anular, undefined)
   assert.ok(porAccion['ver-detalle'])
 })
 

@@ -128,12 +128,14 @@ cp backend/.env.example backend/.env
 
 Las migraciones están en `backend/migrations/*.sql`, numeradas en orden de aplicación.
 
-**En Supabase (producción o proyecto real):**
+**En TEST/PROD (VPS propia):** la base es Supabase self-hosted corriendo en Docker en la VPS — no hay
+dashboard `app.supabase.com` para estos entornos. Las migraciones se aplican por SSH con `psql` contra el
+contenedor correspondiente (`cotizador-test-db` en TEST, el contenedor de producción en PROD), nunca
+pegando el SQL en una sesión interactiva (con bloques grandes se corta el paste — llevar el archivo con
+`git clone`/`docker cp` y verificar `md5sum` antes de correrlo con `psql -f archivo.sql`). Ver
+`CLAUDE.md` sección "Infraestructura de despliegue" para el detalle de los dos entornos.
 
-1. Abrí el SQL Editor en https://app.supabase.com → tu proyecto.
-2. Copiá el contenido de cada archivo `.sql` (en orden) y correlo.
-
-**Localmente (Supabase CLI):**
+**Localmente (Supabase CLI o cuenta propia de Supabase Cloud):**
 
 ```bash
 cd backend
@@ -313,25 +315,37 @@ Usa Puppeteer (Chromium headless) para convertir HTML → PDF. Cada ramo puede t
 
 ## Despliegue
 
-- **Backend:** Docker Compose (`docker-compose.yml` + `Dockerfile` en `/backend`) con Caddy como
-  reverse proxy TLS (`Caddyfile`, dominio `api.cotizador.lat`) en una VPS propia. `render.yaml`
-  queda como alternativa de despliegue en Render (no es el destino activo). **Redeploy automático
-  vía CD** (`.github/workflows/deploy-backend.yml`): al terminar CI en verde sobre `main`, un
-  workflow separado se conecta por SSH a la VPS y corre `git reset --hard origin/main` +
-  `docker compose up --build -d backend`, con health check contra `/health` al final — si el
-  health check falla, hace rollback automático al commit anterior y vuelve a levantar ese build.
-  `NODE_ENV=production` está fijado a nivel de `docker-compose.yml` (no solo en el `Dockerfile`),
-  porque `env_file` puede pisarlo en runtime si esa clave llega ausente o distinta en el `.env`
-  real de la VPS.
-- **Frontend:** Vercel (`frontend/vercel.json`), con despliegue automático al hacer push a `main`
-  vía la integración nativa de Vercel con GitHub. `frontend/scripts/build.sh` versiona con
-  cache-busting (`?v=<sha>`) tanto los `src`/`href` del HTML como los imports ES module relativos
-  dentro de los `.js`, para que un módulo compartido (ej. `shared/api.js`) no quede sirviendo una
+**Todo corre en una VPS propia** (Docker + Caddy), con **dos entornos completamente separados**: TEST
+(`test-api.cotizador.lat` / `test-web.cotizador.lat`) y PROD (`api.cotizador.lat` / `cotizador.lat`). No
+hay CD automático para ningún lado — `.github/workflows/deploy-backend.yml` está deshabilitado (`if: false`)
+desde 2026-09-01. Mergear un PR a `main` **no despliega nada por sí solo**, solo actualiza el código fuente
+del repositorio.
+
+- **Backend:** Docker Compose (`docker-compose.yml` + `Dockerfile` en `/backend`) con Caddy como reverse
+  proxy TLS (`Caddyfile`). Imágenes inmutables versionadas por SHA-256 (`docker-compose.yml` exige
+  `BACKEND_IMAGE` explícito). Redeploy manual, paso a paso y con autorización explícita en cada etapa
+  (materialización del bundle → preflight de solo lectura → deploy con flag de aprobación → rollback solo
+  tras decisión separada). `NODE_ENV=production` está fijado a nivel de `docker-compose.yml` (no solo en el
+  `Dockerfile`), porque `env_file` puede pisarlo en runtime si esa clave llega ausente o distinta en el
+  `.env` real de la VPS.
+- **Frontend:** archivos estáticos servidos directamente por Caddy desde la misma VPS (carpetas
+  `frontend-prod`/`frontend-test` separadas), **no Vercel** — el redeploy también es manual. `frontend/scripts/build.sh`
+  versiona con cache-busting (`?v=<sha>`) tanto los `src`/`href` del HTML como los imports ES module
+  relativos dentro de los `.js`, para que un módulo compartido (ej. `shared/api.js`) no quede sirviendo una
   copia cacheada vieja mientras el entry point ya es el nuevo.
+- `render.yaml` y `frontend/vercel.json` en la raíz del repo son **artefactos legacy** de una estrategia de
+  deploy anterior (Render.com / Vercel) que precedió a la VPS actual — no reflejan la infraestructura real
+  descrita arriba. Vercel sigue apareciendo como check de CI en los PRs (preview deployments), pero esa
+  preview no sirve tráfico de TEST ni de PROD.
+- Promover un cambio de TEST a PROD es un paso manual separado, no automatizado como workflow de GitHub
+  Actions en este repo.
+
+Detalle completo (arquitectura exacta de contenedores, scripts de deploy, guardas de autorización) en
+`CLAUDE.md`, sección "Infraestructura de despliegue".
 
 ## Estado actual
 
-**Última actualización:** 2026-08-07 — MRC e Incendio operativos end-to-end (calculador + Carta Oferta en PDF); Vida-AP tiene calculador completo pero sigue sin template (falta texto oficial). Incendio suma 3 planes nuevos, moneda USD/Gs. y tasas por rubro de actividad (~209 rubros, migraciones 043/044 ya aplicadas contra Supabase real). MRC suma el plan "SEGUCOOP" con descuento fijo del 10% (permiso de rol dedicado). El R.P.F. de MRC/Incendio/Vida-AP dejó de ser un escalar fijo por forma de pago y pasa a resolverse por (forma de pago, cantidad de cuotas) contra una curva compartida editable desde el admin (Auto/Auto-Flota siguen con el escalar). Panel admin con secciones de Usuarios/Coberturas/Tasas/Planes/Roles/Ramos (esta última para habilitar/deshabilitar, editar nombre y eliminar ramos del sidebar, ahora con 8 ramos) y opción de eliminar planes. RLS activado (default-deny) en las 34 tablas CRITICAL de Supabase. Se removieron los imports de Vercel Analytics/Speed Insights del frontend (rompían con `Uncaught TypeError` fuera del build de Vercel). Sesión migrada de JWT en `localStorage` a cookie `HttpOnly` + CSRF de doble-submit (PR #138); el deploy de ese cambio destapó dos bugs de producción ya corregidos — imports ES module sin cache-busting en `build.sh` (PR #143) y `NODE_ENV` no fijado a nivel de `docker-compose.yml` rompiendo el `Domain` de las cookies y todo método mutante con 403 CSRF (PR #146). El CD del backend ahora hace rollback automático si el health check post-deploy falla (PR #133). El cotizador de MRC/Incendio/Vida-AP muestra un modal de progreso real (no simulado) al emitir la Carta Oferta, y el panel "Cotización en vivo" agregó Capital total asegurado + Tasa efectiva (costo/capital, en ‰) para los 3 ramos, con el tile "Costo" ahora sin IVA. Backend desplegado en VPS propia (Docker + Caddy, `api.cotizador.lat`, redeploy automático vía CD tras CI en verde); frontend en Vercel (auto-deploy en `main`).
+**Última actualización:** 2026-08-07 — MRC e Incendio operativos end-to-end (calculador + Carta Oferta en PDF); Vida-AP tiene calculador completo pero sigue sin template (falta texto oficial). Incendio suma 3 planes nuevos, moneda USD/Gs. y tasas por rubro de actividad (~209 rubros, migraciones 043/044 ya aplicadas contra Supabase real). MRC suma el plan "SEGUCOOP" con descuento fijo del 10% (permiso de rol dedicado). El R.P.F. de MRC/Incendio/Vida-AP dejó de ser un escalar fijo por forma de pago y pasa a resolverse por (forma de pago, cantidad de cuotas) contra una curva compartida editable desde el admin (Auto/Auto-Flota siguen con el escalar). Panel admin con secciones de Usuarios/Coberturas/Tasas/Planes/Roles/Ramos (esta última para habilitar/deshabilitar, editar nombre y eliminar ramos del sidebar, ahora con 8 ramos) y opción de eliminar planes. RLS activado (default-deny) en las 34 tablas CRITICAL de Supabase. Se removieron los imports de Vercel Analytics/Speed Insights del frontend (rompían con `Uncaught TypeError` fuera del build de Vercel). Sesión migrada de JWT en `localStorage` a cookie `HttpOnly` + CSRF de doble-submit (PR #138); el deploy de ese cambio destapó dos bugs de producción ya corregidos — imports ES module sin cache-busting en `build.sh` (PR #143) y `NODE_ENV` no fijado a nivel de `docker-compose.yml` rompiendo el `Domain` de las cookies y todo método mutante con 403 CSRF (PR #146). El cotizador de MRC/Incendio/Vida-AP muestra un modal de progreso real (no simulado) al emitir la Carta Oferta, y el panel "Cotización en vivo" agregó Capital total asegurado + Tasa efectiva (costo/capital, en ‰) para los 3 ramos, con el tile "Costo" ahora sin IVA. **Actualización de infraestructura (2026-09):** ya no hay CD automático a producción — backend y frontend corren ambos en la misma VPS propia (Docker + Caddy), con entornos TEST y PROD separados y redeploy manual y autorizado en cada paso; Vercel y Render quedaron como artefactos legacy sin tráfico real. Ver `CLAUDE.md` para el detalle vigente.
 
 Ver `docs/ESTADO_PROYECTO.md` para el detalle completo de:
 

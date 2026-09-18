@@ -1,0 +1,68 @@
+import assert from 'node:assert/strict'
+import { test } from 'node:test'
+import { JSDOM } from 'jsdom'
+
+// C-1 (sdd-verify): el deep link "Ver propuestas" que arma Historial
+// (propuesta-accion.js:42, `../propuestas-listado/?carta_oferta_id=<id>`) es
+// funcionalmente inerte porque cargarPropuestas() nunca leía window.location.search — el
+// usuario terminaba viendo el listado completo sin filtrar. Estos tests montan la página
+// real (mismo patrón que shared/api.test.js) con esa query string y verifican que el GET
+// /propuestas efectivo incluya carta_oferta_id.
+
+function montarEntornoDom(url) {
+  const dom = new JSDOM('<!doctype html><html><body><div id="app"></div></body></html>', { url })
+  globalThis.window = dom.window
+  globalThis.document = dom.window.document
+  return dom
+}
+
+function fetchMockFabrica(llamadas) {
+  return async (url) => {
+    llamadas.push(String(url))
+    if (String(url).includes('/auth/me')) {
+      return new Response(JSON.stringify({ usuario: { id: 1, rol: 'agente' } }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+    return new Response(JSON.stringify({ data: [], count: 0 }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
+}
+
+async function esperarCargaInicial() {
+  // init() encadena auth.cargarSesion() -> renderApp() -> cargarPropuestas(), todas
+  // promesas de microtask; varias vueltas de la cola de microtasks alcanzan sin recurrir
+  // a temporizadores reales.
+  for (let i = 0; i < 15; i++) await Promise.resolve()
+}
+
+test('cargarPropuestas() envía carta_oferta_id al backend cuando la URL trae ?carta_oferta_id=<id>', async () => {
+  montarEntornoDom('http://localhost/propuestas-listado/?carta_oferta_id=777')
+
+  const llamadas = []
+  globalThis.fetch = fetchMockFabrica(llamadas)
+
+  await import('./propuestas-listado.js?case=carta-oferta-id-777')
+  await esperarCargaInicial()
+
+  const llamadaPropuestas = llamadas.find((u) => u.includes('/propuestas?'))
+  assert.ok(llamadaPropuestas, 'debería haber llamado a GET /propuestas')
+  assert.match(llamadaPropuestas, /[?&]carta_oferta_id=777\b/)
+})
+
+test('sin carta_oferta_id en la URL, el listado no lo envía (comportamiento sin filtrar preservado)', async () => {
+  montarEntornoDom('http://localhost/propuestas-listado/')
+
+  const llamadas = []
+  globalThis.fetch = fetchMockFabrica(llamadas)
+
+  await import('./propuestas-listado.js?case=sin-carta-oferta-id')
+  await esperarCargaInicial()
+
+  const llamadaPropuestas = llamadas.find((u) => u.includes('/propuestas?'))
+  assert.ok(llamadaPropuestas, 'debería haber llamado a GET /propuestas')
+  assert.doesNotMatch(llamadaPropuestas, /carta_oferta_id/)
+})

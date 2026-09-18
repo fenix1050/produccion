@@ -13,6 +13,7 @@ import {
   ICON_BELL,
   ICON_CHEVRON_DOWN,
   ICON_MENU,
+  ICON_DOC_LIST,
   renderTrustFooter,
 } from './nav-icons.js'
 import { auth } from './api.js'
@@ -31,6 +32,17 @@ function renderSidebarNavLinks(active) {
   links.push(
     `<a class="nav-item nav-item--icon ${active === 'historial' ? 'nav-item--active' : ''}" href="${active === 'historial' ? './' : '../historial/'}"><span class="nav-item__badge">${ICON_CLOCK}</span><span>Historial de cotizaciones</span></a>`
   )
+
+  // Ítem del listado de Propuestas Formales — clave propia 'propuestas-listado', distinta
+  // de la del wizard ('propuestas', ya usada por propuestas.js:405). Ambas resaltan el
+  // mismo ítem (enPropuestas) sin pisarse entre sí: el wizard sigue enviando
+  // active:'propuestas' sin tocar su archivo, y ahora eso también resalta este ítem
+  // (antes quedaba inerte porque ningún ítem del sidebar reconocía esa clave).
+  const enPropuestas = active === 'propuestas' || active === 'propuestas-listado'
+  links.push(
+    `<a class="nav-item nav-item--icon ${enPropuestas ? 'nav-item--active' : ''}" href="${active === 'propuestas-listado' ? './' : '../propuestas-listado/'}"><span class="nav-item__badge">${ICON_DOC_LIST}</span><span>Propuestas Formales</span></a>`
+  )
+
   links.push(
     `<a class="nav-item nav-item--icon ${active === 'configuracion' ? 'nav-item--active' : ''}" href="${active === 'configuracion' ? './' : '../configuracion/'}"><span class="nav-item__badge">${ICON_GEAR}</span><span>Configuración</span></a>`
   )

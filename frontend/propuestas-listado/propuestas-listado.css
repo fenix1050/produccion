@@ -1,0 +1,30 @@
+/* Estilos propios del listado de Propuestas Formales. La tabla, filtros y paginación
+   reutilizan las clases ya compartidas de historial.css/admin.css (historial-filtros,
+   historial-tabla__actions, historial-tabla__btn-ghost, historial-paginacion,
+   admin-table-scroll) — acá solo lo específico del modal de anulación. */
+
+.admin-modal--anular textarea {
+  width: 100%;
+  min-height: 96px;
+  resize: vertical;
+  margin-top: 0.25rem;
+}
+
+.propuestas-listado-anular__contador {
+  text-align: right;
+  font-size: 0.8rem;
+  color: var(--text-secondary, #6b7280);
+  margin-top: 0.25rem;
+}
+
+.admin-modal--detalle dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.35rem 0.75rem;
+  margin: 0.5rem 0 1rem;
+}
+
+.admin-modal--detalle dt {
+  font-weight: 600;
+  color: var(--text-secondary, #6b7280);
+}

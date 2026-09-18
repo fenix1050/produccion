@@ -4,6 +4,7 @@ import { getRamos } from '../shared/catalogo.js'
 import { escapeHtml, enfocarPrimerElemento, atraparFoco, renderBanner } from '../shared/dom.js'
 import { renderSidebarFooter, renderTopbar as renderTopbarShell } from '../shared/sidebar.js'
 import { fmtMoneda } from '../shared/format.js'
+import { decidirAccionPropuesta } from './propuesta-accion.js'
 
 // Historial de cotizaciones (Fase 5/WU5) — mismo patrón Vanilla JS que admin.js: state +
 // renderApp() que reconstruye innerHTML + bindEvents() post-render + modal vía state.modal.
@@ -409,7 +410,15 @@ function renderTabla() {
             <button class="historial-tabla__btn-ghost" data-action="ver-detalle" data-id="${c.id}">Ver detalle</button>
             ${
               cartaApta
-                ? `<button class="btn-primary historial-tabla__btn-propuesta" data-action="preparar-propuesta" data-carta-id="${cartaApta.id}">${cartaApta.propuesta_borrador_id ? 'Reabrir propuesta' : 'Preparar propuesta'}</button>`
+                ? (() => {
+                    // decidirAccionPropuesta() (./propuesta-accion.js) reemplaza el `if` inline
+                    // que antes vivía acá y siempre ofrecía "Preparar propuesta" — ahora decide
+                    // entre Preparar/Reabrir/Ver propuestas según el estado real de la propuesta
+                    // (o degrada al comportamiento previo — href `../propuestas/?carta=<id>` —
+                    // si la carta todavía no trae los campos nuevos de la migración 075).
+                    const accion = decidirAccionPropuesta(cartaApta)
+                    return `<button class="btn-primary historial-tabla__btn-propuesta" data-action="accion-propuesta" data-href="${escapeHtml(accion.href)}">${escapeHtml(accion.label)}</button>`
+                  })()
                 : ''
             }
             ${
@@ -705,8 +714,8 @@ function onActionClick(el) {
     descargarOferta(el, Number(el.dataset.id), el.dataset.numero)
     return
   }
-  if (action === 'preparar-propuesta') {
-    window.location.href = `../propuestas/?carta=${encodeURIComponent(el.dataset.cartaId)}`
+  if (action === 'accion-propuesta') {
+    window.location.href = el.dataset.href
     return
   }
   if (action === 'editar-cotizacion') {

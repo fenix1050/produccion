@@ -3099,3 +3099,213 @@ artifacts and align Puppeteer allowlist` y `docs: add shared Claude Codex handof
 para que cualquier agente de código retome el proyecto sin depender de haber vivido las sesiones
 originales). Ambos commits se sincronizaron a `origin/main` por separado, antes de abrir el PR del fix
 real, para no mezclar cambios no relacionados en el mismo PR.
+
+## 98. Listado de Propuestas Formales + fix de Historial (cambio SDD `propuestas-formales-listado`) (2026-09-18)
+
+**Qué se hizo:** ciclo SDD completo (propose → spec → design → tasks → apply → verify → deploy TEST) para
+agregar una pantalla propia de "Propuestas Formales" (listado con búsqueda, filtro por estado, paginación,
+continuar/descargar/anular) y corregir un bug real de Historial: `motivo_ineligibilidad_carta_propuesta`
+(migración 069) no excluía Cartas con propuesta ya emitida, así que Historial seguía ofreciendo "Preparar
+propuesta" sobre una Carta ya emitida, creaba otro borrador (el índice único parcial lo permite), y el
+usuario recién chocaba con `PF_CARTA_YA_TIENE_PROPUESTA_EMITIDA` (migración 073) al intentar emitir.
+
+**Por qué:** Kevin trajo el diseño completo a la sesión (documento propio, no `sdd-explore`); se formalizó
+como propuesta SDD y se siguió el ciclo completo porque el cambio abarcaba migración + backend + 2 módulos
+de frontend, con riesgo de romper el trabajo en paralelo de Codex sobre `frontend/propuestas/*`.
+
+**Alcance real (3 PRs encadenados, todos mergeados a `main`):**
+
+- **#399** — migración `075_listado_propuestas_formales.sql`: recrea `listar_cartas_oferta_aptas_propuesta`
+  de forma aditiva (DROP+CREATE porque Postgres rechaza cambiar `RETURNS TABLE` de una función existente;
+  agrega `tiene_propuesta`/`propuesta_actual_id`/`_estado`/`_numero` al final, conserva
+  `propuesta_borrador_id`/`propuesta_revision` sin tocar — `supabase.rpc()` mapea por nombre de columna, así
+  que el wizard de Codex sigue funcionando sin cambios); función nueva `listar_propuestas_formales`
+  (`SECURITY INVOKER`, scoping `p_es_admin OR c.agente_id = p_usuario_id`, `COUNT(*) OVER () AS
+total_registros`, paginación); índice `propuestas_formales_updated_at_idx`. El `DROP FUNCTION` borra el
+  ACL fijado por `070_fix_carta_oferta_rpc_acl.sql` — la migración lo reaplica explícitamente
+  (`REVOKE ALL ... GRANT EXECUTE ... TO service_role`) para ambas funciones, verificado con test regex
+  dedicado y con `pg_proc.proacl` real post-aplicación.
+- **#400** — `GET /propuestas`: `listarPropuestasQuerySchema` (Zod), `propuestas.repository.listarPropuestas`,
+  `services/propuestas/listado.service.js` (deriva `esAdmin` del usuario autenticado —nunca de la query—,
+  expande `estado='activa'` a los 4 estados vivos, calcula `puede_continuar`/`puede_descargar`/`puede_anular`
+  espejando exactamente los guards reales de `emision.service.js`, remueve `agente_id` de cada fila),
+  controller + ruta. Decisión de producto cerrada con Kevin: `puede_descargar` solo habilita `emitida`/
+  `anulada`, nunca `reemplazada` (evita confundir una propuesta vieja reemplazada con la vigente).
+- **#401** — `frontend/propuestas-listado/` (página nueva: listado, búsqueda, filtro, paginación, modal de
+  anulación con motivo obligatorio 3–1000 caracteres, filtro por `carta_oferta_id` vía deep-link) +
+  `frontend/historial/propuesta-accion.js` (reemplaza el `if` inline de "Preparar propuesta" en
+  `historial.js`: decide Preparar/Reabrir/Ver propuestas según el estado real, con degradación exacta al
+  comportamiento previo si la migración 075 todavía no aportó los campos nuevos) + ítem de sidebar
+  "Propuestas Formales" con clave propia `propuestas-listado` (resaltado compartido con `propuestas` del
+  wizard de Codex, sin colisionar con su href). **No se tocó ningún archivo de
+  `frontend/propuestas/{propuestas.js,propuestas.css,propuestas.test.js}`** — Codex trabajaba ahí en
+  paralelo. El literal `../propuestas/?carta=` que `propuestas.test.js:18` verifica contra el fuente de
+  `historial.js` se preservó (ahora dentro de un comentario explicativo, ya que el comportamiento real vive
+  en `propuesta-accion.js`) — confirmado con Codex antes del merge, es intencional.
+
+**Hallazgo real de `sdd-verify` (C-1, CRITICAL) corregido antes de mergear:** el deep link "Ver propuestas"
+(`?carta_oferta_id=<id>`) era funcionalmente inerte — `propuestas-listado.js` nunca leía
+`window.location.search`, así que el filtro nunca llegaba al backend a pesar de que el soporte estaba
+completo de punta a punta (schema → service → repository → RPC). El test original solo comprobaba el string
+del href, nunca que algo lo usara. Fix con TDD (RED confirmado, GREEN con `leerCartaOfertaIdDesdeUrl()` +
+banner "Mostrando propuestas de la Carta N° X"), 107/107 tests de frontend en verde.
+
+**Verificación:** ciclo completo `sdd-apply` (×3, uno por PR) → `sdd-verify` (FAIL con C-1) → fix → `sdd-verify`
+(PASS con 3 warnings no bloqueantes, ya aceptados como deuda documentada: resaltado compartido de sidebar
+entre `propuestas`/`propuestas-listado`, estados `anulada`/`reemplazada` inalcanzables con datos reales por
+cómo filtra el `LEFT JOIN LATERAL` de la 075, y el literal de Codex sobreviviendo solo como comentario).
+Backend 378/378, migraciones 20/20, frontend 107/107 — 0 fallos.
+
+**Deploy a TEST (2026-09-18, con autorización manual explícita en cada paso, patrón de bundle efímero
+`backend/tmp/<cambio>-test-stage/`, gitignoreado):**
+
+- Migración 075 aplicada directo contra `cotizador-test-db` (Postgres self-hosted en la VPS, contenedor
+  `supabase/postgres:17.6.1.136` — **no** un proyecto Supabase cloud, aclaración de Kevin que corrige una
+  suposición inicial de la sesión) vía `docker exec cotizador-test-db psql -U supabase_admin -d postgres`.
+  Preflight (0 dependencias, 1 sola sobrecarga) → aplicación → ACL post-verificado (`proacl` solo
+  `supabase_admin`+`service_role`). El primer intento de pegar el SQL completo en la sesión interactiva de
+  `psql` se cortó a mitad de camino (terminal SSH truncando pegados grandes) — se resolvió guardando el SQL
+  en un archivo vía heredoc de bash y ejecutándolo con `psql -f`, en vez de pegarlo interactivo.
+- Backend: imagen `cotizador-test-backend:pf-listado-f35215b8dccb` construida en la propia VPS desde
+  `docker-context.tar.gz` (`git archive` del commit `f35215b8dccb`, ya en `main`). Contenedor `healthy`,
+  `/health` → `{"status":"ok"}`.
+- Frontend: 9 archivos (5 nuevos + `propuesta-accion.js` + 3 modificados) copiados a
+  `/opt/cotizador/frontend-test` con backup atómico por archivo (mismo patrón que bundles anteriores de
+  un-solo-archivo, extendido acá a varios). **Hallazgo nuevo:** el sitio está detrás de Cloudflare
+  (`cf-cache-status: DYNAMIC`, no caché — transformación en tránsito, probablemente Rocket Loader/Auto
+  Minify), que altera el HTML servido en bytes exactos aunque el contenido visible sea idéntico. La
+  verificación por hash contra la URL pública (patrón usado en bundles anteriores) **falla para `.html`**
+  aunque el archivo en disco esté perfecto — confirmado comparando `sha256sum` local vs.
+  `curl -sL | sha256sum` (headers `server: cloudflare` presentes). El deploy de `index.html` se completó
+  manualmente verificando por hash en disco (SSH) en vez de por URL pública; los `.js` no tuvieron el
+  problema. **Pendiente de ajuste para el próximo deploy de frontend:** el patrón de verificación por hash
+  público de los bundles de deploy debe excluir `.html` (o verificar siempre en disco) mientras el sitio
+  siga detrás de Cloudflare con transformación activa.
+- Verificación funcional en vivo con Playwright contra `test-web.cotizador.lat` (usuario de test real, rol
+  agente): listado carga con datos reales (8 filas), búsqueda/filtro/paginación visibles, los botones por
+  fila respetan los flags exactos del backend, sidebar resalta correctamente. No se pudo ejercitar en vivo
+  la rama "Preparar propuesta" (sin propuesta) ni "Ver propuestas" (emitida/anulada) por falta de Cartas en
+  esos estados en el dataset de TEST — cubierto igual por los tests unitarios. No se probó "Anular" en vivo
+  para no anular una propuesta real sin pedido explícito.
+
+**Aprendizajes nuevos para deploys futuros:**
+
+1. La DB de TEST es Supabase self-hosted en la VPS (`cotizador-test-db`), no un proyecto Supabase cloud —
+   corrige cualquier suposición previa de que el MCP de Supabase de la sesión apunta a TEST.
+2. Pegar bloques SQL grandes directo en una sesión interactiva de `psql` por SSH puede cortarse a mitad de
+   camino sin aviso — usar `psql -f archivo.sql` (con el archivo llevado por `git clone`/`docker cp`
+   verificado con `md5sum`, no pegado) para cualquier SQL de más de ~50 líneas.
+3. Cloudflare transforma el HTML servido en tránsito (bytes distintos, contenido visualmente idéntico) —
+   la verificación de deploy de frontend por hash de la URL pública no es confiable para `.html` mientras el
+   sitio esté detrás de Cloudflare con esa transformación activa; verificar por hash en disco (SSH) en su
+   lugar.
+4. Extender el patrón de bundle de deploy de frontend (hasta ahora de un solo archivo) a varios archivos
+   nuevos/modificados de una vez es viable con el mismo esquema de manifest (`files.txt` con tipo NEW/MOD +
+   `baseline.sha256`/`staged.sha256`) y backup atómico por archivo — probado localmente end-to-end
+   (preflight→deploy→rollback) antes de tocar la VPS real, lo que permitió detectar y corregir el bug de
+   Cloudflare sin arriesgar el entorno compartido.
+
+## 99. Fix de borrador huérfano + verificación en vivo de Anular (PR #404) (2026-09-18)
+
+**Qué se hizo:** durante el pase manual en vivo de `propuestas-formales-listado` (sección 98) se encontró,
+con datos reales de TEST, un caso no cubierto: la Carta MRC-575 tenía dos `propuestas_formales` — id 12
+(`emitida`, número 6, creada 2026-09-11) e id 13 (`borrador`, creada 2026-09-17 13:37, **antes** del deploy
+del fix de Historial). El listado seguía ofreciendo "Continuar" sobre el borrador id 13, pero intentar
+emitirlo siempre terminaba en 409 `PF_CARTA_YA_TIENE_PROPUESTA_EMITIDA` — un callejón sin salida. Es data
+vieja generada por el bug original (antes de que existiera este cambio), no algo introducido por
+`propuestas-formales-listado`.
+
+**Por qué:** Kevin decidió arreglarlo en el momento en vez de dejarlo como deuda técnica, ya que afecta
+directamente la usabilidad del listado recién entregado.
+
+**Fix (PR #404, TDD estricto):**
+
+- Migración `076_listado_propuestas_formales_otra_emitida.sql`: agrega `otra_propuesta_emitida BOOLEAN` a
+  `listar_propuestas_formales` — `EXISTS` scoped por `carta_oferta_id`, excluyendo la propia fila, filtrando
+  por `estado = 'emitida'`. DROP+CREATE aditivo (mismo patrón que 075), ACL reaplicado.
+- `listado.service.js`: `puede_continuar` ahora exige también `!otra_propuesta_emitida`, además del estado
+  vivo ya existente. Frontend sin cambios — `acciones.js` ya consumía el flag del backend sin lógica propia.
+- 5 tests nuevos de migración (25/25 total) + 2 tests nuevos de service (16/16 total) + suite completa
+  backend 380/380.
+
+**Deploy a TEST:** migración 076 aplicada (mismo método de `git clone`+`docker cp`+`md5sum` que la 075, sin
+pegado interactivo); backend redesplegado (`cotizador-test-backend:pf-orphan-623ff23c499b`, healthy). Solo
+backend — el frontend no cambió.
+
+**Verificación en vivo (con Playwright, contra `test-web.cotizador.lat`):**
+
+- Confirmado contra la DB real: `otra_propuesta_emitida` = `true` para el borrador id 13, `false` para la
+  emitida id 12 — exactamente como se esperaba.
+- El listado dejó de ofrecer "Continuar" en la fila huérfana, mostrando solo Descargar PDF/Anular
+  deshabilitados.
+- **Se probó además la función Anular end-to-end** (pendiente desde la sección 98): el usuario `test@test.com`
+  (rol agente) no tenía el permiso `puede_anular_propuestas` en TEST, así que el botón salía deshabilitado
+  correctamente (guard funcionando) — Kevin proveyó un segundo usuario de TEST para permisos,
+  `qatest@test.com` (rol admin), con el que sí se pudo anular la propuesta id 12 (`POST /propuestas/12/anular`
+  → 200, `estado: "anulada"`, `motivo_anulacion` y `anulada_at`/`anulada_por` persistidos correctamente).
+- **Hallazgo emergente confirmando el diseño del fix**: al anular la id 12, el borrador huérfano id 13
+  recuperó dinámicamente el botón "Continuar" (su Carta ya no tiene ninguna propuesta emitida vigente) — el
+  flag se recalcula en cada request, no es un estado cacheado, y el comportamiento es el correcto: ahora sí
+  tiene sentido dejar continuar ese borrador para reemplazar la anulada.
+
+**Aprendizaje nuevo:** hay un usuario de TEST dedicado a pruebas de permisos — `qatest@test.com` / rol
+admin — separado de `test@test.com` (agente, sin `puede_anular_propuestas`). Útil para cualquier prueba en
+vivo futura que necesite permisos de admin en TEST.
+
+## 100. Ocultar botón "Anular" sin permiso en el listado de Propuestas Formales (PR #406) (2026-09-18)
+
+**Qué se hizo:** en el listado de Propuestas Formales, el botón "Anular" ahora se **oculta por completo**
+(no se renderiza) para el usuario que no tiene el permiso `puede_anular_propuestas`, en vez de mostrarse
+deshabilitado con un tooltip explicativo como antes.
+
+**Por qué:** Kevin, tras verificar en vivo el guard de permisos en la sección 99, pidió simplificar la UX —
+"los roles que no tienen permitido anular una propuesta, que directamente no les muestre el botón". Al
+preguntarle si convenía aplicar el mismo criterio a "Descargar PDF", pidió explícitamente dejarlo como está
+("Solo Anular") — ese botón sigue deshabilitado con tooltip, sin cambios.
+
+**Fix (PR #406, TDD estricto):**
+
+- `frontend/propuestas-listado/acciones.js`: `accionesDeFila(fila)` ahora solo agrega la acción `anular` al
+  arreglo de botones cuando `fila.puede_anular` es `true` — antes siempre la agregaba con
+  `enabled: Boolean(fila.puede_anular)` y `disabledTitle`. La decisión sigue siendo pura a partir del flag
+  que ya manda el backend (`listado.service.js`, sin cambios) — no se reintrodujo lógica de derivar el
+  permiso a partir del `estado` en el frontend.
+- 5 tests de `acciones.test.js` actualizados: en vez de esperar `enabled: false` con tooltip, ahora aseveran
+  `porAccion.anular === undefined` cuando no hay permiso.
+- Suite completa frontend en verde tras el cambio.
+
+**Deploy a TEST y verificación en vivo:** desplegado el bundle de frontend actualizado a
+`test-web.cotizador.lat`. Verificado con Playwright: con `test@test.com` (agente, sin permiso) el botón
+"Anular" no aparece en ninguna fila del listado; con `qatest@test.com` (admin) sigue apareciendo habilitado
+donde corresponde. "Descargar PDF" no cambió su comportamiento en ningún caso.
+
+## 101. Link "Nueva propuesta" en el listado de Propuestas Formales (PR #407) (2026-09-18)
+
+**Qué se hizo:** se agregó un link "Nueva propuesta" dentro del listado de Propuestas Formales
+(`frontend/propuestas-listado/`), ubicado en la barra de filtros junto al botón "Limpiar filtros", que
+navega a `../propuestas/` (el wizard de Propuesta Formal, que sin parámetros en la URL arranca mostrando el
+selector de Carta Oferta — confirmado leyendo `propuestas.js` sin modificarlo).
+
+**Por qué:** Kevin notó que, una vez dentro de la pantalla de listado, no había forma de iniciar una
+propuesta nueva sin volver al panel de Bienvenida — "necesito un botón para crear nueva propuesta, ya que
+actualmente veo que solo se puede crear únicamente desde el panel de bienvenida". Consultado sobre la
+ubicación exacta (encabezado de página vs. barra de filtros), eligió que quedara al lado de "Limpiar
+filtros".
+
+**Implementación (PR #407, TDD estricto):**
+
+- `frontend/propuestas-listado/propuestas-listado.js`: dentro de `renderFiltros()`, se agregó
+  `<a class="btn-primary" href="../propuestas/" data-action="nueva-propuesta">Nueva propuesta</a>` como
+  hermano de los botones "Buscar" y "Limpiar filtros" dentro de `.historial-filtros__acciones`. Es un link
+  simple de navegación (`<a>`), no dispara ningún fetch ni maneja estado — no toca `frontend/propuestas/`
+  (los archivos de Codex), solo agrega un punto de entrada nuevo hacia esa pantalla ya existente.
+- `frontend/propuestas-listado/propuestas-listado.test.js`: test nuevo que verifica que el link existe, que
+  su `href` es `../propuestas/`, que su texto es "Nueva propuesta" y que comparte el mismo contenedor padre
+  que el botón "Limpiar filtros".
+- Suite completa frontend en verde tras el cambio.
+
+**Deploy a TEST y verificación en vivo:** desplegado el bundle de frontend actualizado a
+`test-web.cotizador.lat` (ver aprendizajes de la sección 98 sobre verificación por hash en disco para
+`.html`, aplicado también acá). Verificado con Playwright: el link aparece junto a "Limpiar filtros" en el
+listado, y al hacer clic navega correctamente a `../propuestas/`, que carga el selector de Carta Oferta del
+wizard (capturas `8-nueva-propuesta.png` y `9-wizard-selector-carta.png`).

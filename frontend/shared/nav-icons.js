@@ -15,6 +15,9 @@ export const ICON_X_CIRCLE = `<svg width="18" height="18" viewBox="0 0 24 24" fi
 export const ICON_CHECK_CIRCLE = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.7"></circle><path d="M8.5 12.3l2.3 2.3 4.7-4.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path></svg>`
 export const ICON_BELL = `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M19 13.586V10c0-3.217-2.185-5.927-5.145-6.742C13.562 2.52 12.846 2 12 2s-1.562.52-1.855 1.258C7.185 4.074 5 6.783 5 10v3.586l-1.707 1.707A.996.996 0 0 0 3 16v2a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1v-2a.996.996 0 0 0-.293-.707L19 13.586zM19 17H5v-.586l1.707-1.707A.996.996 0 0 0 7 14v-4c0-2.757 2.243-5 5-5s5 2.243 5 5v4c0 .266.105.52.293.707L19 16.414V17zm-7 5a2.98 2.98 0 0 0 2.818-2H9.182A2.98 2.98 0 0 0 12 22z"></path></svg>`
 export const ICON_CHEVRON_DOWN = `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16.293 9.293 12 13.586 7.707 9.293l-1.414 1.414L12 16.414l5.707-5.707z"></path></svg>`
+// Documento con líneas — ítem de sidebar "Propuestas Formales" (listado), mismo estilo
+// (Boxicons "regular", 24x24, fill="currentColor") que ICON_CLOCK/ICON_GEAR de arriba.
+export const ICON_DOC_LIST = `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M13 4H6c-1.103 0-2 .897-2 2v12c0 1.103.897 2 2 2h12c1.103 0 2-.897 2-2V9l-7-5zm0 2.414L17.586 9H13V6.414zM6 18V6h5v5h5v7H6z"></path><path d="M8 12h8v2H8zm0 4h8v2H8zm0-8h2v2H8z"></path></svg>`
 
 // ---- Íconos por ramo (badge de la vista Datos) — Boxicons "regular" (bx-car, bx-store,
 // bx-hot, bx-heart, bx-home), viewBox 24x24 ----

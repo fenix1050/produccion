@@ -206,3 +206,40 @@ test('PF-3 autosave waits for typing to settle and keeps successful background s
   assert.match(moduleSource, /if \(action === 'guardar'\) guardar\(\)/)
   assert.match(moduleSource, /function renderPreservandoVista\(\)/)
 })
+
+test('PF-3 frontend escapes proposal metadata and fallback text before HTML interpolation', async () => {
+  const moduleSource = await readFile(moduleUrl, 'utf8')
+
+  assert.match(
+    moduleSource,
+    /\(state\.textos\.faltantes \?\? \[\]\)\.map\(\(item\) => escapeHtml\(item\)\)\.join\(', '\)/
+  )
+  assert.match(moduleSource, /const INPUT_TYPES = new Set\(\['text', 'email', 'date', 'number'\]\)/)
+  assert.match(moduleSource, /escapeHtml\(label\).*escapeHtml\(name\)/s)
+  assert.match(moduleSource, /const selectedValue = String\(selected \?\? ''\)/)
+  assert.match(moduleSource, /const optionValue = String\(value \?\? ''\)/)
+  assert.match(moduleSource, /escapeHtml\(optionValue\).*escapeHtml\(text\)/s)
+})
+
+test('PF-3 logout keeps its fixed internal login redirect', async () => {
+  const moduleSource = await readFile(moduleUrl, 'utf8')
+
+  assert.match(moduleSource, /const LOGIN_PATH = '\.\.\/login\/'/)
+  assert.match(moduleSource, /window\.location\.assign\(loginUrl\.pathname\)/)
+  assert.match(moduleSource, /auth\.logout\(\)\.then\(redirectToLogin\)/)
+})
+
+test('PF-3 hides the pointless single-variant selector and auto-selects it via a hidden field, keeping the dropdown for a future multi-variant scenario', async () => {
+  const moduleSource = await readFile(moduleUrl, 'utf8')
+
+  // MRC/Incendio/Vida-AP always produce exactly one variant per cotización — the dropdown
+  // never has a real choice to make, so it auto-selects instead of asking the agent to pick.
+  assert.match(moduleSource, /variantes\.length === 1 \? variantes\[0\] : null/)
+  assert.match(
+    moduleSource,
+    /type="hidden" id="cotizacion-variante-id" value="\$\{escapeHtml\(variantes\[0\]\.id\)\}"/
+  )
+  // The <select> fallback stays in the source for a future scenario with more than one
+  // variant (e.g. Auto's dual franquicia, paused today) — it must not be deleted outright.
+  assert.match(moduleSource, /<select id="cotizacion-variante-id" class="field-input">/)
+})

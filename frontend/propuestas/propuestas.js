@@ -49,6 +49,10 @@ function fmtFecha(value) {
   return new Date(`${value}T00:00:00`).toLocaleDateString('es-PY')
 }
 
+function requiredMark() {
+  return '<span class="pf-required-mark" aria-hidden="true">*</span>'
+}
+
 function draftActual() {
   return state.propuesta?.draft_json ?? {}
 }
@@ -488,7 +492,9 @@ function renderEditor() {
   const propuesta = state.propuesta
   const variantes = carta.variantes ?? []
   const { varianteId, planPagoId } = seleccionActual()
-  const varianteActual = variantes.find((item) => item.id === varianteId) ?? null
+  // MRC/Incendio/Vida-AP always generate one variant per quotation; select it silently.
+  const varianteUnica = variantes.length === 1 ? variantes[0] : null
+  const varianteActual = variantes.find((item) => item.id === varianteId) ?? varianteUnica
   const pagos = varianteActual?.cotizacion_plan_pago ?? []
   const readiness = obtenerReadinessActual()
   const emitted = ['emitida', 'anulada'].includes(propuesta.estado)
@@ -984,10 +990,14 @@ function renderReplacementHistory(propuesta) {
 }
 
 function renderSeleccion(variantes, varianteActual, pagos, pagoSeleccionado, moneda) {
+  const campoVariante =
+    variantes.length === 1
+      ? `<input type="hidden" id="cotizacion-variante-id" value="${escapeHtml(variantes[0].id)}" />`
+      : `<label class="pf-field"><span>Variante</span><select id="cotizacion-variante-id" class="field-input" required><option value="">Seleccione</option>${variantes.map((v) => `<option value="${escapeHtml(v.id)}" ${v.id === varianteActual?.id ? 'selected' : ''}>${escapeHtml(v.numero_variante || `Variante ${v.id}`)} · ${fmtMoneda(v.prima, moneda)}</option>`).join('')}</select></label>`
   return `<section class="panel card"><div class="card__title pf-card-title"><span class="pf-card-title__icon" aria-hidden="true">01</span><div><strong>Carta y selección</strong><small>Variante y forma de pago persistidos en la Carta Oferta</small></div></div><div class="card__body pf-selection">
         <div class="pf-group-label pf-field--wide"><span>Selección comercial</span><small>Elegí una alternativa ya calculada, sin modificar los importes de la Carta Oferta.</small></div>
-        <label class="pf-field"><span>Variante</span><select id="cotizacion-variante-id" class="field-input" required><option value="">Seleccione</option>${variantes.map((v) => `<option value="${escapeHtml(v.id)}" ${v.id === varianteActual?.id ? 'selected' : ''}>${escapeHtml(v.numero_variante || `Variante ${v.id}`)} · ${fmtMoneda(v.prima, moneda)}</option>`).join('')}</select></label>
-        <label class="pf-field"><span>Forma de pago</span><select id="cotizacion-plan-pago-id" class="field-input" required><option value="">Seleccione</option>${pagos.map((p) => `<option value="${escapeHtml(p.id)}" ${p.id === pagoSeleccionado ? 'selected' : ''}>${escapeHtml(p.formas_pago?.nombre_display || 'Forma de pago')} · ${fmtMoneda(p.premio_total, moneda)}</option>`).join('')}</select></label>
+        ${campoVariante}
+        <label class="pf-field"><span>Forma de pago${requiredMark()}</span><select id="cotizacion-plan-pago-id" class="field-input" required><option value="">Seleccione</option>${pagos.map((p) => `<option value="${escapeHtml(p.id)}" ${p.id === pagoSeleccionado ? 'selected' : ''}>${escapeHtml(p.formas_pago?.nombre_display || 'Forma de pago')} · ${fmtMoneda(p.premio_total, moneda)}</option>`).join('')}</select></label>
         <p>Los importes son de solo lectura y provienen de la cotización persistida.</p>
       </div></section>`
 }

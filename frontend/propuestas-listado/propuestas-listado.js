@@ -76,9 +76,16 @@ async function init() {
   await cargarPropuestas()
 }
 
+function navegarRutaInterna(path) {
+  const url = new URL(path, window.location.href)
+  if (url.origin !== window.location.origin) return false
+  window.location.assign(`${url.pathname}${url.search}${url.hash}`)
+  return true
+}
+
 async function cerrarSesion() {
   await auth.logout()
-  window.location.href = '../login/'
+  navegarRutaInterna('../login/')
 }
 
 function fmtFecha(iso) {
@@ -152,7 +159,7 @@ function irPaginaSiguiente() {
 
 function continuarPropuesta(fila) {
   const accion = accionesDeFila(fila).find((a) => a.action === 'continuar')
-  if (accion?.href) window.location.href = accion.href
+  if (accion?.href) navegarRutaInterna(accion.href)
 }
 
 async function descargarPdf(boton, fila) {
@@ -266,7 +273,7 @@ async function confirmarAnular() {
 // ---------------------------------------------------------------------------
 
 function renderApp() {
-  app.innerHTML = `
+  const markup = `
     ${renderTopbar()}
     <div class="app-body">
       <div class="sidebar-overlay ${state.sidebarAbierta ? 'sidebar-overlay--visible' : ''}" data-action="close-sidebar"></div>
@@ -295,6 +302,8 @@ function renderApp() {
     ${state.modalAnular ? renderModalAnular() : ''}
     ${state.modalDetalle ? renderModalDetalle() : ''}
   `
+  const fragment = document.createRange().createContextualFragment(markup)
+  app.replaceChildren(fragment)
 }
 
 function renderTopbar() {
@@ -354,6 +363,7 @@ function renderFiltros() {
       <div class="historial-filtros__acciones">
         <button class="btn-primary" type="submit">Buscar</button>
         <button class="btn-outline" type="button" data-action="limpiar-filtros">Limpiar filtros</button>
+        <a class="btn-primary" href="../propuestas/" data-action="nueva-propuesta">Nueva propuesta</a>
       </div>
     </form>
   `

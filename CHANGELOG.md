@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.65](https://github.com/fenix1050/produccion/compare/v0.1.64...v0.1.65) (2026-09-17)
+
+
+### Bug Fixes
+
+* **frontend:** harden proposal HTML rendering ([#398](https://github.com/fenix1050/produccion/issues/398)) ([5a0a2ae](https://github.com/fenix1050/produccion/commit/5a0a2aed4e71315992acfa64e97542c2fffafe43))
+* **propuestas:** corregir overflow real de risk-description en PDF MRC ([#393](https://github.com/fenix1050/produccion/issues/393)) ([70593b5](https://github.com/fenix1050/produccion/commit/70593b52d6b7e1624c3bd54982a925930b54cf13))
+
 ## [0.1.64](https://github.com/fenix1050/produccion/compare/v0.1.63...v0.1.64) (2026-09-17)
 
 

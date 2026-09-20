@@ -1,6 +1,6 @@
 import { api, auth } from '../shared/api.js'
 import { escapeHtml, renderBanner } from '../shared/dom.js'
-import { fmtMoneda } from '../shared/format.js'
+import { fmtGsInput, fmtMoneda } from '../shared/format.js'
 import { renderSidebarFooter, renderTopbar as renderTopbarShell } from '../shared/sidebar.js'
 
 const app = document.getElementById('app')
@@ -47,6 +47,54 @@ function booleanoFormulario(value) {
 function fmtFecha(value) {
   if (!value) return '—'
   return new Date(`${value}T00:00:00`).toLocaleDateString('es-PY')
+}
+
+function formatearRuc(value) {
+  const raw = String(value ?? '').trim()
+  if (!raw || /[^\d\s.-]/.test(raw)) return raw
+  const digits = raw.replace(/\D/g, '')
+  if (!digits) return ''
+  const tieneVerificador = raw.includes('-') || digits.length >= 8
+  const cuerpo = tieneVerificador ? digits.slice(0, -1) : digits
+  const verificador = tieneVerificador ? digits.slice(-1) : ''
+  return `${fmtGsInput(cuerpo)}${verificador ? `-${verificador}` : ''}`
+}
+
+function parseGsInput(value) {
+  const digits = String(value ?? '').replace(/\D/g, '')
+  return digits ? Number(digits) : null
+}
+
+function formatearInputPreservandoCursor(target) {
+  const formatter =
+    target.dataset.format === 'ruc'
+      ? formatearRuc
+      : target.dataset.format === 'gs'
+        ? (value) => fmtGsInput(String(value ?? '').replace(/\D/g, ''))
+        : null
+  if (!formatter) return
+
+  const currentValue = target.value
+  const formattedValue = formatter(currentValue)
+  if (formattedValue === currentValue) return
+  const cursor = target.selectionStart ?? currentValue.length
+  const digitsBeforeCursor = currentValue.slice(0, cursor).replace(/\D/g, '').length
+  target.value = formattedValue
+  if (document.activeElement !== target || typeof target.setSelectionRange !== 'function') return
+  if (digitsBeforeCursor === 0) {
+    target.setSelectionRange(0, 0)
+    return
+  }
+  let seenDigits = 0
+  let nextCursor = formattedValue.length
+  for (let index = 0; index < formattedValue.length; index += 1) {
+    if (/\d/.test(formattedValue[index])) seenDigits += 1
+    if (seenDigits === digitsBeforeCursor) {
+      nextCursor = index + 1
+      break
+    }
+  }
+  target.setSelectionRange(nextCursor, nextCursor)
 }
 
 function requiredMark() {
@@ -167,7 +215,7 @@ function leerFormulario() {
     estado_civil: () => text('estado_civil'),
     ocupacion: () => text('ocupacion'),
     ciudad: () => text('ciudad'),
-    ingreso_mensual: (value) => (value ? Number(value) : null),
+    ingreso_mensual: (value) => parseGsInput(value),
     lugar_trabajo: () => text('lugar_trabajo'),
   }
   Object.entries(insuredFields).forEach(([name, transform]) => {
@@ -577,13 +625,13 @@ function renderAseguradoPanel() {
             true
           )}
           ${inputField('nombre_razon_social', 'Nombre o razón social', valor('partes.asegurado.nombre_razon_social'), 'text', true)}
-          ${inputField('documento', 'Documento o RUC', valor('partes.asegurado.documento'), 'text', true)}
+          ${inputField('documento', 'Documento o RUC', valor('partes.asegurado.documento'), 'text', true, { format: 'ruc' })}
           ${inputField('actividad_economica', 'Actividad económica', valor('partes.asegurado.actividad_economica'), 'text', true)}
           ${inputField('fecha_nacimiento', 'Fecha de nacimiento', valor('partes.asegurado.fecha_nacimiento'), 'date', tipoPersona === 'fisica')}
           ${inputField('nacionalidad', 'Nacionalidad', valor('partes.asegurado.nacionalidad'), 'text', tipoPersona === 'fisica')}
           ${inputField('estado_civil', 'Estado civil', valor('partes.asegurado.estado_civil'), 'text', tipoPersona === 'fisica')}
           ${inputField('ocupacion', 'Ocupación', valor('partes.asegurado.ocupacion'), 'text', tipoPersona === 'fisica')}
-          ${inputField('ingreso_mensual', 'Ingreso mensual (opcional)', valor('partes.asegurado.ingreso_mensual'), 'number')}
+          ${inputField('ingreso_mensual', 'Ingreso mensual (opcional)', valor('partes.asegurado.ingreso_mensual'), 'text', false, { format: 'gs', inputMode: 'numeric' })}
           ${inputField('lugar_trabajo', 'Lugar de trabajo (opcional)', valor('partes.asegurado.lugar_trabajo'))}
         </div>
       </section>
@@ -598,7 +646,7 @@ function renderAseguradoPanel() {
         <header class="pf-subcard__header"><span class="pf-subcard__icon" aria-hidden="true">${ICON_LOCATION}</span><div><h3 id="pf-address-title">Dirección</h3><p>Domicilio del asegurado.</p></div></header>
         <div class="pf-subcard__body pf-fields">
           ${inputField('ciudad', 'Ciudad', valor('partes.asegurado.ciudad'), 'text', true)}
-          <label class="pf-field pf-field--wide"><span>Dirección</span><textarea name="direccion" rows="2" required>${escapeHtml(valor('partes.asegurado.direccion'))}</textarea></label>
+          <label class="pf-field pf-field--wide"><span>Dirección${requiredMark()}</span><textarea name="direccion" rows="2" required>${escapeHtml(valor('partes.asegurado.direccion'))}</textarea></label>
         </div>
       </section>
     </div>
@@ -619,10 +667,10 @@ function renderTomadorPanel() {
         <header class="pf-subcard__header"><div><h3 id="pf-tomador-title">Tomador</h3><p>Indicá si es la misma persona o completá sus datos.</p></div></header>
         <div class="pf-subcard__body pf-fields">
           <label class="pf-check pf-field--wide"><input type="checkbox" name="tomador_igual_asegurado" ${igual ? 'checked' : ''} /> El tomador es la misma persona que el asegurado</label>
-          ${igual ? '<p class="pf-inline-note pf-field--wide">Se utilizarán los datos del asegurado para el tomador.</p>' : `${inputField('tomador_nombre', 'Nombre o razón social', valor('partes.tomador.nombre_razon_social'), 'text', required)}${inputField('tomador_documento', 'Documento del tomador', valor('partes.tomador.documento'), 'text', required)}${inputField('tomador_direccion', 'Dirección del tomador', valor('partes.tomador.direccion'), 'text', required)}${inputField('tomador_ciudad', 'Ciudad del tomador', valor('partes.tomador.ciudad'), 'text', required)}${inputField('tomador_telefono', 'Teléfono del tomador', valor('partes.tomador.telefono'), 'text', required)}${inputField('tomador_email', 'Correo del tomador', valor('partes.tomador.email'), 'email', required)}`}
+          ${igual ? '<p class="pf-inline-note pf-field--wide">Se utilizarán los datos del asegurado para el tomador.</p>' : `${inputField('tomador_nombre', 'Nombre o razón social', valor('partes.tomador.nombre_razon_social'), 'text', required)}${inputField('tomador_documento', 'Documento del tomador', valor('partes.tomador.documento'), 'text', required, { format: 'ruc' })}${inputField('tomador_direccion', 'Dirección del tomador', valor('partes.tomador.direccion'), 'text', required)}${inputField('tomador_ciudad', 'Ciudad del tomador', valor('partes.tomador.ciudad'), 'text', required)}${inputField('tomador_telefono', 'Teléfono del tomador', valor('partes.tomador.telefono'), 'text', required)}${inputField('tomador_email', 'Correo del tomador', valor('partes.tomador.email'), 'email', required)}`}
         </div>
       </section>
-      ${tipoPersona === 'juridica' ? `<section class="pf-subcard" aria-labelledby="pf-representative-title"><header class="pf-subcard__header"><div><h3 id="pf-representative-title">Representante legal</h3><p>Completá los datos de quien firma en nombre de la persona jurídica.</p></div></header><div class="pf-subcard__body pf-fields">${inputField('representante_nombre', 'Nombre del representante', valor('partes.representante_legal.nombre'), 'text', true)}${inputField('representante_documento', 'Documento del representante', valor('partes.representante_legal.documento'), 'text', true)}${inputField('representante_cargo', 'Cargo del representante', valor('partes.representante_legal.cargo'), 'text', true)}</div></section>` : ''}
+      ${tipoPersona === 'juridica' ? `<section class="pf-subcard" aria-labelledby="pf-representative-title"><header class="pf-subcard__header"><div><h3 id="pf-representative-title">Representante legal</h3><p>Completá los datos de quien firma en nombre de la persona jurídica.</p></div></header><div class="pf-subcard__body pf-fields">${inputField('representante_nombre', 'Nombre del representante', valor('partes.representante_legal.nombre'), 'text', true)}${inputField('representante_documento', 'Documento del representante', valor('partes.representante_legal.documento'), 'text', true, { format: 'ruc' })}${inputField('representante_cargo', 'Cargo del representante', valor('partes.representante_legal.cargo'), 'text', true)}</div></section>` : ''}
     </div>
   </section>`
 }
@@ -993,7 +1041,7 @@ function renderSeleccion(variantes, varianteActual, pagos, pagoSeleccionado, mon
   const campoVariante =
     variantes.length === 1
       ? `<input type="hidden" id="cotizacion-variante-id" value="${escapeHtml(variantes[0].id)}" />`
-      : `<label class="pf-field"><span>Variante</span><select id="cotizacion-variante-id" class="field-input" required><option value="">Seleccione</option>${variantes.map((v) => `<option value="${escapeHtml(v.id)}" ${v.id === varianteActual?.id ? 'selected' : ''}>${escapeHtml(v.numero_variante || `Variante ${v.id}`)} · ${fmtMoneda(v.prima, moneda)}</option>`).join('')}</select></label>`
+      : `<label class="pf-field"><span>Variante</span><select id="cotizacion-variante-id" class="field-input"><option value="">Seleccione</option>${variantes.map((v) => `<option value="${escapeHtml(v.id)}" ${v.id === varianteActual?.id ? 'selected' : ''}>${escapeHtml(v.numero_variante || `Variante ${v.id}`)} · ${fmtMoneda(v.prima, moneda)}</option>`).join('')}</select></label>`
   return `<section class="panel card"><div class="card__title pf-card-title"><span class="pf-card-title__icon" aria-hidden="true">01</span><div><strong>Carta y selección</strong><small>Variante y forma de pago persistidos en la Carta Oferta</small></div></div><div class="card__body pf-selection">
         <div class="pf-group-label pf-field--wide"><span>Selección comercial</span><small>Elegí una alternativa ya calculada, sin modificar los importes de la Carta Oferta.</small></div>
         ${campoVariante}
@@ -1004,13 +1052,21 @@ function renderSeleccion(variantes, varianteActual, pagos, pagoSeleccionado, mon
 
 const INPUT_TYPES = new Set(['text', 'email', 'date', 'number'])
 
-function inputField(name, label, value, type = 'text', required = false) {
+function inputField(name, label, value, type = 'text', required = false, options = {}) {
   const safeType = INPUT_TYPES.has(type) ? type : 'text'
-  return `<label class="pf-field"><span>${escapeHtml(label)}</span><input class="field-input" type="${safeType}" name="${escapeHtml(name)}" value="${escapeHtml(value ?? '')}" ${required ? 'required' : ''} /></label>`
+  const formattedValue =
+    options.format === 'ruc'
+      ? formatearRuc(value)
+      : options.format === 'gs'
+        ? fmtGsInput(String(value ?? '').replace(/\D/g, ''))
+        : (value ?? '')
+  const formatAttribute = options.format ? `data-format="${options.format}"` : ''
+  const inputModeAttribute = options.inputMode ? `inputmode="${options.inputMode}"` : ''
+  return `<label class="pf-field"><span>${escapeHtml(label)}${required ? requiredMark() : ''}</span><input class="field-input" type="${safeType}" name="${escapeHtml(name)}" value="${escapeHtml(formattedValue)}" ${inputModeAttribute} ${formatAttribute} ${required ? 'required' : ''} /></label>`
 }
 
 function phoneField(name, label, value, required = false) {
-  return `<label class="pf-field"><span>${escapeHtml(label)}</span><span class="pf-phone"><span class="pf-phone__prefix" aria-hidden="true">🇵🇾 +595</span><input class="field-input" type="text" name="${escapeHtml(name)}" value="${escapeHtml(value ?? '')}" ${required ? 'required' : ''} /></span></label>`
+  return `<label class="pf-field"><span>${escapeHtml(label)}${required ? requiredMark() : ''}</span><span class="pf-phone"><span class="pf-phone__prefix" aria-hidden="true">🇵🇾 +595</span><input class="field-input" type="text" name="${escapeHtml(name)}" value="${escapeHtml(value ?? '')}" ${required ? 'required' : ''} /></span></label>`
 }
 
 function renderTextControls() {
@@ -1019,7 +1075,7 @@ function renderTextControls() {
 
 function selectField(name, label, options, selected, required = false) {
   const selectedValue = String(selected ?? '')
-  return `<label class="pf-field"><span>${escapeHtml(label)}</span><select class="field-input" name="${escapeHtml(name)}" ${required ? 'required' : ''}>${options
+  return `<label class="pf-field"><span>${escapeHtml(label)}${required ? requiredMark() : ''}</span><select class="field-input" name="${escapeHtml(name)}" ${required ? 'required' : ''}>${options
     .map(([value, text]) => {
       const optionValue = String(value ?? '')
       return `<option value="${escapeHtml(optionValue)}" ${selectedValue === optionValue ? 'selected' : ''}>${escapeHtml(text)}</option>`
@@ -1074,7 +1130,9 @@ app.addEventListener('submit', (event) => {
 })
 
 app.addEventListener('input', (event) => {
-  if (event.target.closest('#propuesta-form')) programarAutosave()
+  if (!event.target.closest('#propuesta-form')) return
+  formatearInputPreservandoCursor(event.target)
+  programarAutosave()
 })
 
 app.addEventListener('change', (event) => {

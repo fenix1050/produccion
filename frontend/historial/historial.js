@@ -80,9 +80,16 @@ async function init() {
   await cargarCotizaciones()
 }
 
+function navegarRutaInterna(path) {
+  const url = new URL(path, window.location.href)
+  if (url.origin !== window.location.origin) return false
+  window.location.assign(`${url.pathname}${url.search}${url.hash}`)
+  return true
+}
+
 async function cerrarSesion() {
   await auth.logout()
-  window.location.href = '../login/'
+  navegarRutaInterna('../login/')
 }
 
 function fmtFecha(iso) {
@@ -148,7 +155,7 @@ function motivoNoEditable(cotizacion) {
 }
 
 function editarCotizacion(id) {
-  window.location.href = `../cotizar/?editar=${id}`
+  navegarRutaInterna(`../cotizar/?editar=${encodeURIComponent(id)}`)
 }
 
 // ---------------------------------------------------------------------------
@@ -275,7 +282,7 @@ async function descargarOferta(boton, id, numeroCotizacion) {
 // ---------------------------------------------------------------------------
 
 function renderApp() {
-  app.innerHTML = `
+  const markup = `
     ${renderTopbar()}
     <div class="app-body">
       <div class="sidebar-overlay ${state.sidebarAbierta ? 'sidebar-overlay--visible' : ''}" data-action="close-sidebar"></div>
@@ -302,6 +309,8 @@ function renderApp() {
     </div>
     ${state.modal ? renderModalDetalle() : ''}
   `
+  const fragment = document.createRange().createContextualFragment(markup)
+  app.replaceChildren(fragment)
   actualizarIndicadorScrollTabla()
 }
 
@@ -715,7 +724,7 @@ function onActionClick(el) {
     return
   }
   if (action === 'accion-propuesta') {
-    window.location.href = el.dataset.href
+    navegarRutaInterna(el.dataset.href)
     return
   }
   if (action === 'editar-cotizacion') {

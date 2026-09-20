@@ -32,7 +32,7 @@ test('PF-3 frontend converges both entries and issues only through the authorita
   assert.match(moduleSource, /state\.textos\.emision_habilitada/)
   assert.match(
     moduleSource,
-    /function inputField\(name, label, value, type = 'text', required = false\)/
+    /function inputField\(name, label, value, type = 'text', required = false, options = \{\}\)/
   )
   assert.match(moduleSource, /<textarea name="direccion" rows="2" required>/)
   assert.match(moduleSource, /selectField\(\s*'tipo_persona',\s*'Tipo de persona'/)
@@ -50,6 +50,42 @@ test('PF-3 frontend escapes proposal metadata and fallback text before HTML inte
   assert.match(moduleSource, /const selectedValue = String\(selected \?\? ''\)/)
   assert.match(moduleSource, /const optionValue = String\(value \?\? ''\)/)
   assert.match(moduleSource, /escapeHtml\(optionValue\).*escapeHtml\(text\)/s)
+})
+
+test('PF-3 required fields and numeric inputs expose the proposal form contract', async () => {
+  const moduleSource = await readFile(moduleUrl, 'utf8')
+  const stylesheetSource = await readFile(stylesheetUrl, 'utf8')
+
+  assert.match(moduleSource, /function requiredMark\(\)/)
+  assert.match(moduleSource, /class="pf-required-mark" aria-hidden="true">\*<\/span>/)
+  assert.match(moduleSource, /required \? requiredMark\(\) : ''/)
+  assert.match(moduleSource, /function formatearRuc\(value\)/)
+  assert.match(moduleSource, /function parseGsInput\(value\)/)
+  assert.match(
+    moduleSource,
+    /const formatAttribute = options\.format \? `data-format="\$\{options\.format\}"`/
+  )
+  assert.match(moduleSource, /format: 'ruc'/)
+  assert.match(moduleSource, /format: 'gs'/)
+  assert.match(moduleSource, /inputMode: 'numeric'/)
+  assert.match(moduleSource, /formatearInputPreservandoCursor\(event\.target\)/)
+  assert.match(
+    stylesheetSource,
+    /\.pf-field > span \.pf-required-mark\s*\{[\s\S]*color: var\(--tajy-red-a11y\)/
+  )
+})
+
+test('PF-3 hides the pointless single-variant selector and auto-selects it via a hidden field, keeping the dropdown for a future multi-variant scenario', async () => {
+  const moduleSource = await readFile(moduleUrl, 'utf8')
+
+  assert.match(moduleSource, /variantes\.length === 1 \? variantes\[0\] : null/)
+  assert.match(
+    moduleSource,
+    /type="hidden" id="cotizacion-variante-id" value="\$\{escapeHtml\(variantes\[0\]\.id\)\}"/
+  )
+  assert.match(moduleSource, /<select id="cotizacion-variante-id" class="field-input">/)
+  assert.match(moduleSource, /<span>Forma de pago\$\{requiredMark\(\)\}<\/span>/)
+  assert.doesNotMatch(moduleSource, /<span>Variante\$\{requiredMark\(\)\}<\/span>/)
 })
 
 test('PF-3 logout keeps its fixed internal login redirect', async () => {

@@ -58,7 +58,8 @@ const state = {
 
 const app = document.getElementById('app')
 
-let elementoDisparadorModal = null
+// Identidad estable del trigger; renderApp() reemplaza el nodo antes de cerrar el modal.
+let elementoDisparadorModal = null // { action, id }
 
 // Lee ?carta_oferta_id=<id> de la URL de entrada. Se resuelve una sola vez al iniciar la
 // página (no cambia dentro de la sesión de uso del listado).
@@ -75,9 +76,16 @@ async function init() {
   await cargarPropuestas()
 }
 
+function navegarRutaInterna(path) {
+  const url = new URL(path, window.location.href)
+  if (url.origin !== window.location.origin) return false
+  window.location.assign(`${url.pathname}${url.search}${url.hash}`)
+  return true
+}
+
 async function cerrarSesion() {
   await auth.logout()
-  window.location.href = '../login/'
+  navegarRutaInterna('../login/')
 }
 
 function fmtFecha(iso) {
@@ -151,7 +159,7 @@ function irPaginaSiguiente() {
 
 function continuarPropuesta(fila) {
   const accion = accionesDeFila(fila).find((a) => a.action === 'continuar')
-  if (accion?.href) window.location.href = accion.href
+  if (accion?.href) navegarRutaInterna(accion.href)
 }
 
 async function descargarPdf(boton, fila) {
@@ -178,8 +186,23 @@ async function descargarPdf(boton, fila) {
   }
 }
 
+function guardarDisparadorModal(action, id) {
+  elementoDisparadorModal = { action, id: String(id) }
+}
+
+function enfocarDisparadorModal() {
+  if (elementoDisparadorModal) {
+    const { action, id } = elementoDisparadorModal
+    const disparador = Array.from(app.querySelectorAll('[data-action]')).find(
+      (elemento) => elemento.dataset.action === action && elemento.dataset.id === id
+    )
+    disparador?.focus()
+    elementoDisparadorModal = null
+  }
+}
+
 function verDetalle(fila) {
-  elementoDisparadorModal = document.activeElement
+  guardarDisparadorModal('ver-detalle', fila.id)
   state.modalDetalle = fila
   renderApp()
   enfocarPrimerElemento(app.querySelector('.admin-modal--detalle'))
@@ -188,10 +211,7 @@ function verDetalle(fila) {
 function cerrarModalDetalle() {
   state.modalDetalle = null
   renderApp()
-  if (elementoDisparadorModal) {
-    elementoDisparadorModal.focus()
-    elementoDisparadorModal = null
-  }
+  enfocarDisparadorModal()
 }
 
 // ---------------------------------------------------------------------------
@@ -199,7 +219,7 @@ function cerrarModalDetalle() {
 // ---------------------------------------------------------------------------
 
 function abrirModalAnular(fila) {
-  elementoDisparadorModal = document.activeElement
+  guardarDisparadorModal('anular', fila.id)
   state.modalAnular = { fila, motivo: '', loading: false, error: '' }
   renderApp()
   enfocarPrimerElemento(app.querySelector('.admin-modal--anular'))
@@ -208,10 +228,7 @@ function abrirModalAnular(fila) {
 function cerrarModalAnular() {
   state.modalAnular = null
   renderApp()
-  if (elementoDisparadorModal) {
-    elementoDisparadorModal.focus()
-    elementoDisparadorModal = null
-  }
+  enfocarDisparadorModal()
 }
 
 function actualizarMotivoAnular(valor) {
@@ -256,7 +273,7 @@ async function confirmarAnular() {
 // ---------------------------------------------------------------------------
 
 function renderApp() {
-  app.innerHTML = `
+  const markup = `
     ${renderTopbar()}
     <div class="app-body">
       <div class="sidebar-overlay ${state.sidebarAbierta ? 'sidebar-overlay--visible' : ''}" data-action="close-sidebar"></div>
@@ -285,6 +302,8 @@ function renderApp() {
     ${state.modalAnular ? renderModalAnular() : ''}
     ${state.modalDetalle ? renderModalDetalle() : ''}
   `
+  const fragment = document.createRange().createContextualFragment(markup)
+  app.replaceChildren(fragment)
 }
 
 function renderTopbar() {
@@ -457,22 +476,63 @@ function renderModalAnular() {
   `
 }
 
+function renderIconoDetalle(tipo) {
+  const paths = {
+    propuesta: '<path d="M7 3.5h7l3.5 3.5v13.5H7z" /><path d="M14 3.5V7h3.5M10 11h4M10 14.5h4" />',
+    carta: '<path d="M6.5 3.5h8l3 3v14h-11z" /><path d="M14.5 3.5V7h3M9 11h6M9 14.5h6M9 18h4" />',
+    cliente:
+      '<circle cx="12" cy="8" r="3.25" /><path d="M5.5 20c.55-3.35 2.75-5 6.5-5s5.95 1.65 6.5 5" />',
+    estado:
+      '<path d="m4 12 7.2-7.2h6.3L20 7.3v6.3L12.8 20 4 12z" /><circle cx="15.2" cy="8.8" r="1" />',
+    fecha:
+      '<rect x="4.5" y="5.5" width="15" height="14" rx="1.5" /><path d="M8 3.5v4M16 3.5v4M4.5 10h15" />',
+  }
+  return `<svg class="propuestas-listado-detalle__icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[tipo] ?? paths.propuesta}</svg>`
+}
+
 function renderModalDetalle() {
   const fila = state.modalDetalle
   return `
-    <div class="admin-modal-backdrop" data-action="cerrar-modal-detalle-backdrop">
-      <div class="admin-modal admin-modal--detalle" data-stop-propagation="true" role="dialog" aria-modal="true" aria-labelledby="propuestas-listado-detalle-title">
-        <div class="admin-modal__title" id="propuestas-listado-detalle-title">Propuesta ${escapeHtml(fila.numero_propuesta ?? '')}</div>
-        <dl>
-          <div><dt>Carta</dt><dd>${escapeHtml(fila.numero_carta ?? '—')}</dd></div>
-          <div><dt>Cliente</dt><dd>${escapeHtml(fila.cliente_nombre ?? '—')}</dd></div>
-          <div><dt>Estado</dt><dd>${crearBadge(fila.estado ?? '—', ESTADO_BADGE[fila.estado] ?? 'neutral')}</dd></div>
-          <div><dt>Creada</dt><dd>${fmtFecha(fila.created_at)}</dd></div>
-          <div><dt>Emitida</dt><dd>${fmtFecha(fila.emitida_at)}</dd></div>
+    <div class="admin-modal-backdrop admin-modal-backdrop--detalle" data-action="cerrar-modal-detalle-backdrop">
+      <div class="admin-modal admin-modal--detalle" data-stop-propagation="true" role="dialog" aria-modal="true" aria-labelledby="propuestas-listado-detalle-title" aria-describedby="propuestas-listado-detalle-subtitle">
+        <header class="propuestas-listado-detalle__header">
+          <div>
+            <h2 class="propuestas-listado-detalle__title" id="propuestas-listado-detalle-title">Detalle de propuesta</h2>
+            <p class="propuestas-listado-detalle__subtitle" id="propuestas-listado-detalle-subtitle">Información completa de la propuesta seleccionada</p>
+          </div>
+          <button type="button" class="propuestas-listado-detalle__close" data-action="cerrar-modal-detalle" aria-label="Cerrar detalle de propuesta">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
+          </button>
+        </header>
+        <dl class="propuestas-listado-detalle__grid">
+          <div class="propuestas-listado-detalle__card">
+            <span class="propuestas-listado-detalle__icon">${renderIconoDetalle('propuesta')}</span>
+            <div><dt>Propuesta</dt><dd>${escapeHtml(fila.numero_propuesta ?? '—')}</dd></div>
+          </div>
+          <div class="propuestas-listado-detalle__card">
+            <span class="propuestas-listado-detalle__icon">${renderIconoDetalle('carta')}</span>
+            <div><dt>Carta</dt><dd>${escapeHtml(fila.numero_carta ?? '—')}</dd></div>
+          </div>
+          <div class="propuestas-listado-detalle__card">
+            <span class="propuestas-listado-detalle__icon">${renderIconoDetalle('cliente')}</span>
+            <div><dt>Cliente</dt><dd>${escapeHtml(fila.cliente_nombre ?? '—')}</dd></div>
+          </div>
+          <div class="propuestas-listado-detalle__card">
+            <span class="propuestas-listado-detalle__icon">${renderIconoDetalle('estado')}</span>
+            <div><dt>Estado</dt><dd>${crearBadge(fila.estado ?? '—', ESTADO_BADGE[fila.estado] ?? 'neutral')}</dd></div>
+          </div>
+          <div class="propuestas-listado-detalle__card">
+            <span class="propuestas-listado-detalle__icon">${renderIconoDetalle('fecha')}</span>
+            <div><dt>Creada</dt><dd>${fmtFecha(fila.created_at)}</dd></div>
+          </div>
+          <div class="propuestas-listado-detalle__card">
+            <span class="propuestas-listado-detalle__icon">${renderIconoDetalle('fecha')}</span>
+            <div><dt>Emitida</dt><dd>${fmtFecha(fila.emitida_at)}</dd></div>
+          </div>
         </dl>
-        <div class="admin-modal__actions">
+        <footer class="propuestas-listado-detalle__footer">
           <button type="button" class="btn-outline" data-action="cerrar-modal-detalle">Cerrar</button>
-        </div>
+        </footer>
       </div>
     </div>
   `

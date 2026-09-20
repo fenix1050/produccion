@@ -32,5 +32,6 @@ test('preserva el literal ../propuestas/?carta= exigido por propuestas.test.js:1
 test('la navegación real usa el href calculado por decidirAccionPropuesta (data-href), no un literal hardcodeado por click', async () => {
   const src = await readFile(new URL('./historial.js', import.meta.url), 'utf8')
   assert.match(src, /data-action="accion-propuesta"/)
-  assert.match(src, /window\.location\.href = el\.dataset\.href/)
+  assert.match(src, /navegarRutaInterna\(el\.dataset\.href\)/)
+  assert.match(src, /url\.origin !== window\.location\.origin/)
 })

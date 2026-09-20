@@ -16,7 +16,7 @@ function montarEntornoDom(url) {
   return dom
 }
 
-function fetchMockFabrica(llamadas) {
+function fetchMockFabrica(llamadas, propuestas = []) {
   return async (url) => {
     llamadas.push(String(url))
     if (String(url).includes('/auth/me')) {
@@ -25,7 +25,7 @@ function fetchMockFabrica(llamadas) {
         headers: { 'Content-Type': 'application/json' },
       })
     }
-    return new Response(JSON.stringify({ data: [], count: 0 }), {
+    return new Response(JSON.stringify({ data: propuestas, count: propuestas.length }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     })
@@ -65,6 +65,63 @@ test('sin carta_oferta_id en la URL, el listado no lo envía (comportamiento sin
   const llamadaPropuestas = llamadas.find((u) => u.includes('/propuestas?'))
   assert.ok(llamadaPropuestas, 'debería haber llamado a GET /propuestas')
   assert.doesNotMatch(llamadaPropuestas, /carta_oferta_id/)
+})
+
+test('el detalle conserva los datos en cards y ofrece cierre visible accesible', async () => {
+  montarEntornoDom('http://localhost/propuestas-listado/')
+
+  const llamadas = []
+  globalThis.fetch = fetchMockFabrica(llamadas, [
+    {
+      id: 6,
+      numero_propuesta: '6',
+      numero_carta: 'MRC-575',
+      cliente_nombre: 'Cliente de prueba',
+      estado: 'anulada',
+      created_at: '2026-09-11T00:00:00.000Z',
+      emitida_at: '2026-09-17T00:00:00.000Z',
+    },
+  ])
+
+  await import('./propuestas-listado.js?case=detalle-modal-markup')
+  await esperarCargaInicial()
+
+  const botonDetalle = document.querySelector('[data-action="ver-detalle"]')
+  assert.ok(botonDetalle, 'debería existir la acción Ver detalle')
+  botonDetalle.focus()
+  botonDetalle.click()
+
+  const modal = document.querySelector('.admin-modal--detalle')
+  assert.ok(modal, 'debería renderizarse el modal de detalle')
+  assert.equal(modal.querySelector('h2').textContent, 'Detalle de propuesta')
+  assert.match(
+    modal.querySelector('.propuestas-listado-detalle__subtitle').textContent,
+    /Información completa/
+  )
+  assert.equal(modal.querySelectorAll('.propuestas-listado-detalle__card').length, 6)
+  assert.deepEqual(
+    Array.from(modal.querySelectorAll('dt')).map((label) => label.textContent),
+    ['Propuesta', 'Carta', 'Cliente', 'Estado', 'Creada', 'Emitida']
+  )
+  assert.equal(
+    modal.querySelector('.propuestas-listado-detalle__close').getAttribute('aria-label'),
+    'Cerrar detalle de propuesta'
+  )
+  assert.equal(
+    modal
+      .querySelector('.propuestas-listado-detalle__footer [data-action="cerrar-modal-detalle"]')
+      .textContent.trim(),
+    'Cerrar'
+  )
+
+  modal.querySelector('.propuestas-listado-detalle__close').click()
+  const botonDetalleNuevo = document.querySelector('[data-action="ver-detalle"]')
+  assert.notEqual(botonDetalleNuevo, botonDetalle, 'renderApp() debe crear un trigger nuevo')
+  assert.equal(
+    document.activeElement,
+    botonDetalleNuevo,
+    'el foco debe volver al trigger del detalle'
+  )
 })
 
 // Único punto de entrada para crear una propuesta hoy es la pantalla de Bienvenida

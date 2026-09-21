@@ -766,8 +766,14 @@ Mismo patrón visual que Siniestros Tajy (sidebar, Vanilla JS, sin framework).
 - ✅ PF-1: Carta Oferta histórica, inmutable y persistida; emisión MRC verificada en QA.
 - ✅ PF-2 para MRC: elegibilidad, borradores persistentes, selección por referencia, revisión
   optimista y entradas desde Bienvenida/Historial verificadas en QA. La migración 069 está aplicada
-  solo en QA; PF-3 sigue bloqueado hasta cerrar PF-0 y aprobar el plan de rollout a producción.
-- 🔲 PF-3: plantilla, emisión PDF, firmas y selección final en el documento oficial. No iniciada.
+  solo en QA.
+- ▶ PF-3: en curso, no "no iniciada". El listado de Propuestas Formales (`frontend/propuestas-listado/`,
+  `GET /propuestas`, anulación con motivo) ya está implementado y desplegado a TEST, verificado en vivo.
+  La plantilla/emisión del documento oficial también avanzó: existen renderers `mrc.js` (v1), `mrc-v2.js`
+  y `mrc-v3.js` en `backend/src/templates/propuesta/`, con `document-snapshot.service.js` y
+  `propuesta-pdf.service.js` en desarrollo activo — sin fecha de cierre confirmada. Ver el detalle
+  vigente en `docs/PLAN_PROPUESTA_FORMAL.md` y las entradas más recientes de `docs/ESTADO_PROYECTO.md`.
+  El módulo completo (listado + wizard) todavía no llegó a producción, solo a TEST.
 
 **Fase 5 — Historial y administración** — ✅ Base funcional implementada (2026-07-19), con
 iteraciones visuales y de seguridad agregadas después.
@@ -790,7 +796,8 @@ cliente los pida).
 - Formularios dinámicos por ramo en el frontend (rubro, m², suma por línea de cobertura, etc.) — **hecho para MRC**, luego pulido visualmente en las iteraciones 2026-07-21/22.
 - ~~UI para tildar cada cobertura como `cobertura` propia o `sublimite` de otra~~ — **rediseñado** (2026-07-13, ver sección 11 pendiente #11): en vez de un toggle por cotización, el agente arma "Coberturas incluidas" agregando líneas del catálogo (repetibles, con suma asegurada propia); el badge cobertura/sublímite es de solo lectura desde `coberturas_catalogo.categoria`. `cotizacion_coberturas.tipo_aplicacion` quedó sin uso.
 - UI de edición de tasas dentro de rango, restringida a roles con `puede_editar_tasas = true` — **hecha para MRC/Incendio** en el panel admin (tasas de cobertura + rubros de actividad). Sigue pendiente la parte de Vida/AP y Auto.
-- Plantillas PDF por ramo — **hecho para MRC**; Incendio/Hogar/TRO/Transporte siguen pendientes.
+- Plantillas PDF por ramo — **hecho para MRC e Incendio** (`backend/src/templates/oferta/incendio.js`);
+  Hogar/TRO/Transporte siguen pendientes.
 - Hogar y TRO quedan pendientes de fase futura (mismo esqueleto que MRC/Incendio, se suman cuando el cliente los pida)
 
 **Fase 7 — Vida y Accidentes Personales** — ▶ ACTIVA junto con Fase 6 (2026-07-10), con catálogo y
@@ -845,7 +852,14 @@ RPF ya cerrados; falta el calculador y su template.
 | Frontend | Vanilla JS |
 | Importación de Excel | SheetJS |
 | Generación de PDF | Puppeteer (HTML/CSS → PDF) |
-| Deploy frontend | Netlify |
-| Deploy backend | Railway o Render (Puppeteer necesita más RAM/CPU que serverless) |
+| Deploy | VPS propia (Docker + Caddy), TEST y PROD separados |
 | Organización | Monorepo GitHub (igual que gestion-tajy) |
+
+**Todo corre en una única VPS propia** (Docker + Caddy), con dos entornos separados — TEST
+(`test-api.cotizador.lat` / `test-web.cotizador.lat`) y PROD (`api.cotizador.lat` / `cotizador.lat`) —
+cada uno con su propio backend y su propio frontend estático. **No hay CD automático**: mergear a `main`
+no despliega nada por sí solo; el redeploy es manual, con autorización explícita en cada paso. `render.yaml`
+y `frontend/vercel.json` son artefactos legacy de una estrategia de deploy anterior (Render.com / Vercel)
+que precedió a la VPS actual. Detalle completo en `CLAUDE.md` sección "Infraestructura de despliegue" y en
+`docs/ARCHITECTURE.md`.
 ```

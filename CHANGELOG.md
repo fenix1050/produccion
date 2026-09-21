@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.1.66](https://github.com/fenix1050/produccion/compare/v0.1.65...v0.1.66) (2026-09-21)
+
+
+### Features
+
+* **backend:** GET /propuestas para listado de Propuestas Formales ([#400](https://github.com/fenix1050/produccion/issues/400)) ([6ea7309](https://github.com/fenix1050/produccion/commit/6ea7309e6e7c8d93d1aa6d158679bd2565f0a78e))
+* **frontend:** listado de Propuestas Formales + fix de Historial/sidebar ([#401](https://github.com/fenix1050/produccion/issues/401)) ([f35215b](https://github.com/fenix1050/produccion/commit/f35215b8dccbc220188f1a183632b75d528334ba))
+* **propuestas:** agregar link "Nueva propuesta" al listado ([#407](https://github.com/fenix1050/produccion/issues/407)) ([d464839](https://github.com/fenix1050/produccion/commit/d46483937af035e8b5f69b60b507beaf13bf394a))
+* **propuestas:** migración 075 para listado de Propuestas Formales ([#399](https://github.com/fenix1050/produccion/issues/399)) ([cfb08c3](https://github.com/fenix1050/produccion/commit/cfb08c3c3767adc14441db0944089b596d292e6f))
+
+
+### Bug Fixes
+
+* **propuestas:** evitar reconstruir el textarea de motivo al anular ([#419](https://github.com/fenix1050/produccion/issues/419)) ([8a2ea59](https://github.com/fenix1050/produccion/commit/8a2ea5962a39b56ffaf690ae9ade727901ecdae5))
+* **propuestas:** harden proposal navigation and selection rendering ([#411](https://github.com/fenix1050/produccion/issues/411)) ([9ad39d2](https://github.com/fenix1050/produccion/commit/9ad39d26661a5e5b07cc2776a0695f6ad2043337))
+* **propuestas:** no ofrecer "Continuar" en borradores huérfanos ([#404](https://github.com/fenix1050/produccion/issues/404)) ([623ff23](https://github.com/fenix1050/produccion/commit/623ff23c499bc8abe9402034610cbf084e7222a4))
+* **propuestas:** ocultar Anular Propuesta a un agente sin permiso en el wizard ([#415](https://github.com/fenix1050/produccion/issues/415)) ([69f2756](https://github.com/fenix1050/produccion/commit/69f2756f12bc2fc8cd8f4e701ca75ae7c6297d93))
+* **propuestas:** ocultar el botón Anular cuando el usuario no tiene permiso ([#406](https://github.com/fenix1050/produccion/issues/406)) ([8bd2b04](https://github.com/fenix1050/produccion/commit/8bd2b04ec9bd53f2da008da15b058760813cac2c))
+* **propuestas:** ocultar selector de variante sin valor para el agente ([#410](https://github.com/fenix1050/produccion/issues/410)) ([4efc870](https://github.com/fenix1050/produccion/commit/4efc8701f231e23f956b96174b56b5d0f09ba1b6))
+* **scripts:** backup de deploy-frontend-test.sh en el HOME remoto, no al lado del root ([#418](https://github.com/fenix1050/produccion/issues/418)) ([fc9885a](https://github.com/fenix1050/produccion/commit/fc9885ab629e4fde64aeb85c098056891f25ce0c))
+* **scripts:** deploy-frontend-test.sh cae a tar+ssh si no hay rsync ([#417](https://github.com/fenix1050/produccion/issues/417)) ([194db66](https://github.com/fenix1050/produccion/commit/194db66fe5961da07ebf7af85a0bb1d8abfb198e))
+
 ## [0.1.65](https://github.com/fenix1050/produccion/compare/v0.1.64...v0.1.65) (2026-09-17)
 
 

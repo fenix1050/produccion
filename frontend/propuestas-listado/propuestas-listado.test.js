@@ -124,6 +124,56 @@ test('el detalle conserva los datos en cards y ofrece cierre visible accesible',
   )
 })
 
+// Bug reportado por Kevin (2026-09-21): al escribir el motivo de anulación, cada tecla
+// disparaba renderApp() (actualizarMotivoAnular -> renderApp()), que reconstruye TODO
+// el innerHTML de #app — el <textarea> quedaba destruido y recreado en cada input, así
+// que perdía el foco y había que hacer clic de nuevo para seguir escribiendo. El fix
+// reemplaza ese renderApp() por un parche puntual (contador + botón), sin tocar el nodo.
+test('escribir el motivo de anulación no reconstruye el textarea (conserva el foco)', async () => {
+  montarEntornoDom('http://localhost/propuestas-listado/')
+
+  const llamadas = []
+  globalThis.fetch = fetchMockFabrica(llamadas, [
+    {
+      id: 7,
+      numero_propuesta: '7',
+      numero_carta: 'MRC-999',
+      cliente_nombre: 'Cliente de prueba',
+      estado: 'emitida',
+      created_at: '2026-09-11T00:00:00.000Z',
+      puede_anular: true,
+    },
+  ])
+
+  await import('./propuestas-listado.js?case=anular-motivo-preserva-foco')
+  await esperarCargaInicial()
+
+  const botonAnular = document.querySelector('[data-action="anular"]')
+  assert.ok(botonAnular, 'debería existir la acción Anular')
+  botonAnular.click()
+
+  const textarea = document.querySelector('#propuestas-listado-anular-motivo')
+  assert.ok(textarea, 'debería renderizarse el modal con el textarea del motivo')
+  textarea.focus()
+
+  for (const letra of 'Datos incorrectos') {
+    textarea.value += letra
+    textarea.dispatchEvent(new window.Event('input', { bubbles: true }))
+    assert.equal(
+      document.querySelector('#propuestas-listado-anular-motivo'),
+      textarea,
+      'el textarea no debería reconstruirse en cada tecla'
+    )
+    assert.equal(document.activeElement, textarea, 'el foco debe permanecer en el textarea')
+  }
+
+  assert.equal(textarea.value, 'Datos incorrectos')
+  assert.equal(
+    document.querySelector('.propuestas-listado-anular__contador').textContent,
+    '17/1000'
+  )
+})
+
 // Único punto de entrada para crear una propuesta hoy es la pantalla de Bienvenida
 // (../propuestas/ sin query arranca directo en cargarCartas(), el selector de Carta
 // Oferta elegible — ver frontend/propuestas/propuestas.js:1190-1199, archivo de Codex,

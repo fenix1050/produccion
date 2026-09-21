@@ -3,12 +3,33 @@ import { readFile } from 'node:fs/promises'
 import { test } from 'node:test'
 
 import {
+  getProposalFooterSloganDataUri,
+  getProposalHeaderBackgroundDataUri,
   getTajyLogoDataUri,
   printFittedProposalPdf,
+  printV2ProposalPdf,
+  printV3ProposalPdf,
   ProposalFitError,
   ProposalFitOverflowError,
+  ProposalRendererRevisionError,
+  renderPropuestaMrcPdf,
   waitForProposalFit,
+  waitForProposalV2Ready,
 } from './propuesta-pdf.service.js'
+
+test('proposal PDF renderer rejects unknown revisions with a bounded error shape', async () => {
+  await assert.rejects(
+    () => renderPropuestaMrcPdf({ renderer_identity: { revision: 'pf3-unknown' } }),
+    (error) => {
+      assert.ok(error instanceof ProposalRendererRevisionError)
+      assert.equal(error.name, 'ProposalRendererRevisionError')
+      assert.equal(error.code, 'PF_RENDERER_UNKNOWN_REVISION')
+      assert.equal(error.revision, 'pf3-unknown')
+      assert.equal(error.message, 'Unknown proposal renderer revision: pf3-unknown')
+      return true
+    }
+  )
+})
 
 const normalFitMetrics = () =>
   [
@@ -33,7 +54,27 @@ test('proposal PDF renderer loads the official SVG logo as a data URI', async ()
   assert.match(Buffer.from(logoDataUri.split(',')[1], 'base64').toString('utf8'), /<svg\b/)
 })
 
-test('production Docker build packages the logo at the renderer runtime path', async () => {
+test('proposal PDF renderer loads the local header background PNG as a data URI', async () => {
+  const headerBackgroundDataUri = await getProposalHeaderBackgroundDataUri()
+
+  assert.match(headerBackgroundDataUri, /^data:image\/png;base64,/)
+  assert.deepEqual(
+    Buffer.from(headerBackgroundDataUri.split(',')[1], 'base64').subarray(0, 8),
+    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])
+  )
+})
+
+test('proposal PDF renderer loads the footer slogan PNG as a data URI', async () => {
+  const footerSloganDataUri = await getProposalFooterSloganDataUri()
+
+  assert.match(footerSloganDataUri, /^data:image\/png;base64,/)
+  assert.deepEqual(
+    Buffer.from(footerSloganDataUri.split(',')[1], 'base64').subarray(0, 8),
+    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])
+  )
+})
+
+test('production Docker build packages the proposal assets at the renderer runtime paths', async () => {
   const [dockerfile, dockerignore] = await Promise.all([
     readFile(new URL('../../Dockerfile', import.meta.url), 'utf8'),
     readFile(new URL('../../../.dockerignore', import.meta.url), 'utf8'),
@@ -44,9 +85,21 @@ test('production Docker build packages the logo at the renderer runtime path', a
     dockerfile,
     /COPY frontend\/login\/assets\/logo-rojo-con-negro\.svg \.\/backend\/src\/assets\/tajy-logo\.svg/
   )
+  assert.match(
+    dockerfile,
+    /COPY frontend\/shared\/assets\/propuesta-header-bg\.png \.\/backend\/src\/assets\/propuesta-header-bg\.png/
+  )
+  assert.match(
+    dockerfile,
+    /COPY frontend\/shared\/assets\/footer-slogan\.png \.\/backend\/src\/assets\/footer-slogan\.png/
+  )
   assert.match(dockerfile, /COPY backend \.\/backend/)
   assert.match(dockerignore, /^frontend\/\*$/m)
   assert.match(dockerignore, /^!frontend\/login\/assets\/logo-rojo-con-negro\.svg$/m)
+  assert.match(dockerignore, /^!frontend\/shared\/$/m)
+  assert.match(dockerignore, /^!frontend\/shared\/assets\/$/m)
+  assert.match(dockerignore, /^!frontend\/shared\/assets\/propuesta-header-bg\.png$/m)
+  assert.match(dockerignore, /^!frontend\/shared\/assets\/footer-slogan\.png$/m)
 })
 
 test('proposal PDF renderer waits for deterministic fit completion before printing', async () => {
@@ -64,6 +117,89 @@ test('proposal PDF renderer waits for deterministic fit completion before printi
 
   assert.match(String(predicate), /dataset\.proposalFit !== 'pending'/)
   assert.deepEqual(options, { timeout: 5000 })
+})
+
+test('proposal PDF renderer waits for v2 readiness without validating v1 metrics', async () => {
+  let predicate
+  let options
+  const page = {
+    waitForFunction: async (receivedPredicate, receivedOptions) => {
+      predicate = receivedPredicate
+      options = receivedOptions
+    },
+    evaluate: async () => 'complete',
+  }
+
+  await waitForProposalV2Ready(page)
+
+  assert.match(String(predicate), /dataset\.proposalFit !== 'pending'/)
+  assert.deepEqual(options, { timeout: 5000 })
+})
+
+test('proposal PDF renderer bounds v2 readiness timeout and script errors', async () => {
+  await assert.rejects(
+    () =>
+      waitForProposalV2Ready({
+        waitForFunction: async () => {
+          throw new Error('CONFIDENTIAL LEGAL TEXT')
+        },
+      }),
+    (error) =>
+      error instanceof ProposalFitError &&
+      error.code === 'PF_PDF_FIT_FAILED' &&
+      error.fitState === 'timeout' &&
+      !error.message.includes('CONFIDENTIAL LEGAL TEXT')
+  )
+
+  await assert.rejects(
+    () =>
+      waitForProposalV2Ready({
+        waitForFunction: async () => {},
+        evaluate: async () => 'error',
+      }),
+    (error) =>
+      error instanceof ProposalFitError &&
+      error.code === 'PF_PDF_FIT_FAILED' &&
+      error.fitState === 'error'
+  )
+})
+
+test('proposal PDF renderer prints v2 Legal content after the readiness gate', async () => {
+  let pdfOptions
+  const page = {
+    waitForFunction: async () => {},
+    evaluate: async () => 'complete',
+    pdf: async (receivedOptions) => {
+      pdfOptions = receivedOptions
+      return Buffer.from('v2-pdf')
+    },
+  }
+
+  assert.deepEqual(await printV2ProposalPdf(page), Buffer.from('v2-pdf'))
+  assert.deepEqual(pdfOptions, {
+    format: 'Legal',
+    printBackground: true,
+    margin: { top: '0', bottom: '0', left: '0', right: '0' },
+  })
+})
+
+test('proposal PDF renderer prints v3 content on A4 after the completion gate', async () => {
+  let pdfOptions
+  const page = {
+    waitForFunction: async () => {},
+    evaluate: async () => ({ status: 'complete', fitMetrics: normalFitMetrics() }),
+    pdf: async (receivedOptions) => {
+      pdfOptions = receivedOptions
+      return Buffer.from('v3-pdf')
+    },
+  }
+
+  assert.deepEqual(await printV3ProposalPdf(page), Buffer.from('v3-pdf'))
+  assert.deepEqual(pdfOptions, {
+    format: 'A4',
+    printBackground: true,
+    margin: { top: '0', bottom: '0', left: '0', right: '0' },
+  })
 })
 
 test('proposal PDF renderer prints normal fitted content after the completion gate', async () => {

@@ -1,13 +1,37 @@
-import { getBrowser } from '../templates/oferta/pdf-utils.js'
-import { buildMrcPropuestaHtml } from '../templates/propuesta/mrc.js'
 import { readFile } from 'node:fs/promises'
+
+import { getBrowser } from '../templates/oferta/pdf-utils.js'
+import { buildMrcPropuestaV2Html } from '../templates/propuesta/mrc-v2.js'
+import { buildMrcPropuestaV3Html } from '../templates/propuesta/mrc-v3.js'
+import { buildMrcPropuestaHtml } from '../templates/propuesta/mrc.js'
+
+import {
+  PROPUESTA_FORMAL_V1_RENDERER_REVISION,
+  PROPUESTA_FORMAL_V2_RENDERER_REVISION,
+  PROPUESTA_FORMAL_V3_RENDERER_REVISION,
+} from './document-snapshot.service.js'
 
 const TAJY_LOGO_PATH = new URL('../assets/tajy-logo.svg', import.meta.url)
 const TAJY_LOGO_LOCAL_DEV_FALLBACK_PATH = new URL(
   '../../../frontend/login/assets/logo-rojo-con-negro.svg',
   import.meta.url
 )
+const PROPOSAL_HEADER_BACKGROUND_PATH = new URL(
+  '../assets/propuesta-header-bg.png',
+  import.meta.url
+)
+const PROPOSAL_HEADER_BACKGROUND_LOCAL_DEV_FALLBACK_PATH = new URL(
+  '../../../frontend/shared/assets/propuesta-header-bg.png',
+  import.meta.url
+)
+const PROPOSAL_FOOTER_SLOGAN_PATH = new URL('../assets/footer-slogan.png', import.meta.url)
+const PROPOSAL_FOOTER_SLOGAN_LOCAL_DEV_FALLBACK_PATH = new URL(
+  '../../../frontend/shared/assets/footer-slogan.png',
+  import.meta.url
+)
 let tajyLogoDataUriPromise
+let proposalHeaderBackgroundDataUriPromise
+let proposalFooterSloganDataUriPromise
 
 const FIT_SECTION_IDS = [
   'risk-description',
@@ -51,6 +75,15 @@ export class ProposalFitOverflowError extends Error {
   }
 }
 
+export class ProposalRendererRevisionError extends Error {
+  constructor(revision) {
+    super(`Unknown proposal renderer revision: ${String(revision)}`)
+    this.name = 'ProposalRendererRevisionError'
+    this.code = 'PF_RENDERER_UNKNOWN_REVISION'
+    this.revision = revision
+  }
+}
+
 export function getTajyLogoDataUri() {
   if (!tajyLogoDataUriPromise) {
     tajyLogoDataUriPromise = readFile(TAJY_LOGO_PATH)
@@ -62,6 +95,38 @@ export function getTajyLogoDataUri() {
       .catch(() => null)
   }
   return tajyLogoDataUriPromise
+}
+
+export function getProposalHeaderBackgroundDataUri() {
+  if (!proposalHeaderBackgroundDataUriPromise) {
+    proposalHeaderBackgroundDataUriPromise = readFile(PROPOSAL_HEADER_BACKGROUND_PATH)
+      .catch((error) => {
+        if (error?.code !== 'ENOENT' || process.env.NODE_ENV === 'production') throw error
+        return readFile(PROPOSAL_HEADER_BACKGROUND_LOCAL_DEV_FALLBACK_PATH)
+      })
+      .then((file) => `data:image/png;base64,${file.toString('base64')}`)
+      .catch((error) => {
+        if (process.env.NODE_ENV === 'production') throw error
+        return null
+      })
+  }
+  return proposalHeaderBackgroundDataUriPromise
+}
+
+export function getProposalFooterSloganDataUri() {
+  if (!proposalFooterSloganDataUriPromise) {
+    proposalFooterSloganDataUriPromise = readFile(PROPOSAL_FOOTER_SLOGAN_PATH)
+      .catch((error) => {
+        if (error?.code !== 'ENOENT' || process.env.NODE_ENV === 'production') throw error
+        return readFile(PROPOSAL_FOOTER_SLOGAN_LOCAL_DEV_FALLBACK_PATH)
+      })
+      .then((file) => `data:image/png;base64,${file.toString('base64')}`)
+      .catch((error) => {
+        if (process.env.NODE_ENV === 'production') throw error
+        return null
+      })
+  }
+  return proposalFooterSloganDataUriPromise
 }
 
 export async function waitForProposalFit(page) {
@@ -124,6 +189,24 @@ export async function waitForProposalFit(page) {
   return fitResults
 }
 
+export async function waitForProposalV2Ready(page) {
+  try {
+    await page.waitForFunction(
+      () => globalThis.document.documentElement.dataset.proposalFit !== 'pending',
+      {
+        timeout: 5000,
+      }
+    )
+  } catch {
+    throw new ProposalFitError('timeout')
+  }
+
+  const status = await page.evaluate(() => globalThis.document.documentElement.dataset.proposalFit)
+  if (status !== 'complete') {
+    throw new ProposalFitError(status === 'error' ? 'error' : 'invalid-state')
+  }
+}
+
 export async function printFittedProposalPdf(page) {
   await waitForProposalFit(page)
   return Buffer.from(
@@ -135,14 +218,62 @@ export async function printFittedProposalPdf(page) {
   )
 }
 
+export async function printV3ProposalPdf(page) {
+  await waitForProposalFit(page)
+  return Buffer.from(
+    await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      margin: { top: '0', bottom: '0', left: '0', right: '0' },
+    })
+  )
+}
+
+export async function printV2ProposalPdf(page) {
+  await waitForProposalV2Ready(page)
+  return Buffer.from(
+    await page.pdf({
+      format: 'Legal',
+      printBackground: true,
+      margin: { top: '0', bottom: '0', left: '0', right: '0' },
+    })
+  )
+}
+
 export async function renderPropuestaMrcPdf(snapshot) {
+  const rendererIdentity = snapshot?.renderer_identity
+  const revision = rendererIdentity?.revision
+  const usesV1Renderer = !rendererIdentity || revision === PROPUESTA_FORMAL_V1_RENDERER_REVISION
+  const usesV2Renderer = revision === PROPUESTA_FORMAL_V2_RENDERER_REVISION
+  const usesV3Renderer = revision === PROPUESTA_FORMAL_V3_RENDERER_REVISION
+
+  if (!usesV1Renderer && !usesV2Renderer && !usesV3Renderer) {
+    throw new ProposalRendererRevisionError(revision)
+  }
+
   const browser = await getBrowser()
   const page = await browser.newPage()
   try {
-    await page.setContent(
-      buildMrcPropuestaHtml(snapshot, { tajyLogoDataUri: await getTajyLogoDataUri() }),
-      { waitUntil: 'load' }
-    )
+    const logoDataUri = await getTajyLogoDataUri()
+    let html
+    if (usesV3Renderer) {
+      const headerBackgroundDataUri = await getProposalHeaderBackgroundDataUri()
+      const footerSloganDataUri = await getProposalFooterSloganDataUri()
+      html = buildMrcPropuestaV3Html(snapshot, {
+        tajyLogoDataUri: logoDataUri,
+        headerBackgroundDataUri,
+        footerSloganDataUri,
+      })
+    } else if (usesV2Renderer) {
+      html = buildMrcPropuestaV2Html(snapshot, { tajyLogoDataUri: logoDataUri })
+    } else {
+      html = buildMrcPropuestaHtml(snapshot, { tajyLogoDataUri: logoDataUri })
+    }
+    await page.setContent(html, { waitUntil: 'load' })
+
+    if (usesV2Renderer) return await printV2ProposalPdf(page)
+    if (usesV3Renderer) return await printV3ProposalPdf(page)
+
     return await printFittedProposalPdf(page)
   } finally {
     await page.close()

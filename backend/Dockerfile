@@ -34,6 +34,8 @@ RUN npm ci --omit=dev --workspace=backend --ignore-scripts
 
 COPY backend ./backend
 COPY frontend/login/assets/logo-rojo-con-negro.svg ./backend/src/assets/tajy-logo.svg
+COPY frontend/shared/assets/propuesta-header-bg.png ./backend/src/assets/propuesta-header-bg.png
+COPY frontend/shared/assets/footer-slogan.png ./backend/src/assets/footer-slogan.png
 
 ENV NODE_ENV=production
 EXPOSE 3000

@@ -279,3 +279,41 @@ test('PF-3 hides the pointless single-variant selector and auto-selects it via a
   // variant (e.g. Auto's dual franquicia, paused today) — it must not be deleted outright.
   assert.match(moduleSource, /<select id="cotizacion-variante-id" class="field-input">/)
 })
+
+test('PF-3 only offers "Anular Propuesta" on the just-issued wizard to a user allowed to annul', async () => {
+  const moduleSource = await readFile(moduleUrl, 'utf8')
+
+  // Bug real: el wizard mostraba "Anular Propuesta" a cualquier agente apenas
+  // estado === 'emitida', sin chequear rol/permiso — el backend igual lo bloqueaba con
+  // 403, pero la UI prometía una acción que después fallaba. Mismo criterio que ya usa
+  // puedeAnular() en backend/src/services/propuestas/listado.service.js.
+  assert.match(moduleSource, /usuario: null,/)
+  assert.match(moduleSource, /state\.usuario = usuario/)
+  assert.match(
+    moduleSource,
+    /function puedeAnular\(usuario\) \{\s*return Boolean\(usuario\) && \(usuario\.rol === 'admin' \|\| Boolean\(usuario\.puede_anular_propuestas\)\)/
+  )
+
+  const renderAccionSource =
+    moduleSource.match(/function renderAccionSecundariaEmitida\(propuesta\) \{[\s\S]*?\n\}/)?.[0] ??
+    ''
+  assert.notEqual(renderAccionSource, '', 'renderAccionSecundariaEmitida debe existir')
+  // Estado distinto de "emitida" (ej. reemplazada) siempre ofrece "Preparar reemplazo",
+  // sin depender del permiso de anulación.
+  assert.match(
+    renderAccionSource,
+    /if \(propuesta\.estado !== 'emitida'\) \{\s*return '<button type="button" class="btn-outline" data-action="reemplazar">Preparar reemplazo<\/button>'/
+  )
+  // Emitida + sin permiso: no se renderiza ningún botón de anulación.
+  assert.match(renderAccionSource, /if \(!puedeAnular\(state\.usuario\)\) return ''/)
+  // Emitida + con permiso: recién ahí aparece el botón de anular.
+  assert.match(
+    renderAccionSource,
+    /return '<button type="button" class="btn-outline" data-action="anular">Anular Propuesta<\/button>'/
+  )
+
+  assert.match(
+    moduleSource,
+    /\? `<button type="button" class="btn-primary" data-action="descargar-pdf">Descargar PDF<\/button>\$\{renderAccionSecundariaEmitida\(propuesta\)\}`/
+  )
+})

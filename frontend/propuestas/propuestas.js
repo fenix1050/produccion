@@ -18,6 +18,7 @@ const state = {
   propuesta: null,
   conflicto: false,
   currentStep: null,
+  usuario: null,
   textos: { textos: [], puede_gestionar: false, faltantes: [], emision_habilitada: false },
 }
 
@@ -765,6 +766,21 @@ function renderRevisionPanel(propuesta) {
   </section>`
 }
 
+// Mismo criterio que puedeAnular() en backend/src/services/propuestas/listado.service.js
+// y el guard de emision.service.js:142 — el listado ya lo respeta vía el flag puede_anular
+// que manda el backend, pero este wizard (recién emitida) no tenía ningún chequeo de rol.
+function puedeAnular(usuario) {
+  return Boolean(usuario) && (usuario.rol === 'admin' || Boolean(usuario.puede_anular_propuestas))
+}
+
+function renderAccionSecundariaEmitida(propuesta) {
+  if (propuesta.estado !== 'emitida') {
+    return '<button type="button" class="btn-outline" data-action="reemplazar">Preparar reemplazo</button>'
+  }
+  if (!puedeAnular(state.usuario)) return ''
+  return '<button type="button" class="btn-outline" data-action="anular">Anular Propuesta</button>'
+}
+
 function renderWizardActions(propuesta, emitted, readiness, currentStep) {
   const navigation =
     !emitted && currentStep > 1
@@ -776,7 +792,7 @@ function renderWizardActions(propuesta, emitted, readiness, currentStep) {
       : ''
   const saveAction = `<button type="button" class="btn-primary pf-save-button" data-action="guardar" ${state.saving || state.conflicto ? 'disabled' : ''}>Guardar borrador</button>`
   const finalActions = emitted
-    ? `<button type="button" class="btn-primary" data-action="descargar-pdf">Descargar PDF</button>${propuesta.estado === 'emitida' ? '<button type="button" class="btn-outline" data-action="anular">Anular Propuesta</button>' : '<button type="button" class="btn-outline" data-action="reemplazar">Preparar reemplazo</button>'}`
+    ? `<button type="button" class="btn-primary" data-action="descargar-pdf">Descargar PDF</button>${renderAccionSecundariaEmitida(propuesta)}`
     : currentStep === 5
       ? `${saveAction}<button type="button" class="btn-outline pf-emit" data-action="emitir" ${!readiness.emision_habilitada || !state.textos.emision_habilitada || state.saving || state.conflicto ? 'disabled' : ''}>Emitir Propuesta Formal</button>`
       : `${saveAction}${next}`
@@ -1196,6 +1212,7 @@ app.addEventListener('click', (event) => {
 async function init() {
   const usuario = await auth.cargarSesion()
   if (!usuario) return
+  state.usuario = usuario
   state.textos = await api.get('/propuestas/textos').catch(() => state.textos)
   const propuestaId = Number(params.get('propuesta'))
   const cartaId = Number(params.get('carta'))

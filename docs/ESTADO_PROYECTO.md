@@ -3309,3 +3309,62 @@ filtros".
 `.html`, aplicado también acá). Verificado con Playwright: el link aparece junto a "Limpiar filtros" en el
 listado, y al hacer clic navega correctamente a `../propuestas/`, que carga el selector de Carta Oferta del
 wizard (capturas `8-nueva-propuesta.png` y `9-wizard-selector-carta.png`).
+
+## 102. PRs #409 a #419: correcciones de infra/docs, hardening del wizard, scripts de deploy a TEST y fix de foco al anular (2026-09-18 a 2026-09-21)
+
+**Qué se hizo:** resumen de los PRs mergeados a `main` entre la sección 101 y esta entrada, sin registro
+previo en este documento.
+
+- **#409** (2026-09-18) — `docs: corregir menciones a Vercel/Supabase cloud como infra activa`: actualiza
+  `README.md` y `docs/ARCHITECTURE.md` para reflejar que todo corre en la VPS propia (Docker + Caddy), con
+  TEST/PROD separados y redeploy manual; marca `render.yaml`/`frontend/vercel.json` como artefactos legacy.
+  Solo documentación, sin cambios de código.
+- **#410** (2026-09-18) — `fix(propuestas): ocultar selector de variante sin valor para el agente`: en el
+  wizard de Propuesta Formal, cuando hay exactamente una variante (caso normal de MRC/Incendio/Vida-AP), el
+  dropdown "Variante" del paso "Carta y selección" se reemplaza por un `<input type="hidden">` autoseleccionado
+  en vez de mostrar un `<select>` con una sola opción sin sentido real para el agente. El `<select>` original
+  se conserva como fallback para el caso de más de una variante (Auto con franquicia dual, hoy pausado).
+- **#411** (2026-09-20) — `fix(propuestas): harden proposal navigation and selection rendering`: reconcilia
+  fixes de navegación del listado con el rediseño visual del modal en curso, y agrega validación same-origin
+  a la navegación interna del frontend.
+- **#412** (2026-09-20) — `chore(odd): agregar tracking de tareas para autosave y formato requerido en
+propuestas`: commitea dos documentos de tracking ODD (`odd/tasks/propuestas-autosave.md`,
+  `odd/tasks/propuestas-required-formatting.md`) que habían quedado sin comitear de sesiones previas.
+- **#415** (2026-09-21) — `fix(propuestas): ocultar Anular Propuesta a un agente sin permiso en el wizard`:
+  el wizard mostraba el botón "Anular Propuesta" a cualquier agente con `estado === 'emitida'`, sin chequear
+  `rol`/`puede_anular_propuestas` — el backend ya bloqueaba la acción con 403, pero la UI prometía algo que
+  después fallaba. Ahora el wizard usa el mismo criterio que `listado.service.js`/`emision.service.js`, igual
+  que ya hacía el listado de Propuestas Formales.
+- **#416, #417, #418** (2026-09-21) — nuevo script `scripts/deploy-frontend-test.sh` para redesplegar el
+  frontend estático a TEST en un solo comando (reemplaza la secuencia manual de `scp`+backup+`curl`), con dos
+  fixes encontrados al usarlo en la práctica contra la VPS real de Kevin: `rsync` no está disponible en Git
+  Bash de Windows (cae a un fallback `tar` sobre `ssh`, #417), y el usuario de deploy `soporte` no tiene
+  permiso de escritura sobre el directorio padre de `frontend-test` para el backup, que ahora se guarda en
+  `~/deploy-backups/` del usuario remoto (#418). No agrega CD automático — sigue siendo un paso manual.
+
+**Fix de foco al escribir el motivo de anulación (PR #419, 2026-09-21):**
+
+- **Qué se hizo:** en el modal "Anular propuesta" del listado (`frontend/propuestas-listado/`), escribir en
+  el campo "Motivo" perdía el foco después de cada tecla — el usuario tenía que hacer clic de nuevo en el
+  textarea para seguir escribiendo, letra por letra.
+- **Causa:** `actualizarMotivoAnular()` llamaba `renderApp()` en cada evento `input` del textarea. `renderApp()`
+  reconstruye todo el `innerHTML` de `#app`, así que el nodo `<textarea>` se destruía y recreaba en cada
+  tecla, perdiendo el foco.
+- **Fix:** se reemplazó ese `renderApp()` por una función nueva, `actualizarContadorYBotonAnular()`, que
+  parchea puntualmente el contador de caracteres (`.propuestas-listado-anular__contador`) y el `disabled` del
+  botón "Anular" vía `querySelector`, sin tocar el nodo del textarea.
+- **Verificación TDD estricta:** test de regresión nuevo en `propuestas-listado.test.js` que escribe letra por
+  letra en el textarea y verifica que el nodo no se reconstruye y el foco se mantiene. RED confirmado contra
+  el código sin el fix (reproduce el bug exacto), GREEN con el fix aplicado. Suite completa de
+  `propuestas-listado` en verde (10/10).
+- **Deploy a TEST y verificación en vivo:** desplegado manualmente a `test-web.cotizador.lat` (el archivo
+  único modificado se bajó directo desde `raw.githubusercontent.com` sobre `main`, verificado por hash
+  SHA-256 en disco). Verificado con Playwright autenticado como `qatest@test.com` (rol admin, con permiso de
+  anular): se tipeó "Datos incorrectos del cliente" letra por letra en el modal "Anular propuesta 8" y el
+  foco se mantuvo en las 29 teclas, con el contador actualizándose correctamente a `29/1000`.
+
+**Laguna detectada en esta sesión (no un bug de código, un hallazgo de estado de despliegue):** se confirmó
+hoy que el módulo completo de Propuestas Formales (`/propuestas-listado/`, `/propuestas/`) **todavía no llegó
+a producción** — `https://cotizador.lat/propuestas-listado/` responde 404, y el frontend de PROD está
+desactualizado a una versión del 2026-09-02, anterior a que este módulo existiera. Solo vive en TEST por
+ahora. Ningún documento lo afirmaba explícitamente hasta esta entrada.

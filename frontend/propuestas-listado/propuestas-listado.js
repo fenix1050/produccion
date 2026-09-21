@@ -234,7 +234,16 @@ function cerrarModalAnular() {
 function actualizarMotivoAnular(valor) {
   if (!state.modalAnular) return
   state.modalAnular.motivo = valor
-  renderApp()
+  actualizarContadorYBotonAnular()
+}
+
+function actualizarContadorYBotonAnular() {
+  const modal = state.modalAnular
+  if (!modal) return
+  const contador = app.querySelector('.propuestas-listado-anular__contador')
+  if (contador) contador.textContent = `${modal.motivo.trim().length}/${MOTIVO_MAX}`
+  const botonConfirmar = app.querySelector('[data-action="confirmar-anular"]')
+  if (botonConfirmar) botonConfirmar.disabled = !motivoValido(modal.motivo) || modal.loading
 }
 
 function motivoValido(motivo) {

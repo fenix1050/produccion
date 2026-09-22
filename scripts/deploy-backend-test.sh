@@ -62,8 +62,10 @@ REPO_ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)
 cd "$REPO_ROOT"
 
 GIT_SHA=$(git rev-parse --short=12 HEAD)
-if [[ -n $(git status --porcelain -- backend) ]]; then
-  echo "AVISO: hay cambios sin commitear en backend/ — git archive solo empaqueta lo committeado, así que NO van a estar en la imagen que se despliega." >&2
+DIRTY_PATHS=(backend package.json package-lock.json frontend/login/assets/logo-rojo-con-negro.svg \
+  frontend/shared/assets/propuesta-header-bg.png frontend/shared/assets/footer-slogan.png)
+if [[ -n $(git status --porcelain -- "${DIRTY_PATHS[@]}") ]]; then
+  echo "AVISO: hay cambios sin commitear en archivos que entran al build (backend/, package.json/package-lock.json o los assets de frontend/ que copia el Dockerfile) — git archive solo empaqueta lo committeado, así que NO van a estar en la imagen que se despliega." >&2
 fi
 
 TIMESTAMP=$(date +%Y%m%d%H%M%S)
@@ -106,10 +108,19 @@ if [[ $MODE == --preflight-only ]]; then
   exit 0
 fi
 
-echo "==> Armando contexto de build desde backend/ @ ${GIT_SHA}"
+echo "==> Armando contexto de build @ ${GIT_SHA}"
 CONTEXT_ARCHIVE=$(mktemp -t backend-context-XXXXXX.tar.gz)
 trap 'rm -f -- "$CONTEXT_ARCHIVE"' EXIT
-git archive --format=tar.gz --output="$CONTEXT_ARCHIVE" HEAD -- backend
+# backend/Dockerfile usa el repo completo como build context: el lockfile vive en la raíz
+# (npm workspaces) y copia 3 assets puntuales de frontend/ (ver .dockerignore, que ya
+# whitelistea exactamente estos mismos paths). Empaquetar solo "backend" rompe el build
+# ("COPY failed: ... package.json: file does not exist") porque esos archivos no existen
+# dentro del contexto.
+git archive --format=tar.gz --output="$CONTEXT_ARCHIVE" HEAD -- \
+  package.json package-lock.json backend \
+  frontend/login/assets/logo-rojo-con-negro.svg \
+  frontend/shared/assets/propuesta-header-bg.png \
+  frontend/shared/assets/footer-slogan.png
 CONTEXT_SHA256=$(sha256sum "$CONTEXT_ARCHIVE" | awk '{print $1}')
 echo "    contexto: ${CONTEXT_ARCHIVE} (sha256=${CONTEXT_SHA256})"
 

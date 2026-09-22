@@ -150,6 +150,103 @@ test('MRC proposal v3 keeps legal content and fit metrics isolated from v1 marku
   assert.match(html, /document\.querySelectorAll\('\[data-fit-section\]'\)/)
 })
 
+test('MRC proposal v3 emits a page-overflow fit guard', () => {
+  const html = buildMrcPropuestaV3Html(fixture())
+
+  assert.match(html, /const hasCoverageVisualOverflow = \(\) =>/)
+  assert.match(html, /coverageCard\.querySelectorAll\('\*'\)/)
+  assert.match(html, /extendsBeyondCard/)
+  assert.match(html, /extendsIntoFollowingContent/)
+  assert.match(html, /let pageOverflow = hasCoverageVisualOverflow\(\)/)
+  assert.match(html, /for \(const page of document\.querySelectorAll\('\.proposal-page'\)\)/)
+  assert.match(html, /if \(isOverflowing\(page\)\) pageOverflow = true/)
+  assert.match(html, /window\.__proposalFitError = 'page-overflow'/)
+  assert.match(html, /document\.documentElement\.dataset\.proposalFit = 'error'/)
+})
+
+test('MRC proposal v3 renders twelve compact inline coverage summary items', () => {
+  const coverages = Array.from({ length: 12 }, (_, index) => ({
+    nombre_snapshot: `Coverage ${index + 1}`,
+    monto: (index + 1) * 100000,
+    franquicia: index % 2 === 0 ? null : 5000,
+  }))
+  const html = buildMrcPropuestaV3Html(
+    fixture({ carta: { ...fixture().carta, coberturas: coverages } })
+  )
+  const summaryStart = html.indexOf('<ul class="coverage-summary">')
+  const summaryEnd = html.indexOf('</ul>', summaryStart) + '</ul>'.length
+  const summary = html.slice(summaryStart, summaryEnd)
+  const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')
+
+  assert.equal((summary.match(/<li class="coverage-summary-item"/g) ?? []).length, 12)
+  assert.equal((summary.match(/<span class="coverage-summary-inline">/g) ?? []).length, 12)
+  assert.equal((summary.match(/Hasta /g) ?? []).length, 12)
+  assert.equal((summary.match(/Franquicia:/g) ?? []).length, 12)
+  assert.doesNotMatch(summary, /coverage-summary-(?:name|detail)/)
+  for (const [index, coverage] of coverages.entries()) {
+    const amount = ((index + 1) * 100000).toLocaleString('es-PY')
+    const franchise = coverage.franquicia == null ? 'Sin deducible' : 'Gs. 5.000'
+    const row = `- ${coverage.nombre_snapshot}: Hasta Gs. ${amount} · Franquicia: ${franchise}`
+    assert.match(
+      summary,
+      new RegExp(`<span class="coverage-summary-inline">${escapeRegExp(row)}<\\/span>`)
+    )
+  }
+})
+
+test('MRC proposal v3 uses compact inline two-column coverage markup', () => {
+  const html = buildMrcPropuestaV3Html(fixture())
+  const summaryRule = html.match(/\.coverage-summary \{[^}]+\}/)?.[0] ?? ''
+  const itemRule = html.match(/\.coverage-summary-item \{[^}]+\}/)?.[0] ?? ''
+  const inlineRule = html.match(/\.coverage-summary-inline \{[^}]+\}/)?.[0] ?? ''
+
+  assert.match(
+    html,
+    /<ul class="coverage-summary"><li class="coverage-summary-item"><span class="coverage-summary-inline">- Fire: Hasta Gs\. 1\.000\.000 · Franquicia: Sin deducible<\/span><\/li><\/ul>/
+  )
+  assert.match(summaryRule, /display: grid;/)
+  assert.match(summaryRule, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/)
+  assert.match(summaryRule, /column-gap: 1mm;/)
+  assert.match(summaryRule, /row-gap: \.1mm;/)
+  assert.match(summaryRule, /font-size: 5\.4px;/)
+  assert.match(summaryRule, /line-height: 1;/)
+  assert.match(itemRule, /display: block;/)
+  assert.match(itemRule, /padding: \.1mm 0;/)
+  assert.match(inlineRule, /display: block;/)
+  assert.match(inlineRule, /overflow-wrap: anywhere;/)
+})
+
+test('MRC proposal v3 escapes inline coverage summary values', () => {
+  const html = buildMrcPropuestaV3Html(
+    fixture({
+      carta: {
+        ...fixture().carta,
+        coberturas: [{ nombre_snapshot: '<Fire & "quoted">', monto: 1000000, franquicia: 5000 }],
+      },
+    })
+  )
+  const summaryStart = html.indexOf('<ul class="coverage-summary">')
+  const summaryEnd = html.indexOf('</ul>', summaryStart) + '</ul>'.length
+  const summary = html.slice(summaryStart, summaryEnd)
+
+  assert.match(
+    summary,
+    /<span class="coverage-summary-inline">- &lt;Fire &amp; &quot;quoted&quot;&gt;: Hasta Gs\. 1\.000\.000 · Franquicia: Gs\. 5\.000<\/span>/
+  )
+  assert.equal((summary.match(/<span class="coverage-summary-inline">/g) ?? []).length, 1)
+  assert.doesNotMatch(summary, /<Fire & "quoted">/)
+})
+
+test('MRC proposal v3 makes the coverage card content-driven', () => {
+  const html = buildMrcPropuestaV3Html(fixture())
+  const coverageRule = html.match(/\.coverage-card \{[^}]+\}/)?.[0] ?? ''
+
+  assert.match(coverageRule, /height: auto;/)
+  assert.match(coverageRule, /min-height: 60mm;/)
+  assert.match(coverageRule, /overflow: visible;/)
+  assert.doesNotMatch(coverageRule, /\sheight: 60mm;/)
+})
+
 test('MRC proposal v3 uses one four-column header grid with explicit cell placement', () => {
   const html = buildMrcPropuestaV3Html(fixture())
   const headerMetaRule = html.match(/\.header-meta \{[^}]+\}/)?.[0] ?? ''
@@ -305,4 +402,198 @@ test('MRC proposal v3 isolates the ecological delivery row and preserves its dyn
   ]) {
     assert.match(html, new RegExp(marker))
   }
+})
+
+test('MRC proposal v3 preserves escaped user newlines in the risk description without synthetic breaks', () => {
+  const html = buildMrcPropuestaV3Html(
+    fixture({
+      draft: {
+        ...fixture().draft,
+        descripcion_detallada: 'First line <&>\nSecond line "quoted"',
+      },
+    })
+  )
+  const riskDescriptionStart = html.indexOf('<div class="risk-description')
+  const riskDescription = html.slice(
+    riskDescriptionStart,
+    html.indexOf('</div><b>', riskDescriptionStart)
+  )
+  const userDescription = riskDescription.slice(0, riskDescription.indexOf('<b>UBICACIÓN'))
+
+  assert.match(userDescription, /First line &lt;&amp;&gt;\nSecond line &quot;quoted&quot;/)
+  assert.match(html, /\.risk-description \{[^}]*white-space: pre-line;/)
+  assert.doesNotMatch(userDescription, /<br\s*\/>/)
+})
+
+test('MRC proposal v3 renders five independent principal coverage entries', () => {
+  const entries = [
+    'Incendio de edificio y contenido, con extensión a rayo, explosión y humo conforme a las condiciones generales.',
+    'Daños materiales por huracán, vendaval, ciclón, tornado e impacto de vehículos, cuando corresponda.',
+    'Robo y asalto de contenido, mercaderías, mobiliario, equipos y enseres declarados.',
+    'Rotura de cristales, vidrios y espejos dentro de los límites contratados.',
+    'Responsabilidad civil por daños a terceros, hasta la suma asegurada indicada.',
+  ]
+  const html = buildMrcPropuestaV3Html(
+    fixture({
+      texts: {
+        ...fixture().texts,
+        coberturas_principales: { contenido: `Coberturas Principales:\n\n${entries.join('\n\n')}` },
+      },
+    })
+  )
+  const coverages = html.slice(
+    html.indexOf('data-fit-section="principal-coverages"'),
+    html.indexOf('</section>', html.indexOf('data-fit-section="principal-coverages"'))
+  )
+
+  for (const entry of entries) {
+    assert.match(coverages, new RegExp(entry.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
+    assert.equal(coverages.includes(`<p class="legal-paragraph">${entry}`), true)
+  }
+})
+
+test('MRC proposal v3 renders escaped dynamic agent, cardholder, and insured signatures with fallbacks', () => {
+  const html = buildMrcPropuestaV3Html(
+    fixture({
+      proposal: {
+        ...fixture().proposal,
+        agente: { nombre: '<Agent &>', matricula: 'M<&>' },
+      },
+      draft: {
+        ...fixture().draft,
+        partes: {
+          ...fixture().draft.partes,
+          tomador_igual_asegurado: false,
+          titular_tarjeta: { nombre_razon_social: '<Cardholder &>', documento: 'CARD<&>' },
+          asegurado: {
+            ...fixture().draft.partes.asegurado,
+            nombre_razon_social: '<Insured &>',
+            documento: 'INSURED<&>',
+          },
+        },
+      },
+    })
+  )
+  const signatureMarkup = html.slice(
+    html.indexOf('<section class="card signatures"'),
+    html.indexOf('</section>', html.indexOf('<section class="card signatures"'))
+  )
+
+  for (const value of [
+    '<Agent &>',
+    'M<&>',
+    '<Cardholder &>',
+    'CARD<&>',
+    '<Insured &>',
+    'INSURED<&>',
+  ])
+    assert.equal(signatureMarkup.includes(value), false, `unescaped signature value: ${value}`)
+  for (const value of [
+    '&lt;Agent &amp;&gt;',
+    'M&lt;&amp;&gt;',
+    '&lt;Cardholder &amp;&gt;',
+    'CARD&lt;&amp;&gt;',
+    '&lt;Insured &amp;&gt;',
+    'INSURED&lt;&amp;&gt;',
+  ])
+    assert.equal(signatureMarkup.includes(value), true, `escaped signature value: ${value}`)
+  assert.equal((signatureMarkup.match(/class="signature"/g) ?? []).length, 3)
+
+  const fallbackHtml = buildMrcPropuestaV3Html(
+    fixture({
+      draft: {
+        ...fixture().draft,
+        partes: { ...fixture().draft.partes, tomador_igual_asegurado: false, tomador: {} },
+      },
+    })
+  )
+  const fallbackSignatures = fallbackHtml.slice(
+    fallbackHtml.indexOf('<section class="card signatures"'),
+    fallbackHtml.indexOf('</section>', fallbackHtml.indexOf('<section class="card signatures"'))
+  )
+  assert.match(
+    fallbackSignatures,
+    /Aclaración: No disponible[\s\S]*Aclaración: &lt;Client &amp; Co\. &quot;quoted&quot;&gt;/
+  )
+  assert.match(
+    fallbackSignatures,
+    /Aclaración: &lt;Client &amp; Co\. &quot;quoted&quot;&gt;[\s\S]*Nro de C\.I\.: 1/
+  )
+})
+
+test('MRC proposal v3 removes clipping from localized legal/content blocks', () => {
+  const html = buildMrcPropuestaV3Html(fixture())
+
+  for (const rule of [
+    html.match(/\.mini-card \{[^}]+\}/)?.[0],
+    html.match(/\.mini-card-body \{[^}]+\}/)?.[0],
+    html.match(/\.conditions-flow \{[^}]+\}/)?.[0],
+    html.match(/\[data-fit-section\] \{[^}]+\}/)?.[0],
+  ]) {
+    assert.match(rule ?? '', /overflow: visible;/)
+  }
+  assert.match(html, /\.risk-description \{[^}]*overflow: visible;/)
+  assert.equal((html.match(/class="proposal-page/g) ?? []).length, 2)
+})
+
+test('MRC proposal v3 applies the fixed-page density tokens without clipping coverage overflow', () => {
+  const html = buildMrcPropuestaV3Html(fixture())
+
+  assert.match(
+    html,
+    /\.coverage-card \{[^}]*height: auto;[^}]*min-height: 60mm;[^}]*overflow: visible;/
+  )
+  assert.match(
+    html,
+    /\.mini-card-body \{[^}]*padding: 1\.5mm;[^}]*font-size: 4\.2px;[^}]*line-height: 1\.05;/
+  )
+  assert.match(
+    html,
+    /data-fit-section="declarations" data-fit-target="4\.2" data-fit-minimum="3\.8" data-fit-step="0\.1"/
+  )
+  assert.match(
+    html,
+    /data-fit-section="principal-coverages" data-fit-target="8" data-fit-minimum="6\.4" data-fit-step="0\.2"/
+  )
+  assert.match(html, /\.declaration-flow p \{[^}]*margin: 0 0 \.25mm;/)
+  assert.match(
+    html,
+    /\.risk-columns--head \{[^}]*min-height: 7mm;[^}]*padding: 1mm;[^}]*font-size: 7px;/
+  )
+  assert.match(html, /\.risk-columns--body \{[^}]*min-height: 35mm;/)
+  assert.match(html, /\.risk-columns--body > \* \{[^}]*padding: 1mm;/)
+  assert.match(
+    html,
+    /\.risk-columns--total \{[^}]*min-height: 6\.5mm;[^}]*padding: 1mm;[^}]*font-size: 7px;/
+  )
+
+  assert.match(html, /\.page-two-content \{[^}]*gap: 1mm;/)
+  assert.match(html, /\.conditions-box \{[^}]*min-height: 0;[^}]*padding-bottom: 1mm;/)
+  assert.match(
+    html,
+    /\.conditions-flow \{[^}]*margin: 0 1\.5mm 1\.5mm;[^}]*padding: 1\.5mm 2mm;[^}]*font-size: 7px;[^}]*line-height: 1\.15;/
+  )
+  assert.match(html, /\.payment-row-shell \{[^}]*min-height: 0;[^}]*padding: 1\.5mm;/)
+  assert.match(html, /\.payment-row \{[^}]*min-height: 0;[^}]*gap: 1\.5mm;/)
+  assert.match(
+    html,
+    /\.finance-card h2 \{[^}]*min-height: 7mm;[^}]*padding: 1mm 1\.5mm;[^}]*font-size: 8px;/
+  )
+  assert.match(
+    html,
+    /\.payment-line \{[^}]*min-height: 6mm;[^}]*padding: \.8mm 0;[^}]*font-size: 7\.2px;/
+  )
+  assert.match(html, /\.payment-line span \{[^}]*font-size: 7\.4px;/)
+  assert.match(
+    html,
+    /\.collection-clause \.legal-paragraph \{[^}]*font-size: 7px;[^}]*line-height: 1\.15;/
+  )
+  assert.match(html, /\.observations \{[^}]*min-height: 0;/)
+  assert.match(html, /\.observation-value \{[^}]*min-height: 6mm;[^}]*padding: 1\.5mm;/)
+  assert.match(html, /\.writing-line \{[^}]*height: 3\.5mm;/)
+  assert.match(html, /\.signatures \{[^}]*min-height: 0;/)
+  assert.match(html, /\.signature-grid \{[^}]*padding: 1\.5mm;/)
+  assert.match(html, /\.signature \{[^}]*padding: 1mm 1\.5mm;/)
+  assert.match(html, /\.signature-space \{[^}]*height: 8mm;/)
+  assert.match(html, /\.proposal-eco-row \{[^}]*min-height: 10mm;[^}]*padding: 1\.5mm 2mm;/)
 })

@@ -1,16 +1,87 @@
-import { fmtFecha } from '../oferta/layout.js'
+import { escapeHtml, fmtFecha } from '../oferta/layout.js'
 
-import {
-  UNAVAILABLE,
-  brandMark,
-  booleanChoice,
-  conditionsFlow,
-  coverageFlow,
-  declarationFlow,
-  legalFlow,
-  money,
-  text,
-} from './mrc.js'
+import { UNAVAILABLE, brandMark, booleanChoice, declarationFlow, money, text } from './mrc.js'
+
+// v3-only variant of mrc.js's legalFlow(): preserves each source line as its own
+// <br>-separated line within the same paragraph instead of collapsing them into one
+// flowing sentence. Kept local (not shared with v1/v2) so their approved rendering of
+// the same condiciones_mrc/clausula_adicional_cobranzas text stays untouched. Needed
+// because the "Exclusiones" list is ten single-newline-separated sentences: joining
+// them with a space (v1/v2 behavior) merges them into one unreadable block, while a
+// blank line between each (a full paragraph with margin) overflows the v3 fit box.
+function legalFlowV3(value) {
+  if (value == null || value === '') return `<p class="legal-paragraph">${UNAVAILABLE}</p>`
+
+  return String(value)
+    .replace(/\r\n?/g, '\n')
+    .trim()
+    .split(/\n\s*\n+/)
+    .map((paragraph) => {
+      const lines = paragraph
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean)
+      if (!lines.length) return ''
+
+      const firstLineIsHeading = lines[0].length <= 100 && lines[0].endsWith(':')
+      if (firstLineIsHeading) {
+        const body = lines
+          .slice(1)
+          .map((line) => escapeHtml(line))
+          .join('<br>')
+        return `<p class="legal-paragraph"><strong class="legal-subheading">${escapeHtml(lines[0])}</strong>${body ? `<span>${body}</span>` : ''}</p>`
+      }
+
+      return `<p class="legal-paragraph">${lines.map((line) => escapeHtml(line)).join('<br>')}</p>`
+    })
+    .join('')
+}
+
+// v3-only renderer for "Coberturas principales": mrc.js's coverageFlow()/compactDistribution()
+// target a different fixed shape (v1's roomier legal-content layout) and silently strip a
+// leading "Coberturas Principales:" line assuming the card header already shows it — v3's
+// approved reference keeps that line, plus a bold "Incendio, Rayo y Explosión;" primary item,
+// visible inside the card body. Kept local so it can also read the "label | label" /
+// "value | value" table rows the approved Distribución del Capital Asegurado text uses.
+function principalCoveragesFlowV3(value) {
+  if (value == null || value === '') return `<p class="legal-paragraph">${UNAVAILABLE}</p>`
+
+  const blocks = String(value)
+    .replace(/\r\n?/g, '\n')
+    .trim()
+    .split(/\n\s*\n+/)
+    .map((block) =>
+      block
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean)
+    )
+    .filter((block) => block.length > 0)
+  if (!blocks.length) return `<p class="legal-paragraph">${UNAVAILABLE}</p>`
+
+  return blocks
+    .map((lines, blockIndex) => {
+      const firstTableLineIndex = lines.findIndex((line) => line.includes('|'))
+      if (firstTableLineIndex >= 0) {
+        const headingLines = lines.slice(0, firstTableLineIndex)
+        const [labelsRow = '', valuesRow = ''] = lines.slice(firstTableLineIndex)
+        const labels = labelsRow.split('|').map((cell) => cell.trim())
+        const values = valuesRow.split('|').map((cell) => cell.trim())
+        return `<div class="coverage-table-block">${headingLines.map((line) => `<strong class="coverage-subheading">${escapeHtml(line)}</strong>`).join('')}<div class="coverage-table" style="--coverage-table-columns:${labels.length}">${labels.map((cell) => `<strong>${escapeHtml(cell)}</strong>`).join('')}${values.map((cell) => `<span>${escapeHtml(cell)}</span>`).join('')}</div></div>`
+      }
+
+      if (blockIndex === 0 && lines.length === 2) {
+        return `<p class="coverage-title-block"><strong>${escapeHtml(lines[0])}</strong><strong class="coverage-primary">${escapeHtml(lines[1])}</strong></p>`
+      }
+
+      if (lines.length === 1 && lines[0].length <= 100 && lines[0].endsWith(':')) {
+        return `<p class="coverage-title-block"><strong>${escapeHtml(lines[0])}</strong></p>`
+      }
+
+      return `<p class="coverage-list-block">${lines.map((line) => escapeHtml(line)).join('<br>')}</p>`
+    })
+    .join('')
+}
 
 export const PROPUESTA_FORMAL_V3_STYLE = `
   @page { size: A4; margin: 0; }
@@ -157,24 +228,33 @@ export const PROPUESTA_FORMAL_V3_STYLE = `
   .risk-description p { margin: 0 0 2mm; }
   .risk-columns--total { min-height: 6.5mm; padding: 1mm; align-items: center; background: var(--v3-soft); font-size: 7px; font-weight: 700; }
   .risk-columns--total b:not(:nth-child(2)) { text-align: right; }
-  .coverage-bottom { display: grid; grid-template-columns: 1fr 1fr; gap: 2mm; }
-  .mini-card { min-width: 0; height: 42mm; min-height: 42mm; border: .7px solid var(--v3-line); border-radius: var(--v3-radius); overflow: visible; }
-  .mini-card h2 { min-height: 8mm; margin: 0; padding: 1.7mm 2.2mm; display: flex; align-items: center; gap: 1.7mm; color: var(--v3-red); background: linear-gradient(90deg, var(--v3-pink), #fff); font-size: 8.8px; text-transform: uppercase; }
-  .mini-card h2 .icon { width: 6mm; height: 6mm; padding: 1.2mm; }
-  .mini-card-body { padding: 1.5mm; font-size: 4.2px; line-height: 1.05; overflow: visible; }
+  .coverage-bottom { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 2mm; overflow: hidden; }
+  .declarations-box { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+  .declarations-box > .section-heading { flex: none; min-height: 6.5mm; padding: 1mm 2.4mm; }
+  [data-fit-section].fit-flex { flex: 1 1 auto; min-height: 0; overflow: hidden; }
+  .coverage-title-block { margin: 0 0 .6mm; }
+  .coverage-title-block strong { display: block; }
+  .coverage-list-block { margin: 0 0 .6mm; }
+  .coverage-subheading { display: block; margin-bottom: .2mm; }
+  .coverage-table-block { margin: 0 0 .6mm; }
+  .coverage-table { display: grid; grid-template-columns: repeat(var(--coverage-table-columns), max-content); column-gap: 3mm; row-gap: .2mm; width: max-content; }
+  .coverage-table strong { text-align: left; }
+  .coverage-table span { text-align: center; }
   .declaration-flow p { margin: 0 0 .25mm; }
   .declaration-flow--general .declaration-paragraph--lead { font-style: normal; }
   .declaration-choice-group { display: flex; gap: 2mm; flex-wrap: wrap; font-weight: 700; }
   .motive-writing-line { display: inline-block; width: 18mm; border-bottom: .6px solid var(--v3-muted); }
-  .page-two-content { display: flex; flex-direction: column; gap: 1mm; }
-  .conditions-box { min-height: 0; padding-bottom: 1mm; }
+  .page-two-content { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: .6mm; overflow: hidden; }
+  .conditions-box, .principal-coverages-box, .collection-clause { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+  .conditions-box > .section-heading, .principal-coverages-box > .section-heading, .collection-clause > .section-heading { flex: none; min-height: 6.5mm; padding: 1mm 2.4mm; }
+  .conditions-box { padding-bottom: 1mm; }
   .conditions-box .fit-box-inner, .collection-clause .fit-box-inner { padding: 2mm; }
-  .conditions-flow { margin: 0 1.5mm 1.5mm; padding: 1.5mm 2mm; border: .7px solid var(--v3-line); border-radius: 1.5mm; background: #fff; font-size: 7px; line-height: 1.15; overflow: visible; overflow-wrap: anywhere; }
-  .conditions-flow p { margin: 0 0 1.4mm; }
-  .conditions-flow .legal-subheading { display: block; margin-bottom: .4mm; }
-  .conditions-section { margin-top: 1.4mm; }
+  .conditions-flow { margin: 0 .6mm .6mm; padding: .6mm 1mm; border: .7px solid var(--v3-line); border-radius: 1.5mm; background: #fff; font-size: 7px; line-height: 1.05; overflow: visible; overflow-wrap: anywhere; }
+  .conditions-flow p { margin: 0 0 .5mm; }
+  .conditions-flow .legal-subheading { display: block; margin-bottom: .3mm; }
+  .conditions-section { margin-top: .8mm; }
   .conditions-section h3 { margin: 0 0 .8mm; font-size: inherit; }
-  .payment-row-shell { min-height: 0; padding: 1.5mm; border: .7px solid var(--v3-line); border-radius: var(--v3-radius); }
+  .payment-row-shell { min-height: 0; padding: 1mm; border: .7px solid var(--v3-line); border-radius: var(--v3-radius); }
   .payment-row { min-height: 0; display: grid; grid-template-columns: 1fr 1fr 1.55fr; gap: 1.5mm; }
   .finance-card { min-width: 0; border: .7px solid var(--v3-line); border-radius: 1.7mm; overflow: hidden; }
   .finance-card h2 { min-height: 7mm; margin: 0; padding: 1mm 1.5mm; display: flex; align-items: center; gap: 2mm; color: var(--v3-red); background: linear-gradient(90deg, var(--v3-pink), #fff); font-size: 8px; text-transform: uppercase; }
@@ -190,14 +270,13 @@ export const PROPUESTA_FORMAL_V3_STYLE = `
   .debit-bank { margin: .8mm 1.5mm; padding: .8mm 0; min-height: 4mm; border-bottom: .65px solid var(--v3-line); text-align: right; color: var(--v3-muted); }
   .debit-line { min-height: 4.5mm; padding: 0 1.5mm; display: grid; grid-template-columns: 15mm 1fr; align-items: center; font-size: 6.8px; }
   .debit-line i { height: 4mm; border: .65px solid var(--v3-muted); border-radius: .7mm; }
-  .collection-clause { min-height: 23mm; }
   .collection-clause .section-heading { color: var(--v3-red); background: linear-gradient(90deg, var(--v3-pink), #fff); }
   .collection-clause .legal-paragraph { margin: 0; font-size: 7px; line-height: 1.15; overflow-wrap: anywhere; }
   .observations { min-height: 0; }
-  .observation-value { min-height: 6mm; padding: 1.5mm; font-size: 8px; line-height: 1.3; overflow-wrap: anywhere; white-space: normal; }
-  .writing-line { height: 3.5mm; margin: 0 2.5mm; border-top: .6px dashed var(--v3-muted); }
+  .observation-value { min-height: 4mm; padding: 1mm; font-size: 8px; line-height: 1.3; overflow-wrap: anywhere; white-space: normal; }
+  .writing-line { height: 2.5mm; margin: 0 2.5mm; border-top: .6px dashed var(--v3-muted); }
   .signatures { min-height: 0; }
-  .signature-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; padding: 1.5mm; }
+  .signature-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; padding: 1mm; }
   .signature { min-width: 0; padding: 1mm 1.5mm; border-right: .6px solid var(--v3-line); font-size: 7.4px; line-height: 1.25; }
   .signature:last-child { border-right: 0; }
   .signature-space { height: 8mm; }
@@ -225,6 +304,7 @@ export const PROPUESTA_FORMAL_V3_STYLE = `
   .proposal-footer { margin-top: auto; min-height: 13mm; padding: 0 2mm; display: flex; align-items: flex-end; justify-content: space-between; border: 0; color: var(--v3-red); font-size: 7.8px; font-weight: 700; }
   .proposal-footer .footer-brand { display: flex; flex-direction: column; align-items: flex-start; }
   .proposal-footer small { display: block; margin-top: .9mm; color: var(--v3-muted); font-size: 7px; font-weight: 400; }
+  .footer-version { color: var(--v3-muted); font-size: 7px; font-weight: 400; align-self: flex-end; }
   .footer-slogan { display: block; width: 34mm; height: 13mm; margin-right: 1mm; object-fit: contain; }
   [data-fit-section] { overflow: visible; }
   .fit-box--overflow { outline: 1px solid var(--v3-red); }
@@ -380,11 +460,15 @@ function digitalPolicyForm(email) {
   return `<section class="proposal-eco-row"><div class="proposal-eco-message"><span class="proposal-eco-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 4C9 4 4 9 4 16c0 2 1 4 1 4s2-1 4-1c7 0 11-5 11-15z"></path><path d="M5 20 16 9"></path></svg></span><span class="proposal-eco-text">En apoyo a la ecología deseo recibir mi póliza en formato digital:</span></div><div class="proposal-eco-options"><span class="proposal-eco-option"><span>SI</span><i class="proposal-checkbox"></i></span><span class="proposal-eco-option"><span>NO</span><i class="proposal-checkbox"></i></span></div><span class="proposal-eco-divider" aria-hidden="true"></span><div class="proposal-eco-email"><span class="proposal-eco-email-label">E-mail:</span><span class="proposal-eco-email-value">${text(email)}</span><span class="proposal-eco-email-line" aria-hidden="true"></span></div></section>`
 }
 
+// Document template version, not the business proposal record's own numero_propuesta.
+// Bump this by hand whenever the approved v3 layout/content structure changes.
+const PROPOSAL_DOCUMENT_VERSION = '1.0.1'
+
 function footer(footerSloganDataUri) {
   const slogan = footerSloganDataUri
     ? `<img class="footer-slogan" src="${footerSloganDataUri}" alt="Seguros para un mejor mañana" />`
     : ''
-  return `<footer class="proposal-footer"><span class="footer-brand">ASEGURADORA TAJY PROP.COOP. S.A.<small>Protegemos lo que te importa</small></span>${slogan}</footer>`
+  return `<footer class="proposal-footer"><span class="footer-brand">ASEGURADORA TAJY PROP.COOP. S.A.<small>Protegemos lo que te importa</small></span><span class="footer-version">Ver.: ${escapeHtml(PROPOSAL_DOCUMENT_VERSION)}</span>${slogan}</footer>`
 }
 
 export function buildMrcPropuestaV3Html(
@@ -418,8 +502,7 @@ export function buildMrcPropuestaV3Html(
     <section class="modality">${icon('shield')}<div><b>Modalidad de la Cobertura Solicitada : 1020</b><small>RIESGOS VARIOS / MULTIRRIESGO COMERCIO</small></div></section>
     ${riskTable(draft, risk, coverages, totalCoverage, commercial.variante?.prima)}
     <div class="coverage-bottom">
-      <section class="mini-card"><h2>${icon('document')}Declaraciones</h2><div class="mini-card-body fit-box" data-fit-section="declarations" data-fit-target="4.2" data-fit-minimum="3.8" data-fit-step="0.1">${declarations}${funds}${authorizations}</div></section>
-      <section class="mini-card"><h2>${icon('shield')}Coberturas principales</h2><div class="mini-card-body fit-box" data-fit-section="principal-coverages" data-fit-target="8" data-fit-minimum="6.4" data-fit-step="0.2">${coverageFlow(texts.coberturas_principales?.contenido)}</div></section>
+      <section class="card declarations-box"><h2 class="section-heading">${icon('document')}Declaraciones</h2><div class="conditions-flow fit-flex fit-box" data-fit-section="declarations" data-fit-target="8" data-fit-minimum="6" data-fit-step="0.2">${declarations}${funds}${authorizations}</div></section>
     </div>
     ${footer(footerSloganDataUri)}
   </article>`
@@ -427,13 +510,14 @@ export function buildMrcPropuestaV3Html(
   const pageTwo = `<article class="proposal-page proposal-page--two">
     ${pageHeader(snapshot, 2, tajyLogoDataUri, headerBackgroundDataUri)}
     <div class="page-two-content">
-      <section class="card conditions-box"><h2 class="section-heading">${icon('document')}Condiciones</h2><div class="conditions-flow fit-box" data-fit-section="conditions" data-fit-target="8" data-fit-minimum="6.4" data-fit-step="0.2">${conditionsFlow(texts.condiciones_mrc?.contenido)}</div></section>
+      <section class="card conditions-box"><h2 class="section-heading">${icon('document')}Condiciones</h2><div class="conditions-flow fit-flex fit-box" data-fit-section="conditions" data-fit-target="8" data-fit-minimum="4.6" data-fit-step="0.2">${legalFlowV3(texts.condiciones_mrc?.contenido)}</div></section>
+      <section class="card principal-coverages-box"><h2 class="section-heading">${icon('shield')}Coberturas principales</h2><div class="conditions-flow fit-flex fit-box" data-fit-section="principal-coverages" data-fit-target="8" data-fit-minimum="4.8" data-fit-step="0.2">${principalCoveragesFlowV3(texts.coberturas_principales?.contenido)}</div></section>
       <div class="payment-row-shell"><div class="payment-row">
         <section class="finance-card"><h2>${icon('coins')}Costo del seguro</h2><div class="payment-lines">${paymentLine('Prima:', money(commercial.variante?.prima))}${paymentLine('R.P.F.:', money(payment.rpf_monto))}${paymentLine('Sub-Total:', [commercial.variante?.prima, payment.rpf_monto].every((value) => value != null && value !== '' && Number.isFinite(Number(value))) ? money(Number(commercial.variante.prima) + Number(payment.rpf_monto)) : UNAVAILABLE)}${paymentLine('I.V.A.:', money(payment.iva_monto))}${paymentLine('Costo Total:', money(payment.premio_total), 'cost-total')}</div></section>
         <section class="finance-card"><h2>${icon('card')}Forma de pago</h2><div class="payment-lines">${paymentLine('Modalidad:', text(payment.formas_pago?.nombre_display))}${paymentLine('Inicial:', money(payment.monto_inicial))}${paymentLine('Cuotas:', payment.monto_cuota ? `${text(payment.cantidad_cuotas)} cuotas de ${money(payment.monto_cuota)}` : 'Contado')}</div></section>
         ${debitAuthorization()}
       </div></div>
-      <section class="card collection-clause"><h2 class="section-heading">${icon('document')}Cláusula adicional de cobranzas</h2><div class="conditions-flow fit-box" data-fit-section="collection-clause" data-fit-target="7.5" data-fit-minimum="6" data-fit-step="0.1">${legalFlow(collectionText)}</div></section>
+      <section class="card collection-clause"><h2 class="section-heading">${icon('document')}Cláusula adicional de cobranzas</h2><div class="conditions-flow fit-flex fit-box" data-fit-section="collection-clause" data-fit-target="7.5" data-fit-minimum="4.8" data-fit-step="0.1">${legalFlowV3(collectionText)}</div></section>
       <section class="card observations"><h2 class="section-heading">${icon('comment')}Observaciones</h2><div class="observation-value">${text(draft.observaciones, ' ')}</div><div class="writing-line"></div><div class="writing-line"></div><div class="writing-line"></div></section>
       <section class="card signatures"><h2 class="section-heading">${icon('pen')}Firmas</h2><div class="signature-grid">${signature('Firma del Agente', proposal.agente?.nombre, [{ label: 'Matrícula Nro.', value: proposal.agente?.matricula }, 'Lugar y Fecha:'])}${signature('Firma del Titular de la Tarjeta', cardholderName, [{ label: 'Nro de C.I.', value: cardholderDocument }])}${signature('Firma del Titular del Seguro', insuredName, [{ label: 'Nro de C.I.', value: insuredDocument }])}</div>${digitalPolicyForm(insured.email)}</section>
     </div>
@@ -468,24 +552,32 @@ export function buildMrcPropuestaV3Html(
     const fitSections = async () => {
       await document.fonts.ready
       await new Promise((resolve) => requestAnimationFrame(resolve))
-      const metrics = []
-      for (const element of document.querySelectorAll('[data-fit-section]')) {
-        const target = Number(element.dataset.fitTarget)
-        const minimum = Number(element.dataset.fitMinimum)
-        const step = Number(element.dataset.fitStep)
-        let size = target
-        element.style.fontSize = size + 'px'
-        const targetMeasurement = { scrollHeight: element.scrollHeight, clientHeight: element.clientHeight, scrollWidth: element.scrollWidth, clientWidth: element.clientWidth }
-        while (isOverflowing(element) && size > minimum) {
-          size = Math.max(minimum, Number((size - step).toFixed(2)))
+      // Two passes: sibling fit-flex boxes share one flex-allocated budget, so shrinking
+      // the first box measured in pass 1 frees space for the next ones (DOM order bias).
+      // Pass 2 re-measures every box from its target size now that every sibling's pass-1
+      // final size is already locked in, so a box that was measured first (and therefore
+      // squeezed against still-full-size neighbors) can claim the space they gave back.
+      let metrics = []
+      for (let pass = 1; pass <= 2; pass += 1) {
+        metrics = []
+        for (const element of document.querySelectorAll('[data-fit-section]')) {
+          const target = Number(element.dataset.fitTarget)
+          const minimum = Number(element.dataset.fitMinimum)
+          const step = Number(element.dataset.fitStep)
+          let size = target
           element.style.fontSize = size + 'px'
+          const targetMeasurement = { scrollHeight: element.scrollHeight, clientHeight: element.clientHeight, scrollWidth: element.scrollWidth, clientWidth: element.clientWidth }
+          while (isOverflowing(element) && size > minimum) {
+            size = Math.max(minimum, Number((size - step).toFixed(2)))
+            element.style.fontSize = size + 'px'
+          }
+          const overflow = isOverflowing(element)
+          element.dataset.fitStatus = overflow ? 'overflow' : size < target ? 'reduced' : 'target'
+          element.dataset.fitOverflow = String(overflow)
+          element.dataset.fitFinal = size.toFixed(2)
+          element.classList.toggle('fit-box--overflow', overflow)
+          metrics.push({ section: element.dataset.fitSection, target, minimum, step, final: size, status: element.dataset.fitStatus, overflow, targetMeasurement, finalMeasurement: { scrollHeight: element.scrollHeight, clientHeight: element.clientHeight, scrollWidth: element.scrollWidth, clientWidth: element.clientWidth } })
         }
-        const overflow = isOverflowing(element)
-        element.dataset.fitStatus = overflow ? 'overflow' : size < target ? 'reduced' : 'target'
-        element.dataset.fitOverflow = String(overflow)
-        element.dataset.fitFinal = size.toFixed(2)
-        if (overflow) element.classList.add('fit-box--overflow')
-        metrics.push({ section: element.dataset.fitSection, target, minimum, step, final: size, status: element.dataset.fitStatus, overflow, targetMeasurement, finalMeasurement: { scrollHeight: element.scrollHeight, clientHeight: element.clientHeight, scrollWidth: element.scrollWidth, clientWidth: element.clientWidth } })
       }
       window.__proposalFitMetrics = metrics
       let pageOverflow = hasCoverageVisualOverflow()

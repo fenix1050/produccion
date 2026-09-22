@@ -159,15 +159,22 @@ Utilizar Engram para:
 - registrar decisiones importantes de arquitectura
 - mantener memoria persistente entre sesiones
 
-### Supabase MCP
+### Supabase MCP (actualizado 2026-09-22 — corrige info obsoleta)
 
-Existe un MCP conectado al proyecto de Supabase.
+**Ya no existe ningún proyecto de Supabase en la nube, ni para PROD ni para TEST.** Ambas bases son
+Supabase self-hosted en la misma VPS — corrige cualquier suposición anterior (incluida la de este
+mismo archivo) de que hay un MCP de Supabase conectado a un proyecto cloud para PROD. El MCP
+`mcp__supabase__*` (que pide OAuth contra `api.supabase.com`) **no aplica a este proyecto** — no
+intentar autenticarlo para inspeccionar PROD ni TEST.
 
-Utilizarlo para:
+- **TEST**: contenedor `cotizador-test-db` en la VPS. Confirmado en sesiones anteriores:
+  `docker exec cotizador-test-db psql -U supabase_admin -d postgres -c "..."`.
+- **PROD**: self-hosted en la misma VPS (nombre exacto del contenedor sin confirmar todavía en
+  este archivo — verificar con `docker ps --format '{{.Names}}' | grep -i db` antes de asumirlo).
 
-- inspeccionar tablas
-- consultar esquema
-- revisar migraciones
-- validar cambios antes de modificar SQL
-
-Evitar recorrer el proyecto manualmente cuando estas herramientas proporcionen la información necesaria.
+Para inspeccionar tablas, esquema, migraciones o validar cambios antes de modificar SQL contra
+cualquiera de las dos bases: usar `docker exec <contenedor> psql -U supabase_admin -d postgres -c
+"..."` por SSH a la VPS (misma regla de "Remote operation authorization" del bloque de arriba —
+lo corre el usuario, nunca la sesión de Claude sin autorización explícita). Evitar recorrer el
+proyecto manualmente cuando una consulta de solo lectura contra la base real resuelva la duda más
+rápido.

@@ -6,7 +6,10 @@ export const CARTA_SNAPSHOT_SCHEMA_VERSION = '2'
 // do not reliably expose the exact template source bytes, so it MUST be bumped whenever any active
 // Carta template, layout, or renderer behavior changes.
 export const CARTA_OFERTA_RENDERER_REVISION = 'pf1-renderer-r2'
-export const PROPUESTA_FORMAL_RENDERER_REVISION = 'pf3-mrc-renderer-r16'
+export const PROPUESTA_FORMAL_V1_RENDERER_REVISION = 'pf3-mrc-renderer-r16'
+export const PROPUESTA_FORMAL_V2_RENDERER_REVISION = 'pf3-mrc-renderer-v2-r1'
+export const PROPUESTA_FORMAL_V3_RENDERER_REVISION = 'pf3-mrc-renderer-v3-r1'
+export const PROPUESTA_FORMAL_RENDERER_REVISION = PROPUESTA_FORMAL_V3_RENDERER_REVISION
 
 export function canonicalStringify(value) {
   return JSON.stringify(normalize(value))

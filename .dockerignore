@@ -7,4 +7,8 @@ frontend/*
 !frontend/login/
 !frontend/login/assets/
 !frontend/login/assets/logo-rojo-con-negro.svg
+!frontend/shared/
+!frontend/shared/assets/
+!frontend/shared/assets/propuesta-header-bg.png
+!frontend/shared/assets/footer-slogan.png
 docs

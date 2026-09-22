@@ -726,3 +726,18 @@ export function buildMrcPropuestaHtml(snapshot, { tajyLogoDataUri = null } = {})
 </script>
 </html>`
 }
+
+// Shared content helpers for isolated visual revisions. The v1 renderer above intentionally
+// keeps its markup and call graph unchanged.
+export {
+  UNAVAILABLE,
+  brandMark,
+  booleanChoice,
+  conditionsFlow,
+  coverageFlow,
+  coverageSummary,
+  declarationFlow,
+  legalFlow,
+  money,
+  text,
+}

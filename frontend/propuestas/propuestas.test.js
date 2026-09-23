@@ -152,6 +152,36 @@ test('PF-3 wizard prioritizes the active step and starts ready proposals at revi
   assert.doesNotMatch(moduleSource, /return propuesta\?\.estado === 'borrador' \? 2 : 5/)
 })
 
+test('PF-3 wizard steps only turn green once the user has actually reached them', async () => {
+  const moduleSource = await readFile(moduleUrl, 'utf8')
+
+  // Tomador (paso 3) y Validaciones (paso 4) no tienen campos obligatorios propios, así
+  // que antes de este fix pasoListo() los daba por completos desde el arranque sin que el
+  // usuario los hubiera visitado. pasoAlcanzado() exige haber avanzado hasta ese paso.
+  assert.match(
+    moduleSource,
+    /function pasoAlcanzado\(step, pasoMaximoAlcanzado\) \{\s*return \(pasoMaximoAlcanzado \?\? 1\) >= step/
+  )
+  assert.match(
+    moduleSource,
+    /function pasoListo\(step, readiness\) \{\s*if \(step === 5\) return Boolean\(readiness\?\.listo\)[\s\S]*?pasoCamposCompletos\(step, pendientes\) && pasoAlcanzado\(step, readiness\?\.pasoMaximoAlcanzado\)/
+  )
+  assert.match(
+    moduleSource,
+    /pasoMaximoAlcanzado: pasoMaximoAlcanzadoDeDraft\(propuesta\?\.draft_json, pendientes\)/
+  )
+  assert.match(
+    moduleSource,
+    /pasoMaximoAlcanzado: pasoMaximoAlcanzadoDeDraft\(state\.propuesta\?\.draft_json, pendientes\)/
+  )
+  const avanzarPasoSource = moduleSource.match(/function avanzarPaso\(\)[\s\S]*?\n\}/)?.[0] ?? ''
+  assert.match(avanzarPasoSource, /registrarPasoAlcanzado\(state\.currentStep\)/)
+  assert.match(
+    moduleSource,
+    /function registrarPasoAlcanzado\(step\)[\s\S]*?paso_maximo_alcanzado: Math\.max\(actual, step\)/
+  )
+})
+
 test('PF-3 reference grouping keeps active presentation and readiness contracts', async () => {
   const [moduleSource, stylesheetSource] = await Promise.all([
     readFile(moduleUrl, 'utf8'),

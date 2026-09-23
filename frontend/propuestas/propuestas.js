@@ -212,6 +212,7 @@ function leerFormulario() {
     direccion: () => text('direccion'),
     actividad_economica: () => text('actividad_economica'),
     fecha_nacimiento: (value) => value || undefined,
+    sexo: (value) => value || undefined,
     nacionalidad: () => text('nacionalidad'),
     estado_civil: () => text('estado_civil'),
     ocupacion: () => text('ocupacion'),
@@ -629,6 +630,17 @@ function renderAseguradoPanel() {
           ${inputField('documento', 'Documento o RUC', valor('partes.asegurado.documento'), 'text', true, { format: 'ruc' })}
           ${inputField('actividad_economica', 'Actividad económica', valor('partes.asegurado.actividad_economica'), 'text', true)}
           ${inputField('fecha_nacimiento', 'Fecha de nacimiento', valor('partes.asegurado.fecha_nacimiento'), 'date', tipoPersona === 'fisica')}
+          ${selectField(
+            'sexo',
+            'Sexo',
+            [
+              ['', 'Seleccione'],
+              ['Femenino', 'Femenino'],
+              ['Masculino', 'Masculino'],
+            ],
+            valor('partes.asegurado.sexo'),
+            tipoPersona === 'fisica'
+          )}
           ${inputField('nacionalidad', 'Nacionalidad', valor('partes.asegurado.nacionalidad'), 'text', tipoPersona === 'fisica')}
           ${inputField('estado_civil', 'Estado civil', valor('partes.asegurado.estado_civil'), 'text', tipoPersona === 'fisica')}
           ${inputField('ocupacion', 'Ocupación', valor('partes.asegurado.ocupacion'), 'text', tipoPersona === 'fisica')}
@@ -915,7 +927,7 @@ function calcularPendientesFor(propuesta, selection = {}) {
   ])
     if (!insured[field]) pendientes.push(`asegurado.${field}`)
   if (insured.tipo_persona === 'fisica')
-    for (const field of ['fecha_nacimiento', 'nacionalidad', 'estado_civil', 'ocupacion'])
+    for (const field of ['fecha_nacimiento', 'sexo', 'nacionalidad', 'estado_civil', 'ocupacion'])
       if (!insured[field]) pendientes.push(`asegurado.${field}`)
   if (insured.tipo_persona === 'juridica')
     for (const field of ['nombre', 'documento', 'cargo'])
@@ -957,7 +969,7 @@ function calcularCamposRequeridos(propuesta) {
   ])
     required.add(`asegurado.${field}`)
   if (insured.tipo_persona === 'fisica')
-    for (const field of ['fecha_nacimiento', 'nacionalidad', 'estado_civil', 'ocupacion'])
+    for (const field of ['fecha_nacimiento', 'sexo', 'nacionalidad', 'estado_civil', 'ocupacion'])
       required.add(`asegurado.${field}`)
   if (insured.tipo_persona === 'juridica')
     for (const field of ['nombre', 'documento', 'cargo'])
@@ -1163,6 +1175,7 @@ function etiquetaPendiente(code) {
     'tomador.email': 'Correo del tomador',
     'tomador.identidad_distinta': 'Documento distinto al asegurado',
     'asegurado.fecha_nacimiento': 'Fecha de nacimiento',
+    'asegurado.sexo': 'Sexo',
     'asegurado.nacionalidad': 'Nacionalidad',
     'asegurado.estado_civil': 'Estado civil',
     'asegurado.ocupacion': 'Ocupación',

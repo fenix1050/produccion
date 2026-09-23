@@ -1,7 +1,21 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import { listarPropuestasQuerySchema } from './propuestas.schema.js'
+import { draftPropuestaSchema, listarPropuestasQuerySchema } from './propuestas.schema.js'
+
+test('draftPropuestaSchema: acepta sexo Femenino/Masculino y rechaza otros valores', () => {
+  const conFemenino = draftPropuestaSchema.safeParse({
+    partes: { asegurado: { sexo: 'Femenino' } },
+  })
+  const conMasculino = draftPropuestaSchema.safeParse({
+    partes: { asegurado: { sexo: 'Masculino' } },
+  })
+  const invalido = draftPropuestaSchema.safeParse({ partes: { asegurado: { sexo: 'otro' } } })
+
+  assert.equal(conFemenino.success, true)
+  assert.equal(conMasculino.success, true)
+  assert.equal(invalido.success, false)
+})
 
 test('listarPropuestasQuerySchema: defaults limit=20 and offset=0 when omitted', () => {
   const result = listarPropuestasQuerySchema.parse({})

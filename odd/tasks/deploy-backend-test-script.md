@@ -150,3 +150,44 @@ arg1 arg2 ...` NO preserva el quoting entre argumentos (los concatena con espaci
   `deploy-frontend-test.sh` da `PASS` de integridad. Producción sigue siendo 100% manual —
   esta clave no tiene ningún acceso a los paths/proyectos de prod (ni por sudoers, ni por
   grupo de archivos).
+
+**2026-09-23, extensión a la DB de TEST (mismo pedido de Kevin, "si, seria bueno si lo armas
+también así como lo anterior").** Mismo usuario `claude-test-deploy`, mismo patrón de wrapper:
+
+- `/usr/local/bin/claude-test-deploy-psql`: `exec /usr/bin/docker exec -i cotizador-test-db psql
+-U supabase_admin -d postgres "$@"` — nombre de contenedor fijo en el código, no llega como
+  argumento. Sudoers: una sola regla `NOPASSWD` para ese wrapper exacto, mismo archivo
+  `/etc/sudoers.d/claude-test-deploy`.
+- Kevin eligió explícitamente **lectura y escritura completa** (no solo lectura) cuando se le
+  preguntó.
+- Verificado en vivo: `select 1;` vía el wrapper, y confirmado que apunta a TEST y no a prod
+  antes de usarlo para nada mutante.
+
+**2026-09-23, primera tanda real de uso de punta a punta (3 PRs en el mismo día — #436, #437,
+#438).** Reproducción y fix de un bug real reportado por Kevin (una Carta Oferta con Propuesta
+Formal ya emitida se podía reabrir y volver a completar), un segundo bug relacionado (un borrador
+en `error_pdf` quedaba bloqueado para siempre por un guard que solo permitía `estado='borrador'`,
+mientras el frontend mentía sobre la causa del 409 diciendo "cambió en otra pestaña"), y una
+mejora visual pedida por Kevin (reusar el modal de progreso del cotizador al emitir una Propuesta
+Formal). Detalle completo de cada fix en Engram (`pf3-carta-ya-emitida-fix`,
+`pf3-editar-borrador-error-pdf-y-codigo-error`, `pf3-modal-emision-y-deploy-verificado`).
+
+Flujo real usado, de punta a punta, sin pedirle nada a Kevin salvo el merge del PR:
+
+1. Reproducir el bug leyendo el estado real de `propuestas_formales` vía `claude-test-deploy-psql`.
+2. Escribir la migración SQL + fix de código, con tests locales en verde.
+3. PR + merge (Kevin revisa y mergea).
+4. `git pull --ff-only` en `main`, aplicar la migración a TEST pipeando el `.sql` por stdin al
+   wrapper de psql, deployar backend (`--preflight-only` primero, después `--approve-deploy`) y
+   frontend con `deploy-backend-test.sh`/`deploy-frontend-test.sh`.
+5. Verificar en vivo contra `test-web.cotizador.lat`/`test-api.cotizador.lat` con Playwright real
+   (no local — el backend de dev local tenía un problema de conectividad a Supabase ajeno a estos
+   cambios) y con consultas SQL directas antes/después.
+
+Hallazgo operativo: `deploy-backend-test.sh --approve-deploy` falló en su propio paso interno de
+verificación post-deploy (el wrapper rechazó un `docker inspect --format ... <id>` con argv que
+no matcheaba exactamente el patrón esperado) — pero el build y el `recreate` del contenedor SÍ
+habían terminado bien. Se confirmó manualmente comparando el tag de la imagen construida
+(`cotizador-backend-test:<sha-commit>-<timestamp>`) contra el commit del merge, más `/health`
+público en 200. No bloqueante, pero revisar si se repite — podría ser una diferencia de forma
+entre el argv que arma el script real vs. los casos que se probaron al testear el wrapper.

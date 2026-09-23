@@ -78,9 +78,20 @@ Arquitectura real en la VPS (`docker-compose.yml` + `Caddyfile` en la raíz del 
 - **Dos frontends estáticos independientes**: `frontend-prod` (`cotizador.lat`) y `frontend-test` (`test-web.cotizador.lat`), servidos por Caddy desde carpetas separadas en la VPS.
 - **Imágenes inmutables versionadas por SHA-256** (`deploy: require immutable backend image`, 2026-09-02): `docker-compose.yml` exige `BACKEND_IMAGE` explícito, ya no reconstruye sobre la marcha.
 - **El deploy a TEST requiere autorización manual explícita en cada paso** (materialización del bundle → preflight de solo lectura → `deploy-test-backend.sh --approve-deploy` → rollback solo tras decisión separada con `--approve-test-rollback`). El script de rollback de TEST está bloqueado por diseño para no poder apuntar nunca a producción.
+- **Claude Code tiene acceso propio y automatizado a TEST desde 2026-09-23** (backend, frontend y DB — ver sección "Acceso de Claude a TEST" más abajo). Esto no cambia el punto anterior: el deploy sigue pasando por los mismos scripts y sus mismos gates de aprobación (`--approve-deploy`), solo que Claude puede ejecutarlos él mismo con un usuario scoped en vez de depender de que Kevin corra los comandos a mano. **Producción sigue siendo 100% manual, sin excepción.**
 - **Promover a PROD es un paso separado y manual**, no documentado como workflow de GitHub Actions en este repo — no asumir que existe automatización para esto sin verificarlo primero.
 - Mergear un PR a `main` (código, dependencias, o docs) **no despliega nada por sí solo** en ninguno de los dos entornos. Solo actualiza el código fuente en el repositorio.
 - `render.yaml` y `frontend/vercel.json` en la raíz del repo son artefactos legacy de una estrategia de deploy anterior (Render.com / Vercel) que precedió a la VPS actual — no reflejan la infraestructura real descrita arriba. No asumir que Render o Vercel siguen desplegando algo relevante para producción sin verificarlo primero.
+
+### Acceso de Claude a TEST (backend, frontend y DB — nunca producción)
+
+Desde 2026-09-23, este agente tiene un usuario dedicado `claude-test-deploy` en la VPS, **sin** grupo `docker` y con clave SSH propia (`~/.ssh/claude_test_deploy_ed25519` en la máquina de Kevin). Todo el scoping vive en wrappers bash con argv validado exactamente en código — nunca en patrones/globs de sudoers, que en este servidor no soportan wildcards de forma fiable. Esto reemplaza la necesidad de que Kevin corra a mano cada comando contra TEST, sin tocar los gates de aprobación existentes de los scripts (`--approve-deploy`, etc.).
+
+- **Deploy backend**: `scripts/deploy-backend-test.sh` con `TEST_SSH_HOST=claude-test-deploy@192.168.0.90` y `DOCKER_CMD="sudo -n /usr/local/bin/claude-test-deploy-docker"` (wrapper en la VPS que solo permite el subconjunto exacto de comandos docker/compose que el script necesita, siempre contra `cotizador-backend-test`/`backend-test` — nunca contra el proyecto/imagen de producción).
+- **Deploy frontend**: `scripts/deploy-frontend-test.sh` con el mismo `TEST_SSH_HOST`, escribiendo solo dentro de `/opt/cotizador/frontend-test` vía grupo dedicado `frontend-test-deploy` + setgid.
+- **DB de TEST (lectura y escritura completa)**: `/usr/local/bin/claude-test-deploy-psql` en la VPS ejecuta exactamente `docker exec -i cotizador-test-db psql -U supabase_admin -d postgres "$@"` — el nombre del contenedor está fijo en el código del wrapper, no es un argumento, así que no hay forma de que esto llegue a tocar `cotizador-supabase-db` (producción). Uso típico: `ssh claude-test-deploy@192.168.0.90 "sudo -n /usr/local/bin/claude-test-deploy-psql -c '...'"`, o pipeando un archivo `.sql` por stdin para aplicar una migración.
+
+**Esto no cambia nada de producción**: el contenedor de DB de PROD (`cotizador-supabase-db`) y el compose project de PROD nunca aparecen en ningún wrapper de `claude-test-deploy` — ni como valor por defecto ni como argumento aceptado. Seguir usando la sesión SSH propia de Kevin (`soporte@192.168.0.90`) solo para producción, y solo cuando él la comparta explícitamente para esa tarea puntual. Detalle completo del diseño y su razonamiento de seguridad en `odd/tasks/deploy-backend-test-script.md`.
 
 ## Reglas de negocio clave para Auto (resumen — detalle completo en sección 5 de PLAN_DESARROLLO.md)
 
@@ -159,7 +170,7 @@ Utilizar Engram para:
 - registrar decisiones importantes de arquitectura
 - mantener memoria persistente entre sesiones
 
-### Supabase MCP (actualizado 2026-09-22 — corrige info obsoleta)
+### Supabase MCP (actualizado 2026-09-23 — corrige info obsoleta)
 
 **Ya no existe ningún proyecto de Supabase en la nube, ni para PROD ni para TEST.** Ambas bases son
 Supabase self-hosted en la misma VPS — corrige cualquier suposición anterior (incluida la de este
@@ -167,14 +178,10 @@ mismo archivo) de que hay un MCP de Supabase conectado a un proyecto cloud para 
 `mcp__supabase__*` (que pide OAuth contra `api.supabase.com`) **no aplica a este proyecto** — no
 intentar autenticarlo para inspeccionar PROD ni TEST.
 
-- **TEST**: contenedor `cotizador-test-db` en la VPS. Confirmado en sesiones anteriores:
-  `docker exec cotizador-test-db psql -U supabase_admin -d postgres -c "..."`.
+- **TEST**: contenedor `cotizador-test-db` en la VPS. Claude puede consultarla directamente por su
+  cuenta con el acceso scoped `claude-test-deploy-psql` — ver sección "Acceso de Claude a TEST"
+  más arriba. Ya no hace falta pedirle a Kevin que corra la consulta a mano.
 - **PROD**: self-hosted en la misma VPS (nombre exacto del contenedor sin confirmar todavía en
   este archivo — verificar con `docker ps --format '{{.Names}}' | grep -i db` antes de asumirlo).
-
-Para inspeccionar tablas, esquema, migraciones o validar cambios antes de modificar SQL contra
-cualquiera de las dos bases: usar `docker exec <contenedor> psql -U supabase_admin -d postgres -c
-"..."` por SSH a la VPS (misma regla de "Remote operation authorization" del bloque de arriba —
-lo corre el usuario, nunca la sesión de Claude sin autorización explícita). Evitar recorrer el
-proyecto manualmente cuando una consulta de solo lectura contra la base real resuelva la duda más
-rápido.
+  Sigue siendo **estrictamente manual**: ningún wrapper de `claude-test-deploy` tiene forma de
+  tocarla (misma regla de "Remote operation authorization" del bloque de arriba).

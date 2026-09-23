@@ -50,8 +50,15 @@ else
   ssh "$TEST_SSH_HOST" "mkdir -p -- '$(dirname -- "$BACKUP_REMOTE_DIR")' && cp -a -- '${TEST_FRONTEND_ROOT}' '${BACKUP_REMOTE_DIR}'"
   echo "==> Sincronizando frontend/ -> ${TEST_SSH_HOST}:${TEST_FRONTEND_ROOT}"
   echo "    (excluye shared/config.js — es por-entorno, no pertenece al repo)"
+  # --no-same-permissions -m: si el usuario remoto de deploy no es dueño de directorios
+  # preexistentes (ej. una clave de deploy dedicada, distinta de la que los creó
+  # originalmente), tar igual intenta re-aplicarles el modo/mtime del archivo y falla con
+  # EPERM — es una restricción de POSIX (chmod/utime exigen ser el dueño), no algo que estas
+  # flags puedan evitar del todo. El contenido de los archivos sí se escribe igual; el
+  # chequeo de hash de más abajo es la verificación real, así que un tar con avisos
+  # cosméticos de metadata no aborta el deploy.
   tar --exclude='shared/config.js' -czf - -C frontend . |
-    ssh "$TEST_SSH_HOST" "tar -xzf - -C '${TEST_FRONTEND_ROOT}'"
+    ssh "$TEST_SSH_HOST" "tar --no-same-permissions -m -xzf - -C '${TEST_FRONTEND_ROOT}'" || true
 fi
 
 echo "==> Verificando integridad contra lo servido públicamente"

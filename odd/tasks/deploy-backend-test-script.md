@@ -98,3 +98,55 @@ esto sin construir ni reemplazar nada.
 
 Pendiente real: un deploy completo (`--approve-deploy`) todavía no se probó en vivo — decisión de
 Kevin, no bloqueante. `shellcheck` sigue sin instalarse en esta máquina.
+
+**Deploy completo verificado en vivo 2026-09-23 (Kevin, en su Git Bash, agente ssh propio):**
+`--approve-deploy` corrido de punta a punta contra la VPS real — build, recreate de
+`cotizador-test-backend` y health check en verde. `deploy-frontend-test.sh` también corrido en
+vivo (fallback tar+ssh, sin rsync local), `PASS` de integridad contra lo servido públicamente.
+
+**2026-09-23, acceso propio de Claude a TEST (pedido explícito de Kevin — "quiero que puedas
+entrar y ejecutar vos los scripts, pero que solo tengas acceso al test").** Usar la clave
+personal de Kevin nunca fue la idea; en Linux pertenecer al grupo `docker` (o `sudo docker` sin
+restricciones) equivale a root del host, así que no alcanza con "otro usuario en el mismo
+grupo" para acotar el acceso solo a TEST — hace falta restringir por comando exacto.
+
+Diseño final:
+
+- Usuario dedicado `claude-test-deploy` en la VPS, **sin** grupo `docker`, clave ed25519 propia
+  sin passphrase (uso no interactivo), `authorized_keys` con
+  `no-port-forwarding,no-X11-forwarding,no-agent-forwarding,no-pty`.
+- `/usr/local/bin/claude-test-deploy-docker`: wrapper en bash que valida en código (no en
+  sintaxis de sudoers — mucho más frágil para esto, ver más abajo) que el comando sea
+  EXACTAMENTE uno de los que usan `deploy-backend-test.sh`/`rollback-backend-test.sh`
+  (`ps`/`inspect`/`image inspect`/`build`/`compose up`/`compose ps`), siempre atado a
+  `cotizador-backend-test`/`backend-test`/la ruta fija del `docker-compose.yml` de TEST.
+  Cualquier otra cosa (`docker run`, `docker exec`, apuntar a otro proyecto/servicio) se
+  rechaza sin ejecutar nada — probado explícitamente con 5 casos de rechazo antes de instalar.
+- `/etc/sudoers.d/claude-test-deploy`: una sola regla trivial, `NOPASSWD` para correr
+  únicamente ese wrapper (`.../claude-test-deploy-docker *`) — toda la lógica de scoping vive
+  en el wrapper, no en sudoers.
+- Escritura en `/opt/cotizador/frontend-test` (nunca en `frontend/` de producción) vía grupo
+  dedicado `frontend-test-deploy` + setgid en los directorios.
+- `scripts/deploy-backend-test.sh`/`rollback-backend-test.sh`: nueva variable opcional
+  `DOCKER_CMD` (default `docker`, sin cambios para Kevin/soporte) para poder decir
+  `sudo -n /usr/local/bin/claude-test-deploy-docker` en vez de `docker` a secas. Viaja
+  codificada en base64 entre el script local y el heredoc remoto — `ssh host bash -s --
+arg1 arg2 ...` NO preserva el quoting entre argumentos (los concatena con espacios y el
+  shell remoto los vuelve a tokenizar), así que un `DOCKER_CMD` con espacios llegaba partido
+  en varias palabras sueltas al script remoto. Bug real encontrado y corregido en esta sesión.
+- `scripts/deploy-frontend-test.sh`: la extracción remota de `tar` ahora usa
+  `--no-same-permissions -m` y tolera que falle solo por eso (`|| true`) — un usuario que no
+  es dueño de directorios preexistentes (creados por otro usuario en un deploy anterior)
+  nunca puede hacer `chmod`/`utime` sobre ellos (restricción de POSIX, no algo que se pueda
+  evitar con flags), pero el contenido de los archivos sí se escribe bien. El chequeo de hash
+  que ya corría después sigue siendo la verificación real de que el deploy funcionó.
+- Iteración de sudoers: 3 intentos fallidos por sintaxis antes de llegar al wrapper —
+  `!requiretty` no es una setting reconocida en esta versión de sudo, y comodines `*` sueltos
+  (sin nada pegado) en múltiples argumentos de una misma regla no están permitidos. Confirma
+  que expresar este tipo de whitelist en sintaxis de sudoers es frágil; el wrapper en bash
+  (testeable localmente antes de tocar la VPS) fue mucho más robusto.
+- Verificado en vivo con la clave nueva, sin pedirle nada a Kevin: `docker ps` vía el wrapper
+  devuelve el container id real, `deploy-backend-test.sh --preflight-only` da `PASS`, y
+  `deploy-frontend-test.sh` da `PASS` de integridad. Producción sigue siendo 100% manual —
+  esta clave no tiene ningún acceso a los paths/proyectos de prod (ni por sudoers, ni por
+  grupo de archivos).

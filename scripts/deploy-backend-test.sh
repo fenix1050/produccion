@@ -61,6 +61,17 @@ fi
 REPO_ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)
 cd "$REPO_ROOT"
 
+# DOCKER_CMD: indirection para poder correr este mismo script con un usuario remoto sin
+# grupo docker (ej. una clave de deploy acotada solo a TEST) que necesita `sudo -n
+# /ruta/al/wrapper` en vez de `docker` a secas. Default = comportamiento de siempre para
+# Kevin/soporte (que sí está en el grupo docker) — no cambia nada si no se setea la
+# variable. Va en base64 al pasarlo por ssh: `ssh host bash -s -- arg1 arg2 ...` NO
+# preserva las comillas entre argumentos (ssh los concatena con espacios y el shell
+# remoto los vuelve a tokenizar) — un DOCKER_CMD con espacios ("sudo -n /ruta...") le
+# llegaría partido en varias palabras sueltas al script remoto.
+DOCKER_CMD="${DOCKER_CMD:-docker}"
+DOCKER_CMD_B64=$(printf '%s' "$DOCKER_CMD" | base64 | tr -d '\n')
+
 GIT_SHA=$(git rev-parse --short=12 HEAD)
 DIRTY_PATHS=(backend package.json package-lock.json frontend/login/assets/logo-rojo-con-negro.svg \
   frontend/shared/assets/propuesta-header-bg.png frontend/shared/assets/footer-slogan.png)
@@ -79,24 +90,25 @@ ssh "$TEST_SSH_HOST" "mkdir -p -- '${REMOTE_MANIFEST_DIR}'"
 echo "==> Preflight de solo lectura en la VPS (captura la imagen previa para rollback)"
 # shellcheck disable=SC2087
 ssh "$TEST_SSH_HOST" bash -s -- "$PF3_TEST_COMPOSE_FILE" "$PF3_TEST_COMPOSE_PROJECT" \
-  "$PF3_TEST_BACKEND_SERVICE" "$PF3_TEST_HEALTH_URL" "$REMOTE_MANIFEST_DIR" <<'REMOTE_PREFLIGHT'
+  "$PF3_TEST_BACKEND_SERVICE" "$PF3_TEST_HEALTH_URL" "$REMOTE_MANIFEST_DIR" "$DOCKER_CMD_B64" <<'REMOTE_PREFLIGHT'
 set -euo pipefail
 compose_file=$1 compose_project=$2 backend_service=$3 health_url=$4 manifest_dir=$5
+read -ra docker <<<"$(printf '%s' "$6" | base64 -d)"
 
-container_id=$(docker ps \
+container_id=$("${docker[@]}" ps \
   --filter "label=com.docker.compose.project=${compose_project}" \
   --filter "label=com.docker.compose.service=${backend_service}" \
   --format '{{.ID}}' | head -n 1)
 [[ -n $container_id ]]
 
-env_dump=$(docker inspect --format '{{range .Config.Env}}{{println .}}{{end}}' "$container_id")
+env_dump=$("${docker[@]}" inspect --format '{{range .Config.Env}}{{println .}}{{end}}' "$container_id")
 grep -Fx 'NODE_ENV=test' <<<"$env_dump" >/dev/null || {
   printf 'FAIL status=preflight reason=node_env_not_test\n' >&2
   exit 65
 }
 
-previous_image=$(docker inspect --format '{{.Config.Image}}' "$container_id")
-health=$(docker inspect --format '{{ if .State.Health }}{{ .State.Health.Status }}{{ else }}missing{{ end }}' "$container_id")
+previous_image=$("${docker[@]}" inspect --format '{{.Config.Image}}' "$container_id")
+health=$("${docker[@]}" inspect --format '{{ if .State.Health }}{{ .State.Health.Status }}{{ else }}missing{{ end }}' "$container_id")
 curl --fail --silent --show-error --max-time 10 "$health_url" >/dev/null
 
 printf '%s\n' "$previous_image" >"${manifest_dir}/previous-image-tag.txt"
@@ -132,12 +144,13 @@ echo "==> Build + recreate de ${PF3_TEST_BACKEND_SERVICE} en la VPS (imagen ${CA
 # shellcheck disable=SC2087
 ssh "$TEST_SSH_HOST" bash -s -- "$PF3_TEST_COMPOSE_FILE" \
   "$PF3_TEST_COMPOSE_PROJECT" "$PF3_TEST_BACKEND_SERVICE" "$PF3_TEST_HEALTH_URL" \
-  "$REMOTE_STAGE_DIR" "$CANDIDATE_IMAGE" <<'REMOTE_DEPLOY'
+  "$REMOTE_STAGE_DIR" "$CANDIDATE_IMAGE" "$DOCKER_CMD_B64" <<'REMOTE_DEPLOY'
 set -euo pipefail
 compose_file=$1 compose_project=$2 backend_service=$3
 health_url=$4 stage_dir=$5 candidate_image=$6
+read -ra docker <<<"$(printf '%s' "$7" | base64 -d)"
 
-if docker image inspect "$candidate_image" >/dev/null 2>&1; then
+if "${docker[@]}" image inspect "$candidate_image" >/dev/null 2>&1; then
   printf 'FAIL status=deploy reason=candidate_already_exists image=%s\n' "$candidate_image" >&2
   exit 73
 fi
@@ -147,21 +160,21 @@ trap 'rm -rf -- "$context_dir"' EXIT
 tar -xzf "${stage_dir}/docker-context.tar.gz" -C "$context_dir"
 [[ -r "${context_dir}/backend/Dockerfile" ]]
 
-docker build --file "${context_dir}/backend/Dockerfile" --tag "$candidate_image" "$context_dir"
+"${docker[@]}" build --file "${context_dir}/backend/Dockerfile" --tag "$candidate_image" "$context_dir"
 
 override="${context_dir}/compose-candidate.override.yml"
 printf 'services:\n  %s:\n    image: %s\n' "$backend_service" "$candidate_image" >"$override"
 
-compose=(docker compose --project-name "$compose_project" --file "$compose_file")
+compose=("${docker[@]}" compose --project-name "$compose_project" --file "$compose_file")
 export BACKEND_IMAGE="$candidate_image"
 "${compose[@]}" --file "$override" up --detach --no-deps --no-build --force-recreate "$backend_service"
 
 container_id=$("${compose[@]}" --file "$override" ps -q "$backend_service")
 [[ -n $container_id ]]
-[[ $(docker inspect --format '{{ .Config.Image }}' "$container_id") == "$candidate_image" ]]
-[[ $(docker inspect --format '{{ if .State.Health }}{{ .State.Health.Status }}{{ else }}missing{{ end }}' "$container_id") == healthy ]]
+[[ $("${docker[@]}" inspect --format '{{ .Config.Image }}' "$container_id") == "$candidate_image" ]]
+[[ $("${docker[@]}" inspect --format '{{ if .State.Health }}{{ .State.Health.Status }}{{ else }}missing{{ end }}' "$container_id") == healthy ]]
 
-env_dump=$(docker inspect --format '{{range .Config.Env}}{{println .}}{{end}}' "$container_id")
+env_dump=$("${docker[@]}" inspect --format '{{range .Config.Env}}{{println .}}{{end}}' "$container_id")
 grep -Fx 'NODE_ENV=test' <<<"$env_dump" >/dev/null
 curl --fail --silent --show-error --max-time 10 "$health_url" >/dev/null
 

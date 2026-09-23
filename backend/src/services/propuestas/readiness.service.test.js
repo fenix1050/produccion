@@ -88,6 +88,49 @@ test('PF-3 readiness requires sexo for a persona física insured, not for juríd
   assert.equal(conSexo.listo, true)
 })
 
+test('PF-3 readiness requires ruc instead of documento when documento_tipo is ruc', () => {
+  const base = {
+    carta_oferta_id: 7,
+    cotizacion_variante_id: 10,
+    cotizacion_plan_pago_id: 20,
+    draft_json: {
+      partes: {
+        asegurado: {
+          tipo_persona: 'juridica',
+          nombre_razon_social: 'Comercio SA',
+          direccion: 'Asunción',
+          ciudad: 'Asunción',
+          telefono: '021000000',
+          email: 'comercio@example.com',
+          actividad_economica: 'Comercio',
+          documento_tipo: 'ruc',
+        },
+        representante_legal: { nombre: 'Representative Test', documento: '2', cargo: 'Director' },
+      },
+      tipo_firma: 'manual',
+    },
+  }
+
+  const sinRuc = evaluarReadiness({ propuesta: base, carta: { id: 7 } })
+  assert.ok(sinRuc.pendientes.includes('asegurado.ruc'))
+  assert.equal(sinRuc.pendientes.includes('asegurado.documento'), false)
+
+  const conRuc = evaluarReadiness({
+    propuesta: {
+      ...base,
+      draft_json: {
+        ...base.draft_json,
+        partes: {
+          ...base.draft_json.partes,
+          asegurado: { ...base.draft_json.partes.asegurado, ruc: '80028528-9' },
+        },
+      },
+    },
+    carta: { id: 7 },
+  })
+  assert.equal(conRuc.pendientes.includes('asegurado.ruc'), false)
+})
+
 test('PF-3 requires the complete approved MRC text set before issuance', () => {
   const propuesta = {
     cotizacion_variante_id: 10,

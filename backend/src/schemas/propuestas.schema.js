@@ -17,7 +17,9 @@ const aseguradoSchema = z
   .object({
     tipo_persona: z.enum(['fisica', 'juridica']).optional(),
     nombre_razon_social: texto(200),
+    documento_tipo: z.enum(['ci', 'ruc']).optional(),
     documento: texto(50),
+    ruc: texto(50),
     telefono: texto(30),
     email: z.union([z.literal(''), z.string().trim().email().max(120)]).optional(),
     direccion: texto(500),

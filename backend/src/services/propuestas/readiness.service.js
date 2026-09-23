@@ -9,7 +9,11 @@ export function evaluarReadiness({ propuesta, carta, motivoIneligibilidad = null
   }
   if (!asegurado.tipo_persona) pendientes.push('asegurado.tipo_persona')
   if (!asegurado.nombre_razon_social) pendientes.push('asegurado.nombre_razon_social')
-  if (!asegurado.documento) pendientes.push('asegurado.documento')
+  if ((asegurado.documento_tipo ?? 'ci') === 'ruc') {
+    if (!asegurado.ruc) pendientes.push('asegurado.ruc')
+  } else if (!asegurado.documento) {
+    pendientes.push('asegurado.documento')
+  }
   if (!asegurado.direccion) pendientes.push('asegurado.direccion')
   if (!asegurado.ciudad) pendientes.push('asegurado.ciudad')
   if (!asegurado.telefono) pendientes.push('asegurado.telefono')
@@ -38,7 +42,9 @@ export function evaluarReadiness({ propuesta, carta, motivoIneligibilidad = null
     ]) {
       if (!draft.partes?.tomador?.[field]) pendientes.push(`tomador.${field}`)
     }
-    if (draft.partes?.tomador?.documento === asegurado.documento) {
+    const documentoAsegurado =
+      (asegurado.documento_tipo ?? 'ci') === 'ruc' ? asegurado.ruc : asegurado.documento
+    if (draft.partes?.tomador?.documento === documentoAsegurado) {
       pendientes.push('tomador.identidad_distinta')
     }
   }

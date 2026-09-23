@@ -18,7 +18,7 @@ test('PF-3 frontend converges both entries and issues only through the authorita
   assert.match(historialSource, /\.\.\/propuestas\/\?carta=/)
   assert.match(moduleSource, /api\.post\(`\/propuestas\/cartas\/\$\{cartaId\}\/borrador`/)
   assert.match(moduleSource, /revision: state\.propuesta\.revision/)
-  assert.match(moduleSource, /error\.status === 409/)
+  assert.match(moduleSource, /error\.body\?\.codigo === 'PF_REVISION_CONFLICT'/)
   assert.match(moduleSource, /api\.post\(`\/propuestas\/\$\{state\.propuesta\.id\}\/emitir`/)
   assert.match(moduleSource, /api\.getBlob\(`\/propuestas\/\$\{state\.propuesta\.id\}\/pdf`/)
   assert.match(moduleSource, /api\.post\(`\/propuestas\/\$\{state\.propuesta\.id\}\/anular`/)

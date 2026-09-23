@@ -1,5 +1,5 @@
 import { api, auth } from '../shared/api.js'
-import { escapeHtml, renderBanner } from '../shared/dom.js'
+import { atraparFoco, enfocarPrimerElemento, escapeHtml, renderBanner } from '../shared/dom.js'
 import { fmtGsInput, fmtMoneda } from '../shared/format.js'
 import { renderSidebarFooter, renderTopbar as renderTopbarShell } from '../shared/sidebar.js'
 
@@ -20,11 +20,20 @@ const state = {
   currentStep: null,
   usuario: null,
   textos: { textos: [], puede_gestionar: false, faltantes: [], emision_habilitada: false },
+  // Progreso del modal de emisión — mismo patrón que state.progresoCarta en
+  // frontend/cotizar/state.js. null = modal cerrado.
+  // { paso: 0-1 (índice en PASOS_EMISION_PROPUESTA), estado: 'activo'|'exito'|'error', error?: string }
+  progresoEmision: null,
 }
 
 let autosaveTimer = null
 const AUTOSAVE_DEBOUNCE_MS = 2000
 const LOGIN_PATH = '../login/'
+
+// Mismo patrón que PASOS_EMISION_CARTA en frontend/cotizar/constants.js — el paso 0 cubre el
+// guardado del borrador (guardar()) y el 1 el único await real de emitir() (POST .../emitir,
+// que hace snapshot + PDF + confirmación del lado del backend en una sola llamada).
+const PASOS_EMISION_PROPUESTA = ['Guardando borrador', 'Generando Propuesta Formal']
 
 // Reuse the same compact, inline SVG convention as the shared Tajy shell without
 // adding a dependency or changing the proposal API surface.
@@ -394,29 +403,65 @@ async function guardar({ silencioso = false } = {}) {
   }
 }
 
+// Elemento con foco al abrir el modal de progreso de emisión — se le devuelve el foco al
+// cerrar (mismo patrón que elementoDisparadorModalCarta en cotizar/actions.js).
+let elementoDisparadorModalEmision = null
+
 async function emitir() {
+  if (state.progresoEmision?.estado === 'activo') return
   const readiness = obtenerReadinessActual()
   if (!readiness.listo) {
     state.currentStep = [1, 2, 3, 4].find((step) => !pasoListo(step, readiness)) ?? 2
     render()
     return
   }
-  const saved = await guardar()
-  if (!saved || state.conflicto) return
+
+  elementoDisparadorModalEmision = document.activeElement
+  state.progresoEmision = { paso: 0, estado: 'activo' }
+  render()
+  enfocarPrimerElemento(app.querySelector('.progreso-carta-modal'))
+
+  const saved = await guardar({ silencioso: true })
+  if (!saved || state.conflicto) {
+    state.progresoEmision = {
+      paso: 0,
+      estado: 'error',
+      error: state.banner?.texto ?? 'No se pudo guardar el borrador.',
+    }
+    render()
+    enfocarPrimerElemento(app.querySelector('.progreso-carta-modal'))
+    return
+  }
+
+  state.progresoEmision = { paso: 1, estado: 'activo' }
   state.saving = true
-  state.saveState = 'Emitiendo PDF…'
   render()
   try {
     const proposal = await api.post(`/propuestas/${state.propuesta.id}/emitir`, {
       revision: state.propuesta.revision,
     })
     state.propuesta = { ...state.propuesta, ...proposal }
+    state.progresoEmision = { paso: 1, estado: 'exito' }
     state.banner = { tipo: 'success', texto: `Propuesta N° ${proposal.numero_propuesta} emitida.` }
   } catch (error) {
-    state.banner = { tipo: 'error', texto: error.message }
+    state.progresoEmision = { paso: 1, estado: 'error', error: error.message }
   } finally {
     state.saving = false
     render()
+    enfocarPrimerElemento(app.querySelector('.progreso-carta-modal'))
+  }
+}
+
+// Cierra el modal de progreso de emisión — solo llamable desde estados terminales
+// ('exito'/'error'), nunca mientras está 'activo' (mismo patrón que
+// cerrarModalProgresoCarta() en cotizar/actions.js).
+function cerrarModalProgresoEmision() {
+  if (state.progresoEmision?.estado === 'activo') return
+  state.progresoEmision = null
+  render()
+  if (elementoDisparadorModalEmision) {
+    elementoDisparadorModalEmision.focus()
+    elementoDisparadorModalEmision = null
   }
 }
 
@@ -493,6 +538,89 @@ function sanitizarMarkup(markup) {
   return Array.from(parsed.body.childNodes)
 }
 
+// Modal de progreso de emisión — mismo marcado y clases (.progreso-carta-modal y afines,
+// definidas en shared/cotizador.css) que renderModalProgresoCarta() en
+// frontend/cotizar/render/render-shell.js, reusadas tal cual para que la emisión de una
+// Propuesta Formal tenga la misma animación que emitir una Carta Oferta en el cotizador.
+// Sin botón "Ver PDF" en el estado de éxito: a diferencia del cotizador (que recién crea el
+// PDF acá), esta pantalla ya ofrece "Descargar PDF" de forma permanente una vez emitida.
+function renderModalProgresoEmision() {
+  const p = state.progresoEmision
+  if (!p) return ''
+
+  const stepsHtml = PASOS_EMISION_PROPUESTA.map((nombre, index) => {
+    const estadoPaso =
+      p.estado === 'error' && index === p.paso
+        ? 'error'
+        : index < p.paso || (index === p.paso && p.estado === 'exito')
+          ? 'completado'
+          : index === p.paso
+            ? 'activo'
+            : 'pendiente'
+    const marcador =
+      estadoPaso === 'completado'
+        ? '<span class="progreso-step__check" aria-hidden="true">✓</span>'
+        : estadoPaso === 'activo'
+          ? '<span class="spinner" aria-hidden="true"></span>'
+          : estadoPaso === 'error'
+            ? '<span class="progreso-step__check" aria-hidden="true">!</span>'
+            : `<span>${index + 1}</span>`
+    return `
+      <li class="progreso-step progreso-step--${estadoPaso}">
+        <span class="progreso-step__marker">${marcador}</span>
+        <span class="progreso-step__label">${escapeHtml(nombre)}</span>
+      </li>
+    `
+  }).join('')
+
+  const porcentaje = Math.round(
+    ((p.estado === 'exito' ? PASOS_EMISION_PROPUESTA.length : p.paso) /
+      PASOS_EMISION_PROPUESTA.length) *
+      100
+  )
+
+  const permiteCerrar = p.estado === 'exito' || p.estado === 'error'
+
+  const resultadoHtml =
+    p.estado === 'exito'
+      ? `
+        <div class="progreso-resultado progreso-resultado--exito" role="status">
+          <div><strong>Propuesta Formal emitida</strong><p>El PDF interno quedó listo para descargar.</p></div>
+        </div>
+        <div class="admin-modal__actions">
+          <button type="button" class="resumen-sistema__cta" data-action="cerrar-modal-progreso-emision">Cerrar</button>
+        </div>
+      `
+      : p.estado === 'error'
+        ? `
+        <div class="progreso-resultado progreso-resultado--error" role="alert">
+          <div><strong>No pudimos emitir la Propuesta Formal</strong><p>${escapeHtml(p.error || 'Ocurrió un error inesperado.')}</p></div>
+        </div>
+        <div class="admin-modal__actions">
+          <button type="button" class="btn-outline" data-action="cerrar-modal-progreso-emision">Cerrar</button>
+          <button type="button" class="resumen-sistema__cta" data-action="reintentar-emision">Reintentar</button>
+        </div>
+      `
+        : ''
+
+  return `
+    <div class="admin-modal-backdrop" ${permiteCerrar ? 'data-action="cerrar-modal-progreso-emision"' : ''}>
+      <div class="admin-modal progreso-carta-modal" data-stop-propagation="true" role="dialog" aria-modal="true" aria-labelledby="progreso-emision-title">
+        <div class="admin-modal__title" id="progreso-emision-title">Emisión de la Propuesta Formal</div>
+        <div class="progreso-track" role="progressbar" aria-label="Progreso de la emisión" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${porcentaje}">
+          <div class="progreso-fill" style="width: ${porcentaje}%"></div>
+        </div>
+        <ol class="progreso-steps" aria-live="polite">
+          ${stepsHtml}
+        </ol>
+        <div class="progreso-terminal-slot">
+          <div class="progreso-terminal-slot__content">${resultadoHtml}</div>
+        </div>
+      </div>
+    </div>
+  `
+}
+
 function render() {
   const markup = `
     ${renderTopbarShell({
@@ -516,7 +644,8 @@ function render() {
           ${state.loading ? '<div class="pf-loading"><span class="spinner"></span> Cargando…</div>' : state.propuesta ? renderEditor() : renderSelector()}
         </div>
       </main>
-        </div>`
+        </div>
+    ${renderModalProgresoEmision()}`
   app.replaceChildren(...sanitizarMarkup(markup))
 }
 
@@ -1254,9 +1383,20 @@ app.addEventListener('change', (event) => {
   }
 })
 
-app.addEventListener('click', (event) => {
+// Respeta data-stop-propagation (el modal de progreso de emisión): un click dentro del
+// modal que no caiga sobre su propio data-action no debe "escapar" hacia el data-action
+// del backdrop que lo contiene — mismo patrón que resolveActionTarget() de cotizar/events.js.
+function resolveActionTarget(event) {
   const target = event.target.closest('[data-action]')
-  if (!target || target.disabled) return
+  if (!target || target.disabled) return null
+  const stopEl = event.target.closest('[data-stop-propagation]')
+  if (stopEl && !stopEl.contains(target)) return null
+  return target
+}
+
+app.addEventListener('click', (event) => {
+  const target = resolveActionTarget(event)
+  if (!target) return
   const action = target.dataset.action
   if (action === 'abrir-carta') abrirCarta(Number(target.dataset.id))
   if (action === 'guardar') guardar()
@@ -1268,6 +1408,8 @@ app.addEventListener('click', (event) => {
   if (action === 'paso-atras') retrocederPaso()
   if (action === 'ir-paso') irAPaso(Number(target.dataset.step))
   if (action === 'recargar-borrador') recargarBorrador()
+  if (action === 'cerrar-modal-progreso-emision') cerrarModalProgresoEmision()
+  if (action === 'reintentar-emision') emitir()
   if (action === 'volver-selector') {
     window.clearTimeout(autosaveTimer)
     state.carta = null
@@ -1285,6 +1427,22 @@ app.addEventListener('click', (event) => {
     render()
   }
   if (action === 'logout') auth.logout().then(redirectToLogin)
+})
+
+// Escape cierra el modal de progreso de emisión solo si ya llegó a un estado terminal
+// (éxito/error) — mientras está 'activo' no se corta la ilusión de progreso (la petición
+// real sigue en curso). Tab/Shift+Tab quedan atrapados dentro del modal mientras esté
+// abierto. Mismo patrón que cotizar/events.js para renderModalProgresoCarta().
+document.addEventListener('keydown', (e) => {
+  if (!state.progresoEmision) return
+  if (e.key === 'Escape') {
+    cerrarModalProgresoEmision()
+    return
+  }
+  if (e.key === 'Tab') {
+    const modalAbierto = app.querySelector('.progreso-carta-modal')
+    if (modalAbierto) atraparFoco(e, modalAbierto)
+  }
 })
 
 async function init() {

@@ -59,6 +59,28 @@ function fixture(overrides = {}) {
   }
 }
 
+test('MRC proposal v3 prints the phone with the local "0" prefix instead of the form\'s "+595"', () => {
+  const html = buildMrcPropuestaV3Html(
+    fixture({
+      draft: {
+        ...fixture().draft,
+        partes: {
+          ...fixture().draft.partes,
+          asegurado: { ...fixture().draft.partes.asegurado, telefono: '981-927-418' },
+        },
+      },
+    }),
+    {
+      tajyLogoDataUri: 'data:image/svg+xml;base64,TEST',
+      footerSloganDataUri: 'data:image/png;base64,FOOTER',
+    }
+  )
+
+  assert.match(html, /<b>Celular<\/b><span>0981-927-418<\/span>/)
+  assert.match(html, /Tel\.: 0981-927-418/)
+  assert.doesNotMatch(html, /\+595/)
+})
+
 test('MRC proposal v3 renders the reference two-page A4 structure', () => {
   const html = buildMrcPropuestaV3Html(fixture(), {
     tajyLogoDataUri: 'data:image/svg+xml;base64,TEST',

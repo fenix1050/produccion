@@ -61,6 +61,13 @@ function formatearRuc(value) {
   return `${fmtGsInput(cuerpo)}${verificador ? `-${verificador}` : ''}`
 }
 
+function formatearTelefono(value) {
+  const digits = String(value ?? '')
+    .replace(/\D/g, '')
+    .slice(0, 9)
+  return [digits.slice(0, 3), digits.slice(3, 6), digits.slice(6, 9)].filter(Boolean).join('-')
+}
+
 function parseGsInput(value) {
   const digits = String(value ?? '').replace(/\D/g, '')
   return digits ? Number(digits) : null
@@ -72,7 +79,9 @@ function formatearInputPreservandoCursor(target) {
       ? formatearRuc
       : target.dataset.format === 'gs'
         ? (value) => fmtGsInput(String(value ?? '').replace(/\D/g, ''))
-        : null
+        : target.dataset.format === 'telefono'
+          ? formatearTelefono
+          : null
   if (!formatter) return
 
   const currentValue = target.value
@@ -1134,7 +1143,7 @@ function inputField(name, label, value, type = 'text', required = false, options
 }
 
 function phoneField(name, label, value, required = false) {
-  return `<label class="pf-field"><span>${escapeHtml(label)}${required ? requiredMark() : ''}</span><span class="pf-phone"><span class="pf-phone__prefix" aria-hidden="true">🇵🇾 +595</span><input class="field-input" type="text" name="${escapeHtml(name)}" value="${escapeHtml(value ?? '')}" ${required ? 'required' : ''} /></span></label>`
+  return `<label class="pf-field"><span>${escapeHtml(label)}${required ? requiredMark() : ''}</span><span class="pf-phone"><span class="pf-phone__prefix" aria-hidden="true">🇵🇾 +595</span><input class="field-input" type="text" inputmode="numeric" data-format="telefono" name="${escapeHtml(name)}" value="${escapeHtml(formatearTelefono(value))}" placeholder="981-927-418" ${required ? 'required' : ''} /></span></label>`
 }
 
 function renderTextControls() {

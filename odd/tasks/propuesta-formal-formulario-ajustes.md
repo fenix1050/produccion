@@ -33,9 +33,10 @@ No confirmado explícitamente por Kevin en esta sesión. Repo tiene tests unitar
   - Propagado a `leerFormulario()`, `calcularPendientesFor()`/`calcularCamposRequeridos()` (frontend) y `readiness.service.js` (backend, fuente de verdad para habilitar la emisión) — antes solo se agregó en el frontend por error de alcance, corregido para que el gate real de emisión también lo exija.
   - Schema Zod: `personaSchema.sexo = z.enum(['Femenino', 'Masculino']).optional()` en `backend/src/schemas/propuestas.schema.js`.
   - Verificado: 3 tests nuevos (readiness.service.test.js, propuestas.schema.test.js) + 30/30 en verde. En vivo con Playwright: campo aparece con las 2 opciones, `required` cuando tipo de persona es física, valor persiste tras guardar y recargar la página.
-- [ ] **4. Formato de Teléfono**
-  - Prefijo fijo `+595`, separar el resto en formato `981-927-418`.
-  - En el PDF de la Propuesta debe salir como `0981-927-418` (prefijo reemplazado por `0`).
+- [x] **4. Formato de Teléfono** — DONE 2026-09-23
+  - Formulario: `phoneField()` (frontend/propuestas/propuestas.js) ahora aplica `formatearTelefono()` (agrupa en `981-927-418`, máx. 9 dígitos) tanto al valor inicial como en cada tecleo, vía el mismo mecanismo `data-format` que ya usaban RUC/montos (`formatearInputPreservandoCursor()`). El prefijo `+595` sigue siendo puramente decorativo (`aria-hidden`), nunca se persiste.
+  - PDF: nuevo helper `celular()` en `backend/src/templates/propuesta/mrc-v3.js` antepone `0` a los 9 dígitos guardados y los reagrupa igual, aplicado en las 3 líneas que muestran el teléfono (Celular, Tel. dirección comercial, Tel. dirección particular). Robusto a valores históricos sin guiones o con prefijo ya incluido (toma los últimos 9 dígitos).
+  - Verificado: tests nuevos en `propuestas.test.js` y `mrc-v3.test.js` (36/36 en verde) + Playwright en vivo — el input formatea mientras se escribe y persiste igual tras guardar/recargar.
 - [ ] **5. Separar "Documento o RUC" en dos campos con selector (C.I. / RUC)**
   - `formatearRuc()` (frontend/propuestas/propuestas.js:53) hoy aplica formato de RUC a cualquier documento — una cédula de 7 dígitos sale mal agrupada.
   - Selector C.I./RUC despliega el campo correspondiente con su propio formato.

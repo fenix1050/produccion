@@ -70,6 +70,15 @@ test('PF-3 required fields and numeric inputs expose the proposal form contract'
   assert.match(moduleSource, /inputMode: 'numeric'/)
   assert.match(moduleSource, /formatearInputPreservandoCursor\(event\.target\)/)
   assert.match(
+    moduleSource,
+    /function formatearTelefono\(value\) \{[\s\S]*?digits\.slice\(0, 3\), digits\.slice\(3, 6\), digits\.slice\(6, 9\)/
+  )
+  assert.match(moduleSource, /target\.dataset\.format === 'telefono'[\s\S]*?formatearTelefono/)
+  assert.match(
+    moduleSource,
+    /data-format="telefono" name="\$\{escapeHtml\(name\)\}" value="\$\{escapeHtml\(formatearTelefono\(value\)\)\}" placeholder="981-927-418"/
+  )
+  assert.match(
     stylesheetSource,
     /\.pf-field > span \.pf-required-mark\s*\{[\s\S]*color: var\(--tajy-red-a11y\)/
   )

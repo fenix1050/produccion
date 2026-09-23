@@ -4,6 +4,7 @@ import cors from 'cors'
 import express from 'express'
 import helmet from 'helmet'
 import { ZodError } from 'zod'
+
 import { csrfProtection } from './middleware/csrf.js'
 import { apiRateLimiter } from './middleware/rate-limit.js'
 import { router as apiRouter } from './routes/index.js'
@@ -65,29 +66,39 @@ export function createApp() {
 
   app.use('/api', apiRateLimiter, csrfProtection, apiRouter)
 
-  // Manejador de errores centralizado — todo controller que haga next(err) cae acá.
-  // Loguear err.stack (no el objeto err crudo): errores de Zod hacen que
-  // console.error(err) explote dentro de util.inspect y tumba el proceso entero.
-
-  app.use((err, _req, res, _next) => {
-    console.error(err.stack || err.message || err)
-
-    if (err instanceof ZodError) {
-      return res.status(400).json({
-        error: 'Datos de entrada inválidos',
-        detalles: err.issues.map((issue) => ({
-          campo: issue.path.join('.'),
-          mensaje: issue.message,
-        })),
-      })
-    }
-
-    const status = err.status || 500
-
-    res.status(status).json({
-      error: err.publicMessage || 'Error interno del servidor',
-    })
-  })
+  app.use(manejarErrorCentral)
 
   return app
+}
+
+// Manejador de errores centralizado — todo controller que haga next(err) cae acá.
+// Loguear err.stack (no el objeto err crudo): errores de Zod hacen que
+// console.error(err) explote dentro de util.inspect y tumba el proceso entero.
+//
+// `codigo` expone el código de dominio ya calculado por servicios como
+// traducirErrorRpc() (ej. PF_BORRADOR_NO_EDITABLE, PF_REVISION_CONFLICT) — son strings
+// públicas de negocio, no detalle interno. Sin esto, el frontend solo tenía `status` +
+// el texto libre de `error`, y no podía distinguir un 409 de otro (ver bug real: un 409
+// por PF_BORRADOR_NO_EDITABLE se mostraba como "conflicto de revisión, recargue" aunque
+// la causa real era otra). `undefined` se omite solo en la serialización JSON, así que
+// esto no cambia el shape de una respuesta que no traía código.
+export function manejarErrorCentral(err, _req, res, _next) {
+  console.error(err.stack || err.message || err)
+
+  if (err instanceof ZodError) {
+    return res.status(400).json({
+      error: 'Datos de entrada inválidos',
+      detalles: err.issues.map((issue) => ({
+        campo: issue.path.join('.'),
+        mensaje: issue.message,
+      })),
+    })
+  }
+
+  const status = err.status || 500
+
+  res.status(status).json({
+    error: err.publicMessage || 'Error interno del servidor',
+    codigo: err.code,
+  })
 }

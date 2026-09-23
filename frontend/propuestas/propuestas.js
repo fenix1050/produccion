@@ -374,7 +374,7 @@ async function guardar({ silencioso = false } = {}) {
     if (!silencioso) render()
     return true
   } catch (error) {
-    if (error.status === 409) {
+    if (error.body?.codigo === 'PF_REVISION_CONFLICT') {
       state.conflicto = true
       state.saveState = 'Conflicto de revisión'
       state.banner = {

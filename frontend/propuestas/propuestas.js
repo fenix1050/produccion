@@ -451,24 +451,6 @@ async function anular() {
   render()
 }
 
-async function publicarTexto() {
-  const form = app.querySelector('#pf-text-form')
-  if (!form?.reportValidity()) return
-  const data = new FormData(form)
-  try {
-    await api.post('/propuestas/textos', {
-      clave: data.get('clave').trim(),
-      contenido: data.get('contenido').trim(),
-      motivo: data.get('motivo').trim(),
-    })
-    state.textos = await api.get('/propuestas/textos')
-    state.banner = { tipo: 'success', texto: 'Texto publicado y versionado.' }
-  } catch (error) {
-    state.banner = { tipo: 'error', texto: error.message }
-  }
-  render()
-}
-
 function programarAutosave() {
   window.clearTimeout(autosaveTimer)
   if (state.propuesta) {
@@ -592,7 +574,6 @@ function renderEditor() {
             <form id="propuesta-form" class="pf-form"><fieldset class="pf-form__fieldset" ${emitted ? 'disabled' : ''}>
               ${renderStepPanel(currentStep, variantes, varianteActual, pagos, planPagoId, carta.moneda, propuesta)}
             </fieldset></form>
-            ${currentStep === 5 && state.textos.puede_gestionar ? `<div class="pf-step-five-support">${renderTextControls()}</div>` : ''}
             ${renderWizardActions(propuesta, emitted, readiness, currentStep)}
           </div>
           <aside class="pf-review" aria-label="Resumen de revisión">
@@ -1184,10 +1165,6 @@ function phoneField(name, label, value, required = false) {
   return `<label class="pf-field"><span>${escapeHtml(label)}${required ? requiredMark() : ''}</span><span class="pf-phone"><span class="pf-phone__prefix" aria-hidden="true">🇵🇾 +595</span><input class="field-input" type="text" inputmode="numeric" data-format="telefono" name="${escapeHtml(name)}" value="${escapeHtml(formatearTelefono(value))}" placeholder="981-927-418" ${required ? 'required' : ''} /></span></label>`
 }
 
-function renderTextControls() {
-  return `<form id="pf-text-form" class="pf-text-form"><strong>Publicar texto MRC</strong><input class="field-input" name="clave" required maxlength="80" placeholder="Ej.: declaraciones" /><textarea name="contenido" required rows="4" placeholder="Texto aprobado"></textarea><input class="field-input" name="motivo" required maxlength="500" placeholder="Motivo de publicación" /><button type="submit" class="btn-outline">Publicar versión</button></form>`
-}
-
 function selectField(name, label, options, selected, required = false) {
   const selectedValue = String(selected ?? '')
   return `<label class="pf-field"><span>${escapeHtml(label)}${required ? requiredMark() : ''}</span><select class="field-input" name="${escapeHtml(name)}" ${required ? 'required' : ''}>${options
@@ -1239,10 +1216,6 @@ app.addEventListener('submit', (event) => {
     event.preventDefault()
     state.busqueda = event.target.querySelector('#pf-busqueda').value.trim()
     cargarCartas()
-  }
-  if (event.target.id === 'pf-text-form') {
-    event.preventDefault()
-    publicarTexto()
   }
 })
 

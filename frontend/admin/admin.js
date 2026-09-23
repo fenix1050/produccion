@@ -72,6 +72,7 @@ import {
   cerrarModalCobertura,
   guardarModalCobertura,
 } from './coberturas.js'
+import { cargarTextosPropuesta, guardarTextoPropuesta } from './textos-propuesta.js'
 
 // Panel de Administración del Cotizador Tajy — WU5, primera porción (Usuarios).
 // Mismo patrón Vanilla JS que cotizar.js: state + render + delegación de eventos por
@@ -121,6 +122,8 @@ async function init() {
     renderApp()
   } else if (state.seccion === 'ramos') {
     await cargarRamosGestion()
+  } else if (state.seccion === 'textos-propuesta') {
+    await cargarTextosPropuesta()
   }
 }
 
@@ -192,6 +195,11 @@ function onAppSubmit(e) {
   if (e.target.id === 'admin-modal-rol-form') {
     e.preventDefault()
     guardarModalRol(e.target)
+    return
+  }
+  if (e.target.id === 'textos-propuesta-form') {
+    e.preventDefault()
+    guardarTextoPropuesta(e.target)
   }
 }
 
@@ -245,6 +253,13 @@ function handleSeleccionarSeccion(el) {
   }
   if (state.seccion === 'ramos' && !state.ramosGestion.length && !state.loadingRamosGestion) {
     cargarRamosGestion()
+  }
+  if (
+    state.seccion === 'textos-propuesta' &&
+    !state.textosPropuesta.datos.length &&
+    !state.textosPropuesta.loading
+  ) {
+    cargarTextosPropuesta()
   }
 }
 

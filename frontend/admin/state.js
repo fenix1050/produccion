@@ -57,6 +57,17 @@ export const state = {
   coberturaEnEdicion: new Set(), // ids de plan_coberturas con monto/franquicia habilitados para editar
   modalCobertura: null, // { error, guardando, cobertura_id, incluida_por_defecto }
 
+  // Textos legales de Propuesta Formal (declaraciones, condiciones, etc. — los mismos
+  // que exige MRC_REQUIRED_TEXT_KEYS para poder emitir). Se movió acá desde el wizard
+  // de Propuesta Formal (frontend/propuestas/propuestas.js), que solo los consume.
+  textosPropuesta: {
+    loading: false,
+    error: '',
+    datos: [],
+    faltantes: [],
+    guardando: false,
+  },
+
   // Elemento que disparó la apertura del modal actualmente abierto (botón "Editar",
   // "Nuevo usuario", etc.) — se restaura el foco ahí al cerrar (focus trap, WU
   // accesibilidad). Vive en `state` (y no como `let` de módulo) porque usuarios, roles,

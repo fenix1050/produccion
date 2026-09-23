@@ -371,6 +371,19 @@ function datum(label, value) {
   return `<div class="datum"><b>${label}</b><span>${value}</span></div>`
 }
 
+// El "+595" del formulario es solo el prefijo decorativo del input — nunca se persiste
+// en draft_json.telefono (ver phoneField() en frontend/propuestas/propuestas.js). Acá
+// se antepone el "0" de la numeración local paraguaya para el documento impreso.
+function celular(value) {
+  const digits = String(value ?? '').replace(/\D/g, '')
+  const local = digits.length > 9 ? digits.slice(-9) : digits
+  if (!local) return null
+  const grouped = [local.slice(0, 3), local.slice(3, 6), local.slice(6, 9)]
+    .filter(Boolean)
+    .join('-')
+  return `0${grouped}`
+}
+
 function insuredPanel(insured, proposer, draft) {
   return `
     <section class="card insured-card">
@@ -392,12 +405,12 @@ function insuredPanel(insured, proposer, draft) {
           ${datum('E-mail', text(insured.email))}
           ${datum('Ocupación', text(insured.ocupacion))}
           ${datum('Lugar de trabajo', text(insured.lugar_trabajo))}
-          ${datum('Celular', text(insured.telefono))}
+          ${datum('Celular', text(celular(insured.telefono)))}
         </div>
       </div>
       <div class="address-row">
-        <div class="address-card"><strong>${icon('briefcase')}Dirección Comercial</strong><p>${text(proposer.direccion)}<br />Ciudad: ${text(proposer.ciudad)} &nbsp;&nbsp; Tel.: ${text(proposer.telefono ?? insured.telefono)}</p></div>
-        <div class="address-card"><strong>${icon('pin')}Dirección Particular</strong><p>${text(insured.direccion)}<br />Ciudad: ${text(insured.ciudad)} &nbsp;&nbsp; Tel.: ${text(insured.telefono)}</p></div>
+        <div class="address-card"><strong>${icon('briefcase')}Dirección Comercial</strong><p>${text(proposer.direccion)}<br />Ciudad: ${text(proposer.ciudad)} &nbsp;&nbsp; Tel.: ${text(celular(proposer.telefono ?? insured.telefono))}</p></div>
+        <div class="address-card"><strong>${icon('pin')}Dirección Particular</strong><p>${text(insured.direccion)}<br />Ciudad: ${text(insured.ciudad)} &nbsp;&nbsp; Tel.: ${text(celular(insured.telefono))}</p></div>
       </div>
       <div class="pep-row">
         <strong class="pep-label">${icon('briefcase')}<span>Ha desempeñado cargo público nacional o extranjero</span></strong>

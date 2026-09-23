@@ -444,8 +444,7 @@ function coverageSummaryV3(coverages) {
         coverage.nombre_snapshot == null || coverage.nombre_snapshot === ''
           ? UNAVAILABLE
           : coverage.nombre_snapshot
-      const franchise = coverage.franquicia == null ? 'Sin deducible' : money(coverage.franquicia)
-      return `<li class="coverage-summary-item"><span class="coverage-summary-inline">${text(`- ${name}: Hasta ${money(coverage.monto)} · Franquicia: ${franchise}`)}</span></li>`
+      return `<li class="coverage-summary-item"><span class="coverage-summary-inline">${text(`- ${name}: Hasta ${money(coverage.monto)}`)}</span></li>`
     })
     .join('')}</ul>`
 }

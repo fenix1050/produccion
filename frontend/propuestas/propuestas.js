@@ -885,6 +885,7 @@ function obtenerReadinessActual() {
     pendientes,
     listo: pendientes.length === 0,
     emision_habilitada: pendientes.length === 0,
+    pasoMaximoAlcanzado: pasoMaximoAlcanzadoDeDraft(state.propuesta?.draft_json, pendientes),
   }
 }
 
@@ -978,8 +979,7 @@ function calcularCamposRequeridos(propuesta) {
   return [...required]
 }
 
-function pasoListo(step, readiness) {
-  const pendientes = readiness?.pendientes ?? []
+function pasoCamposCompletos(step, pendientes) {
   if (step === 1)
     return !pendientes.some((item) => item === 'seleccion_comercial' || item.startsWith('carta:'))
   if (step === 2) return !pendientes.some((item) => item.startsWith('asegurado.'))
@@ -988,12 +988,42 @@ function pasoListo(step, readiness) {
       (item) => item.startsWith('tomador.') || item.startsWith('representante_legal')
     )
   if (step === 4) return !pendientes.some((item) => item.startsWith('pla_ft.'))
-  return Boolean(readiness?.listo)
+  return true
+}
+
+// Tomador (paso 3) solo exige campos si se desmarca "es la misma persona", y PLA-FT
+// (paso 4) es enteramente opcional en el schema — pasoCamposCompletos() los da por
+// completos desde el arranque. Sin este piso de "alcanzado", el wizard mostraba el check
+// verde en esos dos pasos aunque el usuario nunca los hubiera visitado.
+function pasoAlcanzado(step, pasoMaximoAlcanzado) {
+  return (pasoMaximoAlcanzado ?? 1) >= step
+}
+
+function pasoMaximoAlcanzadoDeDraft(draft, pendientes) {
+  if (typeof draft?.paso_maximo_alcanzado === 'number') return draft.paso_maximo_alcanzado
+  // Borradores guardados antes de este fix no traen el campo: reconstruimos el progreso
+  // real solo hasta donde hay campos obligatorios de verdad (pasos 1 y 2) y forzamos a
+  // visitar de nuevo Tomador/Validaciones en vez de asumirlos completos sin evidencia.
+  if (pasoCamposCompletos(1, pendientes) && pasoCamposCompletos(2, pendientes)) return 2
+  if (pasoCamposCompletos(1, pendientes)) return 1
+  return 1
+}
+
+function pasoListo(step, readiness) {
+  if (step === 5) return Boolean(readiness?.listo)
+  const pendientes = readiness?.pendientes ?? []
+  return (
+    pasoCamposCompletos(step, pendientes) && pasoAlcanzado(step, readiness?.pasoMaximoAlcanzado)
+  )
 }
 
 function determinarPasoInicial(propuesta) {
   if (['emitida', 'anulada'].includes(propuesta?.estado)) return 5
-  const readiness = { pendientes: calcularPendientesFor(propuesta) }
+  const pendientes = calcularPendientesFor(propuesta)
+  const readiness = {
+    pendientes,
+    pasoMaximoAlcanzado: pasoMaximoAlcanzadoDeDraft(propuesta?.draft_json, pendientes),
+  }
   for (const step of [1, 2, 3, 4]) if (!pasoListo(step, readiness)) return step
   return 5
 }
@@ -1030,7 +1060,17 @@ function validarPaso(step) {
 function avanzarPaso() {
   if (state.currentStep >= 5 || !validarPaso(state.currentStep)) return
   state.currentStep += 1
+  registrarPasoAlcanzado(state.currentStep)
   render()
+}
+
+// Marca que el usuario ya pisó este paso, para que pasoAlcanzado() deje de darlo por
+// completo "gratis" cuando no tiene campos obligatorios propios (ver pasoCamposCompletos).
+function registrarPasoAlcanzado(step) {
+  if (!state.propuesta) return
+  const draft = state.propuesta.draft_json ?? {}
+  const actual = typeof draft.paso_maximo_alcanzado === 'number' ? draft.paso_maximo_alcanzado : 1
+  state.propuesta.draft_json = { ...draft, paso_maximo_alcanzado: Math.max(actual, step) }
 }
 
 function retrocederPaso() {

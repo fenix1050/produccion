@@ -299,9 +299,9 @@ test('MRC proposal v3 makes the coverage card content-driven', () => {
   const coverageRule = html.match(/\.coverage-card \{[^}]+\}/)?.[0] ?? ''
 
   assert.match(coverageRule, /height: auto;/)
-  assert.match(coverageRule, /min-height: 60mm;/)
+  assert.match(coverageRule, /min-height: 32mm;/)
   assert.match(coverageRule, /overflow: visible;/)
-  assert.doesNotMatch(coverageRule, /\sheight: 60mm;/)
+  assert.doesNotMatch(coverageRule, /\sheight: 32mm;/)
 })
 
 test('MRC proposal v3 uses one four-column header grid with explicit cell placement', () => {
@@ -632,7 +632,7 @@ test('MRC proposal v3 applies the fixed-page density tokens without clipping cov
 
   assert.match(
     html,
-    /\.coverage-card \{[^}]*height: auto;[^}]*min-height: 60mm;[^}]*overflow: visible;/
+    /\.coverage-card \{[^}]*height: auto;[^}]*min-height: 32mm;[^}]*overflow: visible;/
   )
   assert.match(
     html,
@@ -647,7 +647,7 @@ test('MRC proposal v3 applies the fixed-page density tokens without clipping cov
     html,
     /\.risk-columns--head \{[^}]*min-height: 7mm;[^}]*padding: 1mm;[^}]*font-size: 7px;/
   )
-  assert.match(html, /\.risk-columns--body \{[^}]*min-height: 35mm;/)
+  assert.match(html, /\.risk-columns--body \{[^}]*min-height: 14mm;/)
   assert.match(html, /\.risk-columns--body > \* \{[^}]*padding: 1mm;/)
   assert.match(
     html,
@@ -659,7 +659,7 @@ test('MRC proposal v3 applies the fixed-page density tokens without clipping cov
   assert.match(html, /\.conditions-box \{ padding-bottom: 1mm; \}/)
   assert.match(
     html,
-    /\.conditions-flow \{[^}]*margin: 0 \.6mm \.6mm;[^}]*padding: \.6mm 1mm;[^}]*font-size: 7px;[^}]*line-height: 1\.05;/
+    /\.conditions-flow \{[^}]*margin: 0 \.6mm \.6mm;[^}]*padding: \.6mm 1mm;[^}]*font-size: 7px;[^}]*line-height: 1;/
   )
   assert.match(html, /\.payment-row-shell \{[^}]*min-height: 0;[^}]*padding: 1mm;/)
   assert.match(html, /\.payment-row \{[^}]*min-height: 0;[^}]*gap: 1\.5mm;/)

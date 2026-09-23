@@ -188,16 +188,17 @@ export const PROPUESTA_FORMAL_V3_STYLE = `
   .section-heading .icon { flex: none; }
   .icon { width: 7mm; height: 7mm; padding: 1.45mm; display: inline-grid; place-items: center; border-radius: 1.3mm; color: #fff; background: var(--v3-red); }
   .icon svg { width: 100%; height: 100%; fill: currentColor; stroke: currentColor; stroke-width: 1.5; }
+  .proposal-page--one { gap: 1mm; }
   .insured-card { flex: 0 0 auto; height: auto; min-height: 55mm; overflow: visible; }
   .insured-body { padding: 2.5mm; display: grid; grid-template-columns: 1fr 1fr; gap: 2.5mm; }
   .insured-column { min-width: 0; padding: 1.4mm 1.8mm; border-radius: 1.2mm; background: linear-gradient(90deg, #f5f7f9, #edf1f5); }
-  .datum { min-height: 5.5mm; padding: 1mm 0; display: grid; grid-template-columns: 44% 56%; border-bottom: .45px solid rgba(219,225,232,.7); }
+  .datum { min-height: 4.5mm; padding: .6mm 0; display: grid; grid-template-columns: 44% 56%; border-bottom: .45px solid rgba(219,225,232,.7); }
   .datum:last-child { border-bottom: 0; }
   .datum b { font-size: 7.4px; line-height: 1.2; font-weight: 700; }
   .datum span { min-width: 0; color: var(--v3-ink); font-size: 7.6px; line-height: 1.2; overflow-wrap: anywhere; white-space: normal; }
   .insured-annex { min-height: 10mm; padding: 1.4mm 1.8mm; color: var(--v3-muted); font-size: 7.2px; line-height: 1.3; }
   .address-row { padding: 0 2.5mm 2.5mm; display: grid; grid-template-columns: 1fr 1fr; gap: 2.5mm; }
-  .address-card { min-height: 19mm; padding: 1.8mm 2.2mm; border-radius: 1.2mm; background: linear-gradient(90deg, #f5f7f9, #edf1f5); }
+  .address-card { min-height: 14mm; padding: 1.4mm 2.2mm; border-radius: 1.2mm; background: linear-gradient(90deg, #f5f7f9, #edf1f5); }
   .address-card strong { display: flex; align-items: center; gap: 1.4mm; font-size: 8.2px; }
   .address-card strong .icon { width: 4.7mm; height: 4.7mm; padding: 1mm; border-radius: 1mm; }
   .address-card p { margin: 1.6mm 0 0 6.2mm; color: var(--v3-muted); font-size: 7.5px; line-height: 1.35; overflow-wrap: anywhere; white-space: normal; }
@@ -207,10 +208,10 @@ export const PROPUESTA_FORMAL_V3_STYLE = `
   .pep-row .datum span { display: block; margin-top: .5mm; color: var(--v3-muted); }
   .check-box { display: inline-grid; width: 3mm; height: 3mm; margin: 0 .4mm; place-items: center; border: .7px solid var(--v3-muted); vertical-align: middle; font-size: 6px; }
   .check-box.checked { border-color: var(--v3-red); color: var(--v3-red); }
-  .modality { min-height: 15.5mm; padding: 2.5mm 2.8mm; display: flex; align-items: center; gap: 2.8mm; border-radius: var(--v3-radius); color: var(--v3-red); background: linear-gradient(90deg, #fff0f2, #ffe5e9); font-size: 11.4px; line-height: 1.25; }
+  .modality { min-height: 10mm; padding: 1.6mm 2.8mm; display: flex; align-items: center; gap: 2.8mm; border-radius: var(--v3-radius); color: var(--v3-red); background: linear-gradient(90deg, #fff0f2, #ffe5e9); font-size: 11.4px; line-height: 1.25; }
   .modality .icon { width: 8mm; height: 8mm; }
   .modality small { display: block; margin-top: 1mm; font-size: 8.6px; line-height: 1.2; font-weight: 700; }
-  .coverage-card { flex: none; height: auto; min-height: 60mm; overflow: visible; }
+  .coverage-card { flex: none; height: auto; min-height: 32mm; overflow: visible; }
   .risk-table { margin: 0 2mm 2mm; border: .7px solid var(--v3-line); border-radius: 1.2mm; overflow: visible; }
   .coverage-summary { margin: .5mm 0 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 1mm; row-gap: .1mm; list-style: none; font-size: 5.4px; line-height: 1; }
   .coverage-summary-item { min-width: 0; padding: .1mm 0; display: block; border-bottom: .35px solid rgba(219,225,232,.7); }
@@ -220,7 +221,7 @@ export const PROPUESTA_FORMAL_V3_STYLE = `
   .risk-columns > * { min-width: 0; padding: 1.4mm; border-right: .6px solid var(--v3-line); }
   .risk-columns > *:last-child { border-right: 0; }
   .risk-columns--head { min-height: 7mm; padding: 1mm; align-items: center; text-align: center; color: var(--v3-ink); background: var(--v3-soft); font-size: 7px; font-weight: 700; }
-  .risk-columns--body { min-height: 35mm; }
+  .risk-columns--body { min-height: 14mm; }
   .risk-columns--body > * { padding: 1mm; }
   .risk-columns--body > span, .risk-columns--body > b { display: flex; justify-content: center; align-items: center; }
   .risk-columns--body > b { color: var(--v3-red); text-align: right; }
@@ -249,8 +250,8 @@ export const PROPUESTA_FORMAL_V3_STYLE = `
   .conditions-box > .section-heading, .principal-coverages-box > .section-heading, .collection-clause > .section-heading { flex: none; min-height: 6.5mm; padding: 1mm 2.4mm; }
   .conditions-box { padding-bottom: 1mm; }
   .conditions-box .fit-box-inner, .collection-clause .fit-box-inner { padding: 2mm; }
-  .conditions-flow { margin: 0 .6mm .6mm; padding: .6mm 1mm; border: .7px solid var(--v3-line); border-radius: 1.5mm; background: #fff; font-size: 7px; line-height: 1.05; overflow: visible; overflow-wrap: anywhere; }
-  .conditions-flow p { margin: 0 0 .5mm; }
+  .conditions-flow { margin: 0 .6mm .6mm; padding: .6mm 1mm; border: .7px solid var(--v3-line); border-radius: 1.5mm; background: #fff; font-size: 7px; line-height: 1; overflow: visible; overflow-wrap: anywhere; }
+  .conditions-flow p { margin: 0 0 .3mm; }
   .conditions-flow .legal-subheading { display: block; margin-bottom: .3mm; }
   .conditions-section { margin-top: .8mm; }
   .conditions-section h3 { margin: 0 0 .8mm; font-size: inherit; }

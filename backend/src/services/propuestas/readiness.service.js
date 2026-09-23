@@ -16,7 +16,7 @@ export function evaluarReadiness({ propuesta, carta, motivoIneligibilidad = null
   if (!asegurado.email) pendientes.push('asegurado.email')
   if (!asegurado.actividad_economica) pendientes.push('asegurado.actividad_economica')
   if (asegurado.tipo_persona === 'fisica') {
-    for (const field of ['fecha_nacimiento', 'nacionalidad', 'estado_civil', 'ocupacion']) {
+    for (const field of ['fecha_nacimiento', 'sexo', 'nacionalidad', 'estado_civil', 'ocupacion']) {
       if (!asegurado[field]) pendientes.push(`asegurado.${field}`)
     }
   }

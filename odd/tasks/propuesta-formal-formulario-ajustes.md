@@ -27,7 +27,12 @@ No confirmado explícitamente por Kevin en esta sesión. Repo tiene tests unitar
 - [x] **2. Rediseño visual card "Origen Verificado"** — DONE 2026-09-23
   - Implementado en `frontend/propuestas/propuestas.css` (`.pf-origin`, `.pf-origin__icon`, `.pf-back`): barra lateral roja (`::before`) en vez del borde completo anterior, textura circular sutil de fondo (`::after` radial-gradient), ícono con fondo redondeado (`--tajy-radius-lg`), botón "Cambiar Carta" en pill (`--tajy-radius-pill`). Sin cambios de markup en `propuestas.js`, solo CSS — usa los tokens `--tajy-*` existentes así se adapta solo a modo oscuro sin overrides nuevos en `theme-dark.css`.
   - Verificado visualmente con Playwright en claro y oscuro contra TEST self-hosted (carta MRC-579) — aprobado por Kevin sin ajustes.
-- [ ] **3. Campo Sexo en datos del Asegurado** (femenino/masculino) — la Propuesta ya lo requiere.
+- [x] **3. Campo Sexo en datos del Asegurado** (femenino/masculino) — DONE 2026-09-23
+  - `backend/src/templates/propuesta/mrc-v3.js:388` (y `mrc.js:105` para PDFs históricos) ya renderizaban `insured.sexo`, pero no existía forma de cargarlo — quedaba siempre vacío (`UNAVAILABLE`).
+  - Agregado como `selectField` (Femenino/Masculino, valores = texto de presentación directo, sin traducción de códigos) en `renderAseguradoPanel()`, requerido solo para persona física — mismo patrón que `fecha_nacimiento`/`nacionalidad`/`estado_civil`/`ocupacion`.
+  - Propagado a `leerFormulario()`, `calcularPendientesFor()`/`calcularCamposRequeridos()` (frontend) y `readiness.service.js` (backend, fuente de verdad para habilitar la emisión) — antes solo se agregó en el frontend por error de alcance, corregido para que el gate real de emisión también lo exija.
+  - Schema Zod: `personaSchema.sexo = z.enum(['Femenino', 'Masculino']).optional()` en `backend/src/schemas/propuestas.schema.js`.
+  - Verificado: 3 tests nuevos (readiness.service.test.js, propuestas.schema.test.js) + 30/30 en verde. En vivo con Playwright: campo aparece con las 2 opciones, `required` cuando tipo de persona es física, valor persiste tras guardar y recargar la página.
 - [ ] **4. Formato de Teléfono**
   - Prefijo fijo `+595`, separar el resto en formato `981-927-418`.
   - En el PDF de la Propuesta debe salir como `0981-927-418` (prefijo reemplazado por `0`).

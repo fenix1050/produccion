@@ -42,6 +42,52 @@ test('PF-3 readiness enables emission only after all required MRC fields are pre
   assert.equal(readiness.emision_habilitada, true)
 })
 
+test('PF-3 readiness requires sexo for a persona física insured, not for jurídica', () => {
+  const base = {
+    carta_oferta_id: 7,
+    cotizacion_variante_id: 10,
+    cotizacion_plan_pago_id: 20,
+    draft_json: {
+      partes: {
+        asegurado: {
+          tipo_persona: 'fisica',
+          nombre_razon_social: 'Juan Pérez',
+          documento: '1234567',
+          direccion: 'Asunción',
+          ciudad: 'Asunción',
+          telefono: '0981000000',
+          email: 'juan@example.com',
+          actividad_economica: 'Comercio',
+          fecha_nacimiento: '1990-01-01',
+          nacionalidad: 'Paraguaya',
+          estado_civil: 'Soltero',
+          ocupacion: 'Comerciante',
+        },
+      },
+      tipo_firma: 'manual',
+    },
+  }
+
+  const sinSexo = evaluarReadiness({ propuesta: base, carta: { id: 7 } })
+  assert.ok(sinSexo.pendientes.includes('asegurado.sexo'))
+  assert.equal(sinSexo.listo, false)
+
+  const conSexo = evaluarReadiness({
+    propuesta: {
+      ...base,
+      draft_json: {
+        ...base.draft_json,
+        partes: {
+          asegurado: { ...base.draft_json.partes.asegurado, sexo: 'Femenino' },
+        },
+      },
+    },
+    carta: { id: 7 },
+  })
+  assert.equal(conSexo.pendientes.includes('asegurado.sexo'), false)
+  assert.equal(conSexo.listo, true)
+})
+
 test('PF-3 requires the complete approved MRC text set before issuance', () => {
   const propuesta = {
     cotizacion_variante_id: 10,

@@ -28,6 +28,7 @@ const aseguradoSchema = z
 const personaSchema = aseguradoSchema
   .extend({
     fecha_nacimiento: z.string().date().optional(),
+    sexo: z.enum(['Femenino', 'Masculino']).optional(),
     nacionalidad: texto(80),
     estado_civil: texto(60),
     ocupacion: texto(160),

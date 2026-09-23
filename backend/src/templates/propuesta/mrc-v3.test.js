@@ -237,12 +237,13 @@ test('MRC proposal v3 renders twelve compact inline coverage summary items', () 
   assert.equal((summary.match(/<li class="coverage-summary-item"/g) ?? []).length, 12)
   assert.equal((summary.match(/<span class="coverage-summary-inline">/g) ?? []).length, 12)
   assert.equal((summary.match(/Hasta /g) ?? []).length, 12)
-  assert.equal((summary.match(/Franquicia:/g) ?? []).length, 12)
+  // Kevin (2026-09-23): sacar la franquicia del detalle de cobertura — no la quiere ver
+  // en la Propuesta, ni siquiera como "Sin deducible".
+  assert.equal((summary.match(/Franquicia:/g) ?? []).length, 0)
   assert.doesNotMatch(summary, /coverage-summary-(?:name|detail)/)
   for (const [index, coverage] of coverages.entries()) {
     const amount = ((index + 1) * 100000).toLocaleString('es-PY')
-    const franchise = coverage.franquicia == null ? 'Sin deducible' : 'Gs. 5.000'
-    const row = `- ${coverage.nombre_snapshot}: Hasta Gs. ${amount} · Franquicia: ${franchise}`
+    const row = `- ${coverage.nombre_snapshot}: Hasta Gs. ${amount}`
     assert.match(
       summary,
       new RegExp(`<span class="coverage-summary-inline">${escapeRegExp(row)}<\\/span>`)
@@ -258,7 +259,7 @@ test('MRC proposal v3 uses compact inline two-column coverage markup', () => {
 
   assert.match(
     html,
-    /<ul class="coverage-summary"><li class="coverage-summary-item"><span class="coverage-summary-inline">- Fire: Hasta Gs\. 1\.000\.000 · Franquicia: Sin deducible<\/span><\/li><\/ul>/
+    /<ul class="coverage-summary"><li class="coverage-summary-item"><span class="coverage-summary-inline">- Fire: Hasta Gs\. 1\.000\.000<\/span><\/li><\/ul>/
   )
   assert.match(summaryRule, /display: grid;/)
   assert.match(summaryRule, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/)
@@ -287,7 +288,7 @@ test('MRC proposal v3 escapes inline coverage summary values', () => {
 
   assert.match(
     summary,
-    /<span class="coverage-summary-inline">- &lt;Fire &amp; &quot;quoted&quot;&gt;: Hasta Gs\. 1\.000\.000 · Franquicia: Gs\. 5\.000<\/span>/
+    /<span class="coverage-summary-inline">- &lt;Fire &amp; &quot;quoted&quot;&gt;: Hasta Gs\. 1\.000\.000<\/span>/
   )
   assert.equal((summary.match(/<span class="coverage-summary-inline">/g) ?? []).length, 1)
   assert.doesNotMatch(summary, /<Fire & "quoted">/)

@@ -53,13 +53,15 @@ No confirmado explícitamente por Kevin en esta sesión. Repo tiene tests unitar
   - `backend/src/templates/propuesta/mrc-v3.js`: nuevo helper `fmtHora()` deriva la hora de `proposal.emitida_at` (mismo instante que ya usaba "Fecha de Emisión", en el timezone de la carta) y se usa igual para "Hora Inicio" y "Hora Fin". "Vigencia" ahora es el literal fijo "30 días". "Hasta"/"Propuesta de Renovación"/"Póliza Nro." quedan sin tocar (`No disponible`), no estaban pedidos.
   - Verificado: 21 tests en `mrc-v3.test.js` en verde (415 backend total) + PDF real generado con Puppeteer (pipeline completo, no solo el HTML) mostrando "Vigencia: 30 días" y "Hora Inicio"/"Hora Fin: 12:45 p.m." correctamente.
   - **Hallazgo aparte, fuera de este punto**: al intentar emitir la propuesta real de la carta MRC-579 (id 11, la que venimos usando para probar) salió `ProposalFitOverflowError: declarations@6px` — el texto de "declaraciones_generales" actualmente publicado no entra en su caja ni al mínimo tamaño de fuente permitido. No es de acá (afecta el bloque de Declaraciones, no las celdas del header que tocamos), pero bloquea emitir esa carta puntual en TEST. Lo dejo anotado para que decidas si hay que acortar el texto publicado o ajustar el límite de shrink — no lo toqué.
-- [ ] **8. Sacar "Franquicia: ..." del detalle de cobertura en el PDF**
-  - `mrc-v3.js:423-424` — línea de cobertura arma `"- {nombre}: Hasta {monto} · Franquicia: {monto o 'Sin deducible'}"`; sacar la parte de Franquicia.
+- [x] **8. Sacar "Franquicia: ..." del detalle de cobertura en el PDF** — DONE 2026-09-23
+  - `coverageSummaryV3()` en `mrc-v3.js` armaba `"- {nombre}: Hasta {monto} · Franquicia: {monto o 'Sin deducible'}"`; ahora es solo `"- {nombre}: Hasta {monto}"`. Sacado también sin condicionar (ni siquiera se muestra "Sin deducible").
+  - Verificado: 3 tests existentes actualizados en `mrc-v3.test.js` (415 backend en verde) + PDF real generado con Puppeteer confirmando que ninguna cobertura (con o sin franquicia real en los datos) imprime esa palabra.
 
 ## Progreso
 
 - 2026-09-22: Lista completa acordada con Kevin. Arrancamos por el punto 1.
+- 2026-09-23: Los 8 puntos cerrados, cada uno con su propio PR mergeado a `main` (#426–#432, punto 6 en #431, punto 7 en #432, punto 8 sin PR propio — pendiente de commitear).
 
 ## Próximo paso
 
-Implementar punto 1 (fix readiness pasos 3 y 4).
+Ninguno pendiente de esta lista. Queda abierto, fuera de este cambio, el hallazgo del punto 7: `ProposalFitOverflowError: declarations@6px` al emitir la carta MRC-579 real — el texto de `declaraciones_generales` publicado no entra ni al mínimo tamaño de fuente. Kevin decide si acortar el texto o ajustar el límite de shrink.

@@ -68,6 +68,15 @@ function formatearTelefono(value) {
   return [digits.slice(0, 3), digits.slice(3, 6), digits.slice(6, 9)].filter(Boolean).join('-')
 }
 
+// A diferencia del RUC, la cédula NUNCA lleva dígito verificador — formatearRuc()
+// asumía uno a partir de 8 dígitos, lo cual rompía cédulas largas (ver Kevin,
+// 2026-09-23: "80028528-9 ... y al ser solo cédula, debería quedar como 5.592.751").
+function formatearCi(value) {
+  const raw = String(value ?? '').trim()
+  if (!raw || /[^\d\s.]/.test(raw)) return raw
+  return fmtGsInput(raw.replace(/\D/g, ''))
+}
+
 function parseGsInput(value) {
   const digits = String(value ?? '').replace(/\D/g, '')
   return digits ? Number(digits) : null
@@ -77,11 +86,13 @@ function formatearInputPreservandoCursor(target) {
   const formatter =
     target.dataset.format === 'ruc'
       ? formatearRuc
-      : target.dataset.format === 'gs'
-        ? (value) => fmtGsInput(String(value ?? '').replace(/\D/g, ''))
-        : target.dataset.format === 'telefono'
-          ? formatearTelefono
-          : null
+      : target.dataset.format === 'ci'
+        ? formatearCi
+        : target.dataset.format === 'gs'
+          ? (value) => fmtGsInput(String(value ?? '').replace(/\D/g, ''))
+          : target.dataset.format === 'telefono'
+            ? formatearTelefono
+            : null
   if (!formatter) return
 
   const currentValue = target.value
@@ -215,7 +226,9 @@ function leerFormulario() {
   const insuredFields = {
     tipo_persona: (value) => value || undefined,
     nombre_razon_social: () => text('nombre_razon_social'),
+    documento_tipo: (value) => value || undefined,
     documento: () => text('documento'),
+    ruc: () => text('ruc'),
     telefono: () => text('telefono'),
     email: () => text('email'),
     direccion: () => text('direccion'),
@@ -615,6 +628,7 @@ function renderStepPanel(
 
 function renderAseguradoPanel() {
   const tipoPersona = valor('partes.asegurado.tipo_persona')
+  const tipoDocumento = valor('partes.asegurado.documento_tipo', 'ci')
   return `<section class="pf-step-panel">
     <header class="pf-section-heading">
       <span class="pf-section-heading__icon" aria-hidden="true">${ICON_PERSON}</span>
@@ -636,7 +650,25 @@ function renderAseguradoPanel() {
             true
           )}
           ${inputField('nombre_razon_social', 'Nombre o razón social', valor('partes.asegurado.nombre_razon_social'), 'text', true)}
-          ${inputField('documento', 'Documento o RUC', valor('partes.asegurado.documento'), 'text', true, { format: 'ruc' })}
+          ${selectField(
+            'documento_tipo',
+            'Tipo de documento',
+            [
+              ['ci', 'C.I.'],
+              ['ruc', 'R.U.C.'],
+            ],
+            tipoDocumento,
+            true
+          )}
+          ${
+            tipoDocumento === 'ruc'
+              ? inputField('ruc', 'R.U.C.', valor('partes.asegurado.ruc'), 'text', true, {
+                  format: 'ruc',
+                })
+              : inputField('documento', 'C.I.', valor('partes.asegurado.documento'), 'text', true, {
+                  format: 'ci',
+                })
+          }
           ${inputField('actividad_economica', 'Actividad económica', valor('partes.asegurado.actividad_economica'), 'text', true)}
           ${inputField('fecha_nacimiento', 'Fecha de nacimiento', valor('partes.asegurado.fecha_nacimiento'), 'date', tipoPersona === 'fisica')}
           ${selectField(
@@ -927,7 +959,6 @@ function calcularPendientesFor(propuesta, selection = {}) {
   for (const field of [
     'tipo_persona',
     'nombre_razon_social',
-    'documento',
     'direccion',
     'ciudad',
     'telefono',
@@ -935,6 +966,9 @@ function calcularPendientesFor(propuesta, selection = {}) {
     'actividad_economica',
   ])
     if (!insured[field]) pendientes.push(`asegurado.${field}`)
+  if ((insured.documento_tipo ?? 'ci') === 'ruc') {
+    if (!insured.ruc) pendientes.push('asegurado.ruc')
+  } else if (!insured.documento) pendientes.push('asegurado.documento')
   if (insured.tipo_persona === 'fisica')
     for (const field of ['fecha_nacimiento', 'sexo', 'nacionalidad', 'estado_civil', 'ocupacion'])
       if (!insured[field]) pendientes.push(`asegurado.${field}`)
@@ -952,7 +986,9 @@ function calcularPendientesFor(propuesta, selection = {}) {
       'email',
     ])
       if (!draft.partes?.tomador?.[field]) pendientes.push(`tomador.${field}`)
-    if (draft.partes?.tomador?.documento === insured.documento)
+    const documentoAsegurado =
+      (insured.documento_tipo ?? 'ci') === 'ruc' ? insured.ruc : insured.documento
+    if (draft.partes?.tomador?.documento === documentoAsegurado)
       pendientes.push('tomador.identidad_distinta')
   }
   if (!draft.tipo_firma) pendientes.push('tipo_firma')
@@ -969,7 +1005,6 @@ function calcularCamposRequeridos(propuesta) {
   for (const field of [
     'tipo_persona',
     'nombre_razon_social',
-    'documento',
     'direccion',
     'ciudad',
     'telefono',
@@ -977,6 +1012,7 @@ function calcularCamposRequeridos(propuesta) {
     'actividad_economica',
   ])
     required.add(`asegurado.${field}`)
+  required.add((insured.documento_tipo ?? 'ci') === 'ruc' ? 'asegurado.ruc' : 'asegurado.documento')
   if (insured.tipo_persona === 'fisica')
     for (const field of ['fecha_nacimiento', 'sexo', 'nacionalidad', 'estado_civil', 'ocupacion'])
       required.add(`asegurado.${field}`)
@@ -1134,9 +1170,11 @@ function inputField(name, label, value, type = 'text', required = false, options
   const formattedValue =
     options.format === 'ruc'
       ? formatearRuc(value)
-      : options.format === 'gs'
-        ? fmtGsInput(String(value ?? '').replace(/\D/g, ''))
-        : (value ?? '')
+      : options.format === 'ci'
+        ? formatearCi(value)
+        : options.format === 'gs'
+          ? fmtGsInput(String(value ?? '').replace(/\D/g, ''))
+          : (value ?? '')
   const formatAttribute = options.format ? `data-format="${options.format}"` : ''
   const inputModeAttribute = options.inputMode ? `inputmode="${options.inputMode}"` : ''
   return `<label class="pf-field"><span>${escapeHtml(label)}${required ? requiredMark() : ''}</span><input class="field-input" type="${safeType}" name="${escapeHtml(name)}" value="${escapeHtml(formattedValue)}" ${inputModeAttribute} ${formatAttribute} ${required ? 'required' : ''} /></label>`
@@ -1165,7 +1203,8 @@ function etiquetaPendiente(code) {
     seleccion_comercial: 'Variante y forma de pago',
     'asegurado.tipo_persona': 'Tipo de persona',
     'asegurado.nombre_razon_social': 'Nombre o razón social',
-    'asegurado.documento': 'Documento o RUC',
+    'asegurado.documento': 'C.I.',
+    'asegurado.ruc': 'R.U.C.',
     'asegurado.direccion': 'Dirección',
     'asegurado.ciudad': 'Ciudad',
     'asegurado.telefono': 'Teléfono',
@@ -1227,7 +1266,11 @@ app.addEventListener('change', (event) => {
     }
     return
   }
-  if (event.target.name === 'tipo_persona' || event.target.name === 'tomador_igual_asegurado') {
+  if (
+    event.target.name === 'tipo_persona' ||
+    event.target.name === 'documento_tipo' ||
+    event.target.name === 'tomador_igual_asegurado'
+  ) {
     state.propuesta.draft_json = leerFormulario()
     programarAutosave()
     render()

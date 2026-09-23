@@ -36,6 +36,10 @@ test('PF-3 frontend converges both entries and issues only through the authorita
   )
   assert.match(moduleSource, /<textarea name="direccion" rows="2" required>/)
   assert.match(moduleSource, /selectField\(\s*'tipo_persona',\s*'Tipo de persona'/)
+  assert.match(moduleSource, /selectField\(\s*'documento_tipo',\s*'Tipo de documento'/)
+  assert.match(moduleSource, /\['ci', 'C\.I\.'\]/)
+  assert.match(moduleSource, /\['ruc', 'R\.U\.C\.'\]/)
+  assert.doesNotMatch(moduleSource, /'Documento o RUC'/)
 })
 
 test('PF-3 frontend escapes proposal metadata and fallback text before HTML interpolation', async () => {
@@ -60,6 +64,7 @@ test('PF-3 required fields and numeric inputs expose the proposal form contract'
   assert.match(moduleSource, /class="pf-required-mark" aria-hidden="true">\*<\/span>/)
   assert.match(moduleSource, /required \? requiredMark\(\) : ''/)
   assert.match(moduleSource, /function formatearRuc\(value\)/)
+  assert.match(moduleSource, /function formatearCi\(value\)/)
   assert.match(moduleSource, /function parseGsInput\(value\)/)
   assert.match(
     moduleSource,

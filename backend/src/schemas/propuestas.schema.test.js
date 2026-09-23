@@ -3,6 +3,22 @@ import { test } from 'node:test'
 
 import { draftPropuestaSchema, listarPropuestasQuerySchema } from './propuestas.schema.js'
 
+test('draftPropuestaSchema: acepta documento_tipo (ci/ruc) y el campo ruc por separado', () => {
+  const conCi = draftPropuestaSchema.safeParse({
+    partes: { asegurado: { documento_tipo: 'ci', documento: '5592751' } },
+  })
+  const conRuc = draftPropuestaSchema.safeParse({
+    partes: { asegurado: { documento_tipo: 'ruc', ruc: '80028528-9' } },
+  })
+  const invalido = draftPropuestaSchema.safeParse({
+    partes: { asegurado: { documento_tipo: 'pasaporte' } },
+  })
+
+  assert.equal(conCi.success, true)
+  assert.equal(conRuc.success, true)
+  assert.equal(invalido.success, false)
+})
+
 test('draftPropuestaSchema: acepta sexo Femenino/Masculino y rechaza otros valores', () => {
   const conFemenino = draftPropuestaSchema.safeParse({
     partes: { asegurado: { sexo: 'Femenino' } },

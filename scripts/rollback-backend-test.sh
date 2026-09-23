@@ -40,14 +40,20 @@ fi
 REMOTE_HOME=$(ssh "$TEST_SSH_HOST" 'printf "%s" "$HOME"')
 REMOTE_MANIFEST_DIR="${REMOTE_HOME}/deploy-backups/backend-test"
 
+# Ver mismo comentario en deploy-backend-test.sh — indirección + base64 para poder correr
+# esto con un usuario remoto sin grupo docker que necesita `sudo -n /ruta/al/wrapper`.
+DOCKER_CMD="${DOCKER_CMD:-docker}"
+DOCKER_CMD_B64=$(printf '%s' "$DOCKER_CMD" | base64 | tr -d '\n')
+
 echo "==> Restaurando ${PF3_TEST_BACKEND_SERVICE} en la VPS a la imagen previa al último deploy"
 # shellcheck disable=SC2087
 ssh "$TEST_SSH_HOST" bash -s -- "$PF3_TEST_COMPOSE_FILE" \
   "$PF3_TEST_COMPOSE_PROJECT" "$PF3_TEST_BACKEND_SERVICE" "$PF3_TEST_HEALTH_URL" \
-  "$REMOTE_MANIFEST_DIR" <<'REMOTE_ROLLBACK'
+  "$REMOTE_MANIFEST_DIR" "$DOCKER_CMD_B64" <<'REMOTE_ROLLBACK'
 set -euo pipefail
 compose_file=$1 compose_project=$2 backend_service=$3
 health_url=$4 manifest_dir=$5
+read -ra docker <<<"$(printf '%s' "$6" | base64 -d)"
 
 previous_file="${manifest_dir}/previous-image-tag.txt"
 [[ -r $previous_file ]] || {
@@ -56,7 +62,7 @@ previous_file="${manifest_dir}/previous-image-tag.txt"
 }
 previous_image=$(tr -d '\r\n' <"$previous_file")
 [[ -n $previous_image ]]
-docker image inspect "$previous_image" >/dev/null 2>&1 || {
+"${docker[@]}" image inspect "$previous_image" >/dev/null 2>&1 || {
   printf 'FAIL status=rollback reason=previous_image_not_present_locally image=%s\n' "$previous_image" >&2
   exit 67
 }
@@ -66,16 +72,16 @@ trap 'rm -rf -- "$override_dir"' EXIT
 override="${override_dir}/compose-rollback.override.yml"
 printf 'services:\n  %s:\n    image: %s\n' "$backend_service" "$previous_image" >"$override"
 
-compose=(docker compose --project-name "$compose_project" --file "$compose_file")
+compose=("${docker[@]}" compose --project-name "$compose_project" --file "$compose_file")
 export BACKEND_IMAGE="$previous_image"
 "${compose[@]}" --file "$override" up --detach --no-deps --no-build --force-recreate "$backend_service"
 
 container_id=$("${compose[@]}" --file "$override" ps -q "$backend_service")
 [[ -n $container_id ]]
-[[ $(docker inspect --format '{{ .Config.Image }}' "$container_id") == "$previous_image" ]]
-[[ $(docker inspect --format '{{ if .State.Health }}{{ .State.Health.Status }}{{ else }}missing{{ end }}' "$container_id") == healthy ]]
+[[ $("${docker[@]}" inspect --format '{{ .Config.Image }}' "$container_id") == "$previous_image" ]]
+[[ $("${docker[@]}" inspect --format '{{ if .State.Health }}{{ .State.Health.Status }}{{ else }}missing{{ end }}' "$container_id") == healthy ]]
 
-env_dump=$(docker inspect --format '{{range .Config.Env}}{{println .}}{{end}}' "$container_id")
+env_dump=$("${docker[@]}" inspect --format '{{range .Config.Env}}{{println .}}{{end}}' "$container_id")
 grep -Fx 'NODE_ENV=test' <<<"$env_dump" >/dev/null
 curl --fail --silent --show-error --max-time 10 "$health_url" >/dev/null
 

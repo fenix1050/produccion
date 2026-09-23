@@ -312,19 +312,43 @@
 }
 
 .pf-origin {
+  position: relative;
+  overflow: hidden;
   display: flex;
   align-items: flex-start;
   gap: 16px;
-  padding: 22px 24px;
-  border: 1px solid var(--tajy-red-soft);
-  border-left: 4px solid var(--tajy-red);
+  padding: 20px 24px 20px 28px;
+  border: 1px solid var(--tajy-border);
   border-radius: var(--tajy-radius-xl);
-  background: linear-gradient(115deg, var(--tajy-pink), var(--tajy-surface) 70%);
-  box-shadow: var(--tajy-shadow-accent, 0 10px 26px rgba(139, 16, 32, 0.12));
+  background: var(--tajy-surface);
+  box-shadow: var(--tajy-shadow-card);
+}
+
+/* Barra lateral de acento en vez del borde completo anterior — pedido de Kevin
+   para acercar el look al de referencia (barra + textura sutil, no un marco). */
+.pf-origin::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: var(--tajy-red);
+}
+
+.pf-origin::after {
+  content: '';
+  position: absolute;
+  top: -55%;
+  right: -8%;
+  width: 220px;
+  height: 220px;
+  background: radial-gradient(circle, var(--tajy-red-soft), transparent 72%);
+  pointer-events: none;
 }
 
 .pf-origin__icon,
 .pf-card-title__icon {
+  position: relative;
+  z-index: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -337,13 +361,15 @@
 }
 
 .pf-origin__icon {
-  width: 42px;
-  height: 42px;
-  border-radius: var(--tajy-radius-md);
+  width: 44px;
+  height: 44px;
+  border-radius: var(--tajy-radius-lg);
   font-size: 20px;
 }
 
 .pf-origin__content {
+  position: relative;
+  z-index: 1;
   display: grid;
   flex: 1;
   gap: 5px;
@@ -395,8 +421,10 @@
 }
 
 .pf-back {
-  padding: 3px 0;
-  border: 0;
+  flex: 0 0 auto;
+  padding: 6px 14px;
+  border: 1px solid var(--tajy-red-soft);
+  border-radius: var(--tajy-radius-pill);
   background: transparent;
   color: var(--tajy-red-a11y);
   font-size: 11px;
@@ -406,7 +434,7 @@
 
 .pf-back:hover,
 .pf-back:focus-visible {
-  text-decoration: underline;
+  background: var(--tajy-pink);
 }
 
 .pf-main .card {
@@ -1196,7 +1224,7 @@
   }
 
   .pf-origin {
-    padding: 18px;
+    padding: 16px 16px 16px 20px;
   }
 
   .pf-origin__topline {

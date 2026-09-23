@@ -344,6 +344,17 @@ function headerCell(iconName, label, value, placement) {
   return `<div class="header-cell header-cell--${placement}">${icon(iconName)}<span class="header-copy"><b>${label}</b><span>${value}</span></span></div>`
 }
 
+// Hora Inicio/Fin: Kevin (2026-09-23) pidió que tomen directo la hora del equipo al
+// momento de emitir en vez de pedirlas en el formulario — mismo instante que ya usa
+// "Fecha de Emisión" (proposal.emitida_at), solo que acá se muestra la hora.
+function fmtHora(value, renderContext) {
+  return new Date(value).toLocaleTimeString(renderContext?.locale ?? 'es-PY', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: renderContext?.timezone ?? 'America/Asuncion',
+  })
+}
+
 function pageHeader(snapshot, pageNumber, logoSrc, headerBackgroundDataUri) {
   const { proposal, carta } = snapshot
   const headerStyle = headerBackgroundDataUri
@@ -358,11 +369,11 @@ function pageHeader(snapshot, pageNumber, logoSrc, headerBackgroundDataUri) {
     <section class="header-meta">
       ${headerCell('document', 'Propuesta N.°', text(proposal.numero_propuesta), 'proposal')}
       ${headerCell('calendar', 'Fecha de Emisión', text(fmtFecha(proposal.emitida_at, carta.render_context)), 'issue-date')}
-      ${headerCell('clock', 'Vigencia', UNAVAILABLE, 'validity')}
+      ${headerCell('clock', 'Vigencia', text('30 días'), 'validity')}
       ${headerCell('clock', 'Hasta', UNAVAILABLE, 'until')}
       ${headerCell('edit', 'Propuesta de Renovación a la Póliza', UNAVAILABLE, 'renewal')}
-      ${headerCell('play', 'Hora Inicio', UNAVAILABLE, 'start')}
-      ${headerCell('square', 'Hora Fin', UNAVAILABLE, 'end')}
+      ${headerCell('play', 'Hora Inicio', text(fmtHora(proposal.emitida_at, carta.render_context)), 'start')}
+      ${headerCell('square', 'Hora Fin', text(fmtHora(proposal.emitida_at, carta.render_context)), 'end')}
       ${headerCell('badge', 'Póliza Nro.', UNAVAILABLE, 'policy')}
     </section>`
 }

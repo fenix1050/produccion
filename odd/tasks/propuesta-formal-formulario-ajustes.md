@@ -49,9 +49,10 @@ No confirmado explícitamente por Kevin en esta sesión. Repo tiene tests unitar
   - Sacado de `frontend/propuestas/propuestas.js`: `renderTextControls()`, `publicarTexto()`, el `<div class="pf-step-five-support">` del paso 5, y el wiring del submit `#pf-text-form`.
   - Verificado que "Emitir Propuesta Formal" no dependía del panel: `state.textos.emision_habilitada` ya era un flag independiente calculado 100% en el backend (`asegurarReadinessEmision`) — sacar el panel no lo afecta, confirmado sin cambios adicionales necesarios.
   - Verificado: 414 tests backend + 118 frontend en verde, sin ningún test nuevo necesario (módulo admin simple, mismo patrón sin test dedicado que `roles.js`). En vivo: la sección nueva carga los 6 textos ya publicados con su historial, y el wizard ya no tiene rastro del formulario viejo.
-- [ ] **7. Hora Inicio/Hora Fin y Vigencia en el PDF**
-  - `backend/src/templates/propuesta/mrc-v3.js:364-365` — "Hora Inicio"/"Hora Fin" hoy renderizan `UNAVAILABLE`; deben tomar la hora del equipo al momento de emisión (misma hora para ambas).
-  - `mrc-v3.js:361` — "Vigencia" hoy `UNAVAILABLE`; debe decir fijo "30 días".
+- [x] **7. Hora Inicio/Hora Fin y Vigencia en el PDF** — DONE 2026-09-23
+  - `backend/src/templates/propuesta/mrc-v3.js`: nuevo helper `fmtHora()` deriva la hora de `proposal.emitida_at` (mismo instante que ya usaba "Fecha de Emisión", en el timezone de la carta) y se usa igual para "Hora Inicio" y "Hora Fin". "Vigencia" ahora es el literal fijo "30 días". "Hasta"/"Propuesta de Renovación"/"Póliza Nro." quedan sin tocar (`No disponible`), no estaban pedidos.
+  - Verificado: 21 tests en `mrc-v3.test.js` en verde (415 backend total) + PDF real generado con Puppeteer (pipeline completo, no solo el HTML) mostrando "Vigencia: 30 días" y "Hora Inicio"/"Hora Fin: 12:45 p.m." correctamente.
+  - **Hallazgo aparte, fuera de este punto**: al intentar emitir la propuesta real de la carta MRC-579 (id 11, la que venimos usando para probar) salió `ProposalFitOverflowError: declarations@6px` — el texto de "declaraciones_generales" actualmente publicado no entra en su caja ni al mínimo tamaño de fuente permitido. No es de acá (afecta el bloque de Declaraciones, no las celdas del header que tocamos), pero bloquea emitir esa carta puntual en TEST. Lo dejo anotado para que decidas si hay que acortar el texto publicado o ajustar el límite de shrink — no lo toqué.
 - [ ] **8. Sacar "Franquicia: ..." del detalle de cobertura en el PDF**
   - `mrc-v3.js:423-424` — línea de cobertura arma `"- {nombre}: Hasta {monto} · Franquicia: {monto o 'Sin deducible'}"`; sacar la parte de Franquicia.
 

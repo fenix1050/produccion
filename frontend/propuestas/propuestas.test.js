@@ -228,10 +228,9 @@ test('PF-3 reference grouping keeps active presentation and readiness contracts'
   assert.match(moduleSource, /function calcularCamposRequeridos\(propuesta\)/)
   assert.match(moduleSource, /const required = calcularCamposRequeridos\(propuesta\)/)
   assert.doesNotMatch(moduleSource, /const total = 5/)
-  assert.match(
-    moduleSource,
-    /currentStep === 5 && state\.textos\.puede_gestionar \? `<div class="pf-step-five-support">\$\{renderTextControls\(\)\}/
-  )
+  // El panel "Publicar texto MRC" se movió a /admin/ (frontend/admin/textos-propuesta.js)
+  // — el wizard de emisión ya no gestiona textos legales, solo los consume.
+  assert.doesNotMatch(moduleSource, /renderTextControls|pf-text-form|Publicar texto MRC/)
   const avanzarPasoSource = moduleSource.match(/function avanzarPaso\(\)[\s\S]*?\n\}/)?.[0] ?? ''
   assert.match(avanzarPasoSource, /state\.currentStep \+= 1[\s\S]*?render\(\)/)
   assert.doesNotMatch(avanzarPasoSource, /programarAutosave\(\)/)

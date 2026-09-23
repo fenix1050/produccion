@@ -5,6 +5,7 @@ import {
   ICON_ADMIN_TASAS,
   ICON_ADMIN_PLANES,
   ICON_GEAR,
+  ICON_DOC_LIST,
 } from '../shared/nav-icons.js'
 
 // Secciones del panel admin — extraído de admin.js (WU admin-module-split, PR1).
@@ -19,6 +20,16 @@ export const SECCIONES = [
   },
   { id: 'tasas', label: 'Tasas', disponible: true, permiso: 'puede_editar_tasas' },
   { id: 'planes', label: 'Planes', disponible: true, permiso: 'puede_editar_planes' },
+  {
+    id: 'textos-propuesta',
+    label: 'Textos de Propuesta Formal',
+    disponible: true,
+    permiso: 'puede_gestionar_textos_propuesta',
+    // El backend (emision.service.js: listarTextos/publicarTexto) siempre deja pasar a
+    // rol==='admin' aunque el flag esté en false — replicado acá para que un admin
+    // literal no pierda de vista la sección solo porque nunca se le tildó el permiso.
+    adminBypass: true,
+  },
   // Sin `permiso`: a diferencia del resto de las secciones (permisos delegables por rol
   // custom), habilitar/deshabilitar un ramo en el sidebar del cotizador es una decisión de
   // sistema reservada al rol admin literal — ver seccionesVisibles() y el gate del backend
@@ -35,13 +46,16 @@ export const SECCION_ICONOS = {
   tasas: ICON_ADMIN_TASAS,
   planes: ICON_ADMIN_PLANES,
   ramos: ICON_GEAR,
+  'textos-propuesta': ICON_DOC_LIST,
 }
 
 // Secciones visibles para el usuario logueado según sus permisos parciales
 // (mismo patrón que puede_editar_tasas, ver docs/ESTADO_PROYECTO.md sección 20a2).
 export function seccionesVisibles() {
   const usuario = auth.getUsuario()
-  return SECCIONES.filter((s) =>
-    s.soloAdmin ? usuario?.rol === 'admin' : Boolean(usuario?.[s.permiso])
-  )
+  return SECCIONES.filter((s) => {
+    if (s.soloAdmin) return usuario?.rol === 'admin'
+    if (s.adminBypass) return usuario?.rol === 'admin' || Boolean(usuario?.[s.permiso])
+    return Boolean(usuario?.[s.permiso])
+  })
 }

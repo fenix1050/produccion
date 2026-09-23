@@ -9,6 +9,7 @@ import { renderPlanes } from './planes.js'
 import { renderTasas, renderModalTasa } from './tasas.js'
 import { renderRamosGestion } from './ramos.js'
 import { renderCoberturas, renderModalCobertura } from './coberturas.js'
+import { renderTextosPropuesta } from './textos-propuesta.js'
 
 // Shell del panel admin (topbar, sidebar, layout general, ruteo de secciones y estado
 // "próximamente") + banner de feedback — extraído de admin.js (WU admin-module-split,
@@ -108,6 +109,7 @@ export function renderSeccion() {
   if (state.seccion === 'planes') return renderPlanes()
   if (state.seccion === 'tasas') return renderTasas()
   if (state.seccion === 'ramos') return renderRamosGestion()
+  if (state.seccion === 'textos-propuesta') return renderTextosPropuesta()
   return renderProximamente(seccion)
 }
 

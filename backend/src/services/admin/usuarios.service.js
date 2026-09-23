@@ -43,14 +43,29 @@ function asegurarPuedeModificarAdmin(usuarioObjetivo, solicitante) {
   }
 }
 
-// cambios.rol_id llega sin restricción desde el schema Zod (cualquier id positivo): sin este
-// chequeo, un usuario con rol custom puede_gestionar_usuarios=true podía autopromoverse (o
-// promover a otro) al rol 'admin' mandando ese id directamente, evadiendo por completo el
-// chequeo de asegurarPuedeModificarAdmin (que solo mira el rol ACTUAL del objetivo).
+const PERMISOS_ROL = [
+  'puede_editar_tasas',
+  'puede_gestionar_usuarios',
+  'puede_editar_coberturas',
+  'puede_editar_planes',
+  'puede_editar_descuento_plan',
+  'puede_ver_descuento_plan',
+  'puede_agregar_cobertura_libre',
+  'puede_seleccionar_franquicia',
+  'puede_gestionar_textos_propuesta',
+  'puede_descargar_propuestas',
+  'puede_anular_propuestas',
+]
+
+// cambios.rol_id llega sin restricción desde el schema Zod (cualquier id positivo): solo
+// puede asignarse un rol cuyos permisos ya estén en poder del solicitante. Admin conserva
+// su capacidad plena, alineada con asegurarPuedeOtorgarPermisos en roles.service.js.
 async function asegurarPuedeAsignarRol(rolId, solicitante) {
   if (rolId === undefined) return
   const rolDestino = await rolesRepository.findById(rolId)
-  if (rolDestino?.nombre === 'admin' && solicitante.rol !== 'admin') {
+  if (solicitante.rol === 'admin' || !rolDestino) return
+
+  if (rolDestino.nombre === 'admin') {
     logSeguridad(
       'intento_escalada_rol_admin_rechazado',
       { solicitanteId: solicitante.id, solicitanteEmail: solicitante.email, rolIdDestino: rolId },
@@ -62,6 +77,33 @@ async function asegurarPuedeAsignarRol(rolId, solicitante) {
       'No tenés permiso para asignar el rol administrador'
     )
   }
+
+  const permisoNoAutorizado = PERMISOS_ROL.find(
+    (permiso) => rolDestino[permiso] === true && !solicitante[permiso]
+  )
+  if (permisoNoAutorizado) {
+    logSeguridad(
+      'intento_escalada_permisos_rol_rechazado',
+      {
+        solicitanteId: solicitante.id,
+        solicitanteEmail: solicitante.email,
+        permiso: permisoNoAutorizado,
+      },
+      'error'
+    )
+    throw httpError(
+      403,
+      'No podés asignar un permiso que vos mismo no tenés',
+      'No podés asignar un permiso que vos mismo no tenés'
+    )
+  }
+}
+
+function asegurarNoCambiaPropioRol(idObjetivo, rolId, solicitante, usuarioActual) {
+  if (rolId === undefined || solicitante.rol === 'admin') return
+  if (String(idObjetivo) !== String(solicitante.id)) return
+  if (String(rolId) === String(usuarioActual.rol_id)) return
+  throw httpError(403, 'No podés cambiar tu propio rol', 'No podés cambiar tu propio rol')
 }
 
 // editarUsuario es el único punto que escribe estos dos campos (ver schemas/admin.schema.js):
@@ -100,6 +142,7 @@ export async function editarUsuario(id, cambios, solicitante) {
     throw httpError(404, 'Usuario no encontrado')
   }
   asegurarPuedeModificarAdmin(usuarioActual, solicitante)
+  asegurarNoCambiaPropioRol(id, cambios.rol_id, solicitante, usuarioActual)
   await asegurarPuedeAsignarRol(cambios.rol_id, solicitante)
   asegurarNoAutoAjustaTope(id, cambios, usuarioActual, solicitante)
 

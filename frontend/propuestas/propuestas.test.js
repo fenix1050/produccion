@@ -360,3 +360,53 @@ test('PF-3 only offers "Anular Propuesta" on the just-issued wizard to a user al
     /\? `<button type="button" class="btn-primary" data-action="descargar-pdf">Descargar PDF<\/button>\$\{renderAccionSecundariaEmitida\(propuesta\)\}`/
   )
 })
+
+test('PF-3 emitir() drives the same progress modal look as the cotizador (reused .progreso-carta-modal)', async () => {
+  const moduleSource = await readFile(moduleUrl, 'utf8')
+
+  // Pedido de Kevin: reusar la misma animación de emisión del cotizador
+  // (renderModalProgresoCarta en frontend/cotizar/render/render-shell.js), sin duplicar CSS —
+  // mismas clases .progreso-carta-modal/.progreso-track/.progreso-steps/.progreso-resultado,
+  // ya cargadas en propuestas/index.html vía shared/cotizador.css.
+  assert.match(
+    moduleSource,
+    /const PASOS_EMISION_PROPUESTA = \['Guardando borrador', 'Generando Propuesta Formal'\]/
+  )
+  assert.match(moduleSource, /progresoEmision: null,/)
+  assert.match(moduleSource, /function renderModalProgresoEmision\(\)/)
+  assert.match(moduleSource, /\$\{renderModalProgresoEmision\(\)\}`/)
+  assert.match(moduleSource, /class="admin-modal progreso-carta-modal"/)
+
+  const emitirSource = moduleSource.match(/async function emitir\(\) \{[\s\S]*?\n\}/)?.[0] ?? ''
+  assert.notEqual(emitirSource, '', 'emitir() debe existir')
+  // Guardar (paso 0) y el único await real de emisión (paso 1) quedan reflejados en el modal,
+  // no en el indicador de guardado de fondo — por eso guardar() se llama en modo silencioso.
+  assert.match(emitirSource, /state\.progresoEmision = \{ paso: 0, estado: 'activo' \}/)
+  assert.match(emitirSource, /await guardar\(\{ silencioso: true \}\)/)
+  assert.match(emitirSource, /state\.progresoEmision = \{ paso: 1, estado: 'activo' \}/)
+  assert.match(emitirSource, /state\.progresoEmision = \{ paso: 1, estado: 'exito' \}/)
+  assert.match(
+    emitirSource,
+    /state\.progresoEmision = \{ paso: 1, estado: 'error', error: error\.message \}/
+  )
+
+  assert.match(moduleSource, /function cerrarModalProgresoEmision\(\)/)
+  assert.match(moduleSource, /if \(state\.progresoEmision\?\.estado === 'activo'\) return/)
+  assert.match(
+    moduleSource,
+    /if \(action === 'cerrar-modal-progreso-emision'\) cerrarModalProgresoEmision\(\)/
+  )
+  assert.match(moduleSource, /if \(action === 'reintentar-emision'\) emitir\(\)/)
+
+  // Guard de data-stop-propagation: un click dentro del modal no debe "escapar" hacia el
+  // data-action del backdrop que lo contiene (bug real si faltara: cualquier click adentro
+  // del modal lo cerraría de golpe).
+  assert.match(moduleSource, /function resolveActionTarget\(event\)/)
+  assert.match(moduleSource, /const stopEl = event\.target\.closest\('\[data-stop-propagation\]'\)/)
+  assert.match(moduleSource, /data-stop-propagation="true"/)
+
+  // Escape solo cierra en estado terminal; Tab queda atrapado dentro del modal mientras esté
+  // activo — mismo patrón que el keydown de cotizar/events.js para renderModalProgresoCarta().
+  assert.match(moduleSource, /if \(!state\.progresoEmision\) return/)
+  assert.match(moduleSource, /atraparFoco\(e, modalAbierto\)/)
+})

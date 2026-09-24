@@ -356,11 +356,63 @@ function fmtHora(value, renderContext) {
   })
 }
 
+// Vigencia/Hasta: Kevin (2026-09-24) corrigió una suposición anterior de este mismo cambio
+// (que mostraba "30 días" fijo) -- el inicio real de la vigencia es 6 días corridos después
+// de la fecha de emisión, y la vigencia dura 1 año desde ese inicio. Se calcula sobre el DÍA
+// CALENDARIO de la emisión en la zona horaria del render (no sobre el instante UTC crudo):
+// sumar días/años a un timestamp UTC puede cruzar la medianoche local de forma distinta según
+// la hora de emisión, así que primero se resuelve la fecha calendario local y recién ahí se
+// suman los días/años como aritmética de fecha pura (sin hora).
+function fechaCalendarioLocal(value, renderContext) {
+  const partes = new Intl.DateTimeFormat('en-CA', {
+    timeZone: renderContext?.timezone ?? 'America/Asuncion',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date(value))
+  const obtener = (tipo) => Number(partes.find((parte) => parte.type === tipo)?.value)
+  return new Date(Date.UTC(obtener('year'), obtener('month') - 1, obtener('day')))
+}
+
+function sumarDias(fecha, dias) {
+  const resultado = new Date(fecha)
+  resultado.setUTCDate(resultado.getUTCDate() + dias)
+  return resultado
+}
+
+function sumarAnios(fecha, anios) {
+  const resultado = new Date(fecha)
+  resultado.setUTCFullYear(resultado.getUTCFullYear() + anios)
+  return resultado
+}
+
+function fmtFechaCalendario(fecha) {
+  return fecha.toLocaleDateString('es-PY', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    timeZone: 'UTC',
+  })
+}
+
+const DIAS_HASTA_INICIO_VIGENCIA = 6
+const ANIOS_VIGENCIA = 1
+
+function calcularVigencia(emitidaAt, renderContext) {
+  const inicio = sumarDias(
+    fechaCalendarioLocal(emitidaAt, renderContext),
+    DIAS_HASTA_INICIO_VIGENCIA
+  )
+  const fin = sumarAnios(inicio, ANIOS_VIGENCIA)
+  return { inicio: fmtFechaCalendario(inicio), fin: fmtFechaCalendario(fin) }
+}
+
 function pageHeader(snapshot, pageNumber, logoSrc, headerBackgroundDataUri, totalPages = 2) {
   const { proposal, carta } = snapshot
   const headerStyle = headerBackgroundDataUri
     ? ` style="--v3-header-photo: url(data:image/png;base64,${headerBackgroundDataUri.split(',')[1] ?? ''})"`
     : ''
+  const vigencia = calcularVigencia(proposal.emitida_at, carta.render_context)
   return `
     <header class="proposal-header"${headerStyle}>
       <div class="brand">${brandMark(logoSrc)}</div>
@@ -370,8 +422,8 @@ function pageHeader(snapshot, pageNumber, logoSrc, headerBackgroundDataUri, tota
     <section class="header-meta">
       ${headerCell('document', 'Propuesta N.°', text(proposal.numero_propuesta), 'proposal')}
       ${headerCell('calendar', 'Fecha de Emisión', text(fmtFecha(proposal.emitida_at, carta.render_context)), 'issue-date')}
-      ${headerCell('clock', 'Vigencia', text('30 días'), 'validity')}
-      ${headerCell('clock', 'Hasta', UNAVAILABLE, 'until')}
+      ${headerCell('clock', 'Vigencia', text(vigencia.inicio), 'validity')}
+      ${headerCell('clock', 'Hasta', text(vigencia.fin), 'until')}
       ${headerCell('edit', 'Propuesta de Renovación a la Póliza', UNAVAILABLE, 'renewal')}
       ${headerCell('play', 'Hora Inicio', text(fmtHora(proposal.emitida_at, carta.render_context)), 'start')}
       ${headerCell('square', 'Hora Fin', text(fmtHora(proposal.emitida_at, carta.render_context)), 'end')}

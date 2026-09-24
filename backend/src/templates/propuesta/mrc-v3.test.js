@@ -81,7 +81,7 @@ test('MRC proposal v3 prints the phone with the local "0" prefix instead of the 
   assert.doesNotMatch(html, /\+595/)
 })
 
-test('MRC proposal v3 shows a fixed 30-day validity and derives Hora Inicio/Fin from emitida_at', () => {
+test('MRC proposal v3 derives Vigencia/Hasta (inicio +6 días, 1 año de duración) and Hora Inicio/Fin from emitida_at', () => {
   const html = buildMrcPropuestaV3Html(
     fixture({
       proposal: {
@@ -96,11 +96,54 @@ test('MRC proposal v3 shows a fixed 30-day validity and derives Hora Inicio/Fin 
     }
   )
 
-  assert.match(html, /<b>Vigencia<\/b><span>30 días<\/span>/)
-  // America/Asuncion en septiembre está en UTC-3 (sin DST) — 15:45 UTC => 12:45 local.
+  // América/Asunción está en UTC-3 (sin DST) — 15:45 UTC del 2026-09-01 es 12:45 local del
+  // mismo día calendario. Kevin (2026-09-24): la vigencia empieza 6 días corridos después de
+  // la emisión y dura 1 año desde ese inicio (ejemplo real: emitida 24/09/2026 -> Vigencia
+  // 30/09/2026 -> Hasta 30/09/2027). Acá: 01/09/2026 + 6 días = 07/09/2026 -> +1 año = 07/09/2027.
+  assert.match(html, /<b>Vigencia<\/b><span>07\/09\/2026<\/span>/)
+  assert.match(html, /<b>Hasta<\/b><span>07\/09\/2027<\/span>/)
   const horaEsperada = /<b>Hora Inicio<\/b><span>12:45\s*(a\.?\s*m\.?|p\.?\s*m\.?)?<\/span>/i
   assert.match(html, horaEsperada)
   assert.match(html, /<b>Hora Fin<\/b><span>12:45\s*(a\.?\s*m\.?|p\.?\s*m\.?)?<\/span>/i)
+})
+
+test("MRC proposal v3 Vigencia/Hasta matches Kevin's real example (emitida 24/09/2026 -> 30/09/2026 -> 30/09/2027)", () => {
+  const html = buildMrcPropuestaV3Html(
+    fixture({
+      proposal: {
+        numero_propuesta: 13,
+        emitida_at: '2026-09-24T17:44:00.000Z',
+        agente: { nombre: 'Agent Test', matricula: 'N/A' },
+      },
+    }),
+    {
+      tajyLogoDataUri: 'data:image/svg+xml;base64,TEST',
+      footerSloganDataUri: 'data:image/png;base64,FOOTER',
+    }
+  )
+
+  assert.match(html, /<b>Vigencia<\/b><span>30\/09\/2026<\/span>/)
+  assert.match(html, /<b>Hasta<\/b><span>30\/09\/2027<\/span>/)
+})
+
+test('MRC proposal v3 Vigencia/Hasta rolls over the month when +6 días cruza fin de mes', () => {
+  // 28/09/2026 + 6 días = 04/10/2026 (cruza septiembre->octubre) -> +1 año = 04/10/2027.
+  const html = buildMrcPropuestaV3Html(
+    fixture({
+      proposal: {
+        numero_propuesta: 14,
+        emitida_at: '2026-09-28T15:00:00.000Z',
+        agente: { nombre: 'Agent Test', matricula: 'N/A' },
+      },
+    }),
+    {
+      tajyLogoDataUri: 'data:image/svg+xml;base64,TEST',
+      footerSloganDataUri: 'data:image/png;base64,FOOTER',
+    }
+  )
+
+  assert.match(html, /<b>Vigencia<\/b><span>04\/10\/2026<\/span>/)
+  assert.match(html, /<b>Hasta<\/b><span>04\/10\/2027<\/span>/)
 })
 
 test('MRC proposal v3 renders the reference two-page A4 structure', () => {

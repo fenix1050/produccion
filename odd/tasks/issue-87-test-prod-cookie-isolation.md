@@ -61,8 +61,10 @@ Any additional implementation path must be justified by read-only discovery and 
 ## Route and review workload
 
 - Route: delegated direct. The 4-file mapping and multi-file write triggers used one scoped `gentle-ai-worker`; an independent `gentle-ai-verify` ran after the initial unassessable ASSESS and again after the authorized legacy migration.
-- Forecast: approximately 520 authored changed lines including tests, canonical specs/docs, and this 81-line ODD task record; generated files excluded. This cohesive auth/cookie contract has no identified safe independently mergeable slice.
-- Delivery strategy: user explicitly accepted `size:exception` for one cohesive T-03 PR, approximately 520 authored changed lines (~120 over the 400-line threshold). Rationale for the PR description: this is one authentication contract with no safe functional split; a chain adds coordination without reducing review risk. Do not split or merge/deploy.
+- Forecast: approximately 530 authored changed lines including tests, canonical specs/docs, and this 90-line ODD task record; generated files excluded. This cohesive auth/cookie contract has no identified safe independently mergeable slice.
+- Delivery strategy: user explicitly accepted `size:exception` for one cohesive T-03 PR, approximately 530 authored changed lines (~130 over the 400-line threshold). Rationale for the PR description: this is one authentication contract with no safe functional split; a chain adds coordination without reducing review risk. Do not split or merge/deploy.
+- Work-unit commit: `fcab6275957aa678e9d9eb0974a8adc9982adfb7` — `fix(auth): isolate TEST and PROD session cookies`.
+- Native review: high-risk committed-range candidate approved and acknowledged; lineage `review-623cf43a916e21cb`, target `sha256:939c778f8e9271b8a7088141add7252d62c994275bd1d0af745414e322704f83`.
 
 ## Verification record
 
@@ -73,7 +75,7 @@ Any additional implementation path must be justified by read-only discovery and 
 - GREEN (final): independent verification passed backend 464/464 and root backend 464/464 + frontend 122/122 with process-only loopback placeholders and a nonexistent dotenv path.
 - `PUPPETEER_SKIP_DOWNLOAD=true npm ci` installed 467 lockfile-pinned packages; audit 0 vulnerabilities. Package manifests and locks remain unchanged.
 - Final `git diff --check`, manifest integrity check, and full changed-path Prettier check passed. No real secrets, `.env`, deployed services, or TEST/PROD runtime settings were accessed; those remain unverified.
-- Native ASSESS was unassessable because the authorized task document is untracked; assess the committed candidate before native review. No commit was made.
+- Initial working-tree ASSESS was unassessable while this authorized task document was untracked. After commit, committed-range ASSESS reported high risk; native review approved and was acknowledged for commit `fcab627`. The commit hook reran the root suite (backend 464/464 + frontend 122/122) with process-only loopback placeholders and a nonexistent dotenv path. No deploy, push, or PR yet.
 
 ## Progress
 
@@ -83,5 +85,6 @@ Any additional implementation path must be justified by read-only discovery and 
 - [x] Independent verifier confirmed the core contract and identified the legacy-domain transition gap; user authorized versioned names, legacy deletion-only Domain headers, ignored first old-cookie request, and forced reauthentication.
 - [x] After migration, root tests passed (backend 464/464 + frontend 122/122); four formatting-only corrections were applied.
 - [x] Final independent verifier passed backend/root suites, full changed-path Prettier, diff, manifest integrity, and the approved migration contract; live behavior remains unverified.
-- [x] User accepted one T-03 PR with explicit `size:exception` for the cohesive ~520-line change; include the ~120-line overage and no-safe-split rationale in the PR description.
-- [ ] Stage exact paths, commit the work unit, assess/review the committed candidate, then prepare the separate PR.
+- [x] User accepted one T-03 PR with explicit `size:exception` for the cohesive ~530-line change; include the ~130-line overage and no-safe-split rationale in the PR description.
+- [x] Stage the exact 15 paths, create work-unit commit `fcab627`, assess the committed range, and obtain approved/acknowledged native review.
+- [ ] Obtain any required child-issue authorization, then prepare the one T-03 PR with the accepted size-exception rationale. No merge or deploy.

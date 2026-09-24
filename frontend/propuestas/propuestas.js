@@ -48,6 +48,47 @@ function redirectToLogin() {
   window.location.assign(loginUrl.pathname)
 }
 
+// Mirror of backend/src/schemas/propuestas.schema.js (a test keeps both values equal): the risk
+// description has to fit on page 1 of the Formal Proposal PDF, inside a card that cannot split.
+const DESCRIPCION_DETALLADA_MAX_CARACTERES = 1000
+const DESCRIPCION_DETALLADA_MAX_LINEAS = 15
+
+function medirDescripcion(value) {
+  const normalizado = String(value ?? '')
+    .replace(/\r\n?/g, '\n')
+    .trim()
+  return {
+    caracteres: normalizado.length,
+    lineas: normalizado ? normalizado.split('\n').length : 0,
+  }
+}
+
+function descripcionDetalladaExcedeLimite(value) {
+  const { caracteres, lineas } = medirDescripcion(value)
+  return (
+    caracteres > DESCRIPCION_DETALLADA_MAX_CARACTERES || lineas > DESCRIPCION_DETALLADA_MAX_LINEAS
+  )
+}
+
+function textoContadorDescripcion(value) {
+  const { caracteres, lineas } = medirDescripcion(value)
+  return `${caracteres}/${DESCRIPCION_DETALLADA_MAX_CARACTERES} caracteres · ${lineas}/${DESCRIPCION_DETALLADA_MAX_LINEAS} líneas`
+}
+
+function renderContadorDescripcion(value) {
+  const excedido = descripcionDetalladaExcedeLimite(value)
+  return `<small class="pf-field__counter${excedido ? ' pf-field__counter--excedido' : ''}" data-descripcion-contador aria-live="polite">${escapeHtml(textoContadorDescripcion(value))}${excedido ? ' — acortá la descripción para poder emitir' : ''}</small>`
+}
+
+// Updates only the counter node (no full render) so typing in the textarea keeps focus and caret.
+function actualizarContadorDescripcion(textarea) {
+  const contador = textarea.closest('.pf-field')?.querySelector('[data-descripcion-contador]')
+  if (!contador) return
+  const excedido = descripcionDetalladaExcedeLimite(textarea.value)
+  contador.textContent = `${textoContadorDescripcion(textarea.value)}${excedido ? ' — acortá la descripción para poder emitir' : ''}`
+  contador.classList.toggle('pf-field__counter--excedido', excedido)
+}
+
 function booleanoFormulario(value) {
   if (value === 'true') return true
   if (value === 'false') return false
@@ -67,7 +108,7 @@ function formatearRuc(value) {
   const tieneVerificador = raw.includes('-') || digits.length >= 8
   const cuerpo = tieneVerificador ? digits.slice(0, -1) : digits
   const verificador = tieneVerificador ? digits.slice(-1) : ''
-  return `${fmtGsInput(cuerpo)}${verificador ? `-${verificador}` : ''}`
+  return `${cuerpo}${verificador ? `-${verificador}` : ''}`
 }
 
 function formatearTelefono(value) {
@@ -917,7 +958,7 @@ function renderRevisionPanel(propuesta) {
             valor('tipo_firma'),
             true
           )}
-          <label class="pf-field pf-field--wide"><span>Descripción detallada (opcional)</span><textarea name="descripcion_detallada" rows="3">${escapeHtml(valor('descripcion_detallada'))}</textarea></label>
+          <label class="pf-field pf-field--wide"><span>Descripción detallada (opcional)</span><textarea name="descripcion_detallada" rows="3" maxlength="${DESCRIPCION_DETALLADA_MAX_CARACTERES}">${escapeHtml(valor('descripcion_detallada'))}</textarea>${renderContadorDescripcion(valor('descripcion_detallada'))}</label>
           <label class="pf-field pf-field--wide"><span>Observaciones (opcional)</span><textarea name="observaciones" rows="3">${escapeHtml(valor('observaciones'))}</textarea></label>
         </div>
       </section>
@@ -997,6 +1038,7 @@ function pendientesDelPaso(pendientes, step) {
     if (code.startsWith('asegurado.')) return step === 2
     if (code.startsWith('tomador.') || code.startsWith('representante_legal')) return step === 3
     if (code === 'tipo_firma') return step === 5
+    if (code === 'descripcion_detallada') return step === 5
     return step === 4
   })
 }
@@ -1102,6 +1144,8 @@ function calcularPendientesFor(propuesta, selection = {}) {
       pendientes.push('tomador.identidad_distinta')
   }
   if (!draft.tipo_firma) pendientes.push('tipo_firma')
+  if (descripcionDetalladaExcedeLimite(draft.descripcion_detallada))
+    pendientes.push('descripcion_detallada')
   return [...new Set(pendientes)]
 }
 
@@ -1291,7 +1335,7 @@ function inputField(name, label, value, type = 'text', required = false, options
 }
 
 function phoneField(name, label, value, required = false) {
-  return `<label class="pf-field"><span>${escapeHtml(label)}${required ? requiredMark() : ''}</span><span class="pf-phone"><span class="pf-phone__prefix" aria-hidden="true">🇵🇾 +595</span><input class="field-input" type="text" inputmode="numeric" data-format="telefono" name="${escapeHtml(name)}" value="${escapeHtml(formatearTelefono(value))}" placeholder="981-927-418" ${required ? 'required' : ''} /></span></label>`
+  return `<label class="pf-field"><span>${escapeHtml(label)}${required ? requiredMark() : ''}</span><span class="pf-phone"><span class="pf-phone__prefix" aria-hidden="true">🇵🇾 +595</span><input class="field-input" type="text" inputmode="numeric" data-format="telefono" name="${escapeHtml(name)}" value="${escapeHtml(formatearTelefono(value))}" placeholder="123-456-789" ${required ? 'required' : ''} /></span></label>`
 }
 
 function selectField(name, label, options, selected, required = false) {
@@ -1334,6 +1378,7 @@ function etiquetaPendiente(code) {
     'asegurado.estado_civil': 'Estado civil',
     'asegurado.ocupacion': 'Ocupación',
     tipo_firma: 'Modalidad de firma',
+    descripcion_detallada: 'Descripción detallada (demasiado larga)',
   }
   if (labels[code]) return labels[code]
   if (code.startsWith('carta:')) return 'Carta Oferta apta para continuar'
@@ -1351,6 +1396,7 @@ app.addEventListener('submit', (event) => {
 app.addEventListener('input', (event) => {
   if (!event.target.closest('#propuesta-form')) return
   formatearInputPreservandoCursor(event.target)
+  if (event.target.name === 'descripcion_detallada') actualizarContadorDescripcion(event.target)
   programarAutosave()
 })
 
@@ -1368,10 +1414,16 @@ app.addEventListener('change', (event) => {
     }
     return
   }
+  // Estos campos cambian el readiness del paso 5 (botón Emitir) o el layout del propio
+  // formulario — el resto del listener solo dispara autosave sin re-render, así que sin
+  // este render() el botón queda con el `disabled` calculado antes del cambio hasta la
+  // próxima navegación de paso.
   if (
     event.target.name === 'tipo_persona' ||
     event.target.name === 'documento_tipo' ||
-    event.target.name === 'tomador_igual_asegurado'
+    event.target.name === 'tomador_igual_asegurado' ||
+    event.target.name === 'tipo_firma' ||
+    event.target.name === 'descripcion_detallada'
   ) {
     state.propuesta.draft_json = leerFormulario()
     programarAutosave()

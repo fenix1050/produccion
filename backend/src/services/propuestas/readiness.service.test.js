@@ -167,3 +167,45 @@ test('PF-3 requires the complete approved MRC text set before issuance', () => {
   assert.deepEqual(partial.textosFaltantes, MRC_REQUIRED_TEXT_KEYS.slice(1))
   assert.equal(complete.error, null)
 })
+
+test('readiness marks an over-limit descripcion_detallada as pending so it never reaches the PDF render', async () => {
+  const { DESCRIPCION_DETALLADA_MAX_LINEAS } = await import('../../schemas/propuestas.schema.js')
+  const propuesta = {
+    carta_oferta_id: 7,
+    cotizacion_variante_id: 10,
+    cotizacion_plan_pago_id: 20,
+    draft_json: {
+      partes: {
+        asegurado: {
+          tipo_persona: 'juridica',
+          nombre_razon_social: 'Comercio SA',
+          documento: '80000000-1',
+          direccion: 'Asunción',
+          ciudad: 'Asunción',
+          telefono: '021000000',
+          email: 'comercio@example.com',
+          actividad_economica: 'Comercio',
+        },
+        representante_legal: { nombre: 'Representative Test', documento: '2', cargo: 'Director' },
+      },
+      tipo_firma: 'manual',
+      descripcion_detallada: Array.from(
+        { length: DESCRIPCION_DETALLADA_MAX_LINEAS + 1 },
+        () => 'x'
+      ).join('\n'),
+    },
+  }
+
+  const readiness = evaluarReadiness({ propuesta, carta: { id: 7 } })
+  assert.equal(readiness.listo, false)
+  assert.deepEqual(readiness.pendientes, ['descripcion_detallada'])
+
+  const withinLimit = evaluarReadiness({
+    propuesta: {
+      ...propuesta,
+      draft_json: { ...propuesta.draft_json, descripcion_detallada: 'Local comercial.' },
+    },
+    carta: { id: 7 },
+  })
+  assert.equal(withinLimit.listo, true)
+})

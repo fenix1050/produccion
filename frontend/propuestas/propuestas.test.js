@@ -81,7 +81,7 @@ test('PF-3 required fields and numeric inputs expose the proposal form contract'
   assert.match(moduleSource, /target\.dataset\.format === 'telefono'[\s\S]*?formatearTelefono/)
   assert.match(
     moduleSource,
-    /data-format="telefono" name="\$\{escapeHtml\(name\)\}" value="\$\{escapeHtml\(formatearTelefono\(value\)\)\}" placeholder="981-927-418"/
+    /data-format="telefono" name="\$\{escapeHtml\(name\)\}" value="\$\{escapeHtml\(formatearTelefono\(value\)\)\}" placeholder="123-456-789"/
   )
   assert.match(
     stylesheetSource,
@@ -409,4 +409,47 @@ test('PF-3 emitir() drives the same progress modal look as the cotizador (reused
   // activo — mismo patrón que el keydown de cotizar/events.js para renderModalProgresoCarta().
   assert.match(moduleSource, /if \(!state\.progresoEmision\) return/)
   assert.match(moduleSource, /atraparFoco\(e, modalAbierto\)/)
+})
+
+test('PF-3 descripcion_detallada caps length, shows a live counter, and mirrors the backend limits', async () => {
+  const [moduleSource, stylesheetSource, schemaSource] = await Promise.all([
+    readFile(moduleUrl, 'utf8'),
+    readFile(stylesheetUrl, 'utf8'),
+    readFile(new URL('../../backend/src/schemas/propuestas.schema.js', import.meta.url), 'utf8'),
+  ])
+
+  const backendChars = schemaSource.match(/DESCRIPCION_DETALLADA_MAX_CARACTERES = (\d+)/)?.[1]
+  const backendLines = schemaSource.match(/DESCRIPCION_DETALLADA_MAX_LINEAS = (\d+)/)?.[1]
+  assert.ok(backendChars && backendLines, 'backend limits must exist')
+  assert.match(
+    moduleSource,
+    new RegExp(`DESCRIPCION_DETALLADA_MAX_CARACTERES = ${backendChars}(?!\\d)`)
+  )
+  assert.match(
+    moduleSource,
+    new RegExp(`DESCRIPCION_DETALLADA_MAX_LINEAS = ${backendLines}(?!\\d)`)
+  )
+
+  assert.match(
+    moduleSource,
+    /<textarea name="descripcion_detallada" rows="3" maxlength="\$\{DESCRIPCION_DETALLADA_MAX_CARACTERES\}"/
+  )
+  assert.match(moduleSource, /data-descripcion-contador/)
+  assert.match(moduleSource, /aria-live="polite"/)
+  assert.match(moduleSource, /function actualizarContadorDescripcion\(/)
+  assert.match(
+    moduleSource,
+    /event\.target\.name === 'descripcion_detallada'[\s\S]*?actualizarContadorDescripcion/
+  )
+  assert.match(
+    moduleSource,
+    /if \(descripcionDetalladaExcedeLimite\(draft\.descripcion_detallada\)\)/
+  )
+  assert.match(moduleSource, /code === 'descripcion_detallada'\) return step === 5/)
+  assert.match(moduleSource, /descripcion_detallada: 'Descripción detallada \(demasiado larga\)'/)
+  assert.match(stylesheetSource, /\.pf-field__counter\s*\{/)
+  assert.match(
+    stylesheetSource,
+    /\.pf-field__counter--excedido\s*\{[\s\S]*?color: var\(--tajy-red-a11y\)/
+  )
 })

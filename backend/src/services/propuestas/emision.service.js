@@ -1,4 +1,8 @@
 import * as propuestasRepository from '../../repositories/propuestas.repository.js'
+import {
+  DESCRIPCION_DETALLADA_MAX_CARACTERES,
+  DESCRIPCION_DETALLADA_MAX_LINEAS,
+} from '../../schemas/propuestas.schema.js'
 import { httpError } from '../../utils/http-error.js'
 import { buildPropuestaFormalSnapshot, hashPdf } from '../document-snapshot.service.js'
 import { renderPropuestaMrcPdf } from '../propuesta-pdf.service.js'
@@ -39,6 +43,12 @@ export async function emitirPropuesta(id, { revision }, usuario) {
   })
   if (['PF_TEXTOS_NO_PUBLICADOS', 'PF_TEXTOS_INCOMPLETOS'].includes(readiness.error)) {
     throw httpError(409, 'Faltan textos MRC oficiales publicados para emitir la Propuesta Formal')
+  }
+  if (readiness.readiness?.pendientes?.includes('descripcion_detallada')) {
+    throw httpError(
+      422,
+      `La descripción detallada supera el máximo permitido (${DESCRIPCION_DETALLADA_MAX_CARACTERES} caracteres y ${DESCRIPCION_DETALLADA_MAX_LINEAS} líneas). Acórtela antes de emitir la Propuesta Formal.`
+    )
   }
   if (readiness.error)
     throw httpError(422, 'Faltan datos obligatorios para emitir la Propuesta Formal')

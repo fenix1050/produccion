@@ -1,3 +1,5 @@
+import { descripcionDetalladaExcedeLimite } from '../../schemas/propuestas.schema.js'
+
 export function evaluarReadiness({ propuesta, carta, motivoIneligibilidad = null }) {
   const draft = propuesta?.draft_json ?? {}
   const asegurado = draft.partes?.asegurado ?? {}
@@ -49,6 +51,9 @@ export function evaluarReadiness({ propuesta, carta, motivoIneligibilidad = null
     }
   }
   if (!draft.tipo_firma) pendientes.push('tipo_firma')
+  if (descripcionDetalladaExcedeLimite(draft.descripcion_detallada)) {
+    pendientes.push('descripcion_detallada')
+  }
 
   return {
     informativo: false,

@@ -356,7 +356,7 @@ function fmtHora(value, renderContext) {
   })
 }
 
-function pageHeader(snapshot, pageNumber, logoSrc, headerBackgroundDataUri) {
+function pageHeader(snapshot, pageNumber, logoSrc, headerBackgroundDataUri, totalPages = 2) {
   const { proposal, carta } = snapshot
   const headerStyle = headerBackgroundDataUri
     ? ` style="--v3-header-photo: url(data:image/png;base64,${headerBackgroundDataUri.split(',')[1] ?? ''})"`
@@ -365,7 +365,7 @@ function pageHeader(snapshot, pageNumber, logoSrc, headerBackgroundDataUri) {
     <header class="proposal-header"${headerStyle}>
       <div class="brand">${brandMark(logoSrc)}</div>
       <div class="proposal-title"><strong>Propuesta para seguro</strong><span>Aseguradora Tajy Prop.Coop. S.A.</span></div>
-      <div class="header-page">Página ${pageNumber} de 2</div>
+      <div class="header-page">Página ${pageNumber} de ${totalPages}</div>
     </header>
     <section class="header-meta">
       ${headerCell('document', 'Propuesta N.°', text(proposal.numero_propuesta), 'proposal')}
@@ -495,9 +495,37 @@ function footer(footerSloganDataUri) {
   return `<footer class="proposal-footer"><span class="footer-brand">ASEGURADORA TAJY PROP.COOP. S.A.<small>Protegemos lo que te importa</small></span><span class="footer-version">Ver.: ${escapeHtml(PROPOSAL_DOCUMENT_VERSION)}</span>${slogan}</footer>`
 }
 
+// Only applied to the three-page layout (injected after the shared stylesheet), so the default
+// two-page document stays byte-identical to the approved design. On the last page the collection
+// clause keeps its natural height instead of stretching into an empty box.
+const PROPUESTA_FORMAL_V3_THREE_PAGE_STYLE = `
+  [data-proposal-layout="three-page"] .proposal-page--three .collection-clause,
+  [data-proposal-layout="three-page"] .proposal-page--three [data-fit-section].fit-flex { flex: 0 0 auto; }
+`
+
+// Only applied to the four-page layout. Page 1 has no bottom block, so the risk detail card may
+// grow freely. Pages 2-4 have room to spare, so their cards keep their natural height instead of
+// stretching into large empty boxes (overflow is still caught by the page-overflow check).
+const PROPUESTA_FORMAL_V3_FOUR_PAGE_STYLE = `
+  [data-proposal-layout="four-page"] .page-two-content > .card,
+  [data-proposal-layout="four-page"] .page-two-content [data-fit-section].fit-flex { flex: 0 0 auto; }
+`
+
+// Tall three-page layout: same pages 1-2 as four-page, with four-page's half-empty pages 3 and 4
+// merged into one closing page. Cards keep their natural height, same as four-page.
+const PROPUESTA_FORMAL_V3_THREE_PAGE_TALL_STYLE = `
+  [data-proposal-layout="three-page-tall"] .page-two-content > .card,
+  [data-proposal-layout="three-page-tall"] .page-two-content [data-fit-section].fit-flex { flex: 0 0 auto; }
+`
+
 export function buildMrcPropuestaV3Html(
   snapshot,
-  { tajyLogoDataUri = null, headerBackgroundDataUri = null, footerSloganDataUri = null } = {}
+  {
+    tajyLogoDataUri = null,
+    headerBackgroundDataUri = null,
+    footerSloganDataUri = null,
+    layout = 'two-page',
+  } = {}
 ) {
   const { proposal, carta, commercial, draft, texts = {} } = snapshot
   const insured = draft.partes?.asegurado ?? {}
@@ -520,38 +548,161 @@ export function buildMrcPropuestaV3Html(
     .replace(/CL[ÁA]USULA[\s._-]*ADICIONAL[\s._-]*DE[\s._-]*COBRANZAS/giu, '')
     .trimStart()
 
-  const pageOne = `<article class="proposal-page proposal-page--one">
-    ${pageHeader(snapshot, 1, tajyLogoDataUri, headerBackgroundDataUri)}
-    ${insuredPanel(insured, proposer, draft)}
-    <section class="modality">${icon('shield')}<div><b>Modalidad de la Cobertura Solicitada : 1020</b><small>RIESGOS VARIOS / MULTIRRIESGO COMERCIO</small></div></section>
-    ${riskTable(draft, risk, coverages, totalCoverage, commercial.variante?.prima)}
-    <div class="coverage-bottom">
-      <section class="card declarations-box"><h2 class="section-heading">${icon('document')}Declaraciones</h2><div class="conditions-flow fit-flex fit-box" data-fit-section="declarations" data-fit-target="8" data-fit-minimum="6" data-fit-step="0.2">${declarations}${funds}${authorizations}</div></section>
-    </div>
-    ${footer(footerSloganDataUri)}
-  </article>`
-
-  const pageTwo = `<article class="proposal-page proposal-page--two">
-    ${pageHeader(snapshot, 2, tajyLogoDataUri, headerBackgroundDataUri)}
-    <div class="page-two-content">
-      <section class="card conditions-box"><h2 class="section-heading">${icon('document')}Condiciones</h2><div class="conditions-flow fit-flex fit-box" data-fit-section="conditions" data-fit-target="8" data-fit-minimum="4.6" data-fit-step="0.2">${legalFlowV3(texts.condiciones_mrc?.contenido)}</div></section>
-      <section class="card principal-coverages-box"><h2 class="section-heading">${icon('shield')}Coberturas principales</h2><div class="conditions-flow fit-flex fit-box" data-fit-section="principal-coverages" data-fit-target="8" data-fit-minimum="4.8" data-fit-step="0.2">${principalCoveragesFlowV3(texts.coberturas_principales?.contenido)}</div></section>
-      <div class="payment-row-shell"><div class="payment-row">
+  const insuredSection = insuredPanel(insured, proposer, draft)
+  const modalitySection = `<section class="modality">${icon('shield')}<div><b>Modalidad de la Cobertura Solicitada : 1020</b><small>RIESGOS VARIOS / MULTIRRIESGO COMERCIO</small></div></section>`
+  const riskSection = riskTable(draft, risk, coverages, totalCoverage, commercial.variante?.prima)
+  const declarationsSection = `<section class="card declarations-box"><h2 class="section-heading">${icon('document')}Declaraciones</h2><div class="conditions-flow fit-flex fit-box" data-fit-section="declarations" data-fit-target="8" data-fit-minimum="6" data-fit-step="0.2">${declarations}${funds}${authorizations}</div></section>`
+  const conditionsSection = `<section class="card conditions-box"><h2 class="section-heading">${icon('document')}Condiciones</h2><div class="conditions-flow fit-flex fit-box" data-fit-section="conditions" data-fit-target="8" data-fit-minimum="4.6" data-fit-step="0.2">${legalFlowV3(texts.condiciones_mrc?.contenido)}</div></section>`
+  const principalCoveragesSection = `<section class="card principal-coverages-box"><h2 class="section-heading">${icon('shield')}Coberturas principales</h2><div class="conditions-flow fit-flex fit-box" data-fit-section="principal-coverages" data-fit-target="8" data-fit-minimum="4.8" data-fit-step="0.2">${principalCoveragesFlowV3(texts.coberturas_principales?.contenido)}</div></section>`
+  const paymentSection = `<div class="payment-row-shell"><div class="payment-row">
         <section class="finance-card"><h2>${icon('coins')}Costo del seguro</h2><div class="payment-lines">${paymentLine('Prima:', money(commercial.variante?.prima))}${paymentLine('R.P.F.:', money(payment.rpf_monto))}${paymentLine('Sub-Total:', [commercial.variante?.prima, payment.rpf_monto].every((value) => value != null && value !== '' && Number.isFinite(Number(value))) ? money(Number(commercial.variante.prima) + Number(payment.rpf_monto)) : UNAVAILABLE)}${paymentLine('I.V.A.:', money(payment.iva_monto))}${paymentLine('Costo Total:', money(payment.premio_total), 'cost-total')}</div></section>
         <section class="finance-card"><h2>${icon('card')}Forma de pago</h2><div class="payment-lines">${paymentLine('Modalidad:', text(payment.formas_pago?.nombre_display))}${paymentLine('Inicial:', money(payment.monto_inicial))}${paymentLine('Cuotas:', payment.monto_cuota ? `${text(payment.cantidad_cuotas)} cuotas de ${money(payment.monto_cuota)}` : 'Contado')}</div></section>
         ${debitAuthorization()}
-      </div></div>
-      <section class="card collection-clause"><h2 class="section-heading">${icon('document')}Cláusula adicional de cobranzas</h2><div class="conditions-flow fit-flex fit-box" data-fit-section="collection-clause" data-fit-target="7.5" data-fit-minimum="4.8" data-fit-step="0.1">${legalFlowV3(collectionText)}</div></section>
-      <section class="card observations"><h2 class="section-heading">${icon('comment')}Observaciones</h2><div class="observation-value">${text(draft.observaciones, ' ')}</div><div class="writing-line"></div><div class="writing-line"></div><div class="writing-line"></div></section>
-      <section class="card signatures"><h2 class="section-heading">${icon('pen')}Firmas</h2><div class="signature-grid">${signature('Firma del Agente', proposal.agente?.nombre, [{ label: 'Matrícula Nro.', value: proposal.agente?.matricula }, 'Lugar y Fecha:'])}${signature('Firma del Titular de la Tarjeta', cardholderName, [{ label: 'Nro de C.I.', value: cardholderDocument }])}${signature('Firma del Titular del Seguro', insuredName, [{ label: 'Nro de C.I.', value: insuredDocument }])}</div>${digitalPolicyForm(insured.email)}</section>
+      </div></div>`
+  const collectionSection = `<section class="card collection-clause"><h2 class="section-heading">${icon('document')}Cláusula adicional de cobranzas</h2><div class="conditions-flow fit-flex fit-box" data-fit-section="collection-clause" data-fit-target="7.5" data-fit-minimum="4.8" data-fit-step="0.1">${legalFlowV3(collectionText)}</div></section>`
+  const observationsSection = `<section class="card observations"><h2 class="section-heading">${icon('comment')}Observaciones</h2><div class="observation-value">${text(draft.observaciones, ' ')}</div><div class="writing-line"></div><div class="writing-line"></div><div class="writing-line"></div></section>`
+  const signaturesSection = `<section class="card signatures"><h2 class="section-heading">${icon('pen')}Firmas</h2><div class="signature-grid">${signature('Firma del Agente', proposal.agente?.nombre, [{ label: 'Matrícula Nro.', value: proposal.agente?.matricula }, 'Lugar y Fecha:'])}${signature('Firma del Titular de la Tarjeta', cardholderName, [{ label: 'Nro de C.I.', value: cardholderDocument }])}${signature('Firma del Titular del Seguro', insuredName, [{ label: 'Nro de C.I.', value: insuredDocument }])}</div>${digitalPolicyForm(insured.email)}</section>`
+
+  const threePage = layout === 'three-page'
+  const threePageTall = layout === 'three-page-tall'
+  const fourPage = layout === 'four-page'
+  const totalPages = fourPage ? 4 : threePage || threePageTall ? 3 : 2
+  const header = (pageNumber) =>
+    pageHeader(snapshot, pageNumber, tajyLogoDataUri, headerBackgroundDataUri, totalPages)
+
+  // Two-page (default): the approved design. Three-page: used only when the two-page layout
+  // overflows even at minimum font sizes — whole sections move to a third fixed page, never
+  // splitting a card. Coberturas principales joins Detalle de cobertura on page 1 (same topic,
+  // fills the room Declaraciones leaves), Declaraciones + Condiciones get page 2, and the
+  // payment/collection/observations/signatures block closes on page 3.
+  // Four-page: last fallback, for a risk description too long for the three-page layout's
+  // shared first page. Page 1 holds only the insured data and the risk detail so the description
+  // gets the whole page; the legal texts and closing blocks spread over pages 2-4.
+  // Three-page-tall: tried before four-page — same pages 1-2 as four-page, with the closing
+  // blocks of four-page's pages 3 and 4 merged into a single third page.
+  const riskOnlyPageOne = `<article class="proposal-page proposal-page--one">
+    ${header(1)}
+    ${insuredSection}
+    ${modalitySection}
+    ${riskSection}
+    ${footer(footerSloganDataUri)}
+  </article>`
+  const coveragesAndDeclarationsPageTwo = `<article class="proposal-page proposal-page--two">
+    ${header(2)}
+    <div class="page-two-content">
+      ${principalCoveragesSection}
+      ${declarationsSection}
     </div>
     ${footer(footerSloganDataUri)}
   </article>`
+  const pages = threePageTall
+    ? [
+        riskOnlyPageOne,
+        coveragesAndDeclarationsPageTwo,
+        `<article class="proposal-page proposal-page--three">
+    ${header(3)}
+    <div class="page-two-content">
+      ${conditionsSection}
+      ${paymentSection}
+      ${collectionSection}
+      ${observationsSection}
+      ${signaturesSection}
+    </div>
+    ${footer(footerSloganDataUri)}
+  </article>`,
+      ]
+    : fourPage
+      ? [
+          riskOnlyPageOne,
+          coveragesAndDeclarationsPageTwo,
+          `<article class="proposal-page proposal-page--three">
+    ${header(3)}
+    <div class="page-two-content">
+      ${conditionsSection}
+      ${paymentSection}
+    </div>
+    ${footer(footerSloganDataUri)}
+  </article>`,
+          `<article class="proposal-page proposal-page--four">
+    ${header(4)}
+    <div class="page-two-content">
+      ${collectionSection}
+      ${observationsSection}
+      ${signaturesSection}
+    </div>
+    ${footer(footerSloganDataUri)}
+  </article>`,
+        ]
+      : threePage
+        ? [
+            `<article class="proposal-page proposal-page--one">
+    ${header(1)}
+    ${insuredSection}
+    ${modalitySection}
+    ${riskSection}
+    <div class="coverage-bottom">
+      ${principalCoveragesSection}
+    </div>
+    ${footer(footerSloganDataUri)}
+  </article>`,
+            `<article class="proposal-page proposal-page--two">
+    ${header(2)}
+    <div class="page-two-content">
+      ${declarationsSection}
+      ${conditionsSection}
+    </div>
+    ${footer(footerSloganDataUri)}
+  </article>`,
+            `<article class="proposal-page proposal-page--three">
+    ${header(3)}
+    <div class="page-two-content">
+      ${paymentSection}
+      ${collectionSection}
+      ${observationsSection}
+      ${signaturesSection}
+    </div>
+    ${footer(footerSloganDataUri)}
+  </article>`,
+          ]
+        : [
+            `<article class="proposal-page proposal-page--one">
+    ${header(1)}
+    ${insuredSection}
+    ${modalitySection}
+    ${riskSection}
+    <div class="coverage-bottom">
+      ${declarationsSection}
+    </div>
+    ${footer(footerSloganDataUri)}
+  </article>`,
+            `<article class="proposal-page proposal-page--two">
+    ${header(2)}
+    <div class="page-two-content">
+      ${conditionsSection}
+      ${principalCoveragesSection}
+      ${paymentSection}
+      ${collectionSection}
+      ${observationsSection}
+      ${signaturesSection}
+    </div>
+    ${footer(footerSloganDataUri)}
+  </article>`,
+          ]
+
+  const layoutAttribute =
+    fourPage || threePage || threePageTall ? ` data-proposal-layout="${layout}"` : ''
+  const layoutStyle = fourPage
+    ? PROPUESTA_FORMAL_V3_FOUR_PAGE_STYLE
+    : threePageTall
+      ? PROPUESTA_FORMAL_V3_THREE_PAGE_TALL_STYLE
+      : threePage
+        ? PROPUESTA_FORMAL_V3_THREE_PAGE_STYLE
+        : ''
 
   return `<!doctype html>
-<html lang="es" data-proposal-design="v3" data-proposal-fit="pending">
-<head><meta charset="utf-8" /><style>${PROPUESTA_FORMAL_V3_STYLE}</style></head>
-<body>${pageOne}${pageTwo}</body>
+<html lang="es" data-proposal-design="v3"${layoutAttribute} data-proposal-fit="pending">
+<head><meta charset="utf-8" /><style>${PROPUESTA_FORMAL_V3_STYLE}${layoutStyle}</style></head>
+<body>${pages.join('')}</body>
 <script>
   (() => {
     const isOverflowing = (element) => element.scrollHeight > element.clientHeight + 0.5 || element.scrollWidth > element.clientWidth + 0.5

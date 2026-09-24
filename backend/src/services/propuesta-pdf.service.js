@@ -229,6 +229,30 @@ export async function printV3ProposalPdf(page) {
   )
 }
 
+function isV3LayoutOverflow(error) {
+  return (
+    error instanceof ProposalFitOverflowError ||
+    (error instanceof ProposalFitError && error.fitState === 'error')
+  )
+}
+
+const V3_LAYOUTS = ['two-page', 'three-page', 'three-page-tall', 'four-page']
+
+// Tries the approved two-page layout first; only when a layout overflows even at minimum font
+// sizes (fit overflow or page overflow) it re-renders with the next fixed layout, which moves
+// whole sections instead of splitting cards. Any other fit failure, or an overflow of the last
+// layout, propagates untouched.
+export async function printV3ProposalWithLayoutFallback(page, buildHtml) {
+  for (const [index, layout] of V3_LAYOUTS.entries()) {
+    await page.setContent(buildHtml(layout), { waitUntil: 'load' })
+    try {
+      return await printV3ProposalPdf(page)
+    } catch (error) {
+      if (index === V3_LAYOUTS.length - 1 || !isV3LayoutOverflow(error)) throw error
+    }
+  }
+}
+
 export async function printV2ProposalPdf(page) {
   await waitForProposalV2Ready(page)
   return Buffer.from(
@@ -255,24 +279,25 @@ export async function renderPropuestaMrcPdf(snapshot) {
   const page = await browser.newPage()
   try {
     const logoDataUri = await getTajyLogoDataUri()
-    let html
     if (usesV3Renderer) {
       const headerBackgroundDataUri = await getProposalHeaderBackgroundDataUri()
       const footerSloganDataUri = await getProposalFooterSloganDataUri()
-      html = buildMrcPropuestaV3Html(snapshot, {
-        tajyLogoDataUri: logoDataUri,
-        headerBackgroundDataUri,
-        footerSloganDataUri,
-      })
-    } else if (usesV2Renderer) {
-      html = buildMrcPropuestaV2Html(snapshot, { tajyLogoDataUri: logoDataUri })
-    } else {
-      html = buildMrcPropuestaHtml(snapshot, { tajyLogoDataUri: logoDataUri })
+      return await printV3ProposalWithLayoutFallback(page, (layout) =>
+        buildMrcPropuestaV3Html(snapshot, {
+          tajyLogoDataUri: logoDataUri,
+          headerBackgroundDataUri,
+          footerSloganDataUri,
+          layout,
+        })
+      )
     }
+
+    const html = usesV2Renderer
+      ? buildMrcPropuestaV2Html(snapshot, { tajyLogoDataUri: logoDataUri })
+      : buildMrcPropuestaHtml(snapshot, { tajyLogoDataUri: logoDataUri })
     await page.setContent(html, { waitUntil: 'load' })
 
     if (usesV2Renderer) return await printV2ProposalPdf(page)
-    if (usesV3Renderer) return await printV3ProposalPdf(page)
 
     return await printFittedProposalPdf(page)
   } finally {

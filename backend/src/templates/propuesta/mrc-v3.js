@@ -212,14 +212,18 @@ export const PROPUESTA_FORMAL_V3_STYLE = `
   .modality .icon { width: 8mm; height: 8mm; }
   .modality small { display: block; margin-top: 1mm; font-size: 8.6px; line-height: 1.2; font-weight: 700; }
   .coverage-card { flex: none; height: auto; min-height: 32mm; overflow: visible; }
-  .risk-table { margin: 0 2mm 2mm; border: .7px solid var(--v3-line); border-radius: 1.2mm; overflow: visible; }
+  .risk-table { margin: 0 2mm 2mm; border: .7px solid var(--v3-line); border-radius: 1.2mm; overflow: visible; position: relative; }
+  /* Chromium's print renderer rounds each .risk-columns row's grid independently, so the
+     column dividers drawn per-row (border-right below) can land a fraction of a mm apart
+     between rows in the exported PDF. This overlay draws the 3 dividers once, spanning the
+     whole table height, so they stay pixel-aligned across head/body/total. */
+  .risk-table-lines { position: absolute; inset: 0; pointer-events: none; background-repeat: no-repeat; background-image: linear-gradient(var(--v3-line), var(--v3-line)), linear-gradient(var(--v3-line), var(--v3-line)), linear-gradient(var(--v3-line), var(--v3-line)); background-size: .6px 100%; background-position: 12mm 0, calc(100% - 53mm) 0, calc(100% - 24mm) 0; }
   .coverage-summary { margin: .5mm 0 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 1mm; row-gap: .1mm; list-style: none; font-size: 5.4px; line-height: 1; }
   .coverage-summary-item { min-width: 0; padding: .1mm 0; display: block; border-bottom: .35px solid rgba(219,225,232,.7); }
   .coverage-summary-item:last-child { border-bottom: 0; }
   .coverage-summary-inline { min-width: 0; display: block; overflow-wrap: anywhere; }
   .risk-columns { display: grid; grid-template-columns: 12mm 1fr 29mm 24mm; }
-  .risk-columns > * { min-width: 0; padding: 1.4mm; border-right: .6px solid var(--v3-line); }
-  .risk-columns > *:last-child { border-right: 0; }
+  .risk-columns > * { min-width: 0; padding: 1.4mm; }
   .risk-columns--head { min-height: 7mm; padding: 1mm; align-items: center; text-align: center; color: var(--v3-ink); background: var(--v3-soft); font-size: 7px; font-weight: 700; }
   .risk-columns--body { min-height: 14mm; }
   .risk-columns--body > * { padding: 1mm; }
@@ -510,6 +514,7 @@ function riskTable(draft, risk, coverages, totalCoverage, premium) {
         <div class="risk-columns risk-columns--head"><span>Art.</span><span>Descripción</span><span>Suma Asegurada Gs.</span><span>Prima Gs.</span></div>
         <div class="risk-columns risk-columns--body"><span>1</span><div class="risk-description fit-box" data-fit-section="risk-description" data-fit-target="8" data-fit-minimum="6.4" data-fit-step="0.2"><p>${text(draft.descripcion_detallada)}</p><b>UBICACIÓN DEL RIESGO:</b><br />${text(risk.direccion)}${risk.ciudad ? `, ${text(risk.ciudad)}` : ''}<br /><b>DETALLE DE SUMAS ASEGURADAS:</b>${coverageSummaryV3(coverages)}</div><b>${money(totalCoverage)}</b><b>${money(premium)}</b></div>
         <div class="risk-columns risk-columns--total"><span></span><b>TOTAL SUMA ASEGURADA</b><b>${money(totalCoverage)}</b><b>${money(premium)}</b></div>
+        <div class="risk-table-lines" aria-hidden="true"></div>
       </div>
     </section>`
 }

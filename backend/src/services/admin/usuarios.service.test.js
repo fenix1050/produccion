@@ -50,6 +50,78 @@ test('editarUsuario permite el cambio de rol_id cuando el solicitante es admin',
   assert.equal(resultado.rol_id, ROL_ADMIN.id)
 })
 
+test('editarUsuario rechaza asignar un rol custom con permisos que el solicitante no tiene', async (t) => {
+  const rolDestino = {
+    id: 2,
+    nombre: 'Supervisor',
+    puede_gestionar_usuarios: true,
+    puede_editar_tasas: true,
+  }
+  const solicitante = {
+    ...SOLICITANTE_NO_ADMIN,
+    puede_gestionar_usuarios: true,
+    puede_editar_tasas: false,
+  }
+  mockearRepositorios(t, { rolDestino })
+  const { editarUsuario } = await import('./usuarios.service.js?case=custom-role-superset')
+
+  await assert.rejects(
+    () => editarUsuario(USUARIO_OBJETIVO.id, { rol_id: rolDestino.id }, solicitante),
+    (err) => {
+      assert.equal(err.status, 403)
+      return true
+    }
+  )
+})
+
+test('editarUsuario rechaza que un solicitante no-admin cambie su propio rol', async (t) => {
+  const rolDestino = { id: 2, nombre: 'Otro rol' }
+  const solicitante = { ...SOLICITANTE_NO_ADMIN }
+  mockearRepositorios(t, { usuario: solicitante, rolDestino })
+  const { editarUsuario } = await import('./usuarios.service.js?case=self-role-change')
+
+  await assert.rejects(
+    () => editarUsuario(solicitante.id, { rol_id: rolDestino.id }, solicitante),
+    (err) => {
+      assert.equal(err.status, 403)
+      return true
+    }
+  )
+})
+
+test('editarUsuario permite asignar un rol cuyos permisos son subset del solicitante', async (t) => {
+  const rolDestino = {
+    id: 2,
+    nombre: 'Operador',
+    puede_gestionar_usuarios: true,
+    puede_editar_tasas: false,
+  }
+  const solicitante = {
+    ...SOLICITANTE_NO_ADMIN,
+    puede_gestionar_usuarios: true,
+    puede_editar_tasas: true,
+  }
+  mockearRepositorios(t, { rolDestino })
+  const { editarUsuario } = await import('./usuarios.service.js?case=custom-role-subset')
+
+  const resultado = await editarUsuario(USUARIO_OBJETIVO.id, { rol_id: rolDestino.id }, solicitante)
+  assert.equal(resultado.rol_id, rolDestino.id)
+})
+
+test('editarUsuario permite a admin asignar un rol custom con permisos no propios explícitos', async (t) => {
+  const rolDestino = { id: 2, nombre: 'Supervisor', puede_editar_tasas: true }
+  const solicitanteAdmin = { id: 1, rol: 'admin' }
+  mockearRepositorios(t, { rolDestino })
+  const { editarUsuario } = await import('./usuarios.service.js?case=admin-custom-role')
+
+  const resultado = await editarUsuario(
+    USUARIO_OBJETIVO.id,
+    { rol_id: rolDestino.id },
+    solicitanteAdmin
+  )
+  assert.equal(resultado.rol_id, rolDestino.id)
+})
+
 test('editarUsuario no consulta roles cuando cambios no trae rol_id', async (t) => {
   mockearRepositorios(t, { rolDestino: null })
   const { editarUsuario } = await import('./usuarios.service.js?case=sin-rol-id')

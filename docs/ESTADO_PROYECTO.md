@@ -768,6 +768,8 @@ revisan después):**
   admin cambia el tope de un agente con sesión activa, el hint queda desactualizado hasta el
   próximo login (el backend sí aplica siempre el valor real y fresco, es solo el texto de ayuda).
 
+**Actualización T-02 (2026-09-24):** los cuatro esquemas de cotización ahora exigen exactamente un valor no negativo (`monto` o `porcentaje`) y limitan por separado a 10 los descuentos y los recargos. En MRC e Incendio, cada ajuste manual se valida contra el tope efectivo más restrictivo (plan/usuario); un monto fijo se compara por su equivalente porcentual sobre la prima base, sin tope monetario absoluto, y el exceso devuelve HTTP 422. Se conserva el tope agregado existente y la excepción de `forzadoPorPlan` frente al tope del usuario (sigue aplicando el del plan). El cálculo de Auto no cambia.
+
 ## 20a2. Plan aprobado — permisos parciales de admin por sección (implementado, ver 20a3) — 2026-07-19
 
 Kevin quiere poder darle a un usuario acceso a SOLO una parte del panel admin (ej. Coberturas

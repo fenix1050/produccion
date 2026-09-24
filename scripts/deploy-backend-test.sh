@@ -171,7 +171,7 @@ export BACKEND_IMAGE="$candidate_image"
 
 container_id=$("${compose[@]}" --file "$override" ps -q "$backend_service")
 [[ -n $container_id ]]
-[[ $("${docker[@]}" inspect --format '{{ .Config.Image }}' "$container_id") == "$candidate_image" ]]
+[[ $("${docker[@]}" inspect --format '{{.Config.Image}}' "$container_id") == "$candidate_image" ]]
 [[ $("${docker[@]}" inspect --format '{{ if .State.Health }}{{ .State.Health.Status }}{{ else }}missing{{ end }}' "$container_id") == healthy ]]
 
 env_dump=$("${docker[@]}" inspect --format '{{range .Config.Env}}{{println .}}{{end}}' "$container_id")

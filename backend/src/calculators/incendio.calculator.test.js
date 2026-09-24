@@ -465,6 +465,42 @@ describe('incendio.calculator — mecánica "objeto_riesgo" (Hipotecario / con-s
   })
 })
 
+describe('incendio.calculator — ajustes forzados por plan', () => {
+  const inputBase = {
+    riesgoDatos: {
+      rubro_actividad: 'Bazar',
+      capital_edificio: 500_000_000,
+      capital_contenido: 300_000_000,
+    },
+    rubro: rubroBase(),
+    catalogoRamo: catalogoBase(),
+    tasasRamo: [],
+    usuario: { descuento_maximo_pct: 5 },
+    forzadoPorPlan: true,
+  }
+
+  test('forced discount ignores the user cap but remains subject to the plan cap', async () => {
+    const result = await calcularPrima({
+      ...inputBase,
+      plan: planEdificioContenido({ descuento_maximo: 10 }),
+      descuentos: [{ porcentaje: 10 }],
+    })
+    assert.equal(result.detalle.total_descuentos, 145_000)
+  })
+
+  test('forced discount above the plan cap rejects with 422', async () => {
+    await assert.rejects(
+      () =>
+        calcularPrima({
+          ...inputBase,
+          plan: planEdificioContenido({ descuento_maximo: 10 }),
+          descuentos: [{ porcentaje: 11 }],
+        }),
+      (error) => error.status === 422 && /tope efectivo/i.test(error.message)
+    )
+  })
+})
+
 describe('incendio.calculator — casos de error explícitos', () => {
   test('rechaza si el plan no tiene prima_tecnica_minima confirmada', async () => {
     await assert.rejects(
@@ -503,6 +539,65 @@ describe('incendio.calculator — casos de error explícitos', () => {
         assert.match(err.message, /supera la Responsabilidad Máx\. Cotizable/)
         return true
       }
+    )
+  })
+
+  test('rejects an individual manual fixed adjustment above the effective cap with 422', async () => {
+    await assert.rejects(
+      () =>
+        calcularPrima({
+          plan: planEdificioContenido({ descuento_maximo: 10 }),
+          riesgoDatos: {
+            rubro_actividad: 'Bazar',
+            capital_edificio: 500_000_000,
+            capital_contenido: 300_000_000,
+          },
+          descuentos: [{ monto: 145_001 }],
+          rubro: rubroBase(),
+          catalogoRamo: catalogoBase(),
+          tasasRamo: [],
+        }),
+      (error) => error.status === 422 && /tope efectivo/i.test(error.message)
+    )
+  })
+
+  test('rejects a manual fixed surcharge whose percentage-equivalent exceeds the effective cap', async () => {
+    await assert.rejects(
+      () =>
+        calcularPrima({
+          plan: planEdificioContenido({ recargo_maximo: 10 }),
+          riesgoDatos: {
+            rubro_actividad: 'Bazar',
+            capital_edificio: 500_000_000,
+            capital_contenido: 300_000_000,
+          },
+          usuario: { recargo_maximo_pct: 5 },
+          recargos: [{ monto: 72_501 }],
+          rubro: rubroBase(),
+          catalogoRamo: catalogoBase(),
+          tasasRamo: [],
+        }),
+      (error) => error.status === 422 && /tope efectivo/i.test(error.message)
+    )
+  })
+
+  test('rejects a manual percentage discount above the effective cap with 422', async () => {
+    await assert.rejects(
+      () =>
+        calcularPrima({
+          plan: planEdificioContenido({ descuento_maximo: 10 }),
+          riesgoDatos: {
+            rubro_actividad: 'Bazar',
+            capital_edificio: 500_000_000,
+            capital_contenido: 300_000_000,
+          },
+          usuario: { descuento_maximo_pct: 5 },
+          descuentos: [{ porcentaje: 6 }],
+          rubro: rubroBase(),
+          catalogoRamo: catalogoBase(),
+          tasasRamo: [],
+        }),
+      (error) => error.status === 422 && /tope efectivo/i.test(error.message)
     )
   })
 

@@ -40,8 +40,8 @@ export const cotizarMrcSchema = z.object({
   plan_id: z.number().int(),
   capital_asegurado: z.number().nonnegative(),
   riesgo_datos: riesgoMrcSchema,
-  descuentos: z.array(ajusteSchema).default([]),
-  recargos: z.array(ajusteSchema).default([]),
+  descuentos: z.array(ajusteSchema).max(10).default([]),
+  recargos: z.array(ajusteSchema).max(10).default([]),
   cliente_nombre: z.string().optional(),
   cliente_contacto: z.string().optional(),
   // Cantidad de cuotas elegida por el agente. Si no viene, el service usa plan.cuotas_default.

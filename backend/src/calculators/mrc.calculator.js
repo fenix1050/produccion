@@ -1,7 +1,7 @@
 export { calcularPlanPago } from './utils/plan-pago.js'
 import { httpError } from '../utils/http-error.js'
 
-import { sumarAjustes, topeEfectivo } from './utils/ajustes.js'
+import { sumarAjustes, topeEfectivo, validarAjustesIndividuales } from './utils/ajustes.js'
 import { calcularCostoEdificioYContenido } from './utils/edificio-contenido.js'
 
 // Códigos del catálogo (migración 012_seed_mrc.sql) cuya suma asegurada viene directo
@@ -220,16 +220,15 @@ export async function calcularPrima({
   // descuento viene forzado por `plan.descuento_default` (política de empresa, no discreción
   // del agente), se neutraliza el tope del USUARIO — el techo del PLAN sigue aplicando.
   // Default `false`: cero cambio de comportamiento para cotizaciones existentes.
-  const totalDescuentos = sumarAjustes(
-    descuentos,
-    primaBase,
-    topeEfectivo(plan.descuento_maximo, forzadoPorPlan ? null : usuario?.descuento_maximo_pct)
+  const topeDescuento = topeEfectivo(
+    plan.descuento_maximo,
+    forzadoPorPlan ? null : usuario?.descuento_maximo_pct
   )
-  const totalRecargos = sumarAjustes(
-    recargos,
-    primaBase,
-    topeEfectivo(plan.recargo_maximo, usuario?.recargo_maximo_pct)
-  )
+  const topeRecargo = topeEfectivo(plan.recargo_maximo, usuario?.recargo_maximo_pct)
+  validarAjustesIndividuales(descuentos, primaBase, topeDescuento, 'descuento')
+  validarAjustesIndividuales(recargos, primaBase, topeRecargo, 'recargo')
+  const totalDescuentos = sumarAjustes(descuentos, primaBase, topeDescuento)
+  const totalRecargos = sumarAjustes(recargos, primaBase, topeRecargo)
 
   const prima = primaBase - totalDescuentos + totalRecargos
 

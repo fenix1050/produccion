@@ -173,6 +173,53 @@ describe('mrc.calculator — calcularPrima — Prima Técnica Mínima (piso)', (
   })
 })
 
+describe('mrc.calculator — ajuste manual mayor al tope efectivo', () => {
+  const inputBase = {
+    plan: planBase({ descuento_maximo: 10 }),
+    riesgoDatos: {
+      rubro_actividad: 'Bazar',
+      capital_edificio: 500_000_000,
+      capital_contenido: 300_000_000,
+      coberturas_adicionales: [{ codigo: 'responsabilidad_civil', suma_asegurada: 1_000_000 }],
+    },
+    rubro: rubroBase(),
+    catalogoRamo: catalogoBase(),
+    tasasRamo: tasasBase(),
+  }
+
+  test('rejects a manual fixed discount whose percentage-equivalent exceeds the cap', async () => {
+    await assert.rejects(
+      () => calcularPrima({ ...inputBase, descuentos: [{ monto: 145_201 }] }),
+      (error) => error.status === 422 && /tope efectivo/i.test(error.message)
+    )
+  })
+
+  test('rejects a manual percentage discount above the cap instead of clamping', async () => {
+    await assert.rejects(
+      () => calcularPrima({ ...inputBase, descuentos: [{ porcentaje: 11 }] }),
+      (error) => error.status === 422 && /tope efectivo/i.test(error.message)
+    )
+  })
+
+  test('accepts a fixed discount equal to the percentage-equivalent cap', async () => {
+    const result = await calcularPrima({ ...inputBase, descuentos: [{ monto: 145_200 }] })
+    assert.equal(result.detalle.total_descuentos, 145_200)
+  })
+
+  test('rejects a manual percentage surcharge above the effective cap with 422', async () => {
+    await assert.rejects(
+      () =>
+        calcularPrima({
+          ...inputBase,
+          plan: planBase({ recargo_maximo: 20 }),
+          usuario: { recargo_maximo_pct: 8 },
+          recargos: [{ porcentaje: 9 }],
+        }),
+      (error) => error.status === 422 && /tope efectivo/i.test(error.message)
+    )
+  })
+})
+
 // Cambio SDD `mrc-plan-descuento-fijo` (design.md Decisión 2): `forzadoPorPlan` neutraliza el
 // tope del USUARIO (no el del plan) al resolver `topeEfectivo(plan.descuento_maximo, ...)` en
 // `calcularPrima`. Mismos datos de capital que "capital alto" arriba → primaCalculada = 1.452.000
@@ -204,19 +251,37 @@ describe('mrc.calculator — calcularPrima — forzadoPorPlan neutraliza el tope
     assert.equal(resultado.detalle.total_descuentos, 145_200)
   })
 
-  test('forzadoPorPlan=false (default, no-regresión): el mismo 10% SÍ se clampea al 5% del usuario', async () => {
-    const resultado = await calcularPrima({
-      plan: PLAN_CON_TOPE_10,
-      riesgoDatos: RIESGO_DATOS_BASE,
-      descuentos: [{ descripcion: 'Descuento agente', porcentaje: 10 }],
-      usuario: { descuento_maximo_pct: 5 },
-      rubro: rubroBase(),
-      catalogoRamo: catalogoBase(),
-      tasasRamo: tasasBase(),
-    })
+  test('forzadoPorPlan=true sigue sujeto al tope del plan', async () => {
+    await assert.rejects(
+      () =>
+        calcularPrima({
+          plan: PLAN_CON_TOPE_10,
+          riesgoDatos: RIESGO_DATOS_BASE,
+          descuentos: [{ descripcion: 'Descuento del plan', porcentaje: 11 }],
+          usuario: { descuento_maximo_pct: 5 },
+          forzadoPorPlan: true,
+          rubro: rubroBase(),
+          catalogoRamo: catalogoBase(),
+          tasasRamo: tasasBase(),
+        }),
+      (error) => error.status === 422 && /tope efectivo/i.test(error.message)
+    )
+  })
 
-    // primaBase = 1.452.000 → tope efectivo = min(10, 5) = 5% = 72.600, el 10% pedido se clampea.
-    assert.equal(resultado.detalle.total_descuentos, 72_600)
+  test('forzadoPorPlan=false: manual discount above the effective user cap rejects instead of clamping', async () => {
+    await assert.rejects(
+      () =>
+        calcularPrima({
+          plan: PLAN_CON_TOPE_10,
+          riesgoDatos: RIESGO_DATOS_BASE,
+          descuentos: [{ descripcion: 'Descuento agente', porcentaje: 10 }],
+          usuario: { descuento_maximo_pct: 5 },
+          rubro: rubroBase(),
+          catalogoRamo: catalogoBase(),
+          tasasRamo: tasasBase(),
+        }),
+      (error) => error.status === 422 && /tope efectivo/i.test(error.message)
+    )
   })
 })
 
@@ -331,30 +396,30 @@ describe('mrc.calculator — tope efectivo de descuento/recargo (MIN(plan, usuar
   }
   // primaBase confirmada en el test de piso de arriba = 1.452.000
 
-  test('el tope del USUARIO es más estricto que el del plan y gana', async () => {
-    const resultado = await calcularPrima({
-      plan: planBase({ descuento_maximo: 20 }),
-      usuario: { descuento_maximo_pct: 8 },
-      descuentos: [{ porcentaje: 15 }],
-      ...primaBaseAlta,
-    })
-    // topeEfectivo(20, 8) = 8 → topeMonto = 1.452.000*0.08 = 116.160
-    // solicitado 15% = 217.800, pero el tope de 116.160 (usuario) es más chico → gana el usuario
-    assert.equal(resultado.detalle.total_descuentos, 116_160)
-    assert.equal(resultado.prima, 1_452_000 - 116_160)
+  test('el tope efectivo del USUARIO rechaza un ajuste manual individual que lo supera', async () => {
+    await assert.rejects(
+      () =>
+        calcularPrima({
+          plan: planBase({ descuento_maximo: 20 }),
+          usuario: { descuento_maximo_pct: 8 },
+          descuentos: [{ porcentaje: 15 }],
+          ...primaBaseAlta,
+        }),
+      (error) => error.status === 422 && /tope efectivo/i.test(error.message)
+    )
   })
 
-  test('el tope del PLAN es más estricto que el del usuario y gana', async () => {
-    const resultado = await calcularPrima({
-      plan: planBase({ descuento_maximo: 6 }),
-      usuario: { descuento_maximo_pct: 25 },
-      descuentos: [{ porcentaje: 15 }],
-      ...primaBaseAlta,
-    })
-    // topeEfectivo(6, 25) = 6 → topeMonto = 1.452.000*0.06 = 87.120
-    // solicitado 15% = 217.800, pero el tope de 87.120 (plan) es más chico → gana el plan
-    assert.equal(resultado.detalle.total_descuentos, 87_120)
-    assert.equal(resultado.prima, 1_452_000 - 87_120)
+  test('el tope efectivo del PLAN rechaza un ajuste manual individual que lo supera', async () => {
+    await assert.rejects(
+      () =>
+        calcularPrima({
+          plan: planBase({ descuento_maximo: 6 }),
+          usuario: { descuento_maximo_pct: 25 },
+          descuentos: [{ porcentaje: 15 }],
+          ...primaBaseAlta,
+        }),
+      (error) => error.status === 422 && /tope efectivo/i.test(error.message)
+    )
   })
 })
 

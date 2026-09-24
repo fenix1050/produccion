@@ -22,8 +22,8 @@ export const cotizarAutoSchema = z.object({
   plan_id: z.number().int(),
   capital_asegurado: z.number().positive(),
   riesgo_datos: riesgoAutoSchema,
-  descuentos: z.array(ajusteSchema).default([]),
-  recargos: z.array(ajusteSchema).default([]),
+  descuentos: z.array(ajusteSchema).max(10).default([]),
+  recargos: z.array(ajusteSchema).max(10).default([]),
   cliente_nombre: z.string().optional(),
   cliente_contacto: z.string().optional(),
 })

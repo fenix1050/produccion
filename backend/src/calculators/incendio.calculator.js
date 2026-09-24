@@ -1,7 +1,7 @@
 export { calcularPlanPago } from './utils/plan-pago.js'
 import { httpError } from '../utils/http-error.js'
 
-import { sumarAjustes, topeEfectivo } from './utils/ajustes.js'
+import { sumarAjustes, topeEfectivo, validarAjustesIndividuales } from './utils/ajustes.js'
 import { calcularCostoEdificioYContenido } from './utils/edificio-contenido.js'
 
 const NOMBRE_PLAN_MAQUINARIA = 'MAQUINARIA BASICO'
@@ -118,16 +118,15 @@ export async function calcularPrima({
   // `forzadoPorPlan` (cambio SDD `mrc-plan-descuento-fijo`, mismo one-liner que
   // mrc.calculator.js por simetría — inerte hoy, ningún plan de Incendio seedea
   // `descuento_default` todavía). Default `false`: cero cambio de comportamiento.
-  const totalDescuentos = sumarAjustes(
-    descuentos,
-    primaBase,
-    topeEfectivo(plan.descuento_maximo, forzadoPorPlan ? null : usuario?.descuento_maximo_pct)
+  const topeDescuento = topeEfectivo(
+    plan.descuento_maximo,
+    forzadoPorPlan ? null : usuario?.descuento_maximo_pct
   )
-  const totalRecargos = sumarAjustes(
-    recargos,
-    primaBase,
-    topeEfectivo(plan.recargo_maximo, usuario?.recargo_maximo_pct)
-  )
+  const topeRecargo = topeEfectivo(plan.recargo_maximo, usuario?.recargo_maximo_pct)
+  validarAjustesIndividuales(descuentos, primaBase, topeDescuento, 'descuento')
+  validarAjustesIndividuales(recargos, primaBase, topeRecargo, 'recargo')
+  const totalDescuentos = sumarAjustes(descuentos, primaBase, topeDescuento)
+  const totalRecargos = sumarAjustes(recargos, primaBase, topeRecargo)
 
   const prima = primaBase - totalDescuentos + totalRecargos
 

@@ -104,7 +104,8 @@ function configureDependencies(t, overrides = {}) {
   })
   t.mock.module('./readiness.service.js', {
     namedExports: {
-      asegurarReadinessEmision: () => ({ readiness: { listo: true }, error: null }),
+      asegurarReadinessEmision:
+        overrides.asegurarReadinessEmision ?? (() => ({ readiness: { listo: true }, error: null })),
       MRC_REQUIRED_TEXT_KEYS: ['declaraciones_generales'],
     },
   })
@@ -277,4 +278,25 @@ test('text listing reports when the complete approved source set enables issuanc
   assert.deepEqual(result.claves_requeridas, requiredKeys)
   assert.deepEqual(result.faltantes, [])
   assert.equal(result.emision_habilitada, true)
+})
+
+test('emission rejects an over-limit descripcion_detallada with a clear 422 before rendering', async (t) => {
+  const calls = configureDependencies(t, {
+    asegurarReadinessEmision: () => ({
+      readiness: { listo: false, pendientes: ['descripcion_detallada'] },
+      error: 'PF_DATOS_INCOMPLETOS',
+    }),
+  })
+  const { emitirPropuesta } = await import('./emision.service.js?case=descripcion-larga')
+
+  await assert.rejects(
+    () => emitirPropuesta(15, { revision: 3 }, { id: 4, rol: 'agente', nombre: 'Agent' }),
+    (error) =>
+      error.status === 422 &&
+      /descripción detallada/i.test(error.publicMessage) &&
+      /caracteres/.test(error.publicMessage) &&
+      /líneas/.test(error.publicMessage)
+  )
+  assert.deepEqual(calls.start, [])
+  assert.deepEqual(calls.render, [])
 })

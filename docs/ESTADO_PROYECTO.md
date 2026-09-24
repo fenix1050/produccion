@@ -3368,3 +3368,40 @@ hoy que el módulo completo de Propuestas Formales (`/propuestas-listado/`, `/pr
 a producción** — `https://cotizador.lat/propuestas-listado/` responde 404, y el frontend de PROD está
 desactualizado a una versión del 2026-09-02, anterior a que este módulo existiera. Solo vive en TEST por
 ahora. Ningún documento lo afirmaba explícitamente hasta esta entrada.
+
+## 103. Propuesta Formal MRC: layouts fijos de 2/3/4 páginas + tope de descripción + ajustes del formulario (2026-09-23 a 2026-09-24)
+
+**Por qué:** emitir la propuesta N°13 en TEST (carta id=12, 11 coberturas + descripción de riesgo de 5
+líneas) daba 500 (`PF_PDF_FIT_OVERFLOW`, caja de Declaraciones en la página 1), aun después del fix del
+mismo día (sección anterior / Engram #1696). Kevin confirmó que ese volumen de contenido es real, no un
+caso de prueba.
+
+**Qué se hizo:**
+
+- **PDF v3 por layouts fijos y sección completa** (`backend/src/templates/propuesta/mrc-v3.js`,
+  `backend/src/services/propuesta-pdf.service.js`): el diseño aprobado de 2 páginas no cambia (HTML
+  byte-idéntico al anterior). Si desborda aun al mínimo de letra, se re-renderiza con layouts fijos
+  alternativos, en orden: `three-page` (P1 con Coberturas principales; P2 Declaraciones + Condiciones) →
+  `three-page-tall` (P1 solo detalle de cobertura, para descripciones largas) → `four-page` (red de
+  seguridad). Nunca se parte una tarjeta entre páginas. v1/v2 intactos.
+- **Enfoque descartado:** paginado libre con Paged.js. Se implementó y se probó, pero partía tarjetas
+  (Declaraciones cortada con el borde abierto) y dejaba huecos de media página; Kevin lo rechazó ("se sigue
+  viendo mal y roto por partes"). Detalle del recorrido completo en
+  `odd/tasks/propuesta-formal-pdf-paginas-dinamicas.md`.
+- **Tope de `descripcion_detallada`: 1000 caracteres y 15 líneas** (constantes en
+  `backend/src/schemas/propuestas.schema.js`, validado con Zod; CRLF cuenta como 1). Calibrado con el peor
+  caso real de TEST (14 coberturas, plan 7 "COMERCIO PROTECCION TOTAL"): la P1 del layout alto admite ~27
+  renglones y el texto más desfavorable dentro del tope ocupa ~22. Un borrador viejo más largo queda como
+  pendiente en readiness y emitir responde 422 con mensaje claro en vez de 500. En el formulario:
+  `maxlength` y contador en vivo de caracteres/líneas.
+- **Formulario de Propuesta Formal** (`frontend/propuestas/propuestas.js`): el R.U.C. ya no lleva puntos de
+  miles (`80025456-9`; la C.I. los conserva); placeholder de teléfono genérico `123-456-789`; el botón
+  "Emitir" se habilita al elegir el tipo de firma sin recargar la página (faltaba un `render()` en el
+  listener de `change` para `tipo_firma`).
+
+**Cómo se verificó:** backend 434/434 y frontend 120/120 en verde. PDFs reales renderizados con los
+snapshots de TEST y revisados página por página: caso liviano en 2 páginas (sin cambios), propuesta N°13 en
+3 páginas sin error, peor caso con la descripción en el tope en 3 páginas (layout alto). Kevin aprobó
+visualmente los PDFs.
+
+**Pendiente:** deploy a TEST y verificación de la emisión real desde la UI.

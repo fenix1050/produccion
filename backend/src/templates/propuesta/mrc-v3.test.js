@@ -685,3 +685,161 @@ test('MRC proposal v3 applies the fixed-page density tokens without clipping cov
   assert.match(html, /\.signature-space \{[^}]*height: 8mm;/)
   assert.match(html, /\.proposal-eco-row \{[^}]*min-height: 10mm;[^}]*padding: 1\.5mm 2mm;/)
 })
+
+test('MRC proposal v3 two-page layout is the default and byte-identical when requested explicitly', () => {
+  const options = {
+    tajyLogoDataUri: 'data:image/svg+xml;base64,TEST',
+    footerSloganDataUri: 'data:image/png;base64,FOOTER',
+  }
+  const defaultHtml = buildMrcPropuestaV3Html(fixture(), options)
+  const twoPageHtml = buildMrcPropuestaV3Html(fixture(), { ...options, layout: 'two-page' })
+
+  assert.equal(twoPageHtml, defaultHtml)
+  assert.equal((defaultHtml.match(/<article class="proposal-page/g) ?? []).length, 2)
+  assert.doesNotMatch(defaultHtml, /data-proposal-layout/)
+})
+
+test('MRC proposal v3 three-page layout moves whole sections into three fixed pages', () => {
+  const html = buildMrcPropuestaV3Html(fixture(), {
+    tajyLogoDataUri: 'data:image/svg+xml;base64,TEST',
+    footerSloganDataUri: 'data:image/png;base64,FOOTER',
+    layout: 'three-page',
+  })
+
+  assert.match(html, /<html lang="es" data-proposal-design="v3" data-proposal-layout="three-page"/)
+  const articles = html.match(/<article class="proposal-page[\s\S]*?<\/article>/g) ?? []
+  assert.equal(articles.length, 3)
+  articles.forEach((article, index) => {
+    assert.match(article, new RegExp(`Página ${index + 1} de 3`))
+    assert.equal((article.match(/<footer class="proposal-footer">/g) ?? []).length, 1)
+  })
+  assert.doesNotMatch(html, /de 2</)
+
+  const heading = (label, tag = 'h2') => `</svg></span>${label}</${tag}>`
+  const sectionMarkers = [
+    [heading('Datos del asegurado', 'h1'), 0],
+    ['<b>Modalidad de la Cobertura Solicitada : 1020</b>', 0],
+    [heading('Detalle de cobertura'), 0],
+    [heading('Coberturas principales'), 0],
+    [heading('Declaraciones'), 1],
+    [heading('Condiciones'), 1],
+    [heading('Costo del seguro'), 2],
+    [heading('Forma de pago'), 2],
+    [heading('Autorización de débito'), 2],
+    [heading('Cláusula adicional de cobranzas'), 2],
+    [heading('Observaciones'), 2],
+    [heading('Firmas'), 2],
+  ]
+  for (const [marker, pageIndex] of sectionMarkers) {
+    assert.equal(html.split(marker).length - 1, 1, `${marker} must appear exactly once`)
+    assert.ok(articles[pageIndex].includes(marker), `${marker} must be on page ${pageIndex + 1}`)
+  }
+
+  for (const section of [
+    'risk-description',
+    'declarations',
+    'conditions',
+    'principal-coverages',
+    'collection-clause',
+  ]) {
+    assert.equal((html.match(new RegExp(`data-fit-section="${section}"`, 'g')) ?? []).length, 1)
+  }
+})
+
+test('MRC proposal v3 four-page layout gives page one only to the risk detail and never splits a section', () => {
+  const html = buildMrcPropuestaV3Html(fixture(), {
+    tajyLogoDataUri: 'data:image/svg+xml;base64,TEST',
+    footerSloganDataUri: 'data:image/png;base64,FOOTER',
+    layout: 'four-page',
+  })
+
+  assert.match(html, /<html lang="es" data-proposal-design="v3" data-proposal-layout="four-page"/)
+  const articles = html.match(/<article class="proposal-page[\s\S]*?<\/article>/g) ?? []
+  assert.equal(articles.length, 4)
+  articles.forEach((article, index) => {
+    assert.match(article, new RegExp(`Página ${index + 1} de 4`))
+    assert.equal((article.match(/<footer class="proposal-footer">/g) ?? []).length, 1)
+  })
+  assert.doesNotMatch(html, /de [23]</)
+
+  const heading = (label, tag = 'h2') => `</svg></span>${label}</${tag}>`
+  const sectionMarkers = [
+    [heading('Datos del asegurado', 'h1'), 0],
+    ['<b>Modalidad de la Cobertura Solicitada : 1020</b>', 0],
+    [heading('Detalle de cobertura'), 0],
+    [heading('Coberturas principales'), 1],
+    [heading('Declaraciones'), 1],
+    [heading('Condiciones'), 2],
+    [heading('Costo del seguro'), 2],
+    [heading('Forma de pago'), 2],
+    [heading('Autorización de débito'), 2],
+    [heading('Cláusula adicional de cobranzas'), 3],
+    [heading('Observaciones'), 3],
+    [heading('Firmas'), 3],
+  ]
+  for (const [marker, pageIndex] of sectionMarkers) {
+    assert.equal(html.split(marker).length - 1, 1, `${marker} must appear exactly once`)
+    assert.ok(articles[pageIndex].includes(marker), `${marker} must be on page ${pageIndex + 1}`)
+  }
+
+  for (const section of [
+    'risk-description',
+    'declarations',
+    'conditions',
+    'principal-coverages',
+    'collection-clause',
+  ]) {
+    assert.equal((html.match(new RegExp(`data-fit-section="${section}"`, 'g')) ?? []).length, 1)
+  }
+})
+
+test('MRC proposal v3 tall three-page layout keeps page one for the risk detail and closes on page three', () => {
+  const html = buildMrcPropuestaV3Html(fixture(), {
+    tajyLogoDataUri: 'data:image/svg+xml;base64,TEST',
+    footerSloganDataUri: 'data:image/png;base64,FOOTER',
+    layout: 'three-page-tall',
+  })
+
+  assert.match(
+    html,
+    /<html lang="es" data-proposal-design="v3" data-proposal-layout="three-page-tall"/
+  )
+  const articles = html.match(/<article class="proposal-page[\s\S]*?<\/article>/g) ?? []
+  assert.equal(articles.length, 3)
+  articles.forEach((article, index) => {
+    assert.match(article, new RegExp(`Página ${index + 1} de 3`))
+    assert.equal((article.match(/<footer class="proposal-footer">/g) ?? []).length, 1)
+  })
+  assert.doesNotMatch(html, /de [24]</)
+
+  const heading = (label, tag = 'h2') => `</svg></span>${label}</${tag}>`
+  const sectionMarkers = [
+    [heading('Datos del asegurado', 'h1'), 0],
+    ['<b>Modalidad de la Cobertura Solicitada : 1020</b>', 0],
+    [heading('Detalle de cobertura'), 0],
+    [heading('Coberturas principales'), 1],
+    [heading('Declaraciones'), 1],
+    [heading('Condiciones'), 2],
+    [heading('Costo del seguro'), 2],
+    [heading('Forma de pago'), 2],
+    [heading('Autorización de débito'), 2],
+    [heading('Cláusula adicional de cobranzas'), 2],
+    [heading('Observaciones'), 2],
+    [heading('Firmas'), 2],
+  ]
+  for (const [marker, pageIndex] of sectionMarkers) {
+    assert.equal(html.split(marker).length - 1, 1, `${marker} must appear exactly once`)
+    assert.ok(articles[pageIndex].includes(marker), `${marker} must be on page ${pageIndex + 1}`)
+  }
+  assert.ok(!articles[0].includes(heading('Coberturas principales')))
+
+  for (const section of [
+    'risk-description',
+    'declarations',
+    'conditions',
+    'principal-coverages',
+    'collection-clause',
+  ]) {
+    assert.equal((html.match(new RegExp(`data-fit-section="${section}"`, 'g')) ?? []).length, 1)
+  }
+})

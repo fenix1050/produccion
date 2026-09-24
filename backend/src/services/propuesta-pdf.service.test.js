@@ -9,6 +9,7 @@ import {
   printFittedProposalPdf,
   printV2ProposalPdf,
   printV3ProposalPdf,
+  printV3ProposalWithLayoutFallback,
   ProposalFitError,
   ProposalFitOverflowError,
   ProposalRendererRevisionError,
@@ -355,4 +356,133 @@ test('proposal PDF renderer rejects failed and timed-out fitting with bounded er
       error.fitState === 'timeout' &&
       !error.message.includes('CONFIDENTIAL LEGAL TEXT')
   )
+})
+
+function layoutFallbackPage(statusByLayout) {
+  const setContents = []
+  let current = null
+  return {
+    setContents,
+    setContent: async (html) => {
+      setContents.push(html)
+      current = html
+    },
+    waitForFunction: async () => {},
+    evaluate: async () => statusByLayout[current],
+    pdf: async () => Buffer.from(`pdf:${current}`),
+  }
+}
+
+const overflowFitMetrics = () => {
+  const metrics = normalFitMetrics()
+  metrics[1] = { ...metrics[1], final: metrics[1].minimum, status: 'overflow', overflow: true }
+  return metrics
+}
+
+const buildLayoutHtml = (layout) => layout
+
+test('v3 layout fallback keeps the two-page layout when it fits', async () => {
+  const page = layoutFallbackPage({
+    'two-page': { status: 'complete', fitMetrics: normalFitMetrics() },
+  })
+
+  assert.deepEqual(
+    await printV3ProposalWithLayoutFallback(page, buildLayoutHtml),
+    Buffer.from('pdf:two-page')
+  )
+  assert.deepEqual(page.setContents, ['two-page'])
+})
+
+test('v3 layout fallback re-renders with three fixed pages when two pages overflow', async () => {
+  const page = layoutFallbackPage({
+    'two-page': { status: 'complete', fitMetrics: overflowFitMetrics() },
+    'three-page': { status: 'complete', fitMetrics: normalFitMetrics() },
+  })
+
+  assert.deepEqual(
+    await printV3ProposalWithLayoutFallback(page, buildLayoutHtml),
+    Buffer.from('pdf:three-page')
+  )
+  assert.deepEqual(page.setContents, ['two-page', 'three-page'])
+})
+
+test('v3 layout fallback also retries when the two-page layout reports page overflow', async () => {
+  const page = layoutFallbackPage({
+    'two-page': { status: 'error', fitMetrics: null },
+    'three-page': { status: 'complete', fitMetrics: normalFitMetrics() },
+  })
+
+  assert.deepEqual(
+    await printV3ProposalWithLayoutFallback(page, buildLayoutHtml),
+    Buffer.from('pdf:three-page')
+  )
+})
+
+test('v3 layout fallback re-renders with the tall three-page layout when three pages overflow', async () => {
+  const page = layoutFallbackPage({
+    'two-page': { status: 'complete', fitMetrics: overflowFitMetrics() },
+    'three-page': { status: 'error', fitMetrics: null },
+    'three-page-tall': { status: 'complete', fitMetrics: normalFitMetrics() },
+  })
+
+  assert.deepEqual(
+    await printV3ProposalWithLayoutFallback(page, buildLayoutHtml),
+    Buffer.from('pdf:three-page-tall')
+  )
+  assert.deepEqual(page.setContents, ['two-page', 'three-page', 'three-page-tall'])
+})
+
+test('v3 layout fallback uses four fixed pages only when the tall three-page layout overflows', async () => {
+  const page = layoutFallbackPage({
+    'two-page': { status: 'complete', fitMetrics: overflowFitMetrics() },
+    'three-page': { status: 'error', fitMetrics: null },
+    'three-page-tall': { status: 'error', fitMetrics: null },
+    'four-page': { status: 'complete', fitMetrics: normalFitMetrics() },
+  })
+
+  assert.deepEqual(
+    await printV3ProposalWithLayoutFallback(page, buildLayoutHtml),
+    Buffer.from('pdf:four-page')
+  )
+  assert.deepEqual(page.setContents, ['two-page', 'three-page', 'three-page-tall', 'four-page'])
+})
+
+test('v3 layout fallback propagates overflow when four pages still do not fit', async () => {
+  const page = layoutFallbackPage({
+    'two-page': { status: 'complete', fitMetrics: overflowFitMetrics() },
+    'three-page': { status: 'complete', fitMetrics: overflowFitMetrics() },
+    'three-page-tall': { status: 'complete', fitMetrics: overflowFitMetrics() },
+    'four-page': { status: 'complete', fitMetrics: overflowFitMetrics() },
+  })
+
+  await assert.rejects(
+    () => printV3ProposalWithLayoutFallback(page, buildLayoutHtml),
+    (error) => error instanceof ProposalFitOverflowError
+  )
+  assert.deepEqual(page.setContents, ['two-page', 'three-page', 'three-page-tall', 'four-page'])
+})
+
+test('v3 layout fallback does not retry a non-overflow failure of the three-page layout', async () => {
+  const page = layoutFallbackPage({
+    'two-page': { status: 'complete', fitMetrics: overflowFitMetrics() },
+    'three-page': { status: 'complete', fitMetrics: null },
+  })
+
+  await assert.rejects(
+    () => printV3ProposalWithLayoutFallback(page, buildLayoutHtml),
+    (error) => error instanceof ProposalFitError && error.fitState === 'missing-metrics'
+  )
+  assert.deepEqual(page.setContents, ['two-page', 'three-page'])
+})
+
+test('v3 layout fallback does not retry non-overflow fit failures', async () => {
+  const page = layoutFallbackPage({
+    'two-page': { status: 'complete', fitMetrics: null },
+  })
+
+  await assert.rejects(
+    () => printV3ProposalWithLayoutFallback(page, buildLayoutHtml),
+    (error) => error instanceof ProposalFitError && error.fitState === 'missing-metrics'
+  )
+  assert.deepEqual(page.setContents, ['two-page'])
 })

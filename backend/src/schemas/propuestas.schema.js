@@ -1,6 +1,40 @@
 import { z } from 'zod'
 
 const texto = (max) => z.string().trim().max(max).optional()
+
+// The risk description lives inside the "Detalle de cobertura" card on page 1 of the Formal
+// Proposal PDF, which cannot be split across pages. Measured on the four-page layout (the last
+// fallback) with the worst real case (14 coverages, long address): 27 rendered rows and ~130
+// characters per row. With these limits the worst admissible text takes ~22 rows, leaving a
+// safety margin. frontend/propuestas/propuestas.js mirrors both values (a test keeps them equal).
+export const DESCRIPCION_DETALLADA_MAX_CARACTERES = 1000
+export const DESCRIPCION_DETALLADA_MAX_LINEAS = 15
+
+const normalizarSaltos = (value) => String(value ?? '').replace(/\r\n?/g, '\n')
+
+export function contarLineas(value) {
+  const normalizado = normalizarSaltos(value).trim()
+  return normalizado ? normalizado.split('\n').length : 0
+}
+
+export function descripcionDetalladaExcedeLimite(value) {
+  const normalizado = normalizarSaltos(value).trim()
+  return (
+    normalizado.length > DESCRIPCION_DETALLADA_MAX_CARACTERES ||
+    contarLineas(normalizado) > DESCRIPCION_DETALLADA_MAX_LINEAS
+  )
+}
+
+const descripcionDetalladaSchema = z
+  .string()
+  .transform((value) => normalizarSaltos(value).trim())
+  .refine((value) => value.length <= DESCRIPCION_DETALLADA_MAX_CARACTERES, {
+    message: `La descripción detallada admite como máximo ${DESCRIPCION_DETALLADA_MAX_CARACTERES} caracteres.`,
+  })
+  .refine((value) => contarLineas(value) <= DESCRIPCION_DETALLADA_MAX_LINEAS, {
+    message: `La descripción detallada admite como máximo ${DESCRIPCION_DETALLADA_MAX_LINEAS} líneas.`,
+  })
+  .optional()
 const jsonScalar = z.union([z.string(), z.number(), z.boolean(), z.null()])
 const jsonValue = z.lazy(() => z.union([jsonScalar, z.array(jsonValue), z.record(jsonValue)]))
 
@@ -65,7 +99,7 @@ export const draftPropuestaSchema = z
       })
       .passthrough()
       .optional(),
-    descripcion_detallada: texto(2000),
+    descripcion_detallada: descripcionDetalladaSchema,
     observaciones: texto(2000),
     tipo_firma: z.enum(['manual', 'digital']).optional(),
   })

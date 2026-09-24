@@ -101,3 +101,53 @@ test('listarPropuestasQuerySchema: busqueda is optional and trimmed', () => {
   assert.equal(result.success, true)
   assert.equal(result.data.busqueda, 'cliente')
 })
+
+test('draftPropuestaSchema: descripcion_detallada acepta hasta el límite de caracteres y líneas', async () => {
+  const { DESCRIPCION_DETALLADA_MAX_CARACTERES, DESCRIPCION_DETALLADA_MAX_LINEAS } =
+    await import('./propuestas.schema.js')
+  const enLimiteCaracteres = 'a'.repeat(DESCRIPCION_DETALLADA_MAX_CARACTERES)
+  const enLimiteLineas = Array.from({ length: DESCRIPCION_DETALLADA_MAX_LINEAS }, () => 'x').join(
+    '\n'
+  )
+
+  assert.equal(
+    draftPropuestaSchema.safeParse({ descripcion_detallada: enLimiteCaracteres }).success,
+    true
+  )
+  assert.equal(
+    draftPropuestaSchema.safeParse({ descripcion_detallada: enLimiteLineas }).success,
+    true
+  )
+})
+
+test('draftPropuestaSchema: descripcion_detallada rechaza un carácter o una línea de más con mensaje claro', async () => {
+  const { DESCRIPCION_DETALLADA_MAX_CARACTERES, DESCRIPCION_DETALLADA_MAX_LINEAS } =
+    await import('./propuestas.schema.js')
+  const caracterDeMas = draftPropuestaSchema.safeParse({
+    descripcion_detallada: 'a'.repeat(DESCRIPCION_DETALLADA_MAX_CARACTERES + 1),
+  })
+  const lineaDeMas = draftPropuestaSchema.safeParse({
+    descripcion_detallada: Array.from(
+      { length: DESCRIPCION_DETALLADA_MAX_LINEAS + 1 },
+      () => 'x'
+    ).join('\n'),
+  })
+
+  assert.equal(caracterDeMas.success, false)
+  assert.match(
+    caracterDeMas.error.issues[0].message,
+    new RegExp(`descripción detallada.*${DESCRIPCION_DETALLADA_MAX_CARACTERES} caracteres`, 'i')
+  )
+  assert.equal(lineaDeMas.success, false)
+  assert.match(
+    lineaDeMas.error.issues[0].message,
+    new RegExp(`descripción detallada.*${DESCRIPCION_DETALLADA_MAX_LINEAS} líneas`, 'i')
+  )
+})
+
+test('draftPropuestaSchema: descripcion_detallada cuenta un salto CRLF como un solo carácter', async () => {
+  const { DESCRIPCION_DETALLADA_MAX_CARACTERES } = await import('./propuestas.schema.js')
+  const conCrlf = `${'a'.repeat(DESCRIPCION_DETALLADA_MAX_CARACTERES - 2)}\r\nb`
+
+  assert.equal(draftPropuestaSchema.safeParse({ descripcion_detallada: conCrlf }).success, true)
+})

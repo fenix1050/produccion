@@ -52,6 +52,17 @@
   margin-left: 3px;
 }
 
+.pf-field__counter {
+  color: var(--tajy-text-muted);
+  font-size: 11px;
+  justify-self: end;
+}
+
+.pf-field__counter--excedido {
+  color: var(--tajy-red-a11y);
+  font-weight: 700;
+}
+
 .pf-search > div {
   display: grid;
   grid-template-columns: 1fr auto;

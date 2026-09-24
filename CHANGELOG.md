@@ -1,5 +1,35 @@
 # Changelog
 
+## [0.1.67](https://github.com/fenix1050/produccion/compare/v0.1.66...v0.1.67) (2026-09-24)
+
+
+### Features
+
+* **admin:** mover la publicación de textos de Propuesta Formal a /admin/ ([#431](https://github.com/fenix1050/produccion/issues/431)) ([67bc6c6](https://github.com/fenix1050/produccion/commit/67bc6c6f782c431ebdfbdca0f8112235f4dbf834))
+* **propuestas:** agregar campo Sexo a los datos del asegurado ([#428](https://github.com/fenix1050/produccion/issues/428)) ([ab13b1a](https://github.com/fenix1050/produccion/commit/ab13b1a915722bf05b4529c4d878999f1f31bdf2))
+* **propuestas:** formatear el teléfono con separadores y prefijo local en el PDF ([#429](https://github.com/fenix1050/produccion/issues/429)) ([c7de66e](https://github.com/fenix1050/produccion/commit/c7de66eb6d0b5d2394635345464439f2527243ea))
+* **propuestas:** Hora Inicio/Fin automáticas y Vigencia fija en 30 días ([#432](https://github.com/fenix1050/produccion/issues/432)) ([2565c94](https://github.com/fenix1050/produccion/commit/2565c946ebebfee9c56a5a7a0377f42a348260d6))
+* **propuestas:** reusar el modal de progreso de emisión del cotizador ([#438](https://github.com/fenix1050/produccion/issues/438)) ([eac5eee](https://github.com/fenix1050/produccion/commit/eac5eee5f8d2e8ee233596d1f1df3e19a746cdc4))
+* **propuestas:** separar Documento (C.I.) y R.U.C. en el asegurado ([#430](https://github.com/fenix1050/produccion/issues/430)) ([d281c84](https://github.com/fenix1050/produccion/commit/d281c8432cf41b031ccac622a9ba02e3daca9797))
+* renderer aislado de MRC v3 + scripts de deploy/rollback backend-test ([#422](https://github.com/fenix1050/produccion/issues/422)) ([d25b10c](https://github.com/fenix1050/produccion/commit/d25b10cc7f4e14ca27690926b7dafe09bb0bf9e7))
+* **scripts:** permitir un DOCKER_CMD acotado para deploy/rollback de TEST ([#435](https://github.com/fenix1050/produccion/issues/435)) ([998518d](https://github.com/fenix1050/produccion/commit/998518da28264c384e827697966922b9afb6e1e0))
+
+
+### Bug Fixes
+
+* **adjustments:** validate premium adjustment bounds ([#447](https://github.com/fenix1050/produccion/issues/447)) ([8d6cd7a](https://github.com/fenix1050/produccion/commit/8d6cd7a224d7f2958f207e4f152233199cb37454))
+* **admin:** prevent custom-role permission escalation ([#441](https://github.com/fenix1050/produccion/issues/441)) ([2c4b505](https://github.com/fenix1050/produccion/commit/2c4b50579c1cb363587feb485218e906b8ec6189))
+* **propuestas:** alinear las líneas divisorias de la tabla de cobertura en el PDF de MRC v3 ([#445](https://github.com/fenix1050/produccion/issues/445)) ([dfd2f7a](https://github.com/fenix1050/produccion/commit/dfd2f7a87b496af176ae47ac2f6fa0815787a6c0))
+* **propuestas:** calcular Vigencia/Hasta en vez de mostrar "30 días" fijo ([#444](https://github.com/fenix1050/produccion/issues/444)) ([2a205f0](https://github.com/fenix1050/produccion/commit/2a205f017430cc23637dcfe6e0bba0ebf41c93b0))
+* **propuestas:** layouts fijos de 3/4 páginas en el PDF MRC y tope de descripción ([#442](https://github.com/fenix1050/produccion/issues/442)) ([1767f28](https://github.com/fenix1050/produccion/commit/1767f285cd0669fca9d81bf05b54847c779628b5))
+* **propuestas:** no marcar Tomador/Validaciones completados sin visitarlos ([#426](https://github.com/fenix1050/produccion/issues/426)) ([5dcd3a8](https://github.com/fenix1050/produccion/commit/5dcd3a86fae7d9b6273188fea5d5e2a8d0147bc5))
+* **propuestas:** permitir editar borrador en error_pdf y no mentir el 409 ([#437](https://github.com/fenix1050/produccion/issues/437)) ([fa0949c](https://github.com/fenix1050/produccion/commit/fa0949caee8cbb804eeceaa177ecd4d18eff2ab4))
+* **propuestas:** rechazar borrador nuevo si la carta ya tiene una emitida ([#436](https://github.com/fenix1050/produccion/issues/436)) ([c4896f0](https://github.com/fenix1050/produccion/commit/c4896f019c1740ceb07016774abd9b072b1e640a))
+* **propuestas:** resolver overflow de Declaraciones en la página 1 del PDF ([#434](https://github.com/fenix1050/produccion/issues/434)) ([4e2ca67](https://github.com/fenix1050/produccion/commit/4e2ca673b9e8c2f2b34aed4554beccf9fcb70729))
+* **propuestas:** sacar la franquicia del detalle de cobertura en el PDF ([#433](https://github.com/fenix1050/produccion/issues/433)) ([e356857](https://github.com/fenix1050/produccion/commit/e3568570b8650a89c121def011ae0ab6ecfb26b5))
+* **scripts:** alinear la plantilla de docker inspect con el wrapper de TEST ([#443](https://github.com/fenix1050/produccion/issues/443)) ([b2939ad](https://github.com/fenix1050/produccion/commit/b2939ad09c5224714195b6bbe0e19262c16a9ef3))
+* **scripts:** incluir raiz del repo y assets de frontend en el build context de backend-test ([#424](https://github.com/fenix1050/produccion/issues/424)) ([ca91c05](https://github.com/fenix1050/produccion/commit/ca91c0572d8a368d2fe32f48910feb323a3aa3de))
+
 ## [0.1.66](https://github.com/fenix1050/produccion/compare/v0.1.65...v0.1.66) (2026-09-21)
 
 

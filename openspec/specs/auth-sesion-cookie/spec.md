@@ -4,13 +4,13 @@
 
 ### Requirement: Emisión de la sesión como cookie httpOnly en el login
 
-Al autenticar exitosamente, el sistema MUST emitir el JWT de sesión exclusivamente como una cookie `httpOnly`, `Secure`, `SameSite=Lax`, `Domain=.cotizador.lat`, con expiración alineada a los 45 minutos actuales del token (`expiresIn: '45m'`). El body de la respuesta de `POST /auth/login` MUST NOT incluir el JWT en ningún campo. El sistema MUST NOT aceptar ni leer `Authorization: Bearer` en ningún endpoint autenticado (corte directo, sin período de doble soporte).
+Al autenticar exitosamente, el sistema MUST emitir el JWT exclusivamente como cookie `HttpOnly`, `SameSite=Lax`, host-only (sin `Domain`) y con los 45 minutos actuales de expiración. El nombre nuevo MUST ser el nombre base configurado (`COOKIE_SESSION_NAME`) o `tajy_session`, con sufijo `_v2`. El body de `POST /auth/login` MUST NOT incluir el JWT. El sistema MUST NOT aceptar `Authorization: Bearer`.
 
 #### Scenario: Login exitoso setea la cookie de sesión sin exponer el token en el body
 
 - GIVEN credenciales válidas de un usuario activo
 - WHEN el cliente hace `POST /auth/login`
-- THEN la respuesta MUST incluir un header `Set-Cookie` con la cookie de sesión (`httpOnly`, `Secure`, `SameSite=Lax`, `Domain=.cotizador.lat`)
+- THEN la respuesta MUST incluir `tajy_session_v2` (o el nombre base configurado con sufijo `_v2`) como cookie `HttpOnly`, `SameSite=Lax`, sin `Domain`
 - AND el body JSON de la respuesta MUST NOT contener un campo con el JWT
 - AND `document.cookie` en el navegador MUST NOT exponer el valor de esa cookie
 
@@ -26,6 +26,23 @@ Al autenticar exitosamente, el sistema MUST emitir el JWT de sesión exclusivame
 - WHEN el cliente lo envía como header `Authorization: Bearer <token>` sin la cookie de sesión
 - THEN el sistema MUST responder 401 (el middleware ya no lee el header `Authorization`)
 
+### Requirement: Transición desde las cookies legacy compartidas
+
+Las cookies legacy usan el nombre base previo (`COOKIE_SESSION_NAME` o `tajy_session`) sin sufijo `_v2`. El backend MUST NOT leerlas como credenciales: solo la cookie versionada autentica. Cuando una request transporta cookies legacy, el backend MUST emitir expiración para cada nombre legacy recibido, apuntando a `Domain=.cotizador.lat` y `Path=/`. `Domain` MUST NOT aparecer en ninguna cookie nueva ni en la limpieza de cookies versionadas. Como la primera request puede transportar valores legacy pero estos se ignoran, las sesiones activas requieren autenticación de nuevo.
+
+#### Scenario: Una request con solo la cookie legacy se rechaza y la expira
+
+- GIVEN una cookie `tajy_session` válida para el flujo anterior y ninguna cookie `tajy_session_v2`
+- WHEN el cliente solicita un recurso autenticado
+- THEN el backend MUST responder 401, sin buscar ni aceptar el token legacy
+- AND MUST expirar la cookie legacy con `Domain=.cotizador.lat`
+
+#### Scenario: Login sin sesión también limpia cookies legacy recibidas
+
+- GIVEN un request no autenticado a `POST /auth/login` que transporta cookies legacy
+- WHEN el request atraviesa el API
+- THEN el backend MUST emitir expiración para cada cookie legacy recibida y emitir nuevas cookies versionadas sin `Domain`
+
 ### Requirement: Verificación del JWT con algoritmo explícito
 
 `middleware/auth.js` MUST invocar `jwt.verify()` con la opción `algorithms: ['HS256']` explícita, en vez de dejar que la librería infiera el algoritmo del token.
@@ -38,13 +55,13 @@ Al autenticar exitosamente, el sistema MUST emitir el JWT de sesión exclusivame
 
 ### Requirement: Endpoint de identidad `GET /auth/me`
 
-El sistema MUST exponer `GET /auth/me`, que MUST leer la sesión desde la cookie httpOnly y MUST devolver los datos del usuario autenticado (al menos: rol y permisos) necesarios para que el frontend resuelva `auth.tieneAccesoAdmin()`/`auth.isLoggedIn()` sin leer `localStorage`.
+El sistema MUST exponer `GET /auth/me`, que MUST leer la sesión desde la cookie `HttpOnly` y devolver los datos del usuario autenticado (al menos: rol y permisos) junto al token de la cookie CSRF. El frontend MUST cachear usuario y token CSRF juntos en memoria para que `auth.tieneAccesoAdmin()`/`auth.isLoggedIn()` sigan síncronos, sin leer `localStorage` ni `document.cookie`.
 
 #### Scenario: Auth/me con cookie de sesión válida
 
 - GIVEN una cookie de sesión válida correspondiente a un usuario activo con `token_version` vigente
 - WHEN el cliente hace `GET /auth/me`
-- THEN el sistema MUST responder 200 con el rol y los permisos del usuario
+- THEN el sistema MUST responder 200 con el rol, permisos y `csrfToken` correspondiente a la cookie CSRF del usuario
 
 #### Scenario: Auth/me sin cookie o con cookie inválida
 
@@ -54,7 +71,7 @@ El sistema MUST exponer `GET /auth/me`, que MUST leer la sesión desde la cookie
 
 ### Requirement: Logout limpia la sesión server-side
 
-`logout()` MUST invocar `incrementarTokenVersion` (comportamiento existente, sin cambios) y MUST limpiar la cookie de sesión con `res.clearCookie` usando exactamente los mismos atributos (`httpOnly`, `Secure`, `SameSite`, `Domain`, `Path`) con los que fue seteada.
+`logout()` MUST invocar `incrementarTokenVersion` (comportamiento existente, sin cambios) y MUST limpiar la cookie de sesión con `res.clearCookie` usando exactamente los mismos atributos (`HttpOnly`, `Secure`, `SameSite`, `Path`) con los que fue seteada. La cookie MUST ser host-only (sin `Domain`).
 
 #### Scenario: Logout invalida la sesión y limpia la cookie
 

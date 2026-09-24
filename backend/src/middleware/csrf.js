@@ -1,6 +1,6 @@
 import { timingSafeEqual } from 'node:crypto'
 
-import { COOKIE_CSRF } from '../utils/cookies.js'
+import { COOKIE_CSRF, limpiarCookiesLegadas } from '../utils/cookies.js'
 import { httpError } from '../utils/http-error.js'
 
 const METODOS_SEGUROS = new Set(['GET', 'HEAD', 'OPTIONS'])
@@ -25,10 +25,11 @@ function comparacionSegura(a, b) {
 /**
  * Validación CSRF double-submit, global por método HTTP (D3 de design.md): toda request
  * que muta estado (POST/PUT/PATCH/DELETE) debe incluir el header `X-CSRF-Token` con el
- * mismo valor que la cookie `tajy_csrf` (legible por JS, seteada en el login). Montado
- * antes del router de la API — cobertura sin registro ruta por ruta.
+ * mismo valor que la cookie `tajy_csrf` (token entregado por GET /auth/me y cacheado en
+ * memoria por el frontend). Montado antes del router de la API — cobertura sin registro ruta por ruta.
  */
 export function csrfProtection(req, res, next) {
+  limpiarCookiesLegadas(req, res)
   if (METODOS_SEGUROS.has(req.method) || req.path === RUTA_EXENTA) {
     return next()
   }

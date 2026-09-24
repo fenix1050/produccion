@@ -4,14 +4,14 @@
 
 ### Requirement: Emisión del token CSRF en el login
 
-Al autenticar exitosamente, el sistema MUST emitir, junto con la cookie de sesión, una cookie CSRF separada, legible por JavaScript (NO `httpOnly`), `Secure`, `SameSite=Lax`, `Domain=.cotizador.lat`, con el mismo tiempo de vida que la sesión (45 minutos). El token CSRF MUST generarse una única vez por sesión (no rota por request).
+Al autenticar exitosamente, el sistema MUST emitir `tajy_csrf_v2` (o el nombre base configurado con sufijo `_v2`) junto a la sesión. La cookie CSRF MUST ser host-only (sin `Domain`), `HttpOnly`, `SameSite=Lax`, y compartir los 45 minutos de expiración de la sesión. El token MUST generarse una vez por sesión. `GET /auth/me` MUST devolver el valor de la cookie CSRF versionada en su JSON autenticado; el frontend MUST conservarlo solo en memoria junto al usuario.
 
 #### Scenario: Login emite ambas cookies
 
 - GIVEN credenciales válidas
 - WHEN el cliente hace `POST /auth/login`
-- THEN la respuesta MUST incluir dos cookies: la de sesión (`httpOnly`) y la de CSRF (no `httpOnly`, legible por `document.cookie`)
-- AND ambas cookies MUST compartir el mismo `Domain` y expiración
+- THEN la respuesta MUST incluir dos cookies (`tajy_session_v2` y `tajy_csrf_v2`, o sus nombres base configurados con sufijo `_v2`), ambas `HttpOnly` y sin atributo `Domain`
+- AND ambas cookies MUST tener el mismo tiempo de vida
 
 ### Requirement: Validación double-submit en métodos mutantes
 
@@ -43,17 +43,27 @@ El sistema MUST validar, mediante un middleware global (no opt-in por ruta), que
 
 ### Requirement: El frontend adjunta el header CSRF en toda mutación
 
-`frontend/shared/api.js` MUST leer el valor de la cookie CSRF y MUST adjuntarlo como header `X-CSRF-Token` en toda request `POST`, `PUT`, `PATCH` o `DELETE` emitida por el wrapper de fetch compartido.
+`frontend/shared/api.js` MUST obtener el token CSRF junto al usuario desde `GET /auth/me`, conservar ambos en memoria y adjuntar el token cacheado como header `X-CSRF-Token` en toda request `POST`, `PUT`, `PATCH` o `DELETE` emitida por el wrapper compartido. El cliente MUST NOT leer `document.cookie` para obtener el token.
 
 #### Scenario: El wrapper de fetch agrega el header automáticamente
 
-- GIVEN una sesión de usuario activa con la cookie CSRF seteada
+- GIVEN `GET /auth/me` devolvió un usuario autenticado y el token correspondiente a su cookie CSRF
 - WHEN cualquier módulo del frontend invoca el wrapper compartido para un método mutante
-- THEN la request saliente MUST incluir `X-CSRF-Token` con el valor exacto de la cookie CSRF vigente
+- THEN la request saliente MUST incluir `X-CSRF-Token` con el valor cacheado en memoria
+
+### Requirement: Ignorar y expirar cookies CSRF legacy
+
+El sistema MUST NOT autenticar ni validar CSRF a partir de las cookies legacy (`COOKIE_CSRF_NAME` o el nombre default `tajy_csrf`). Si una request transporta ese nombre, el sistema MUST emitir una expiración para él con `Domain=.cotizador.lat`; este es el único uso permitido de `Domain`. La cookie nueva versionada MUST seguir validándose mediante double-submit con su propio header.
+
+#### Scenario: El valor CSRF legacy no sustituye la cookie versionada
+
+- GIVEN la cookie legacy CSRF y un header con el mismo valor, pero sin la cookie `tajy_csrf_v2`
+- WHEN el cliente envía una request mutante
+- THEN el sistema MUST responder 403 y expirar la cookie legacy con `Domain=.cotizador.lat`
 
 ### Requirement: Logout limpia la cookie CSRF
 
-`logout()` MUST limpiar la cookie CSRF con `res.clearCookie` usando los mismos atributos con los que fue seteada, en la misma respuesta en que limpia la cookie de sesión.
+`logout()` MUST limpiar la cookie CSRF con `res.clearCookie` usando los mismos atributos host-only con los que fue seteada, en la misma respuesta en que limpia la cookie de sesión. La cookie CSRF MUST ser `HttpOnly`.
 
 #### Scenario: Logout limpia ambas cookies
 

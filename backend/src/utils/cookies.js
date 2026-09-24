@@ -1,38 +1,22 @@
-// Única fuente de atributos de cookie de sesión (D2 de design.md, cambio
-// session-httponly-cookie). res.clearCookie solo borra si domain/path/sameSite/secure
-// coinciden EXACTAMENTE con los usados al setear — duplicar esos atributos en dos sitios
-// (login y logout) es el modo de falla más probable (cookie zombie tras logout). Por eso
-// set y clear comparten las mismas funciones de opciones.
+// New v2 cookies are host-only; only explicit deletion of legacy cookies uses Domain.
+// Set and clear of new cookies share attributes so logout cannot leave cookie zombies.
 
-export const COOKIE_SESION = process.env.COOKIE_SESSION_NAME || 'tajy_session'
+export const COOKIE_SESION_LEGACY = process.env.COOKIE_SESSION_NAME || 'tajy_session'
+export const COOKIE_CSRF_LEGACY = process.env.COOKIE_CSRF_NAME || 'tajy_csrf'
 
-export const COOKIE_CSRF = process.env.COOKIE_CSRF_NAME || 'tajy_csrf'
+export const COOKIE_SESION = `${COOKIE_SESION_LEGACY}_v2`
+export const COOKIE_CSRF = `${COOKIE_CSRF_LEGACY}_v2`
 
 // 45 minutos, alineado a JWT_EXPIRES_IN de auth.service.js.
 const MAX_AGE_MS = 45 * 60 * 1000
 
-// COOKIE_DOMAIN es independiente de NODE_ENV a propósito: NODE_ENV distingue el gate de
-// negocio de PF-3 (productivo vs. no productivo), no si el despliegue tiene TLS y un
-// dominio compartido entre frontend y API. TEST corre con NODE_ENV=test (para no pasar
-// ese gate) pero SÍ necesita Secure+Domain porque test-web.cotizador.lat y
-// test-api.cotizador.lat son subdominios distintos bajo HTTPS real — igual que PROD con
-// cotizador.lat/api.cotizador.lat. Sin COOKIE_DOMAIN seteado (dev local, npm test) la
-// cookie queda host-only y sin Secure, porque http://localhost no tiene TLS.
-function dominioCookie() {
-  return process.env.COOKIE_DOMAIN || null
-}
-
 function opcionesBase() {
-  const domain = dominioCookie()
-  const base = {
-    secure: Boolean(domain),
+  return {
+    // Preserve the existing Secure toggle without emitting COOKIE_DOMAIN as an attribute.
+    secure: Boolean(process.env.COOKIE_DOMAIN),
     sameSite: 'lax',
     path: '/',
   }
-  if (domain) {
-    base.domain = domain
-  }
-  return base
 }
 
 export function opcionesSesion() {
@@ -40,7 +24,7 @@ export function opcionesSesion() {
 }
 
 export function opcionesCsrf() {
-  return { ...opcionesBase(), httpOnly: false, maxAge: MAX_AGE_MS }
+  return { ...opcionesBase(), httpOnly: true, maxAge: MAX_AGE_MS }
 }
 
 export function setCookiesSesion(res, token, csrfToken) {
@@ -55,4 +39,25 @@ export function limpiarCookiesSesion(res) {
   const { maxAge: _maxAgeCsrf, ...baseCsrf } = opcionesCsrf()
   res.clearCookie(COOKIE_SESION, baseSesion)
   res.clearCookie(COOKIE_CSRF, baseCsrf)
+}
+
+// The pre-isolation cookies were issued for the shared parent domain. Expire only legacy
+// names actually present on this request; Domain is reserved for these deletion headers.
+export function limpiarCookiesLegadas(req, res) {
+  if (req.legacyCookiesLimpiadas) return
+  req.legacyCookiesLimpiadas = true
+  const cookies = req.cookies ?? {}
+  const opcionesLegacy = {
+    domain: '.cotizador.lat',
+    path: '/',
+    sameSite: 'lax',
+    secure: Boolean(process.env.COOKIE_DOMAIN),
+  }
+
+  if (Object.hasOwn(cookies, COOKIE_SESION_LEGACY)) {
+    res.clearCookie(COOKIE_SESION_LEGACY, opcionesLegacy)
+  }
+  if (Object.hasOwn(cookies, COOKIE_CSRF_LEGACY)) {
+    res.clearCookie(COOKIE_CSRF_LEGACY, opcionesLegacy)
+  }
 }

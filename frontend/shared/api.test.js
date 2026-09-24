@@ -35,6 +35,54 @@ async function importarApiFresco(fetchMock, suffix) {
   return { ...mod, intentosDeNavegacion }
 }
 
+test('cargarSesion caches user and CSRF token; mutations use cache, not document.cookie', async () => {
+  const requests = []
+  const fetchMock = async (url, options = {}) => {
+    requests.push({ url, options })
+    return new Response(JSON.stringify({ usuario: { id: 7 }, csrfToken: 'csrf-en-memoria' }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
+  const { api, auth } = await importarApiFresco(fetchMock, 'csrf-token-cache')
+  document.cookie = 'tajy_csrf=csrf-antiguo'
+
+  assert.equal((await auth.cargarSesion()).id, 7)
+  await api.post('/cotizaciones', {})
+
+  assert.equal(requests[0].url.endsWith('/auth/me'), true)
+  assert.equal(requests[1].options.headers['X-CSRF-Token'], 'csrf-en-memoria')
+  assert.equal(auth.getUsuario().id, 7)
+
+  auth.clearSession()
+  assert.equal(auth.getUsuario(), null)
+  await api.post('/cotizaciones', {})
+  assert.equal(requests[2].options.headers['X-CSRF-Token'], undefined)
+})
+
+test('una sesión fallida limpia user y CSRF token en memoria', async () => {
+  let call = 0
+  const fetchMock = async (_url, options = {}) => {
+    call += 1
+    if (call === 1) {
+      return new Response(JSON.stringify({ usuario: { id: 7 }, csrfToken: 'csrf-en-memoria' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+    if (options.method === 'POST') {
+      return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401 })
+    }
+    return new Response('{}', { status: 401 })
+  }
+  const { api, auth } = await importarApiFresco(fetchMock, 'csrf-cache-clear-401')
+  await auth.cargarSesion()
+  await assert.rejects(() => api.post('/cotizaciones', {}))
+  assert.equal(auth.getUsuario(), null)
+  await api.post('/cotizaciones', {}).catch(() => {})
+  assert.equal(auth.getUsuario(), null)
+})
+
 test('logout(): un 403 de CSRF en /auth/logout no dispara el redirect genérico de request()', async () => {
   const fetchMock = async () =>
     new Response(JSON.stringify({ error: 'Token CSRF inválido o ausente' }), {

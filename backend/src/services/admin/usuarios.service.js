@@ -142,8 +142,8 @@ export async function editarUsuario(id, cambios, solicitante) {
     throw httpError(404, 'Usuario no encontrado')
   }
   asegurarPuedeModificarAdmin(usuarioActual, solicitante)
-  asegurarNoCambiaPropioRol(id, cambios.rol_id, solicitante, usuarioActual)
   await asegurarPuedeAsignarRol(cambios.rol_id, solicitante)
+  asegurarNoCambiaPropioRol(id, cambios.rol_id, solicitante, usuarioActual)
   asegurarNoAutoAjustaTope(id, cambios, usuarioActual, solicitante)
 
   if (cambios.email && cambios.email !== usuarioActual.email) {

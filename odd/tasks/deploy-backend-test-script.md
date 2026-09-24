@@ -191,3 +191,14 @@ habían terminado bien. Se confirmó manualmente comparando el tag de la imagen 
 (`cotizador-backend-test:<sha-commit>-<timestamp>`) contra el commit del merge, más `/health`
 público en 200. No bloqueante, pero revisar si se repite — podría ser una diferencia de forma
 entre el argv que arma el script real vs. los casos que se probaron al testear el wrapper.
+
+**2026-09-24, fix del hallazgo operativo de arriba (se repitió, como se advirtió).** Al desplegar
+el PR #442 se confirmó la causa exacta: la verificación post-deploy usaba `docker inspect
+--format '{{ .Config.Image }}'` (con espacios) mientras el preflight ya usaba con éxito
+`'{{.Config.Image}}'` (sin espacios) para el mismo campo — el wrapper `claude-test-deploy-docker`
+matchea el argv exacto, espacios incluidos, así que solo la forma sin espacios estaba permitida.
+Corregidas ambas ocurrencias (`deploy-backend-test.sh` y `rollback-backend-test.sh`, que tenía el
+mismo texto copiado) para usar la forma sin espacios en todos lados. Verificado contra el wrapper
+real: `docker inspect --format '{{.Config.Image}}' cotizador-test-backend` corre sin rechazo, y
+`--preflight-only` sigue en verde. No se repitió `--approve-deploy` completo para no reconstruir
+una imagen idéntica — el punto de falla (esa única línea) quedó confirmado en aislado.

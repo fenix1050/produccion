@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken'
 
 import * as usuariosRepository from '../repositories/usuarios.repository.js'
-import { COOKIE_SESION } from '../utils/cookies.js'
+import { COOKIE_SESION, limpiarCookiesLegadas } from '../utils/cookies.js'
 import { httpError } from '../utils/http-error.js'
 
 /**
@@ -15,6 +15,7 @@ import { httpError } from '../utils/http-error.js'
  */
 export async function requireAuth(req, res, next) {
   try {
+    limpiarCookiesLegadas(req, res)
     const token = req.cookies?.[COOKIE_SESION]
 
     if (!token) {

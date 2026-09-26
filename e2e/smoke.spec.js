@@ -6,12 +6,11 @@ const API_BASE_URL = process.env.E2E_API_URL ?? 'http://127.0.0.1:3100/api'
 const FRONTEND_BASE_URL = process.env.E2E_BASE_URL ?? 'http://127.0.0.1:5100'
 const PDF_SIGNATURE = [37, 80, 68, 70, 45]
 
-async function browserRequest(page, path, { method = 'GET', body, csrf = true } = {}) {
+async function browserRequest(page, path, { method = 'GET', body, csrf = true, csrfToken } = {}) {
   return page.evaluate(
-    async ({ base, requestPath, requestMethod, requestBody, includeCsrf }) => {
+    async ({ base, requestPath, requestMethod, requestBody, includeCsrf, token }) => {
       const headers = requestBody === undefined ? {} : { 'Content-Type': 'application/json' }
-      const token = globalThis.document.cookie.match(/(?:^|; )tajy_csrf=([^;]*)/)
-      if (includeCsrf && token) headers['X-CSRF-Token'] = decodeURIComponent(token[1])
+      if (includeCsrf && token) headers['X-CSRF-Token'] = token
       const response = await fetch(`${base}${requestPath}`, {
         method: requestMethod,
         credentials: 'include',
@@ -35,6 +34,7 @@ async function browserRequest(page, path, { method = 'GET', body, csrf = true } 
       requestMethod: method,
       requestBody: body,
       includeCsrf: csrf,
+      token: csrfToken,
     }
   )
 }
@@ -107,8 +107,13 @@ test.describe.serial('Isolated MRC and Incendio smoke', () => {
     ])
     expect(login.status()).toBe(200)
     const cookies = await context.cookies()
-    expect(cookies.find((cookie) => cookie.name === 'tajy_session')?.httpOnly).toBe(true)
-    expect(cookies.find((cookie) => cookie.name === 'tajy_csrf')?.httpOnly).toBe(false)
+    expect(cookies.find((cookie) => cookie.name === 'tajy_session_v2')?.httpOnly).toBe(true)
+    expect(cookies.find((cookie) => cookie.name === 'tajy_csrf_v2')?.httpOnly).toBe(true)
+
+    const auth = await browserRequest(page, '/auth/me', { csrf: false })
+    expect(auth.status).toBe(200)
+    expect(auth.json.csrfToken).toEqual(expect.any(String))
+    const csrfToken = auth.json.csrfToken
 
     await page.locator('[data-action="ir-cotizar"]').click()
     await Promise.all([
@@ -149,16 +154,19 @@ test.describe.serial('Isolated MRC and Incendio smoke', () => {
       method: 'POST',
       body: FIXTURES.request.incendio,
       csrf: false,
+      csrfToken,
     })
     expect(csrf).toMatchObject({ status: 403, json: { error: 'Token CSRF inválido o ausente' } })
     const incendioPreview = await browserRequest(page, '/cotizaciones/calcular', {
       method: 'POST',
       body: FIXTURES.request.incendio,
+      csrfToken,
     })
     expect(incendioPreview.status).toBe(200)
     const incendio = await browserRequest(page, '/cotizaciones', {
       method: 'POST',
       body: FIXTURES.request.incendio,
+      csrfToken,
     })
     expect(incendio.status).toBe(201)
     const incendioPdf = await browserRequest(page, `/cotizaciones/${incendio.json.id}/pdf-oferta`)
@@ -205,6 +213,7 @@ test.describe.serial('Isolated MRC and Incendio smoke', () => {
     const invalid = await browserRequest(page, '/cotizaciones/calcular', {
       method: 'POST',
       body: invalidIncendio,
+      csrfToken,
     })
     page.off('request', captureInvalid)
     expect(invalid.status).toBe(422)

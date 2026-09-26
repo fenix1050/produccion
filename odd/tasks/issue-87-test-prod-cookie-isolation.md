@@ -61,8 +61,8 @@ Any additional implementation path must be justified by read-only discovery and 
 ## Route and review workload
 
 - Route: delegated direct. The 4-file mapping and multi-file write triggers used one scoped `gentle-ai-worker`; an independent `gentle-ai-verify` ran after the initial unassessable ASSESS and again after the authorized legacy migration.
-- Forecast: approximately 530 authored changed lines including tests, canonical specs/docs, and this 90-line ODD task record; generated files excluded. This cohesive auth/cookie contract has no identified safe independently mergeable slice.
-- Delivery strategy: user explicitly accepted `size:exception` for one cohesive T-03 PR, approximately 530 authored changed lines (~130 over the 400-line threshold). Rationale for the PR description: this is one authentication contract with no safe functional split; a chain adds coordination without reducing review risk. Do not split or merge/deploy.
+- Forecast: the final PR diff is 520 changed lines (390 additions + 130 deletions against `main`), including tests, canonical specs/docs, and this 90-line ODD task record; generated files excluded. This cohesive auth/cookie contract has no identified safe independently mergeable slice.
+- Delivery strategy: user explicitly accepted `size:exception` for one cohesive T-03 PR, 520 changed lines (~120 over the 400-line threshold). Rationale for the PR description: this is one authentication contract with no safe functional split; a chain adds coordination without reducing review risk. Do not split or merge/deploy.
 - Work-unit commit: `fcab6275957aa678e9d9eb0974a8adc9982adfb7` — `fix(auth): isolate TEST and PROD session cookies`.
 - Native review: high-risk committed-range candidate approved and acknowledged; lineage `review-623cf43a916e21cb`, target `sha256:939c778f8e9271b8a7088141add7252d62c994275bd1d0af745414e322704f83`.
 
@@ -85,6 +85,6 @@ Any additional implementation path must be justified by read-only discovery and 
 - [x] Independent verifier confirmed the core contract and identified the legacy-domain transition gap; user authorized versioned names, legacy deletion-only Domain headers, ignored first old-cookie request, and forced reauthentication.
 - [x] After migration, root tests passed (backend 464/464 + frontend 122/122); four formatting-only corrections were applied.
 - [x] Final independent verifier passed backend/root suites, full changed-path Prettier, diff, manifest integrity, and the approved migration contract; live behavior remains unverified.
-- [x] User accepted one T-03 PR with explicit `size:exception` for the cohesive ~530-line change; include the ~130-line overage and no-safe-split rationale in the PR description.
+- [x] User accepted one T-03 PR with explicit `size:exception` for the cohesive 520-line change; include the ~120-line overage and no-safe-split rationale in the PR description.
 - [x] Stage the exact 15 paths, create work-unit commit `fcab627`, assess the committed range, and obtain approved/acknowledged native review.
-- [ ] Obtain any required child-issue authorization, then prepare the one T-03 PR with the accepted size-exception rationale. No merge or deploy.
+- [ ] Push the dedicated branch and open the one T-03 PR linked to approved issue #448; include the accepted size-exception rationale. No merge or deploy.

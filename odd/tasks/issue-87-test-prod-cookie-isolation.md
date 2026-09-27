@@ -19,7 +19,7 @@
 
 ## Implementation work unit
 
-Implement one cohesive, reviewable T-03 change on this branch and close it with one work-unit commit. In Strict TDD order, add backend/frontend regressions first and observe RED; then implement:
+Implement one cohesive, reviewable T-03 change on this branch and close it with at least one work-unit commit. Keep any necessary test-only contract-sync corrections in separate reviewable commits within the same PR. In Strict TDD order, add backend/frontend regressions first and observe RED; then implement:
 
 - Give new session and CSRF cookies versioned names so legacy cookie values cannot authenticate or collide with them. Issue and clear new cookies host-only (no `Domain`); make both HttpOnly; keep double-submit header-versus-cookie validation.
 - Add explicit expiration of legacy session/CSRF cookies scoped to `.cotizador.lat`. The `Domain` attribute is allowed only on these legacy deletion headers, never on new cookie issuance or host-only cookie clearing. Run cleanup when legacy cookies arrive, before accepting/rejecting auth; first request can carry the old cookie but new auth ignores it.
@@ -41,6 +41,7 @@ Implement one cohesive, reviewable T-03 change on this branch and close it with 
 - `frontend/shared/api.js`
 - `frontend/shared/api.test.js`
 - `frontend/shared/config.example.js` (only if the obsolete CSRF cookie-name client configuration is still present)
+- `e2e/smoke.spec.js` (parent-approved after CI exposed stale cookie/CSRF expectations; test-only contract sync)
 - `openspec/specs/auth-csrf-double-submit/spec.md`
 - `openspec/specs/auth-sesion-cookie/spec.md`
 - `docs/ESTADO_PROYECTO.md`
@@ -60,11 +61,11 @@ Any additional implementation path must be justified by read-only discovery and 
 
 ## Route and review workload
 
-- Route: delegated direct. The 4-file mapping and multi-file write triggers used one scoped `gentle-ai-worker`; an independent `gentle-ai-verify` ran after the initial unassessable ASSESS and again after the authorized legacy migration.
-- Forecast: the final PR diff is 520 changed lines (390 additions + 130 deletions against `main`), including tests, canonical specs/docs, and this 90-line ODD task record; generated files excluded. This cohesive auth/cookie contract has no identified safe independently mergeable slice.
-- Delivery strategy: user explicitly accepted `size:exception` for one cohesive T-03 PR, 520 changed lines (~120 over the 400-line threshold). Rationale for the PR description: this is one authentication contract with no safe functional split; a chain adds coordination without reducing review risk. Do not split or merge/deploy.
-- Work-unit commit: `fcab6275957aa678e9d9eb0974a8adc9982adfb7` — `fix(auth): isolate TEST and PROD session cookies`.
-- Native review: high-risk committed-range candidate approved and acknowledged; lineage `review-623cf43a916e21cb`, target `sha256:939c778f8e9271b8a7088141add7252d62c994275bd1d0af745414e322704f83`.
+- Route: delegated direct. The 4-file mapping and multi-file write triggers used one scoped worker for core implementation; CI's stale smoke assertions prompted a read-only `gentle-ai-explore` scout and a separate one-file E2E worker. Independent verification ran the isolated E2E and full fast suite after the unassessable ASSESS.
+- Forecast: the final PR diff is 542 changed lines (406 additions + 136 deletions against `main`), including tests, canonical specs/docs, E2E contract sync, and this ODD task record; generated files excluded. The added E2E sync is required by CI and does not create an independently mergeable feature slice.
+- Delivery strategy: user accepted one cohesive T-03 PR with `size:exception` at 520 lines (~120 over 400). CI then exposed stale E2E expectations; the required one-file test-only sync adds 21 changed lines, plus one task-record line, for a final 542 lines (~142 over 400). It remains the same auth/cookie contract with no safe functional split; disclose the final count and rationale in the PR. Do not split or merge/deploy.
+- Work-unit commits: `fcab6275957aa678e9d9eb0974a8adc9982adfb7` — `fix(auth): isolate TEST and PROD session cookies`; `7db37a15742cff85ca4b7009e1ce561d952a082a` — `test(e2e): align cookie smoke with HttpOnly contract`.
+- Native reviews: core high-risk committed-range candidate approved/acknowledged; lineage `review-623cf43a916e21cb`, target `sha256:939c778f8e9271b8a7088141add7252d62c994275bd1d0af745414e322704f83`. E2E-only candidate approved/closed at low risk (`non_executable_only`); lineage `review-f326818b10279453`.
 
 ## Verification record
 
@@ -74,8 +75,8 @@ Any additional implementation path must be justified by read-only discovery and 
 - RED (legacy transition): regression for the versioned `_v2` CSRF cookie failed with `Token CSRF inválido o ausente` before implementation.
 - GREEN (final): independent verification passed backend 464/464 and root backend 464/464 + frontend 122/122 with process-only loopback placeholders and a nonexistent dotenv path.
 - `PUPPETEER_SKIP_DOWNLOAD=true npm ci` installed 467 lockfile-pinned packages; audit 0 vulnerabilities. Package manifests and locks remain unchanged.
-- Final `git diff --check`, manifest integrity check, and full changed-path Prettier check passed. No real secrets, `.env`, deployed services, or TEST/PROD runtime settings were accessed; those remain unverified.
-- Initial working-tree ASSESS was unassessable while this authorized task document was untracked. After commit, committed-range ASSESS reported high risk; native review approved and was acknowledged for commit `fcab627`. The commit hook reran the root suite (backend 464/464 + frontend 122/122) with process-only loopback placeholders and a nonexistent dotenv path. No deploy, push, or PR yet.
+- After the E2E correction, `DOTENV_CONFIG_PATH=<nonexistent path> npm run verify:e2e` passed (1/1) in the loopback/mocked harness; `npm run verify:fast` passed backend 464/464, frontend 122/122, 81 migrations without collisions, and Prettier for `e2e/smoke.spec.js`. `git diff --check` passed. No real secrets, `.env`, deployed services, or TEST/PROD settings were accessed.
+- Initial working-tree ASSESS was unassessable while this task document was untracked. Committed-range ASSESS for core commit reported high risk; native review approved and was acknowledged for `fcab627`. E2E working-tree and committed-range ASSESS calls failed schema-incompatible/unassessable; the separate independent verifier and writer both passed isolated E2E 1/1, and native review closed the E2E-only commit at low risk (`review-f326818b10279453`). PR #449 is open; its first CI `quality` failure was the stale smoke assertion. The E2E fix is committed as `7db37a1`, passes writer and independent verification, and has a closed low-risk native review. Any post-update CI result is tracked on PR #449. No merge or deploy.
 
 ## Progress
 
@@ -85,6 +86,6 @@ Any additional implementation path must be justified by read-only discovery and 
 - [x] Independent verifier confirmed the core contract and identified the legacy-domain transition gap; user authorized versioned names, legacy deletion-only Domain headers, ignored first old-cookie request, and forced reauthentication.
 - [x] After migration, root tests passed (backend 464/464 + frontend 122/122); four formatting-only corrections were applied.
 - [x] Final independent verifier passed backend/root suites, full changed-path Prettier, diff, manifest integrity, and the approved migration contract; live behavior remains unverified.
-- [x] User accepted one T-03 PR with explicit `size:exception` for the cohesive 520-line change; include the ~120-line overage and no-safe-split rationale in the PR description.
+- [x] User accepted one T-03 PR with `size:exception` at 520 lines; the required E2E contract sync raises the projected final diff to 542 lines (~142 over 400), with the same no-safe-split rationale to disclose.
 - [x] Stage the exact 15 paths, create work-unit commit `fcab627`, assess the committed range, and obtain approved/acknowledged native review.
-- [ ] Push the dedicated branch and open the one T-03 PR linked to approved issue #448; include the accepted size-exception rationale. No merge or deploy.
+- [x] Pushed the dedicated branch and opened PR #449 linked to approved issue #448; the read-back confirmed it is OPEN with `type:bug` and the accepted size-exception rationale. Required CI `quality` initially failed on stale E2E cookie/CSRF expectations. The one-file test-only fix is work-unit commit `7db37a1`, approved/closed at low risk and passing isolated E2E 1/1 plus `verify:fast`; post-update CI is tracked on PR #449. No merge or deploy.

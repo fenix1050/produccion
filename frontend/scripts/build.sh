@@ -7,12 +7,7 @@ case "$RUNTIME_CONFIG_MODE" in
   embedded)
     : "${API_BASE_URL:?API_BASE_URL es obligatorio en modo embedded}"
 
-    COOKIE_CSRF_NAME="${COOKIE_CSRF_NAME:-tajy_csrf}"
-
-    {
-      printf "window.API_BASE_URL = '%s'\n" "$API_BASE_URL"
-      printf "window.COOKIE_CSRF_NAME = '%s'\n" "$COOKIE_CSRF_NAME"
-    } > shared/config.js
+    printf "window.API_BASE_URL = '%s'\n" "$API_BASE_URL" > shared/config.js
     ;;
 
   external)

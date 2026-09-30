@@ -59,15 +59,18 @@ function mockearRepositorio(t, usuario) {
 // req.cookies[COOKIE_SESION], no el header Authorization. `comoCookie: false` fabrica
 // deliberadamente un req SIN cookie (con o sin el header Bearer legacy) para los casos que
 // prueban que el corte de transporte es real.
-async function correrRequireAuth(requireAuth, token, { comoCookie = true } = {}) {
-  const req = comoCookie
-    ? { cookies: { [COOKIE_SESION]: token }, headers: {} }
-    : { cookies: {}, headers: {} }
+async function correrRequireAuth(requireAuth, token, { comoCookie = true, cookies } = {}) {
+  const req = {
+    cookies: cookies ?? (comoCookie ? { [COOKIE_SESION]: token } : {}),
+    headers: {},
+  }
+  const clearCalls = []
+  const res = { clearCookie: (name, options) => clearCalls.push({ name, options }) }
   let error
-  await requireAuth(req, {}, (err) => {
+  await requireAuth(req, res, (err) => {
     error = err
   })
-  return { req, error }
+  return { req, error, clearCalls }
 }
 
 function firmarToken(usuario, tokenVersion = usuario.token_version) {
@@ -171,6 +174,21 @@ test('login loguea login_exitoso con console.warn cuando las credenciales son co
 })
 
 // --- Transporte cookie (cambio session-httponly-cookie) ---
+
+test('requireAuth ignores a legacy-only session and expires received legacy cookies', async (t) => {
+  const usuario = crearUsuarioMock()
+  mockearRepositorio(t, usuario)
+  const { requireAuth } = await import('../middleware/auth.js?case=legacy-cookie-ignored')
+  const oldSessionToken = firmarToken(usuario)
+
+  const { error, clearCalls } = await correrRequireAuth(requireAuth, undefined, {
+    cookies: { tajy_session: oldSessionToken, tajy_csrf: 'csrf-viejo' },
+  })
+
+  assert.equal(error?.status, 401, 'el token legado no autentica en la sesión versionada')
+  assert.deepEqual(clearCalls.map(({ name }) => name).sort(), ['tajy_csrf', 'tajy_session'])
+  assert.ok(clearCalls.every(({ options }) => options.domain === '.cotizador.lat'))
+})
 
 test('requireAuth rechaza con 401 una request sin cookie de sesión', async (t) => {
   const usuario = crearUsuarioMock()

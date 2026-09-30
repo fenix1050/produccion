@@ -11,68 +11,31 @@ test('opcionesSesion(): httpOnly true, maxAge de 45 minutos', async () => {
   assert.equal(opciones.maxAge, 45 * 60 * 1000)
 })
 
-test('opcionesCsrf(): httpOnly false (legible por document.cookie), mismo maxAge que la sesión', async () => {
+test('opcionesCsrf(): httpOnly true, same maxAge as the session, and no Domain', async () => {
   const { opcionesSesion, opcionesCsrf } = await import('./cookies.js')
   const sesion = opcionesSesion()
   const csrf = opcionesCsrf()
-  assert.equal(csrf.httpOnly, false)
+  assert.equal(csrf.httpOnly, true)
   assert.equal(csrf.maxAge, sesion.maxAge)
-})
-
-test('con COOKIE_DOMAIN seteado: secure true y domain igual a la variable, sin importar NODE_ENV', async (t) => {
-  const dominioAnterior = process.env.COOKIE_DOMAIN
-  const nodeEnvAnterior = process.env.NODE_ENV
-  process.env.COOKIE_DOMAIN = '.cotizador.lat'
-  process.env.NODE_ENV = 'production'
-  t.after(() => {
-    if (dominioAnterior === undefined) delete process.env.COOKIE_DOMAIN
-    else process.env.COOKIE_DOMAIN = dominioAnterior
-    process.env.NODE_ENV = nodeEnvAnterior
-  })
-  const { opcionesSesion, opcionesCsrf } = await import('./cookies.js?case=prod')
-  const sesion = opcionesSesion()
-  const csrf = opcionesCsrf()
-  assert.equal(sesion.secure, true)
-  assert.equal(sesion.domain, '.cotizador.lat')
-  assert.equal(csrf.secure, true)
-  assert.equal(csrf.domain, '.cotizador.lat')
-})
-
-test('COOKIE_DOMAIN seteado en NODE_ENV=test (caso TEST): igual se aplica Secure+Domain', async (t) => {
-  const dominioAnterior = process.env.COOKIE_DOMAIN
-  const nodeEnvAnterior = process.env.NODE_ENV
-  process.env.COOKIE_DOMAIN = '.cotizador.lat'
-  process.env.NODE_ENV = 'test'
-  t.after(() => {
-    if (dominioAnterior === undefined) delete process.env.COOKIE_DOMAIN
-    else process.env.COOKIE_DOMAIN = dominioAnterior
-    process.env.NODE_ENV = nodeEnvAnterior
-  })
-  const { opcionesSesion, opcionesCsrf } = await import('./cookies.js?case=test-con-dominio')
-  const sesion = opcionesSesion()
-  const csrf = opcionesCsrf()
-  assert.equal(sesion.secure, true)
-  assert.equal(sesion.domain, '.cotizador.lat')
-  assert.equal(csrf.secure, true)
-  assert.equal(csrf.domain, '.cotizador.lat')
-})
-
-test('sin COOKIE_DOMAIN (dev local, npm test): secure false y sin domain, para que funcione en localhost', async (t) => {
-  const dominioAnterior = process.env.COOKIE_DOMAIN
-  delete process.env.COOKIE_DOMAIN
-  t.after(() => {
-    if (dominioAnterior !== undefined) process.env.COOKIE_DOMAIN = dominioAnterior
-  })
-  const { opcionesSesion, opcionesCsrf } = await import('./cookies.js?case=dev')
-  const sesion = opcionesSesion()
-  const csrf = opcionesCsrf()
-  assert.equal(sesion.secure, false)
-  assert.equal(sesion.domain, undefined)
-  assert.equal(csrf.secure, false)
   assert.equal(csrf.domain, undefined)
+  assert.equal(sesion.domain, undefined)
 })
 
-test('setCookiesSesion(): setea COOKIE_SESION (httpOnly) y COOKIE_CSRF (no httpOnly) con res.cookie', async () => {
+test('COOKIE_DOMAIN cannot widen either cookie beyond its host', async (t) => {
+  const dominioAnterior = process.env.COOKIE_DOMAIN
+  process.env.COOKIE_DOMAIN = '.example.invalid'
+  t.after(() => {
+    if (dominioAnterior === undefined) delete process.env.COOKIE_DOMAIN
+    else process.env.COOKIE_DOMAIN = dominioAnterior
+  })
+  const { opcionesSesion, opcionesCsrf } = await import('./cookies.js?case=host-only')
+  assert.equal(opcionesSesion().domain, undefined)
+  assert.equal(opcionesCsrf().domain, undefined)
+  assert.equal(opcionesSesion().secure, true)
+  assert.equal(opcionesCsrf().secure, true)
+})
+
+test('setCookiesSesion(): setea ambas cookies HttpOnly y host-only con res.cookie', async () => {
   const { setCookiesSesion, COOKIE_SESION, COOKIE_CSRF } = await import('./cookies.js')
   const llamadas = []
   const res = { cookie: (nombre, valor, opciones) => llamadas.push({ nombre, valor, opciones }) }
@@ -84,8 +47,10 @@ test('setCookiesSesion(): setea COOKIE_SESION (httpOnly) y COOKIE_CSRF (no httpO
   const csrf = llamadas.find((c) => c.nombre === COOKIE_CSRF)
   assert.equal(sesion.valor, 'jwt-de-prueba')
   assert.equal(sesion.opciones.httpOnly, true)
+  assert.equal(sesion.opciones.domain, undefined)
   assert.equal(csrf.valor, 'csrf-de-prueba')
-  assert.equal(csrf.opciones.httpOnly, false)
+  assert.equal(csrf.opciones.httpOnly, true)
+  assert.equal(csrf.opciones.domain, undefined)
 })
 
 test('limpiarCookiesSesion(): limpia ambas cookies con los MISMOS atributos base (sin maxAge) — evita cookie zombie', async () => {
@@ -101,12 +66,49 @@ test('limpiarCookiesSesion(): limpia ambas cookies con los MISMOS atributos base
   const csrf = llamadas.find((c) => c.nombre === COOKIE_CSRF)
   assert.ok(sesion, 'debe limpiar la cookie de sesión')
   assert.ok(csrf, 'debe limpiar la cookie CSRF')
-  // Mismos atributos relevantes que en el set (httpOnly, secure, sameSite, domain, path),
-  // sin maxAge — res.clearCookie solo borra si domain/path/sameSite/secure coinciden.
+  // Mismos atributos relevantes que en el set (httpOnly, secure, sameSite, path),
+  // sin Domain ni maxAge — res.clearCookie conserva la identidad host-only.
   const { maxAge: _ignorada1, ...baseSesion } = opcionesSesion()
   const { maxAge: _ignorada2, ...baseCsrf } = opcionesCsrf()
   assert.deepEqual(sesion.opciones, baseSesion)
   assert.deepEqual(csrf.opciones, baseCsrf)
+})
+
+test('versiona los nombres nuevos y conserva los nombres configurados como legacy', async () => {
+  const cookies = await import('./cookies.js?case=versioned-cookie-names')
+  assert.equal(cookies.COOKIE_SESION, 'tajy_session_v2')
+  assert.equal(cookies.COOKIE_CSRF, 'tajy_csrf_v2')
+  assert.equal(cookies.COOKIE_SESION_LEGACY, 'tajy_session')
+  assert.equal(cookies.COOKIE_CSRF_LEGACY, 'tajy_csrf')
+})
+
+test('limpiarCookiesLegadas expires only received legacy cookies at the shared parent domain', async () => {
+  const { limpiarCookiesLegadas, COOKIE_SESION_LEGACY, COOKIE_CSRF_LEGACY } =
+    await import('./cookies.js?case=expire-legacy')
+  const llamadas = []
+  const req = {
+    cookies: {
+      [COOKIE_SESION_LEGACY]: 'jwt-viejo',
+      [COOKIE_CSRF_LEGACY]: 'csrf-viejo',
+    },
+  }
+  const res = { clearCookie: (nombre, opciones) => llamadas.push({ nombre, opciones }) }
+
+  limpiarCookiesLegadas(req, res)
+
+  assert.deepEqual(
+    llamadas.map(({ nombre }) => nombre).sort(),
+    [COOKIE_CSRF_LEGACY, COOKIE_SESION_LEGACY].sort()
+  )
+  assert.ok(llamadas.every(({ opciones }) => opciones.domain === '.cotizador.lat'))
+  assert.ok(llamadas.every(({ opciones }) => opciones.path === '/'))
+})
+
+test('no expires legacy cookies that were not sent by the request', async () => {
+  const { limpiarCookiesLegadas } = await import('./cookies.js?case=no-legacy-to-expire')
+  const llamadas = []
+  limpiarCookiesLegadas({ cookies: {} }, { clearCookie: (...args) => llamadas.push(args) })
+  assert.equal(llamadas.length, 0)
 })
 
 test('permite nombres de cookies distintos por entorno mediante variables de entorno', async (t) => {
@@ -124,8 +126,11 @@ test('permite nombres de cookies distintos por entorno mediante variables de ent
     else process.env.COOKIE_CSRF_NAME = csrfAnterior
   })
 
-  const { COOKIE_SESION, COOKIE_CSRF } = await import('./cookies.js?case=custom-cookie-names')
+  const { COOKIE_SESION, COOKIE_CSRF, COOKIE_SESION_LEGACY, COOKIE_CSRF_LEGACY } =
+    await import('./cookies.js?case=custom-cookie-names')
 
-  assert.equal(COOKIE_SESION, 'tajy_test_session')
-  assert.equal(COOKIE_CSRF, 'tajy_test_csrf')
+  assert.equal(COOKIE_SESION, 'tajy_test_session_v2')
+  assert.equal(COOKIE_CSRF, 'tajy_test_csrf_v2')
+  assert.equal(COOKIE_SESION_LEGACY, 'tajy_test_session')
+  assert.equal(COOKIE_CSRF_LEGACY, 'tajy_test_csrf')
 })

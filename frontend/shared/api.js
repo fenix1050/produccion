@@ -7,14 +7,13 @@
 
 const API_BASE_URL = window.API_BASE_URL || 'http://localhost:3000/api'
 
-const COOKIE_CSRF = window.COOKIE_CSRF_NAME || 'tajy_csrf'
-
 // ---- Caché en memoria de la sesión (D4) ----
 // getUsuario()/isLoggedIn()/tieneAccesoAdmin() se invocan en render síncrono en ~10
 // sitios del frontend — volverlos async propaga `await` por toda la capa de render.
 // Cada página es un documento completo, así que "una carga = una llamada" alcanza; la
 // cookie httpOnly es la autoridad real, esto es solo un espejo de lectura para la UI.
 let usuarioCacheado = null
+let csrfTokenCacheado = null
 let sesionCargada = false
 let sesionEnCurso = null
 
@@ -28,6 +27,7 @@ function isLoggedIn() {
 
 function clearSession() {
   usuarioCacheado = null
+  csrfTokenCacheado = null
   sesionCargada = false
 }
 
@@ -36,20 +36,16 @@ function clearSession() {
 function redirectToLogin() {
   const yaEnLogin = window.location.pathname.replace(/\\/g, '/').includes('/login/')
   if (yaEnLogin) return
-  window.location.href = '../login/'
-}
-
-function leerCookie(nombre) {
-  const match = document.cookie.match(new RegExp(`(?:^|; )${nombre}=([^;]*)`))
-  return match ? decodeURIComponent(match[1]) : null
+  const loginUrl = new URL('../login/', window.location.href)
+  if (loginUrl.origin !== window.location.origin) return
+  window.location.assign(loginUrl.pathname)
 }
 
 const METODOS_MUTANTES = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
 
 function headersCsrf(method) {
   if (!METODOS_MUTANTES.has(method)) return {}
-  const csrfToken = leerCookie(COOKIE_CSRF)
-  return csrfToken ? { 'X-CSRF-Token': csrfToken } : {}
+  return csrfTokenCacheado ? { 'X-CSRF-Token': csrfTokenCacheado } : {}
 }
 
 // suppressCsrfRedirect: usado por logout() (ver abajo). Un 403 de CSRF en cualquier OTRA
@@ -151,12 +147,13 @@ async function cargarSesion() {
 
   sesionEnCurso = (async () => {
     try {
-      const { usuario } = await api.get('/auth/me')
+      const { usuario, csrfToken } = await api.get('/auth/me')
       usuarioCacheado = usuario
+      csrfTokenCacheado = csrfToken
       sesionCargada = true
       return usuario
     } catch {
-      usuarioCacheado = null
+      clearSession()
       sesionCargada = true
       return null
     } finally {

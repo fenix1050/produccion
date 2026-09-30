@@ -1,12 +1,18 @@
 import { loginSchema, cambiarPasswordSchema } from '../schemas/auth.schema.js'
 import * as authService from '../services/auth.service.js'
-import { setCookiesSesion, limpiarCookiesSesion } from '../utils/cookies.js'
+import {
+  COOKIE_CSRF,
+  setCookiesSesion,
+  limpiarCookiesSesion,
+  limpiarCookiesLegadas,
+} from '../utils/cookies.js'
 
 // Cambio session-httponly-cookie (D1 de design.md): authService.login() sigue puro y
 // devuelve { token, csrfToken, usuario }; el controller es quien toca res — setea las
 // cookies y responde solo { usuario }, sin exponer el JWT en el body.
 export async function login(req, res, next) {
   try {
+    limpiarCookiesLegadas(req, res)
     const { email, password } = loginSchema.parse(req.body)
     const { token, csrfToken, usuario } = await authService.login(email, password)
     setCookiesSesion(res, token, csrfToken)
@@ -18,7 +24,7 @@ export async function login(req, res, next) {
 
 export async function me(req, res, next) {
   try {
-    res.json({ usuario: req.usuario })
+    res.json({ usuario: req.usuario, csrfToken: req.cookies?.[COOKIE_CSRF] ?? null })
   } catch (err) {
     next(err)
   }

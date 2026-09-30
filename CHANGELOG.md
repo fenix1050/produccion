@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.68](https://github.com/fenix1050/produccion/compare/v0.1.67...v0.1.68) (2026-09-30)
+
+
+### Features
+
+* **ops:** backup diario de la DB de PROD con copia cifrada a Drive ([#453](https://github.com/fenix1050/produccion/issues/453)) ([8db84c2](https://github.com/fenix1050/produccion/commit/8db84c287a82e515759ff026bd18af329915406e))
+
 ## [0.1.67](https://github.com/fenix1050/produccion/compare/v0.1.66...v0.1.67) (2026-09-30)
 
 

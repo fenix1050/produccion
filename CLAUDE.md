@@ -182,7 +182,8 @@ intentar autenticarlo para inspeccionar PROD ni TEST.
 - **TEST**: contenedor `cotizador-test-db` en la VPS. Claude puede consultarla directamente por su
   cuenta con el acceso scoped `claude-test-deploy-psql` — ver sección "Acceso de Claude a TEST"
   más arriba. Ya no hace falta pedirle a Kevin que corra la consulta a mano.
-- **PROD**: self-hosted en la misma VPS (nombre exacto del contenedor sin confirmar todavía en
-  este archivo — verificar con `docker ps --format '{{.Names}}' | grep -i db` antes de asumirlo).
-  Sigue siendo **estrictamente manual**: ningún wrapper de `claude-test-deploy` tiene forma de
-  tocarla (misma regla de "Remote operation authorization" del bloque de arriba).
+- **PROD**: self-hosted en la misma VPS, contenedor `cotizador-supabase-db` (imagen
+  `supabase/postgres:17.6.1.136`, confirmado con `docker ps` el 2026-09-30; no confundir con
+  `cotizador-test-db`, que es TEST). Sigue siendo **estrictamente manual**: ningún wrapper de
+  `claude-test-deploy` tiene forma de tocarla (misma regla de "Remote operation authorization" del
+  bloque de arriba).

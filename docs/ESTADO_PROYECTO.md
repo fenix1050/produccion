@@ -1454,7 +1454,9 @@ mezclar con el checklist de fases de arriba, este es transversal a fases.
       acceso de lectura al repo) con `retention-days: 30`. **Sigue pendiente, no abordado en esta
       sesión:** evaluar si alcanza con este backup semanal + retención de 30 días o si conviene sumar
       PITR pago de Supabase, y probar un restore real al menos una vez (nunca verificado que el dump
-      generado sea efectivamente restaurable). (issue #87: D4)
+      generado sea efectivamente restaurable). (issue #87: D4) **Actualización 2026-09-30: este
+      workflow dejó de servir — falla desde 2026-09-20 porque apunta al Supabase cloud que ya no existe.
+      Lo reemplaza el backup diario de la VPS (sección 104); la prueba de restauración sigue pendiente.**
 - [ ] Tabla `schema_migrations` (o script equivalente) que registre qué migración ya se aplicó — la
       colisión de numeración **ya ocurrió 3 veces en este repo** (`046` reclamado en paralelo por
       `mrc-plan-descuento-fijo`, `enable-rls-public-tables` y `ramos-flota-tro-transporte`, resuelto a
@@ -3407,3 +3409,41 @@ snapshots de TEST y revisados página por página: caso liviano en 2 páginas (s
 visualmente los PDFs.
 
 **Pendiente:** deploy a TEST y verificación de la emisión real desde la UI.
+
+## 104. Backup diario automático de la DB de PROD en la VPS, con copia cifrada en Google Drive (2026-09-30)
+
+**Por qué:** el workflow `supabase-backup.yml` falla desde 2026-09-20 (run 36308187184: `pg_dump` contra el
+pooler de Supabase cloud responde `ENOTFOUND tenant/user ... not found`; el secreto `SUPABASE_DB_URL`
+apunta a un proyecto que ya no existe desde la migración a la VPS). El último artifact válido es del
+2026-09-13, de la base cloud vieja, y vence hacia el 2026-10-13. Kevin confirmó que la VPS no tenía ningún
+backup automático de PROD. Es prerrequisito de la prueba de restauración del Issue #87 T-04.
+
+**Qué se hizo:**
+
+- **`scripts/backup-prod-db.sh`**: `pg_dump -F c` vía `docker exec` sobre `cotizador-supabase-db` a un
+  `.partial`; verifica tamaño mínimo y `pg_restore --list` (mínimo de entradas del TOC) antes de renombrar;
+  escribe `.sha256`; rota localmente (14 días) y en Drive (30 días); lock con `flock`; sin
+  `RCLONE_REMOTE` exige `--skip-upload` explícito, nunca omite la copia externa en silencio.
+- **Tests** (`backend/src/ops/backup-prod-db.test.js`): 11 casos con `docker`/`rclone` falsos en `PATH`;
+  10 pasan y 1 (el lock) se saltea donde no hay `flock`.
+- **`docs/RUNBOOK_BACKUP_PROD.md`**: instalación, configuración de `rclone`, cron, verificación y límites.
+- **En la VPS (hecho a mano por Kevin, Claude no accede a PROD):** `rclone` 1.60.1 por `apt`; remote
+  `gdrive` sobre una cuenta de Google dedicada (autorizada por túnel SSH) y `gdrive-crypt` (`crypt` sobre
+  `gdrive:prod-db`, claves guardadas fuera de la VPS); cron diario 03:30 hora de Paraguay con log en
+  `~/backups/backup.log`. Se detectó que el NTP estaba inactivo (~9m46s de desfase respecto de Google) y se
+  corrigió con `timedatectl set-ntp true`.
+
+**Cómo se verificó:** dump manual de PROD (294 KB, 598 entradas de TOC, 41 tablas con datos; 257
+cotizaciones en la DB viva). Corrida local del script: 300.801 bytes y 591 entradas de TOC. Corrida con
+subida: el `.dump` y el `.sha256` en `gdrive-crypt:` tienen el mismo tamaño que los locales, y en
+`gdrive:prod-db` los nombres aparecen cifrados. Backend: 10 pass, 0 fail, 1 skip en el test del script.
+El cron todavía no corrió solo.
+
+**Pendiente:**
+
+- Confirmar la primera corrida automática (2026-10-01 03:30): `tail ~/backups/backup.log` y
+  `rclone ls gdrive-crypt:`.
+- **Sin alertas ante fallo**: si el cron falla nadie se entera (mismo modo de falla del workflow viejo).
+- Prueba de restauración sobre un destino descartable (Issue #87 T-04, sin autorizar todavía).
+- Desactivar o eliminar `supabase-backup.yml` (decisión de Kevin).
+- El backup cubre solo la base `postgres`, sin roles globales.

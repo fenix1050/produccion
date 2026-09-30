@@ -1,8 +1,19 @@
-name: Backup Supabase DB
+name: Backup Supabase DB (legacy disabled)
+
+# LEGACY WORKFLOW - DISABLED
+#
+# Este workflow hacía un pg_dump semanal contra el proyecto Supabase cloud
+# (secreto SUPABASE_DB_URL). Ese proyecto ya no existe: PROD y TEST son
+# Supabase self-hosted en la VPS, y desde 2026-09-20 el workflow falla con
+# "ENOTFOUND tenant/user ... not found".
+#
+# Lo reemplaza el backup diario de la VPS (scripts/backup-prod-db.sh, cron
+# 03:30, copia cifrada a Google Drive). Ver docs/RUNBOOK_BACKUP_PROD.md.
+#
+# No eliminar todavía: se conserva temporalmente como referencia histórica.
+# Se quitó el cron para que deje de correr y de fallar cada domingo.
 
 on:
-  schedule:
-    - cron: '0 3 * * 0' # Domingo 03:00 UTC
   workflow_dispatch: {}
 
 permissions:
@@ -10,6 +21,7 @@ permissions:
 
 jobs:
   backup:
+    if: false
     runs-on: ubuntu-latest
     steps:
       - name: Instalar postgresql-client 17 (matchea la versión del server de Supabase)

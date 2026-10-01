@@ -3458,5 +3458,52 @@ invisibles quedó en el runbook.
 
 **Pendiente:**
 
-- Prueba de restauración sobre un destino descartable (Issue #87 T-04, sin autorizar todavía).
+- Prueba de restauración sobre un destino descartable (Issue #87 T-04, sin autorizar todavía). Destino ya
+  elegido por Kevin (sección 105); falta el plan final de Codex y la autorización explícita.
 - El backup cubre solo la base `postgres`, sin roles globales.
+
+## 105. Revisión y merge de PRs pendientes, y destino elegido para la prueba de restauración (2026-09-30 a 2026-10-01)
+
+**Por qué:** había seis PRs abiertos y Kevin pidió verificar si estaban listos para mergear. De esa
+revisión salieron hallazgos operativos que conviene no perder, y quedó decidido dónde se hará la prueba de
+restauración del Issue #87 T-04.
+
+**Qué se hizo:**
+
+- **PRs revisados y mergeados por Kevin (2026-09-30):** #413 (prettier 3.9.9), #421 (codeql-action 4.38.2),
+  #451 (dotenv 17.4.2 a 18.0.4), #452 (lint-staged 17.6.0, supabase-js 2.117.2, puppeteer 25.12.0, jsdom
+  30.1.1), #449 (aislamiento de cookies TEST/PROD, sección 52), #423 y #454 (releases 0.1.67 y 0.1.68). #450
+  lo cerró Dependabot y lo reemplazó #452.
+- **dotenv 18:** quita el preloading con `-r dotenv/config`, el soporte de `.env.vault` y los tips. El repo
+  solo usa `import 'dotenv/config'` (`backend/src/config/supabase.js`) y exige Node 24, así que no lo afecta.
+- **#452:** jsdom arrastra dos transitivas con salto mayor (`html-encoding-sniffer` 6 a 7 y
+  `w3c-xmlserializer` 5 a 6); no se observó impacto y el CI quedó en verde. lint-staged 17.6.0 cambia su
+  comportamiento: ahora hace `git add` de todos los archivos rastreados que modifique una tarea del hook, aunque
+  no estuvieran en el stage. Es un punto a vigilar en el pre-commit.
+- **#449 (cookies `_v2`):** el backend y el frontend tienen que desplegarse juntos. Un frontend viejo lee el
+  token CSRF desde `document.cookie`, que ahora es `HttpOnly`, y todas sus mutaciones darían 403. Además todas
+  las sesiones existentes dejan de valer y las personas tienen que volver a iniciar sesión. Sin las variables
+  `COOKIE_SESSION_NAME` y `COOKIE_CSRF_NAME` se usan los nombres por defecto `tajy_session_v2` y
+  `tajy_csrf_v2`, así que no hace falta tocar el `.env` de la VPS. Mergear no despliega nada; no se verificó
+  si ya se desplegó a TEST o a PROD.
+- **Verificación local:** en el checkout de Windows de Kevin `npm run verify:fast` falla en `prettier --check`
+  con unos 235 archivos ajenos, porque el árbol de trabajo tiene CRLF (`git ls-files --eol` muestra `i/lf
+w/crlf`). El CI en Linux es la fuente de verdad.
+- **Destino de la prueba de restauración (Issue #87 T-04), decidido por Kevin el 2026-09-30:** un contenedor
+  descartable dentro de la VPS usando la copia local, y no una VM externa ni la PC de Kevin. Así no se crea
+  ninguna copia nueva de datos reales ni se mueve la clave de `crypt`. Codex había propuesto una VM externa;
+  se descartó porque pondría datos de asegurados en un proveedor nuevo para un dump de 300 KB. Condiciones que
+  debe cumplir el plan: contenedor `t04-pg` (nunca con prefijo `cotizador-`), `--network none`, sin puertos,
+  `--cpus 0.5 --memory 512m`, dump montado de solo lectura como un único archivo, imagen
+  `supabase/postgres:17.6.1.136`, rol `supabase_admin`, ensayo previo con una base sintética, y la
+  verificación de recuperación desde Drive como paso aparte, con las claves del gestor de contraseñas de Kevin
+  y no con las de la VPS. Se anticipó un riesgo no verificado: la imagen ya crea schemas como `auth` y
+  `storage`, y el dump los recrea, por lo que `--exit-on-error` podría cortar con "already exists".
+- **Herramientas:** `mem_save` de Engram falló durante toda la sesión con "multiple active runtime sessions
+  match the current project and directory", así que este contexto vive solo en el repositorio.
+
+**Pendiente:**
+
+- Plan final de Codex para T-04 y autorización explícita de Kevin antes de ejecutar nada.
+- Verificar si #449 ya se desplegó a TEST y a PROD, y hacerlo con backend y frontend juntos.
+- Resolver el fallo de Engram (sesiones activas duplicadas) para poder guardar el contexto de esta tarea.

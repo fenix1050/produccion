@@ -153,6 +153,10 @@ En Drive tiene que haber un `.dump` y su `.sha256` por cada día, con el mismo t
 
 Solo hacia una base **descartable**, nunca sobre PROD: crear una base vacía en un contenedor temporal y correr `pg_restore` con el dump. La prueba formal de restauración es Issue #87 T-04; no improvisar otros comandos.
 
+Destino decidido para esa prueba (Kevin, 2026-09-30): un contenedor descartable **dentro de la VPS**, con la copia local, para no crear una copia nueva de datos reales ni mover la clave de `crypt`. Condiciones: contenedor `t04-pg` (nunca con prefijo `cotizador-`), `--network none`, sin puertos publicados, `--cpus 0.5 --memory 512m`, dump montado de solo lectura como un único archivo, imagen `supabase/postgres:17.6.1.136` y rol `supabase_admin`. Antes de usar datos reales, ensayar el procedimiento con una base sintética. La imagen ya crea schemas como `auth` y `storage`, que el dump vuelve a crear, así que `pg_restore --exit-on-error` puede cortar con "already exists" (riesgo previsto, no verificado). Al terminar, borrar el contenedor y el volumen y comprobar con `docker ps -a` y `docker volume ls` que no quedó nada.
+
+La recuperación desde Drive se verifica aparte: bajar el archivo de `gdrive-crypt:` con una configuración temporal de `rclone` armada con las claves del gestor de contraseñas (no con las de la VPS) y comparar el `sha256`.
+
 Para bajar un backup de Drive: `rclone copy gdrive-crypt:<archivo> .` (requiere la configuración crypt y sus claves).
 
 ## Límites conocidos

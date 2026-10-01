@@ -64,6 +64,8 @@ Que la base de producción (Supabase self-hosted en la VPS, contenedor `cotizado
 
 - 2026-10-01: PR #456 mergeado. T-11 completado en la VPS. Hallazgo: la URL pegada en la terminal SSH traía 2 caracteres invisibles (largo 58 en vez de 56) y `curl` la rechazó; el backup no se vio afectado. Se documentó cómo cargarla limpia en el runbook.
 
+- 2026-10-01: PR #458 mergeado (verificación de alertas y runbook). Kevin eligió el destino de la prueba de restauración (Issue #87 T-04): contenedor descartable dentro de la VPS (opción A, 2026-09-30) y le pasó a Codex el texto con las condiciones el 2026-10-01. Detalle en `docs/ESTADO_PROYECTO.md` sección 105 y en el runbook, sección "Restaurar".
+
 ## Próximo paso
 
-Primera corrida automática con alertas: 2026-10-02 03:30 (el check debería quedar verde). Pendiente aparte: prueba de restauración (Issue #87 T-04, opción A elegida, falta que Codex entregue el plan) y el guardado en Engram, que sigue fallando.
+Primera corrida automática con alertas: 2026-10-02 03:30 (el check debería quedar verde). Pendiente aparte: plan final de Codex para T-04 y autorización explícita de Kevin antes de ejecutar nada, y el guardado en Engram, que sigue fallando.

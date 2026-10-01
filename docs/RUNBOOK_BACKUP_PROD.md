@@ -87,11 +87,34 @@ PROD_DB_CONTAINER=cotizador-supabase-db BACKUP_DIR=$HOME/backups/prod-db RCLONE_
 El cron usa la zona horaria del sistema (`America/Asuncion`). Agregar la tarea sin pisar otras existentes:
 
 ```bash
-(crontab -l 2>/dev/null; echo '30 3 * * * PROD_DB_CONTAINER=cotizador-supabase-db BACKUP_DIR=/home/soporte/backups/prod-db RCLONE_REMOTE=gdrive-crypt: /home/soporte/backup-prod-db.sh >> /home/soporte/backups/backup.log 2>&1') | crontab -
+(crontab -l 2>/dev/null; echo '30 3 * * * PROD_DB_CONTAINER=cotizador-supabase-db BACKUP_DIR=/home/soporte/backups/prod-db RCLONE_REMOTE=gdrive-crypt: HEALTHCHECK_URL=https://hc-ping.com/<uuid> /home/soporte/backup-prod-db.sh >> /home/soporte/backups/backup.log 2>&1') | crontab -
 crontab -l
 ```
 
+`<uuid>` es el de tu check (ver "Alertas"). Si la tarea ya existe sin `HEALTHCHECK_URL`, editarla con `crontab -e` en vez de duplicarla.
+
 El script se protege solo con su propio lock; no hace falta envolverlo en `flock`. Rotar `backup.log` con logrotate (p. ej. semanal, 8 copias). El log no contiene datos del dump.
+
+## Alertas (healthchecks.io)
+
+Sistema de "dead-man's switch": el script avisa a healthchecks.io al empezar, al terminar bien y ante cualquier falla. Si llega un aviso de falla, o no llega ningún aviso de éxito dentro del plazo, healthchecks.io manda un mail. Un cron que no corre (VPS caída, crontab roto) también se detecta, porque lo que dispara la alerta es la ausencia del ping.
+
+Configuración (una sola vez, del lado de healthchecks.io; nada de esto vive en el repo):
+
+1. Crear una cuenta gratuita en healthchecks.io.
+2. Crear un check llamado `prod-db-backup` con schedule `30 3 * * *`, zona horaria `America/Asuncion` (o, alternativamente, periodo de 1 día) y **grace time de 2 horas**.
+3. Configurar la notificación por **email**.
+4. Copiar la ping URL (`https://hc-ping.com/<uuid>`) y agregarla **solo en el crontab de la VPS** como `HEALTHCHECK_URL=...` en la línea del cron (ver ejemplo arriba). La URL contiene un token secreto: no pegarla en chats, tickets ni en el repo. El script nunca la escribe en el log.
+
+Requisito: `curl` instalado en la VPS (`command -v curl`; si falta, `sudo apt install curl`). Sin `curl` el script lo advierte en el log y sigue sin alertar.
+
+Comportamiento: con subida habilitada, `/start` al comenzar, ping de éxito como último paso y `/fail` (con un mensaje corto, sin datos del dump) ante cualquier salida distinta de 0. Con `--skip-upload` no se hace ningún ping y el log lo indica. Sin `HEALTHCHECK_URL` el log dice `WARN: sin HEALTHCHECK_URL, no hay alerta ante fallo`.
+
+Probar el éxito: correr el script una vez a mano **con** subida y con `HEALTHCHECK_URL` definida en esa línea de comandos; el check del dashboard debe pasar a verde.
+
+Probar la falla de forma segura: correr a mano una vez con un `PROD_DB_CONTAINER` inexistente (p. ej. `PROD_DB_CONTAINER=no-existe`), de modo que `pg_dump` falle. Debe llegar un ping `/fail` y el mail. **No** dejar ese valor en el cron: es solo para esa corrida manual.
+
+Exposición a terceros: healthchecks.io solo recibe pings (marcas de tiempo y el mensaje corto de falla); nunca datos del dump ni datos de conexión.
 
 ## Verificar
 
@@ -114,7 +137,7 @@ Para bajar un backup de Drive: `rclone copy gdrive-crypt:<archivo> .` (requiere 
 ## Límites conocidos
 
 - Respalda solo la base `postgres`, no los roles globales (`pg_dumpall --globals-only` queda fuera).
-- **No hay alertas ante fallo**: solo la salida del log. Es el mismo modo de falla del workflow anterior, que dejó de funcionar sin que nadie lo notara. Revisar `backup.log` periódicamente hasta agregar un aviso externo.
+- **Alertas**: una falla o una corrida que no ocurre avisa por mail vía healthchecks.io (sección "Alertas"). Depende de que `HEALTHCHECK_URL` esté en el crontab; si falta, el script lo advierte en el log pero el backup corre igual sin alerta. Un ping fallido (red caída, `curl` ausente) no rompe el backup, pero esa corrida no avisa.
 - El cifrado de `crypt` protege ante acceso a la cuenta de Drive, no ante acceso a la VPS: `rclone.conf` guarda las claves de forma reversible.
 - Un backup en la misma VPS no protege ante pérdida de la VPS; por eso existe la copia cifrada en Drive.
 - La restauración nunca fue probada de punta a punta (pendiente Issue #87 T-04).

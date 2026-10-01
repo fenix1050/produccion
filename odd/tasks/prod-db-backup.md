@@ -15,7 +15,8 @@ Que la base de producción (Supabase self-hosted en la VPS, contenedor `cotizado
 
 - Escribir scripts, tests y runbook en el repo, en la rama `feat/prod-db-backup`, y abrir un PR (nunca push directo a `main`).
 - Claude NO accede a PROD. Kevin ejecuta manualmente en la VPS todo lo que toque producción.
-- Fuera de alcance: prueba de restauración (T-04), monitoreo/alertas externas, tocar TEST.
+- Fuera de alcance: prueba de restauración (Issue #87 T-04), tocar TEST.
+- Alertas externas: fuera de alcance en el PR original; entran desde 2026-10-01 con la rama `feat/backup-healthcheck` (T-07 a T-11), autorizado por Kevin.
 
 ## Restricciones
 
@@ -31,9 +32,17 @@ Que la base de producción (Supabase self-hosted en la VPS, contenedor `cotizado
 - [x] T-02 GREEN: `scripts/backup-prod-db.sh` (dump a `.partial` → verificación → rename, sha256, rotación local, subida `rclone` cifrada, rotación remota, flock)
 - [x] T-03 Runbook `docs/RUNBOOK_BACKUP_PROD.md`: instalación en la VPS, configuración de `rclone crypt` + Drive, cron, cómo restaurar, guardar la clave de cifrado fuera de la VPS
 - [x] T-04 Kevin instala y corre el script en la VPS (manual) y confirma la subida a Drive (2026-09-30: corrida local `--skip-upload` ok; corrida con subida ok, dump de 300801 bytes idéntico en `gdrive-crypt:`; cron diario 03:30 pendiente de confirmar)
-- [ ] T-04b Confirmar la primera corrida automática del cron (2026-10-01 03:30 America/Asuncion): `~/backups/backup.log` y `rclone ls gdrive-crypt:`
-- [ ] T-05 Desactivar/reemplazar `supabase-backup.yml` (decisión de Kevin tras T-04)
-- [ ] T-06 Registrar en `docs/ESTADO_PROYECTO.md` y abrir PR
+- [x] T-04b Confirmar la primera corrida automática del cron (2026-10-01 03:30 America/Asuncion): confirmado por Kevin — log con `backup completo` (03:30:01 a 03:31:50, 300801 bytes, 591 TOC), `prod-20261001-033001.dump` + `.sha256` local, y dump + sha256 del mismo tamaño en `gdrive-crypt:`
+- [x] T-05 Desactivar/reemplazar `supabase-backup.yml` (PR #453: sin cron, `if: false`)
+- [x] T-06 Registrar en `docs/ESTADO_PROYECTO.md` (sección 104) y abrir PR (#453, #455 mergeados 2026-09-30)
+
+### Alertas ante fallo (healthcheck externo, Kevin eligió healthchecks.io 2026-10-01)
+
+- [x] T-07 RED: tests de ping con `curl` falso en PATH (`/start`, éxito, `/fail` ante error, sin `HEALTHCHECK_URL` advierte, falla del ping no rompe el backup, `--skip-upload` no hace ping)
+- [x] T-08 GREEN: `scripts/backup-prod-db.sh` con `HEALTHCHECK_URL` opcional (advierte en el log si falta; nunca silencioso)
+- [x] T-09 Runbook: configurar el check en healthchecks.io (periodo 1 día, gracia, mail) e instalar la URL en el crontab de la VPS; actualizar límites conocidos
+- [x] T-10 Actualizar `docs/ESTADO_PROYECTO.md` sección 104 y `CLAUDE.md` (ya no "sin alertas"); abrir PR
+- [ ] T-11 Kevin crea el check, edita el crontab con la URL y confirma la primera notificación de éxito y la de falla simulada
 
 ## Criterios de aceptación
 
@@ -49,6 +58,10 @@ Que la base de producción (Supabase self-hosted en la VPS, contenedor `cotizado
 
 - 2026-09-30: en la VPS se instaló `rclone` 1.60.1 (apt), se configuraron `gdrive` (cuenta Google dedicada) y `gdrive-crypt` (crypt sobre `gdrive:prod-db`; claves guardadas por Kevin fuera de la VPS). Se detectó y corrigió el reloj de la VPS (NTP inactivo, ~9m46s de desfase; `set-ntp true`, ahora sincronizado). Flock verificado implícitamente (el script corrió en la VPS).
 
+- 2026-10-01: cron confirmado (T-04b). PRs #453 y #455 mergeados. Rama `feat/backup-healthcheck` creada desde `origin/main` (a87c8de). Mirror Engram sigue fallando (varias sesiones activas del proyecto).
+
+- 2026-10-01: T-07..T-10 hechos (sin commit aún). RED: 18 tests, 11 pass / 6 fail / 1 skip. GREEN: 17 pass / 0 fail / 1 skip (lock, sin flock en Windows). Pings con `curl` falso; la URL nunca aparece en stdout/stderr.
+
 ## Próximo paso
 
-Confirmar la corrida automática (T-04b), decidir T-05 (workflow roto), T-06 (ESTADO_PROYECTO + PR). Pendiente: alertas ante fallo del cron (hoy silencioso), mirror Engram, prueba de restauración (Issue #87 T-04).
+T-07/T-08 (writer delegado), luego T-09/T-10 y que Kevin complete T-11. Pendiente aparte: prueba de restauración (Issue #87 T-04, opción A elegida, falta que Codex entregue el plan).

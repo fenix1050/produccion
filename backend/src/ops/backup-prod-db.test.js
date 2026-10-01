@@ -40,6 +40,12 @@ echo "rclone $*" >> "$FAKE_LOG"
 if [[ "\${FAKE_RCLONE_FAIL:-}" == "$1" ]]; then echo "rclone: fake failure" >&2; exit 1; fi
 `
 
+// Registra argv en FAKE_CURL_LOG (la URL del ping va ahí, nunca en la salida del script).
+const FAKE_CURL = `#!/usr/bin/env bash
+echo "curl $*" >> "$FAKE_CURL_LOG"
+if [[ "\${FAKE_CURL_FAIL:-0}" == 1 ]]; then exit 22; fi
+`
+
 // Solo se instala si el host no tiene flock (ej. Git Bash en Windows).
 const FAKE_FLOCK = `#!/usr/bin/env bash
 exit 0
@@ -53,6 +59,14 @@ let tmp
 let binDir
 let backupDir
 let logFile
+let curlLog
+
+const HC_TOKEN = 'tok-secreto-9f3a1c'
+const HC_URL = `https://hc.example.invalid/${HC_TOKEN}`
+
+function curlCalls() {
+  return fs.existsSync(curlLog) ? fs.readFileSync(curlLog, 'utf8').split('\n').filter(Boolean) : []
+}
 
 function writeShim(name, body) {
   const p = path.join(binDir, name)
@@ -64,6 +78,7 @@ function baseEnv(extra = {}) {
     ...process.env,
     PATH: `${binDir}${path.delimiter}${process.env.PATH}`,
     FAKE_LOG: logFile,
+    FAKE_CURL_LOG: curlLog,
     PROD_DB_CONTAINER: 'fake-db',
     BACKUP_DIR: backupDir,
     RCLONE_REMOTE: 'fake-remote:prod-db',
@@ -90,9 +105,11 @@ beforeEach(() => {
   binDir = path.join(tmp, 'bin')
   backupDir = path.join(tmp, 'backups')
   logFile = path.join(tmp, 'calls.log')
+  curlLog = path.join(tmp, 'curl.log')
   fs.mkdirSync(binDir)
   writeShim('docker', FAKE_DOCKER)
   writeShim('rclone', FAKE_RCLONE)
+  writeShim('curl', FAKE_CURL)
   if (!hasRealFlock()) writeShim('flock', FAKE_FLOCK)
 })
 
@@ -194,6 +211,72 @@ describe('backup-prod-db.sh', () => {
     const r = run([], { FAKE_RCLONE_FAIL: 'copy' })
     assert.notEqual(r.status, 0)
     assert.equal(calls().filter((c) => c.startsWith('rclone delete')).length, 0)
+  })
+
+  describe('healthcheck (pings)', () => {
+    test('corrida exitosa: ping /start y luego éxito, nunca /fail', () => {
+      const r = run([], { HEALTHCHECK_URL: HC_URL })
+      assert.equal(r.status, 0, r.stderr)
+      const c = curlCalls()
+      assert.equal(c.length, 2, c.join('\n'))
+      assert.ok(c[0].includes(`${HC_URL}/start`), c[0])
+      assert.ok(c[1].endsWith(` ${HC_URL}`), c[1])
+      assert.ok(!c.some((l) => l.includes('/fail')))
+    })
+
+    test('fallo de pg_dump: ping /start y /fail, nunca éxito', () => {
+      const r = run([], { HEALTHCHECK_URL: HC_URL, FAKE_DUMP_FAIL: '1' })
+      assert.notEqual(r.status, 0)
+      const c = curlCalls()
+      assert.equal(c.length, 2, c.join('\n'))
+      assert.ok(c[0].includes(`${HC_URL}/start`))
+      assert.ok(c[1].includes(`${HC_URL}/fail`))
+      assert.ok(!c.some((l) => l.endsWith(` ${HC_URL}`)))
+    })
+
+    test('fallo de rclone copy: ping /start y /fail, nunca éxito', () => {
+      const r = run([], { HEALTHCHECK_URL: HC_URL, FAKE_RCLONE_FAIL: 'copy' })
+      assert.notEqual(r.status, 0)
+      const c = curlCalls()
+      assert.equal(c.length, 2, c.join('\n'))
+      assert.ok(c[0].includes(`${HC_URL}/start`))
+      assert.ok(c[1].includes(`${HC_URL}/fail`))
+      assert.ok(!c.some((l) => l.endsWith(` ${HC_URL}`)))
+    })
+
+    test('sin HEALTHCHECK_URL: el backup anda, avisa en el log y no llama a curl', () => {
+      const r = run([], {}, ['HEALTHCHECK_URL'])
+      assert.equal(r.status, 0, r.stderr)
+      assert.match(r.stdout + r.stderr, /WARN: sin HEALTHCHECK_URL, no hay alerta ante fallo/)
+      assert.equal(curlCalls().length, 0)
+    })
+
+    test('si curl falla, el backup igual termina con exit 0 y avisa', () => {
+      const r = run([], { HEALTHCHECK_URL: HC_URL, FAKE_CURL_FAIL: '1' })
+      assert.equal(r.status, 0, r.stderr)
+      assert.match(r.stdout + r.stderr, /WARN: no se pudo enviar el ping de healthcheck/)
+      assert.ok(backupFiles().some((f) => /^prod-\d{8}-\d{6}\.dump$/.test(f)))
+    })
+
+    test('con --skip-upload no hay pings y se avisa la omisión', () => {
+      const r = run(['--skip-upload'], { HEALTHCHECK_URL: HC_URL })
+      assert.equal(r.status, 0, r.stderr)
+      assert.match(r.stdout + r.stderr, /healthcheck omitido por --skip-upload/)
+      assert.equal(curlCalls().length, 0)
+    })
+
+    test('la URL (token) nunca aparece en stdout/stderr, ni en éxito ni en fallo ni con curl roto', () => {
+      const casos = [
+        {},
+        { FAKE_DUMP_FAIL: '1' },
+        { FAKE_CURL_FAIL: '1' },
+        { FAKE_RCLONE_FAIL: 'copy' },
+      ]
+      for (const extra of casos) {
+        const r = run([], { HEALTHCHECK_URL: HC_URL, ...extra })
+        assert.ok(!(r.stdout + r.stderr).includes(HC_TOKEN), JSON.stringify(extra))
+      }
+    })
   })
 
   test(

@@ -42,7 +42,7 @@ Que la base de producción (Supabase self-hosted en la VPS, contenedor `cotizado
 - [x] T-08 GREEN: `scripts/backup-prod-db.sh` con `HEALTHCHECK_URL` opcional (advierte en el log si falta; nunca silencioso)
 - [x] T-09 Runbook: configurar el check en healthchecks.io (periodo 1 día, gracia, mail) e instalar la URL en el crontab de la VPS; actualizar límites conocidos
 - [x] T-10 Actualizar `docs/ESTADO_PROYECTO.md` sección 104 y `CLAUDE.md` (ya no "sin alertas"); abrir PR
-- [ ] T-11 Kevin crea el check, edita el crontab con la URL y confirma la primera notificación de éxito y la de falla simulada
+- [x] T-11 Kevin crea el check, edita el crontab con la URL y confirma la primera notificación de éxito y la de falla simulada (2026-10-01: check verde tras corrida completa sin `WARN`; falla provocada con contenedor inexistente → check rojo y mail recibido; crontab con `HEALTHCHECK_URL` verificado con el token tapado)
 
 ## Criterios de aceptación
 
@@ -62,6 +62,8 @@ Que la base de producción (Supabase self-hosted en la VPS, contenedor `cotizado
 
 - 2026-10-01: T-07..T-10 hechos (sin commit aún). RED: 18 tests, 11 pass / 6 fail / 1 skip. GREEN: 17 pass / 0 fail / 1 skip (lock, sin flock en Windows). Pings con `curl` falso; la URL nunca aparece en stdout/stderr.
 
+- 2026-10-01: PR #456 mergeado. T-11 completado en la VPS. Hallazgo: la URL pegada en la terminal SSH traía 2 caracteres invisibles (largo 58 en vez de 56) y `curl` la rechazó; el backup no se vio afectado. Se documentó cómo cargarla limpia en el runbook.
+
 ## Próximo paso
 
-T-07/T-08 (writer delegado), luego T-09/T-10 y que Kevin complete T-11. Pendiente aparte: prueba de restauración (Issue #87 T-04, opción A elegida, falta que Codex entregue el plan).
+Primera corrida automática con alertas: 2026-10-02 03:30 (el check debería quedar verde). Pendiente aparte: prueba de restauración (Issue #87 T-04, opción A elegida, falta que Codex entregue el plan) y el guardado en Engram, que sigue fallando.

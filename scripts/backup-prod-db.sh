@@ -20,10 +20,16 @@
 # Opcionales:
 #   RETENTION_DAYS (14), REMOTE_RETENTION_DAYS (30), MIN_DUMP_BYTES (10240),
 #   MIN_TOC_ENTRIES (100), DB_USER (supabase_admin), DB_NAME (postgres)
+#   HEALTHCHECK_URL     URL base de ping de un check de healthchecks.io
+#                       (https://hc-ping.com/<uuid>; lleva un token secreto: solo en el crontab
+#                       de la VPS). Con subida: ping /start al empezar, ping de éxito al final y
+#                       /fail ante cualquier salida != 0. Si falta, se avisa en el log. Con
+#                       --skip-upload no se hace ningún ping. Un ping fallido no afecta al backup.
 set -euo pipefail
 
 log() { printf '%s %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*"; }
 fail() {
+  LAST_FAIL="$*"
   printf '%s FAIL: %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" >&2
   exit 1
 }
@@ -54,6 +60,52 @@ DB_NAME=${DB_NAME:-postgres}
 umask 077
 mkdir -p "$BACKUP_DIR"
 
+# Healthcheck (dead-man's switch). Un ping que falla NUNCA cambia el resultado del backup,
+# y la URL (lleva un token secreto) jamás se escribe en logs ni mensajes.
+HC_ACTIVE=0
+LAST_FAIL=""
+PARTIAL=""
+
+hc_ping() {
+  local suffix=$1 body=${2:-}
+  ((HC_ACTIVE == 1)) || return 0
+  if ! command -v curl >/dev/null 2>&1; then
+    log "WARN: no se pudo enviar el ping de healthcheck"
+    return 0
+  fi
+  local rc=0
+  if [[ -n $body ]]; then
+    curl -fsS -m 10 --retry 3 --data-raw "$body" "$HEALTHCHECK_URL$suffix" >/dev/null 2>&1 || rc=$?
+  else
+    curl -fsS -m 10 --retry 3 "$HEALTHCHECK_URL$suffix" >/dev/null 2>&1 || rc=$?
+  fi
+  if ((rc != 0)); then
+    log "WARN: no se pudo enviar el ping de healthcheck"
+  fi
+  return 0
+}
+
+# Único trap de salida: borra el .partial y, ante cualquier salida != 0, avisa /fail.
+on_exit() {
+  local rc=$?
+  trap - EXIT
+  if [[ -n $PARTIAL ]]; then rm -f "$PARTIAL"; fi
+  if ((rc != 0)); then
+    hc_ping /fail "${LAST_FAIL:-exit code $rc}"
+  fi
+  exit "$rc"
+}
+trap on_exit EXIT
+
+if ((SKIP_UPLOAD == 1)); then
+  log "healthcheck omitido por --skip-upload"
+elif [[ -z ${HEALTHCHECK_URL:-} ]]; then
+  log "WARN: sin HEALTHCHECK_URL, no hay alerta ante fallo"
+else
+  HC_ACTIVE=1
+  hc_ping /start
+fi
+
 # Lock: una sola corrida a la vez (el fd 9 se libera al terminar el proceso).
 exec 9>"$BACKUP_DIR/.backup.lock"
 flock -n 9 || fail "otra ejecución del backup está en curso (lock ocupado)"
@@ -61,7 +113,6 @@ flock -n 9 || fail "otra ejecución del backup está en curso (lock ocupado)"
 NAME="prod-$(date +%Y%m%d-%H%M%S).dump"
 FINAL="$BACKUP_DIR/$NAME"
 PARTIAL="$FINAL.partial"
-trap 'rm -f "$PARTIAL"' EXIT
 
 log "pg_dump de $DB_NAME desde el contenedor $PROD_DB_CONTAINER"
 docker exec "$PROD_DB_CONTAINER" pg_dump -U "$DB_USER" -d "$DB_NAME" -F c >"$PARTIAL" ||
@@ -95,3 +146,4 @@ rclone copy "$FINAL.sha256" "$RCLONE_REMOTE" || fail "rclone copy del sha256 fal
 log "rotación remota: borrando con más de ${REMOTE_RETENTION_DAYS} días"
 rclone delete --min-age "${REMOTE_RETENTION_DAYS}d" "$RCLONE_REMOTE" || fail "rclone delete falló"
 log "backup completo"
+hc_ping ""

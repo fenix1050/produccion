@@ -3439,11 +3439,15 @@ subida: el `.dump` y el `.sha256` en `gdrive-crypt:` tienen el mismo tamaño que
 `gdrive:prod-db` los nombres aparecen cifrados. Backend: 10 pass, 0 fail, 1 skip en el test del script.
 El cron todavía no corrió solo.
 
+**Actualización 2026-10-01:** primera corrida automática confirmada por Kevin: log con `backup completo`
+(03:30:01 a 03:31:50, 300.801 bytes, 591 entradas de TOC) y dump + `.sha256` del mismo tamaño en
+`gdrive-crypt:`. Se agregaron alertas ante fallo mediante pings a healthchecks.io
+(`HEALTHCHECK_URL` opcional en `scripts/backup-prod-db.sh`: `/start`, éxito y `/fail` ante cualquier salida
+!= 0; un ping fallido no rompe el backup; sin la variable el log advierte; con `--skip-upload` no hay
+pings). Detalle de configuración en el runbook, sección "Alertas". `supabase-backup.yml` ya está
+deshabilitado (PR #453). Falta que Kevin cree el check y cargue la URL en el crontab de la VPS.
+
 **Pendiente:**
 
-- Confirmar la primera corrida automática (2026-10-01 03:30): `tail ~/backups/backup.log` y
-  `rclone ls gdrive-crypt:`.
-- **Sin alertas ante fallo**: si el cron falla nadie se entera (mismo modo de falla del workflow viejo).
 - Prueba de restauración sobre un destino descartable (Issue #87 T-04, sin autorizar todavía).
-- Desactivar o eliminar `supabase-backup.yml` (decisión de Kevin).
 - El backup cubre solo la base `postgres`, sin roles globales.

@@ -66,6 +66,8 @@ Que la base de producción (Supabase self-hosted en la VPS, contenedor `cotizado
 
 - 2026-10-01: PR #458 mergeado (verificación de alertas y runbook). Kevin eligió el destino de la prueba de restauración (Issue #87 T-04): contenedor descartable dentro de la VPS (opción A, 2026-09-30) y le pasó a Codex el texto con las condiciones el 2026-10-01. Detalle en `docs/ESTADO_PROYECTO.md` sección 105 y en el runbook, sección "Restaurar".
 
+- 2026-10-01: PR #459 mergeado. Issue #87 T-04 (prueba de restauración) **ejecutada y verificada**: ensayo sintético y restauración real del dump `prod-20261001-033001.dump` en un contenedor aislado, `pg_restore` con código 0, 41 conteos por tabla idénticos a PROD (una sola lectura de solo lectura autorizada contra `cotizador-supabase-db`), limpieza verificada. Detalle en `docs/ESTADO_PROYECTO.md` sección 106 y procedimiento en el runbook, sección "Restaurar". Engram sorteado con `session_id` explícito.
+
 ## Próximo paso
 
-Primera corrida automática con alertas: 2026-10-02 03:30 (el check debería quedar verde). Pendiente aparte: plan final de Codex para T-04 y autorización explícita de Kevin antes de ejecutar nada, y el guardado en Engram, que sigue fallando.
+Primera corrida automática con alertas: 2026-10-02 03:30 (el check debería quedar verde). Pendiente aparte: verificación de recuperación desde Drive con las claves de Kevin (paso 5 del plan de T-04, sin autorizar) y repetir la prueba de restauración periódicamente.

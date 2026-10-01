@@ -3458,8 +3458,8 @@ invisibles quedó en el runbook.
 
 **Pendiente:**
 
-- Prueba de restauración sobre un destino descartable (Issue #87 T-04, sin autorizar todavía). Destino ya
-  elegido por Kevin (sección 105); falta el plan final de Codex y la autorización explícita.
+- ~~Prueba de restauración sobre un destino descartable (Issue #87 T-04)~~ — **hecha y verificada el
+  2026-10-01, ver sección 106.**
 - El backup cubre solo la base `postgres`, sin roles globales.
 
 ## 105. Revisión y merge de PRs pendientes, y destino elegido para la prueba de restauración (2026-09-30 a 2026-10-01)
@@ -3504,6 +3504,68 @@ w/crlf`). El CI en Linux es la fuente de verdad.
 
 **Pendiente:**
 
-- Plan final de Codex para T-04 y autorización explícita de Kevin antes de ejecutar nada.
+- ~~Plan final de Codex para T-04 y autorización explícita de Kevin~~ — **cumplido, ver sección 106.**
 - Verificar si #449 ya se desplegó a TEST y a PROD, y hacerlo con backend y frontend juntos.
-- Resolver el fallo de Engram (sesiones activas duplicadas) para poder guardar el contexto de esta tarea.
+- ~~Resolver el fallo de Engram~~ — **sorteado el 2026-10-01**: se registra una sesión propia con `mem_session_start`
+  y se pasa `session_id` en cada `mem_save`. Las 41 sesiones activas duplicadas siguen sin limpiarse (algunas son
+  de Codex y están en uso).
+
+## 106. Prueba de restauración del backup de PROD (Issue #87 T-04) — verificada (2026-10-01)
+
+**Por qué:** el hallazgo D4 del issue #87 decía que nunca se había verificado que un dump de PROD fuera
+restaurable. Con el backup diario ya funcionando (sección 104), correspondía probarlo.
+
+**Quién hizo qué:** Codex diseñó el plan, Kevin ejecutó cada comando en la VPS (de a uno, pegando las
+salidas) y Claude revisó el plan y las salidas. Claude no accedió a PROD.
+
+**Qué se hizo:**
+
+- **Ensayo sintético previo (sin datos reales):** un contenedor aislado con una base de tres filas inventadas;
+  `pg_restore` terminó con código 0 y la consulta devolvió `3|t`. Se limpió y se verificó que no quedaba nada.
+- **Restauración real:** el dump generado por el cron, `prod-20261001-033001.dump` (300.801 bytes, sha256 del
+  sidecar correcto, 591 entradas de TOC, leído con el `pg_restore` 18.6 del host), se restauró en un contenedor
+  descartable `t04-pg` (`supabase/postgres:17.6.1.136`, `--network none`, sin puertos, `--cpus 0.5`,
+  `--memory 512m`, dump montado de solo lectura como un único archivo, volumen propio etiquetado
+  `io.t04.scope=issue-87-t04`). El destino fue una base nueva `t04_restore` creada desde `template0`, con el rol
+  `supabase_admin` y `pg_restore --exit-on-error --clean --if-exists --no-owner --no-privileges`. Resultado:
+  código 0 y cero errores. El dump contiene las extensiones `pgcrypto`, `pg_stat_statements`, `supabase_vault` y
+  `uuid-ossp`, y todas se crearon sin problema; `pg_cron` no está en el dump, así que el bloqueo previsto para
+  esa extensión no aplicó.
+- **Comparación con PROD en vivo:** se contaron las filas de cada tabla base (41 tablas, excluyendo `pg_catalog`
+  e `information_schema`) en `t04_restore` y en PROD con la misma consulta (`query_to_xml` sobre
+  `information_schema.tables`), sin mostrar filas. En PROD se hizo un único `docker exec` contra
+  `cotizador-supabase-db`, autorizado por Kevin, con la sesión forzada a solo lectura
+  (`-e PGOPTIONS='-c default_transaction_read_only=on'`). **Los 41 conteos fueron idénticos.**
+- **Limpieza:** se borraron el contenedor, el volumen y los temporales en `/dev/shm`, con verificación
+  posterior. El dump original y su sidecar quedaron intactos.
+
+**Tiempos:** el `pg_restore` empezó a las 17:58:11 UTC y la verificación terminó a las 18:22:33 UTC, por lo que
+el RTO medido es una cota superior de 1.463 s, inflada por las pausas manuales entre comandos. La restauración en
+sí duró como máximo 4 min 38 s (hasta el inicio del primer conteo); el valor real no se midió y probablemente son
+segundos, para un dump de 300 KB. El RPO al iniciar la restauración fue de unos 41.290 s (11 h 28 min, desde las
+03:30 locales del dump); con el cron diario, el peor caso es de unas 24 h.
+
+**Qué NO valida esta prueba:**
+
+- Los valores de las filas: la igualdad de conteos prueba cardinalidad por tabla, no contenido.
+- Roles globales, propietarios y ACL: el dump no los incluye y se restauró con `--no-owner --no-privileges`.
+- Solo cubre la base `postgres`.
+- La recuperación desde la copia cifrada de Google Drive con las claves de `crypt` guardadas en el gestor de
+  contraseñas de Kevin. Es el paso 5 del plan de Codex y no se ejecutó.
+- Un RTO real de desastre: no incluye descargar el archivo de Drive ni reconstruir la VPS.
+
+**Lecciones prácticas (quedaron en el runbook):**
+
+- Pegar comandos largos desde el chat a la terminal SSH los parte. Sirve usar comandos cortos de una línea,
+  arreglos de bash para armar comandos largos y `printf` para escribir archivos; sin heredocs.
+- `ORDER BY alias COLLATE "C"` no es válido en PostgreSQL: un alias de salida no se puede usar dentro de una
+  expresión. Se usó `ORDER BY 1`.
+- El `-e PGOPTIONS=...` tiene que ir dentro de `docker exec`; antepuesto en el host no llega al contenedor.
+- El host de la VPS ya tiene `pg_restore` (18.6).
+
+**Pendiente:**
+
+- Verificación de recuperación desde Drive con las claves de Kevin (paso 5 del plan, sin autorizar).
+- Repetir esta prueba periódicamente, por ejemplo trimestralmente, y tras cualquier cambio del script de backup
+  o de la imagen de Postgres.
+- Opcional: comentar el resultado en el issue #87 (ítem T-04).

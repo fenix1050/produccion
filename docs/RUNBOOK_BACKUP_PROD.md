@@ -149,11 +149,83 @@ rclone ls gdrive-crypt:
 
 En Drive tiene que haber un `.dump` y su `.sha256` por cada día, con el mismo tamaño que los locales.
 
-## Restaurar (esquema)
+## Restaurar (procedimiento verificado el 2026-10-01)
 
-Solo hacia una base **descartable**, nunca sobre PROD: crear una base vacía en un contenedor temporal y correr `pg_restore` con el dump. La prueba formal de restauración es Issue #87 T-04; no improvisar otros comandos.
+Solo hacia una base **descartable**, nunca sobre PROD. Este procedimiento se ejecutó de punta a punta el 2026-10-01 (Issue #87 T-04, resultado en `docs/ESTADO_PROYECTO.md` sección 106): la restauración del dump del cron terminó con código 0 y los 41 conteos por tabla coincidieron con PROD en vivo.
 
-Destino decidido para esa prueba (Kevin, 2026-09-30): un contenedor descartable **dentro de la VPS**, con la copia local, para no crear una copia nueva de datos reales ni mover la clave de `crypt`. Condiciones: contenedor `t04-pg` (nunca con prefijo `cotizador-`), `--network none`, sin puertos publicados, `--cpus 0.5 --memory 512m`, dump montado de solo lectura como un único archivo, imagen `supabase/postgres:17.6.1.136` y rol `supabase_admin`. Antes de usar datos reales, ensayar el procedimiento con una base sintética. La imagen ya crea schemas como `auth` y `storage`, que el dump vuelve a crear, así que `pg_restore --exit-on-error` puede cortar con "already exists" (riesgo previsto, no verificado). Al terminar, borrar el contenedor y el volumen y comprobar con `docker ps -a` y `docker volume ls` que no quedó nada.
+Diseño: un contenedor descartable **dentro de la VPS**, con la copia local, para no crear una copia nueva de datos reales ni mover la clave de `crypt`. Reglas: contenedor `t04-pg` (nunca con prefijo `cotizador-`), `--network none`, sin puertos publicados, `--cpus 0.5 --memory 512m`, dump montado de solo lectura como un único archivo (nunca la carpeta de backups), imagen `supabase/postgres:17.6.1.136`, base nueva `t04_restore` creada desde `template0` y rol `supabase_admin`. Nunca ejecutar `docker exec` contra `cotizador-test-db` ni contra `cotizador-supabase-db`, salvo la lectura de conteos descrita más abajo, que requiere autorización explícita. Si `pg_restore` falla, no reintentar ni cambiar opciones: guardar el código y un mensaje sin datos, limpiar y analizar.
+
+Pegar los comandos **de a uno** desde una sesión SSH única (las variables viven en esa sesión). No usar heredocs.
+
+```bash
+export DUMP="$HOME/backups/prod-db/prod-AAAAMMDD-0330SS.dump"
+umask 077
+export T04_TMP="$(mktemp -d /dev/shm/t04-restore.XXXXXX)"; O="$T04_TMP"
+docker ps -a --filter name='^/t04-pg$' --format '{{.Names}}'
+docker volume ls --filter name=t04-pg-data --format '{{.Name}}'
+```
+
+Las dos últimas salidas deben estar vacías; si no, frenar sin borrar nada. Después, validar el dump y crear el contenedor:
+
+```bash
+test -f "$DUMP" && test -f "$DUMP.sha256" && echo DUMP_AND_SIDECAR_PRESENT
+E="$(awk 'NR==1 {print $1}' "$DUMP.sha256")"; A="$(sha256sum "$DUMP" | awk '{print $1}')"
+[ "$E" = "$A" ] && echo LOCAL_SHA256_OK || echo LOCAL_SHA256_MISMATCH
+pg_restore --list "$DUMP" | awk '/^[0-9]+;/{n++} END{print "TOC_ENTRIES=" n+0}'
+docker volume create --label io.t04.scope=issue-87-t04 t04-pg-data
+T04_RUN_ARGS=(--name t04-pg --label io.t04.scope=issue-87-t04 --network none)
+T04_RUN_ARGS+=(--cpus 0.5 --memory 512m --env POSTGRES_PASSWORD)
+T04_RUN_ARGS+=(-v t04-pg-data:/var/lib/postgresql/data)
+T04_RUN_ARGS+=(--mount "type=bind,source=$DUMP,target=/t04/backup.dump,readonly")
+export POSTGRES_PASSWORD="$(openssl rand -hex 32)"
+docker run -d "${T04_RUN_ARGS[@]}" supabase/postgres:17.6.1.136
+unset POSTGRES_PASSWORD
+```
+
+Verificar el aislamiento antes de seguir (una consulta por comando): `docker inspect --format '{{.HostConfig.NetworkMode}}' t04-pg` debe dar `none`; `NanoCpus` da `500000000`; `Memory` da `536870912`; `{{json .HostConfig.PortBindings}}` da `{}`; y `{{json .Mounts}}` debe mostrar solo el volumen propio y el archivo `/t04/backup.dump` con `"RW":false`. Luego esperar a que PostgreSQL responda, crear la base y restaurar guardando la salida en memoria (puede traer contexto de `COPY` con datos: no pegarla ni mostrarla):
+
+```bash
+until docker exec t04-pg pg_isready -U supabase_admin -d postgres; do sleep 2; done
+docker exec t04-pg createdb -U supabase_admin -O supabase_admin -T template0 t04_restore
+RESTORE_ARGS=(--username=supabase_admin --dbname=t04_restore)
+RESTORE_ARGS+=(--exit-on-error --clean --if-exists --no-owner --no-privileges)
+T04_RESTORE=(docker exec t04-pg pg_restore "${RESTORE_ARGS[@]}" /t04/backup.dump)
+date -u -Is | tee "$O/rto-start.utc"
+"${T04_RESTORE[@]}" >"$O/restore.log" 2>&1; RESTORE_RC=$?
+printf 'pg_restore_exit=%s\n' "$RESTORE_RC"
+```
+
+El éxito exige `pg_restore_exit=0`. Para comparar con PROD, guardar esta consulta en `$O/count.sql` (con `printf '%s\n' '...' >> "$O/count.sql"` línea por línea, o con un editor), que cuenta cada tabla base sin mostrar filas:
+
+```sql
+SELECT format('%s.%s|%s', t.table_schema, t.table_name,
+(xpath('/table/row/count/text()', query_to_xml(
+format('SELECT count(*) AS count FROM %I.%I',
+t.table_schema, t.table_name), false, false, '')))[1]::text) AS result
+FROM information_schema.tables AS t
+WHERE t.table_type = 'BASE TABLE'
+AND t.table_schema NOT IN ('pg_catalog', 'information_schema')
+ORDER BY 1;
+```
+
+Ejecutarla primero en `t04_restore` y revisar que el resultado tenga una línea por tabla y que el archivo de errores pese 0 bytes; recién después, **una sola vez** y con autorización, en PROD con la sesión forzada a solo lectura (el `-e PGOPTIONS` va dentro de `docker exec`, no antes):
+
+```bash
+T04_RESTORE_COUNTS=(docker exec -i t04-pg psql -X -At -v ON_ERROR_STOP=1 -U supabase_admin -d t04_restore)
+"${T04_RESTORE_COUNTS[@]}" < "$O/count.sql" >"$O/restore-counts.txt" 2>"$O/restore-counts.err"; echo "exit=$?"
+wc -l "$O/restore-counts.txt"; wc -c "$O/restore-counts.err"
+PROD_COUNTS=(docker exec -i -e "PGOPTIONS=-c default_transaction_read_only=on" cotizador-supabase-db psql -X -At -v ON_ERROR_STOP=1 -U supabase_admin -d postgres)
+"${PROD_COUNTS[@]}" < "$O/count.sql" >"$O/prod-counts.txt" 2>"$O/prod-counts.err"; echo "exit=$?"
+LC_ALL=C sort -o "$O/restore-counts.txt" "$O/restore-counts.txt"; LC_ALL=C sort -o "$O/prod-counts.txt" "$O/prod-counts.txt"
+D=(diff --old-line-format='PROD %L' --new-line-format='t04_restore %L' --unchanged-line-format='')
+"${D[@]}" "$O/prod-counts.txt" "$O/restore-counts.txt"; echo "diff_exit=$?"
+```
+
+`diff_exit=0` sin salida significa que todos los conteos coinciden. Cada diferencia hay que explicarla: tablas con escrituras vivas desde las 03:30 (sesiones, logs de auth) o particiones nuevas pueden diferir; una diferencia en una tabla de negocio detiene la prueba hasta entenderla.
+
+Limpieza obligatoria: verificar con `docker inspect --format '{{index .Config.Labels "io.t04.scope"}}' t04-pg` y `docker volume inspect --format '{{index .Labels "io.t04.scope"}}' t04-pg-data` que ambos dicen `issue-87-t04`; solo entonces `docker rm -f t04-pg`, `docker volume rm t04-pg-data`, borrar los archivos de `$O` (nunca el dump original ni su sidecar) y `rmdir "$O"`. Comprobar que `docker ps -a --filter name='^/t04-pg$'` sale vacío y que `docker volume inspect t04-pg-data` falla.
+
+Cosas que se aprendieron: pegar comandos largos desde el chat los parte (usar comandos cortos y arreglos de bash); `ORDER BY alias COLLATE "C"` es inválido en PostgreSQL (usar `ORDER BY 1`); el host de la VPS ya tiene `pg_restore` 18.6; el tiempo medido entre comandos incluye las pausas manuales, así que no es un RTO real de desastre.
 
 La recuperación desde Drive se verifica aparte: bajar el archivo de `gdrive-crypt:` con una configuración temporal de `rclone` armada con las claves del gestor de contraseñas (no con las de la VPS) y comparar el `sha256`.
 
@@ -165,4 +237,4 @@ Para bajar un backup de Drive: `rclone copy gdrive-crypt:<archivo> .` (requiere 
 - **Alertas**: una falla o una corrida que no ocurre avisa por mail vía healthchecks.io (sección "Alertas"). Depende de que `HEALTHCHECK_URL` esté en el crontab; si falta, el script lo advierte en el log pero el backup corre igual sin alerta. Un ping fallido (red caída, `curl` ausente) no rompe el backup, pero esa corrida no avisa.
 - El cifrado de `crypt` protege ante acceso a la cuenta de Drive, no ante acceso a la VPS: `rclone.conf` guarda las claves de forma reversible.
 - Un backup en la misma VPS no protege ante pérdida de la VPS; por eso existe la copia cifrada en Drive.
-- La restauración nunca fue probada de punta a punta (pendiente Issue #87 T-04).
+- La restauración del dump local se verificó el 2026-10-01 (cardinalidad por tabla idéntica a PROD), pero esa prueba **no** valida los valores de las filas, ni roles globales, propietarios y ACL, ni la recuperación desde Drive con las claves de `crypt` (pendiente). Conviene repetirla periódicamente.

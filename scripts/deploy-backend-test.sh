@@ -24,6 +24,11 @@
 # Usar --preflight-only en vez de --approve-deploy para solo validar conectividad y el
 # estado actual del contenedor (no construye ni reemplaza nada).
 #
+# Puntero de rollback (previous-image-tag.txt): solo lo escribe --approve-deploy, con la
+# imagen que corre ANTES del deploy. --preflight-only nunca lo crea ni lo modifica: correrlo
+# despues de un deploy lo sobrescribiria con la imagen nueva y el rollback quedaria apuntando
+# a si mismo (incidente 2026-10-01).
+#
 # Variables de entorno (todas obligatorias — no tienen default porque viven solo en la VPS,
 # nunca en el repo; pedirlas a Kevin si no se conocen, no adivinarlas):
 #   TEST_SSH_HOST             usuario@host de la VPS
@@ -87,13 +92,18 @@ REMOTE_MANIFEST_DIR="${REMOTE_HOME}/deploy-backups/backend-test"
 CANDIDATE_IMAGE="cotizador-backend-test:${GIT_SHA}-${TIMESTAMP}"
 ssh "$TEST_SSH_HOST" "mkdir -p -- '${REMOTE_MANIFEST_DIR}'"
 
+# 1 = escribir el puntero de rollback (solo --approve-deploy); 0 = no tocarlo (--preflight-only).
+WRITE_MANIFEST=0
+[[ $MODE == --approve-deploy ]] && WRITE_MANIFEST=1
+
 echo "==> Preflight de solo lectura en la VPS (captura la imagen previa para rollback)"
 # shellcheck disable=SC2087
 ssh "$TEST_SSH_HOST" bash -s -- "$PF3_TEST_COMPOSE_FILE" "$PF3_TEST_COMPOSE_PROJECT" \
-  "$PF3_TEST_BACKEND_SERVICE" "$PF3_TEST_HEALTH_URL" "$REMOTE_MANIFEST_DIR" "$DOCKER_CMD_B64" <<'REMOTE_PREFLIGHT'
+  "$PF3_TEST_BACKEND_SERVICE" "$PF3_TEST_HEALTH_URL" "$REMOTE_MANIFEST_DIR" "$DOCKER_CMD_B64" "$WRITE_MANIFEST" <<'REMOTE_PREFLIGHT'
 set -euo pipefail
 compose_file=$1 compose_project=$2 backend_service=$3 health_url=$4 manifest_dir=$5
 read -ra docker <<<"$(printf '%s' "$6" | base64 -d)"
+write_manifest=$7
 
 container_id=$("${docker[@]}" ps \
   --filter "label=com.docker.compose.project=${compose_project}" \
@@ -111,8 +121,14 @@ previous_image=$("${docker[@]}" inspect --format '{{.Config.Image}}' "$container
 health=$("${docker[@]}" inspect --format '{{ if .State.Health }}{{ .State.Health.Status }}{{ else }}missing{{ end }}' "$container_id")
 curl --fail --silent --show-error --max-time 10 "$health_url" >/dev/null
 
-printf '%s\n' "$previous_image" >"${manifest_dir}/previous-image-tag.txt"
-printf 'PASS status=preflight previous_image=%s health=%s node_env=test\n' "$previous_image" "$health"
+# Solo en --approve-deploy: en --preflight-only el puntero existente no se toca.
+if [[ $write_manifest == 1 ]]; then
+  printf '%s\n' "$previous_image" >"${manifest_dir}/previous-image-tag.txt"
+  manifest=written
+else
+  manifest=skipped
+fi
+printf 'PASS status=preflight previous_image=%s health=%s node_env=test manifest=%s\n' "$previous_image" "$health" "$manifest"
 REMOTE_PREFLIGHT
 
 if [[ $MODE == --preflight-only ]]; then

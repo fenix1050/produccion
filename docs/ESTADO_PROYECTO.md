@@ -3505,7 +3505,8 @@ w/crlf`). El CI en Linux es la fuente de verdad.
 **Pendiente:**
 
 - ~~Plan final de Codex para T-04 y autorización explícita de Kevin~~ — **cumplido, ver sección 106.**
-- Verificar si #449 ya se desplegó a TEST y a PROD, y hacerlo con backend y frontend juntos.
+- Verificar si #449 ya se desplegó a TEST y a PROD, y hacerlo con backend y frontend juntos. **TEST: hecho, ver
+  sección 107. PROD: pendiente.**
 - ~~Resolver el fallo de Engram~~ — **sorteado el 2026-10-01**: se registra una sesión propia con `mem_session_start`
   y se pasa `session_id` en cada `mem_save`. Las 41 sesiones activas duplicadas siguen sin limpiarse (algunas son
   de Codex y están en uso).
@@ -3569,3 +3570,57 @@ segundos, para un dump de 300 KB. El RPO al iniciar la restauración fue de unos
 - Repetir esta prueba periódicamente, por ejemplo trimestralmente, y tras cualquier cambio del script de backup
   o de la imagen de Postgres.
 - Opcional: comentar el resultado en el issue #87 (ítem T-04).
+
+## 107. Deploy de main a TEST y verificación del aislamiento de cookies (2026-10-01)
+
+**Por qué:** TEST corría una imagen del 24/09 y `main` llevaba 16 commits de ventaja, entre ellos #449 (cookies de
+sesión y CSRF con nombres propios por entorno). Había que desplegarlo a TEST y comprobar que el aislamiento de
+cookies funciona de verdad contra `test-api`.
+
+**Quién hizo qué:** Claude ejecutó cada paso con el usuario acotado `claude-test-deploy`, con aprobación explícita
+de Kevin en cada uno. No se tocó PROD.
+
+**Qué se hizo:**
+
+- **Diferencia a desplegar:** TEST corría `cotizador-backend-test:2a205f017430-20260924101134`. `main` en
+  `94ce80973dc9` traía 33 archivos de backend, frontend y lockfile (+1218/-297). Además de #449 incluía los fixes
+  #441 (escalada de permisos con roles personalizados), #447 (límites del ajuste de prima) y #445 (líneas de
+  tablas en el PDF), y actualizaciones de dependencias (dotenv 18.0.4, supabase-js 2.117.2, puppeteer 25.12.0,
+  jsdom 30.1.1, lint-staged 17.6.0, prettier 3.9.9).
+- **Backend:** `scripts/deploy-backend-test.sh --approve-deploy`. Imagen
+  `cotizador-backend-test:94ce80973dc9-20261001154556`, contenedor healthy, health público con HTTP 200. El build
+  corre en la VPS compartida, así que provoca un pico de CPU.
+- **Frontend:** `scripts/deploy-frontend-test.sh frontend/shared/api.js` (fallback con tar; los avisos cosméticos
+  de chmod son esperados). El sha256 de `api.js` coincide con lo que sirve `test-web`. Backup del frontend previo
+  en el host: `~/deploy-backups/frontend-test-20261001155212`.
+
+**Cómo se verificó (contra `test-api`, con la cuenta de prueba documentada, rol agente):**
+
+- Login: 200. Cookies `tajy_test_session_v2` y `tajy_test_csrf_v2`, ambas HttpOnly, Secure, SameSite=Lax, Path=/,
+  sin atributo Domain (host-only) y Max-Age 2700.
+- `GET /api/auth/me` devuelve `csrfToken` (64 caracteres).
+- `POST /api/auth/logout` sin `X-CSRF-Token`: 403. Con el header: 204. `/me` después: 401.
+
+**Incidente:** la corrida de preflight posterior al deploy sobrescribió el puntero de rollback
+`previous-image-tag.txt` con la imagen nueva, de modo que `rollback-backend-test.sh` habría "vuelto" a la misma
+imagen. Se restauró a mano a `cotizador-backend-test:2a205f017430-20260924101134`. El wrapper de Docker no permite
+`image inspect`, así que no se confirmó que la imagen vieja siga presente en el host. Este PR corrige el script:
+`--preflight-only` ya no escribe el puntero (solo `--approve-deploy`), y la línea PASS informa
+`manifest=written` o `manifest=skipped`. Hay tests con `ssh`, `scp`, `docker` y `curl` falsos en
+`backend/src/ops/deploy-backend-test.test.js`.
+
+**Lecciones:**
+
+- Un paso "de solo lectura" que escribe estado de rollback no es de solo lectura: el modo de validación no debe
+  tocar el estado del que depende la recuperación.
+- Antes de confiar en un rollback, confirmar que la imagen previa existe en el host.
+
+**No verificado:** la UI en un navegador contra TEST, la expiración de las cookies legadas, y nada se desplegó a
+PROD (manual, backend y frontend juntos; invalida todas las sesiones).
+
+**Pendiente:**
+
+- Kevin prueba la UI en TEST a mano.
+- Decidir y ejecutar a mano la promoción a PROD.
+- La pregunta de la sección 105 sobre si #449 estaba desplegado queda respondida para TEST (desplegado) y abierta
+  para PROD.

@@ -592,7 +592,7 @@ test('MRC proposal v3 renders escaped dynamic agent, cardholder, and insured sig
     fixture({
       proposal: {
         ...fixture().proposal,
-        agente: { nombre: '<Agent &>', matricula: 'M<&>' },
+        agente: { nombre: '<Agent &>', email: 'a<&>@tajy.com.py', matricula: 'M<&>' },
       },
       draft: {
         ...fixture().draft,
@@ -616,7 +616,7 @@ test('MRC proposal v3 renders escaped dynamic agent, cardholder, and insured sig
 
   for (const value of [
     '<Agent &>',
-    'M<&>',
+    'a<&>@tajy.com.py',
     '<Cardholder &>',
     'CARD<&>',
     '<Insured &>',
@@ -625,7 +625,7 @@ test('MRC proposal v3 renders escaped dynamic agent, cardholder, and insured sig
     assert.equal(signatureMarkup.includes(value), false, `unescaped signature value: ${value}`)
   for (const value of [
     '&lt;Agent &amp;&gt;',
-    'M&lt;&amp;&gt;',
+    'a&lt;&amp;&gt;@tajy.com.py',
     '&lt;Cardholder &amp;&gt;',
     'CARD&lt;&amp;&gt;',
     '&lt;Insured &amp;&gt;',
@@ -633,6 +633,9 @@ test('MRC proposal v3 renders escaped dynamic agent, cardholder, and insured sig
   ])
     assert.equal(signatureMarkup.includes(value), true, `escaped signature value: ${value}`)
   assert.equal((signatureMarkup.match(/class="signature"/g) ?? []).length, 3)
+  assert.equal(signatureMarkup.includes('Matrícula'), false)
+  assert.equal(signatureMarkup.includes('Lugar y Fecha'), false)
+  assert.match(signatureMarkup, /Fecha: \d{2}\/\d{2}\/\d{4}/)
 
   const fallbackHtml = buildMrcPropuestaV3Html(
     fixture({

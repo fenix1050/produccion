@@ -226,7 +226,12 @@ export function buildPropuestaFormalSnapshot({ propuesta, carta, commercial, age
       id: propuesta.id,
       numero_propuesta: propuesta.numero_propuesta,
       emitida_at: new Date().toISOString(),
-      agente: { id: agente.id, nombre: agente.nombre, matricula: agente.matricula_agente ?? null },
+      agente: {
+        id: agente.id,
+        nombre: agente.nombre,
+        email: agente.email ?? null,
+        matricula: agente.matricula_agente ?? null,
+      },
     },
     carta: {
       id: carta.id,

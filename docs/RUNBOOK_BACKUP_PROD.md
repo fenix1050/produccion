@@ -108,9 +108,30 @@ Configuración (una sola vez, del lado de healthchecks.io; nada de esto vive en 
 
 Requisito: `curl` instalado en la VPS (`command -v curl`; si falta, `sudo apt install curl`). Sin `curl` el script lo advierte en el log y sigue sin alertar.
 
+### Cargar la URL en la VPS sin ensuciarla
+
+Pegar la URL en la terminal SSH puede colar caracteres invisibles. El 2026-10-01 llegó con 2 caracteres de más y `curl` la rechazó (`Malformed input to a URL function`); el backup terminó bien y el script avisó con `WARN: no se pudo enviar el ping de healthcheck`. Para evitarlo, cargarla en una variable limpiándola, sin que quede en el historial de la terminal:
+
+```bash
+read -rs -p "URL de ping: " u; HEALTHCHECK_URL=$(printf '%s' "$u" | tr -d '[:space:][:cntrl:]'); unset u; export HEALTHCHECK_URL; echo; echo "largo: ${#HEALTHCHECK_URL}"
+curl -sS -m 10 -o /dev/null -w 'HTTP %{http_code}\n' "$HEALTHCHECK_URL"
+```
+
+Esperado: `largo: 56` (para una URL `https://hc-ping.com/<uuid>`) y `HTTP 200`. Ese `curl` ya cuenta como un ping de éxito. Con la variable cargada, la línea del cron se escribe sin volver a pegar el token; el `grep -v` reemplaza la línea anterior del backup y conserva cualquier otra tarea:
+
+```bash
+crontab -l > ~/crontab.bak
+(crontab -l | grep -v 'backup-prod-db.sh'; echo "30 3 * * * HEALTHCHECK_URL=$HEALTHCHECK_URL PROD_DB_CONTAINER=cotizador-supabase-db BACKUP_DIR=/home/soporte/backups/prod-db RCLONE_REMOTE=gdrive-crypt: /home/soporte/backup-prod-db.sh >> /home/soporte/backups/backup.log 2>&1") | crontab -
+crontab -l | sed 's#hc-ping.com/[^ ]*#hc-ping.com/***#'
+rm -f ~/crontab.bak
+unset HEALTHCHECK_URL
+```
+
+`~/crontab.bak` contiene el token en texto plano: borrarlo al terminar. El `sed` solo sirve para verificar la línea mostrando el token tapado.
+
 Comportamiento: con subida habilitada, `/start` al comenzar, ping de éxito como último paso y `/fail` (con un mensaje corto, sin datos del dump) ante cualquier salida distinta de 0. Con `--skip-upload` no se hace ningún ping y el log lo indica. Sin `HEALTHCHECK_URL` el log dice `WARN: sin HEALTHCHECK_URL, no hay alerta ante fallo`.
 
-Probar el éxito: correr el script una vez a mano **con** subida y con `HEALTHCHECK_URL` definida en esa línea de comandos; el check del dashboard debe pasar a verde.
+Probar el éxito: con `HEALTHCHECK_URL` cargada como arriba, correr el script una vez a mano **con** subida (`PROD_DB_CONTAINER=... BACKUP_DIR=... RCLONE_REMOTE=gdrive-crypt: ~/backup-prod-db.sh`); el log debe terminar en `backup completo` sin ningún `WARN`, y el check del dashboard debe pasar a verde.
 
 Probar la falla de forma segura: correr a mano una vez con un `PROD_DB_CONTAINER` inexistente (p. ej. `PROD_DB_CONTAINER=no-existe`), de modo que `pg_dump` falle. Debe llegar un ping `/fail` y el mail. **No** dejar ese valor en el cron: es solo para esa corrida manual.
 

@@ -3445,7 +3445,16 @@ El cron todavía no corrió solo.
 (`HEALTHCHECK_URL` opcional en `scripts/backup-prod-db.sh`: `/start`, éxito y `/fail` ante cualquier salida
 != 0; un ping fallido no rompe el backup; sin la variable el log advierte; con `--skip-upload` no hay
 pings). Detalle de configuración en el runbook, sección "Alertas". `supabase-backup.yml` ya está
-deshabilitado (PR #453). Falta que Kevin cree el check y cargue la URL en el crontab de la VPS.
+deshabilitado (PR #453).
+
+**Verificación de las alertas (2026-10-01, hecha por Kevin en la VPS):** `curl` ya estaba instalado. La
+primera corrida con la URL pegada a mano mostró `WARN: no se pudo enviar el ping de healthcheck` en el
+`/start` y en el ping final, pero el backup terminó bien (la falla de un ping no rompe el backup, como se
+diseñó): la URL tenía 2 caracteres invisibles de más. Limpiada con `tr`, dio `HTTP 200` y una corrida
+completa terminó sin `WARN` y dejó el check en verde. Una falla provocada (`PROD_DB_CONTAINER=no-existe`)
+terminó con `FAIL: pg_dump terminó con error` y `exit=1`, el check pasó a rojo y llegó el mail de alerta.
+`HEALTHCHECK_URL` quedó cargada en el crontab de la VPS. El procedimiento para cargarla sin caracteres
+invisibles quedó en el runbook.
 
 **Pendiente:**
 

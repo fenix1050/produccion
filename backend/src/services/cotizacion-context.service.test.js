@@ -24,6 +24,9 @@ mock.module('../repositories/ramos.repository.js', {
   },
 })
 mock.module('../repositories/coberturas.repository.js', { namedExports: {} })
+// Sin backend/.env (como en CI), los demás servicios que importa el módulo cargan
+// config/supabase.js, que lanza si faltan SUPABASE_URL/SUPABASE_SERVICE_KEY.
+mock.module('../config/supabase.js', { namedExports: { supabase: {} } })
 
 const { validarYResolverContexto } = await import('./cotizacion-context.service.js')
 

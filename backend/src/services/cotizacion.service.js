@@ -88,12 +88,3 @@ export async function generarPdfOferta(id, usuario) {
 
   return pdf
 }
-
-// ---- Fase 4 ----
-export async function aceptarCotizacion(_id, _kyc) {
-  throw new Error('Aceptación de cotización + KYC pendiente — Fase 4')
-}
-
-export async function generarPdfPropuestaFormal(_id) {
-  throw new Error('Generación de Propuesta Formal pendiente — Fase 4')
-}

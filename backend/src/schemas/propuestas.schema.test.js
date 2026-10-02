@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import { draftPropuestaSchema, listarPropuestasQuerySchema } from './propuestas.schema.js'
+import {
+  DRAFT_JSON_MAX_CARACTERES,
+  draftPropuestaSchema,
+  listarPropuestasQuerySchema,
+} from './propuestas.schema.js'
 
 test('draftPropuestaSchema: acepta documento_tipo (ci/ruc) y el campo ruc por separado', () => {
   const conCi = draftPropuestaSchema.safeParse({
@@ -31,6 +35,57 @@ test('draftPropuestaSchema: acepta sexo Femenino/Masculino y rechaza otros valor
   assert.equal(conFemenino.success, true)
   assert.equal(conMasculino.success, true)
   assert.equal(invalido.success, false)
+})
+
+// QA adversarial 2026-10-01: un JSON extra de 1 MB en draft_json pasaba `.catchall(jsonValue)` y
+// reventaba el check constraint de la DB (`23514` -> 500); `2999-01-01` se aceptaba como fecha
+// de nacimiento.
+test('draftPropuestaSchema: rechaza un draft_json que supera el tope de tamaño', () => {
+  const grande = draftPropuestaSchema.safeParse({ extra: 'x'.repeat(1_000_000) })
+  assert.equal(grande.success, false)
+  assert.match(grande.error.issues[0].message, /demasiado grande/)
+
+  const justoAlLimite = { extra: 'x'.repeat(DRAFT_JSON_MAX_CARACTERES - '{"extra":""}'.length) }
+  assert.equal(JSON.stringify(justoAlLimite).length, DRAFT_JSON_MAX_CARACTERES)
+  assert.equal(draftPropuestaSchema.safeParse(justoAlLimite).success, true)
+
+  const unoMas = { extra: 'x'.repeat(DRAFT_JSON_MAX_CARACTERES - '{"extra":""}'.length + 1) }
+  assert.equal(draftPropuestaSchema.safeParse(unoMas).success, false)
+})
+
+test('draftPropuestaSchema: un borrador normal sigue pasando', () => {
+  const resultado = draftPropuestaSchema.safeParse({
+    partes: { asegurado: { nombre_razon_social: 'Ana Gómez', fecha_nacimiento: '1985-03-12' } },
+    observaciones: 'Sin observaciones',
+  })
+  assert.equal(resultado.success, true)
+})
+
+test('draftPropuestaSchema: fecha_nacimiento futura se rechaza', () => {
+  for (const fecha of ['2999-01-01', '9999-12-31']) {
+    const resultado = draftPropuestaSchema.safeParse({
+      partes: { asegurado: { fecha_nacimiento: fecha } },
+    })
+    assert.equal(resultado.success, false, fecha)
+    assert.match(resultado.error.issues[0].message, /fecha de nacimiento/i)
+  }
+})
+
+test('draftPropuestaSchema: fecha_nacimiento anterior a 1900-01-01 se rechaza', () => {
+  const resultado = draftPropuestaSchema.safeParse({
+    partes: { tomador: { fecha_nacimiento: '1899-12-31' } },
+  })
+  assert.equal(resultado.success, false)
+})
+
+test('draftPropuestaSchema: fecha_nacimiento en los bordes válidos (1900-01-01 y hoy) pasa', () => {
+  const hoy = new Date().toISOString().slice(0, 10)
+  for (const fecha of ['1900-01-01', hoy]) {
+    const resultado = draftPropuestaSchema.safeParse({
+      partes: { asegurado: { fecha_nacimiento: fecha } },
+    })
+    assert.equal(resultado.success, true, fecha)
+  }
 })
 
 test('listarPropuestasQuerySchema: defaults limit=20 and offset=0 when omitted', () => {

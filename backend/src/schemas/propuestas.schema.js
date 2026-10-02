@@ -10,6 +10,12 @@ const texto = (max) => z.string().trim().max(max).optional()
 export const DESCRIPCION_DETALLADA_MAX_CARACTERES = 1000
 export const DESCRIPCION_DETALLADA_MAX_LINEAS = 15
 
+// Tope del draft_json serializado. Sin él, un campo extra (`.catchall`) de 1 MB llegaba al
+// check constraint de la DB (`23514`) y respondía 500.
+export const DRAFT_JSON_MAX_CARACTERES = 100_000
+
+const FECHA_NACIMIENTO_MINIMA = '1900-01-01'
+
 const normalizarSaltos = (value) => String(value ?? '').replace(/\r\n?/g, '\n')
 
 export function contarLineas(value) {
@@ -47,6 +53,18 @@ export const listarCartasAptasQuerySchema = z.object({
   limite: z.coerce.number().int().min(1).max(100).optional().default(50),
 })
 
+// ISO yyyy-mm-dd compara bien como string. 'Hoy' en UTC nunca queda por detrás de Paraguay (UTC-3),
+// así que no rechaza una fecha de hoy válida.
+const fechaNacimientoSchema = z
+  .string()
+  .date()
+  .refine((fecha) => fecha >= FECHA_NACIMIENTO_MINIMA, {
+    message: 'La fecha de nacimiento no puede ser anterior a 1900-01-01.',
+  })
+  .refine((fecha) => fecha <= new Date().toISOString().slice(0, 10), {
+    message: 'La fecha de nacimiento no puede ser futura.',
+  })
+
 const aseguradoSchema = z
   .object({
     tipo_persona: z.enum(['fisica', 'juridica']).optional(),
@@ -63,7 +81,7 @@ const aseguradoSchema = z
 
 const personaSchema = aseguradoSchema
   .extend({
-    fecha_nacimiento: z.string().date().optional(),
+    fecha_nacimiento: fechaNacimientoSchema.optional(),
     sexo: z.enum(['Femenino', 'Masculino']).optional(),
     nacionalidad: texto(80),
     estado_civil: texto(60),
@@ -104,6 +122,14 @@ export const draftPropuestaSchema = z
     tipo_firma: z.enum(['manual', 'digital']).optional(),
   })
   .catchall(jsonValue)
+  .superRefine((draft, contexto) => {
+    if (JSON.stringify(draft).length > DRAFT_JSON_MAX_CARACTERES) {
+      contexto.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `El borrador es demasiado grande (máximo ${DRAFT_JSON_MAX_CARACTERES} caracteres).`,
+      })
+    }
+  })
 
 export const actualizarBorradorSchema = z.object({
   revision: z.number().int().positive(),

@@ -3624,3 +3624,45 @@ PROD (manual, backend y frontend juntos; invalida todas las sesiones).
 - Decidir y ejecutar a mano la promoción a PROD.
 - La pregunta de la sección 105 sobre si #449 estaba desplegado queda respondida para TEST (desplegado) y abierta
   para PROD.
+
+## 108. Fix de los 500 y validaciones flojas del QA adversarial de TEST (2026-10-02)
+
+**Por qué:** el QA adversarial contra `test-api` (main `94ce809`, 2026-10-01/02) encontró entradas inválidas o
+maliciosas que respondían 500 (a veces filtrando el código de Postgres en el campo `codigo`) en vez de 4xx con un
+mensaje claro. Feature document: `odd/tasks/qa-500-y-validaciones.md`.
+
+**Qué se hizo (rama `fix/qa-500-y-validaciones`, TDD estricto: cada test se vio fallar antes del fix):**
+
+- **`:id` no numérico** en `GET/PUT /cotizaciones/:id` y `/pdf-oferta`: el controller valida con
+  `cotizacionIdParamsSchema` (ahora con mensajes en español y tope en el máximo de un integer de Postgres) y responde 400.
+- **Stubs eliminados:** `POST /cotizaciones/:id/aceptar` y `GET /cotizaciones/:id/pdf-propuesta` (siempre 500) se
+  quitaron de rutas, controller y service. La Propuesta Formal vive en `/propuestas`. Ahora Express responde 404.
+- **CORS: no era un bug.** El caso "`Origin` ajeno responde 500" del QA mandaba el body `{}` (sin `plan_id`), así
+  que el 500 era el del `plan_id`, no de CORS. Con `Origin` ajeno `cors` no lanza error: la request sigue y solo
+  falta el header `Access-Control-Allow-Origin`, que es lo que bloquea al navegador. Se probó un 403 explícito y se
+  descartó porque corregía algo que no estaba roto.
+- **`plan_id` y body:** `validarYResolverContexto` valida primero que el body sea un objeto (400) y `plan_id` con Zod
+  (400, antes de consultar la DB); un plan o ramo inexistente (`PGRST116`) responde 404 en español.
+- **Byte nulo (`\u0000`):** nuevo middleware `rechazarBytesNulos` (después de `express.json`, global bajo `/api`)
+  devuelve 400 si aparece en un string o clave del body. Recorrido iterativo, sin desbordar la pila.
+- **Largos máximos** (`schemas/shared/limites-texto.js`, aplicados en los cuatro schemas de ramo): nombre y contacto
+  200, dirección 500, cédula 50, ciudad 100, rubro 200, descripción de ajuste 200.
+- **Propuestas:** `draft_json` serializado limitado a 100.000 caracteres (400 "demasiado grande"); `fecha_nacimiento`
+  no puede ser futura ni anterior a 1900-01-01.
+- **Errores del parser:** body de más de 2 MB responde 413 "El cuerpo de la solicitud es demasiado grande"; JSON
+  inválido o body `null`/string responde 400 "JSON inválido" (antes "Error interno del servidor").
+
+**Cómo se verificó:** tests nuevos en `app.http.test.js` (HTTP real sobre `createApp()`),
+`cotizaciones.controller.params.test.js`, `cotizaciones.routes.test.js`, `cotizacion-context.service.test.js`,
+`middleware/null-bytes.test.js`, `cotizar-limites-texto.schema.test.js` y ampliación de `propuestas.schema.test.js`.
+`npm test --workspace=backend` en verde, `eslint` y `prettier` sin hallazgos en los archivos tocados. No se probó
+contra TEST ni se desplegó nada.
+
+**Fuera de alcance (esperan decisión de Kevin):**
+
+- Tope de `suma_asegurada` en coberturas adicionales (1e308 da prima 8e305; 9e9 se acepta).
+- Numeración de cotizaciones que salta de 2 en 2.
+- Si `GET /propuestas` debe mostrar propuestas de otros clientes a un agente.
+- Quitar `codigo` (código de Postgres) de las respuestas 500.
+
+**Pendiente:** commit, PR, merge y deploy manual a TEST para repetir los casos del QA contra `test-api`.

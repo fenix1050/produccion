@@ -6,6 +6,7 @@ import helmet from 'helmet'
 import { ZodError } from 'zod'
 
 import { csrfProtection } from './middleware/csrf.js'
+import { rechazarBytesNulos } from './middleware/null-bytes.js'
 import { apiRateLimiter } from './middleware/rate-limit.js'
 import { router as apiRouter } from './routes/index.js'
 
@@ -63,6 +64,7 @@ export function createApp() {
   // ausente/incorrecto en todo método mutante, pasa con el token correcto.
   app.use(cookieParser()) // codeql[js/missing-token-validation]
   app.use(express.json({ limit: '2mb' }))
+  app.use(rechazarBytesNulos)
 
   app.use('/api', apiRateLimiter, csrfProtection, apiRouter)
 
@@ -93,6 +95,15 @@ export function manejarErrorCentral(err, _req, res, _next) {
         mensaje: issue.message,
       })),
     })
+  }
+
+  // Errores del body-parser (express.json): traen `status` pero no `publicMessage`, así que
+  // antes salía "Error interno del servidor" aunque fueran 400/413 del cliente.
+  if (err.type === 'entity.too.large') {
+    return res.status(413).json({ error: 'El cuerpo de la solicitud es demasiado grande' })
+  }
+  if (err.type === 'entity.parse.failed') {
+    return res.status(400).json({ error: 'JSON inválido' })
   }
 
   const status = err.status || 500

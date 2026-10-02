@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 import { ajusteSchema } from './shared/ajuste.schema.js'
+import { LIMITE_CONTACTO, LIMITE_NOMBRE } from './shared/limites-texto.js'
 
 // Datos específicos del riesgo para Vida y Accidentes Personales — ver vida-ap.calculator.js.
 // Solo 3 de 7 planes tienen calculador implementado hoy; los otros 4 cortan con 422 desde el
@@ -21,7 +22,7 @@ export const cotizarVidaApSchema = z.object({
   riesgo_datos: riesgoVidaApSchema,
   descuentos: z.array(ajusteSchema).max(10).default([]),
   recargos: z.array(ajusteSchema).max(10).default([]),
-  cliente_nombre: z.string().optional(),
-  cliente_contacto: z.string().optional(),
+  cliente_nombre: z.string().max(LIMITE_NOMBRE).optional(),
+  cliente_contacto: z.string().max(LIMITE_CONTACTO).optional(),
   cuotas: z.number().int().positive().optional(),
 })

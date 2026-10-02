@@ -1,16 +1,42 @@
 import * as coberturasRepository from '../repositories/coberturas.repository.js'
 import * as ramosRepository from '../repositories/ramos.repository.js'
+import { planIdBodySchema } from '../schemas/cotizaciones.schema.js'
 import { getSchemaCotizar } from '../schemas/index.js'
+import { httpError } from '../utils/http-error.js'
+import { CODIGO_POSTGREST_SIN_FILAS } from '../utils/postgres-errors.js'
 
 import { withCache } from './cache.js'
 import { normalizarFranquiciasMrc } from './mrc-franquicia-authorization.service.js'
 import { resolverUmbralInspeccion } from './umbral-inspeccion.service.js'
 
+// `.single()` sin filas llega como error de PostgREST: para el cliente es un recurso inexistente
+// (404 en español), no un fallo interno que filtre el código.
+async function buscarOCortar404(buscar, mensaje) {
+  try {
+    return await buscar()
+  } catch (error) {
+    if (error?.code === CODIGO_POSTGREST_SIN_FILAS) throw httpError(404, mensaje)
+    throw error
+  }
+}
+
 export async function validarYResolverContexto(body, usuario) {
-  const plan = await ramosRepository.findPlanById(body.plan_id)
+  if (body === null || typeof body !== 'object' || Array.isArray(body)) {
+    throw httpError(400, 'El cuerpo de la solicitud debe ser un objeto JSON')
+  }
+  // plan_id se valida ANTES de consultar la DB (si no, un valor inválido terminaba en 500).
+  const { plan_id: planId } = planIdBodySchema.parse(body)
+
+  const plan = await buscarOCortar404(
+    () => ramosRepository.findPlanById(planId),
+    'Plan no encontrado'
+  )
   // soloActivos: true — no se debe poder cotizar/editar sobre un ramo dado de baja
   // (mismo comportamiento que el `.find()` sobre `findRamosActivos()` que reemplaza).
-  const ramo = await ramosRepository.findRamoById(plan.ramo_id, { soloActivos: true })
+  const ramo = await buscarOCortar404(
+    () => ramosRepository.findRamoById(plan.ramo_id, { soloActivos: true }),
+    'Ramo no encontrado o inactivo'
+  )
 
   const schema = getSchemaCotizar(ramo.calculador)
   const datosValidados = schema.parse(body)

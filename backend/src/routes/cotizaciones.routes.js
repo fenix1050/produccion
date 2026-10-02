@@ -12,6 +12,5 @@ router.get('/:id', cotizacionesController.obtener)
 router.put('/:id', cotizacionesController.actualizar)
 router.get('/:id/pdf-oferta', pdfRateLimiter, cotizacionesController.pdfOferta)
 
-// Fase 4 — Propuesta Formal
-router.post('/:id/aceptar', cotizacionesController.aceptar)
-router.get('/:id/pdf-propuesta', pdfRateLimiter, cotizacionesController.pdfPropuesta)
+// La Propuesta Formal vive en /propuestas (ver propuestas.routes.js) — no hay rutas de
+// aceptar / pdf-propuesta acá.

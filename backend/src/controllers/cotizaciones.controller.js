@@ -36,9 +36,19 @@ export async function listar(req, res, next) {
   }
 }
 
+// `:id` no numérico llegaba crudo a Supabase (`22P02` -> 500): se valida antes de llamar al service.
+function parsearIdCotizacion(params) {
+  const parseo = cotizacionIdParamsSchema.safeParse(params)
+  if (!parseo.success) {
+    throw httpError(400, parseo.error.issues.map((issue) => issue.message).join('; '))
+  }
+  return parseo.data.id
+}
+
 export async function obtener(req, res, next) {
   try {
-    const cotizacion = await cotizacionService.obtenerCotizacion(req.params.id, req.usuario)
+    const id = parsearIdCotizacion(req.params)
+    const cotizacion = await cotizacionService.obtenerCotizacion(id, req.usuario)
     res.json(cotizacion)
   } catch (err) {
     next(err)
@@ -47,11 +57,8 @@ export async function obtener(req, res, next) {
 
 export async function actualizar(req, res, next) {
   try {
-    const cotizacion = await cotizacionService.actualizarCotizacion(
-      req.params.id,
-      req.body,
-      req.usuario
-    )
+    const id = parsearIdCotizacion(req.params)
+    const cotizacion = await cotizacionService.actualizarCotizacion(id, req.body, req.usuario)
     res.json(cotizacion)
   } catch (err) {
     next(err)
@@ -60,32 +67,8 @@ export async function actualizar(req, res, next) {
 
 export async function pdfOferta(req, res, next) {
   try {
-    const parseo = cotizacionIdParamsSchema.safeParse(req.params)
-    if (!parseo.success) {
-      throw httpError(400, parseo.error.issues.map((issue) => issue.message).join('; '))
-    }
-    const pdfBuffer = await cotizacionService.generarPdfOferta(parseo.data.id, req.usuario)
-    res.setHeader('Content-Type', 'application/pdf')
-    res.send(pdfBuffer)
-  } catch (err) {
-    next(err)
-  }
-}
-
-// ---- Fase 4 ----
-
-export async function aceptar(req, res, next) {
-  try {
-    const cotizacion = await cotizacionService.aceptarCotizacion(req.params.id, req.body)
-    res.json(cotizacion)
-  } catch (err) {
-    next(err)
-  }
-}
-
-export async function pdfPropuesta(req, res, next) {
-  try {
-    const pdfBuffer = await cotizacionService.generarPdfPropuestaFormal(req.params.id)
+    const id = parsearIdCotizacion(req.params)
+    const pdfBuffer = await cotizacionService.generarPdfOferta(id, req.usuario)
     res.setHeader('Content-Type', 'application/pdf')
     res.send(pdfBuffer)
   } catch (err) {

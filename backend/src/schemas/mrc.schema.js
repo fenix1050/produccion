@@ -1,16 +1,24 @@
 import { z } from 'zod'
 
 import { ajusteSchema } from './shared/ajuste.schema.js'
+import {
+  LIMITE_CEDULA,
+  LIMITE_CIUDAD,
+  LIMITE_CONTACTO,
+  LIMITE_DIRECCION,
+  LIMITE_NOMBRE,
+  LIMITE_RUBRO,
+} from './shared/limites-texto.js'
 
 // Datos específicos del riesgo para MRC (Multirriesgo Comercio) — van dentro de
 // `cotizaciones.riesgo_datos` (JSONB). Cédula/dirección viven acá porque `cotizaciones`
 // no tiene columnas propias para datos de contacto del cliente (solo cliente_nombre/contacto).
 export const riesgoMrcSchema = z
   .object({
-    cedula: z.string().min(1),
-    direccion: z.string().min(1),
-    rubro_actividad: z.string().min(1),
-    ciudad: z.string().min(1),
+    cedula: z.string().min(1).max(LIMITE_CEDULA),
+    direccion: z.string().min(1).max(LIMITE_DIRECCION),
+    rubro_actividad: z.string().min(1).max(LIMITE_RUBRO),
+    ciudad: z.string().min(1).max(LIMITE_CIUDAD),
     capital_edificio: z.number().nonnegative().default(0),
     capital_contenido: z.number().nonnegative().default(0),
     coberturas_adicionales: z
@@ -42,8 +50,8 @@ export const cotizarMrcSchema = z.object({
   riesgo_datos: riesgoMrcSchema,
   descuentos: z.array(ajusteSchema).max(10).default([]),
   recargos: z.array(ajusteSchema).max(10).default([]),
-  cliente_nombre: z.string().optional(),
-  cliente_contacto: z.string().optional(),
+  cliente_nombre: z.string().max(LIMITE_NOMBRE).optional(),
+  cliente_contacto: z.string().max(LIMITE_CONTACTO).optional(),
   // Cantidad de cuotas elegida por el agente. Si no viene, el service usa plan.cuotas_default.
   cuotas: z.number().int().positive().optional(),
 })

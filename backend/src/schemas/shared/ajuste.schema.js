@@ -1,10 +1,10 @@
 import { z } from 'zod'
 
-import { LIMITE_DESCRIPCION_AJUSTE } from './limites-texto.js'
+import { LIMITE_DESCRIPCION_AJUSTE, textoMax } from './limites-texto.js'
 
 export const ajusteSchema = z
   .object({
-    descripcion: z.string().max(LIMITE_DESCRIPCION_AJUSTE),
+    descripcion: textoMax(LIMITE_DESCRIPCION_AJUSTE, 'La descripción del ajuste'),
     catalogo_id: z.number().int().optional(),
     porcentaje: z.number().nonnegative().optional(),
     monto: z.number().nonnegative().optional(),

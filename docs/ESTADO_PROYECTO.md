@@ -3666,3 +3666,38 @@ contra TEST ni se desplegó nada.
 - Quitar `codigo` (código de Postgres) de las respuestas 500.
 
 **Pendiente:** commit, PR, merge y deploy manual a TEST para repetir los casos del QA contra `test-api`.
+
+## 109. Filtro literal del historial y mensajes de error claros (QA de UI contra TEST, 2026-10-05)
+
+**Por qué:** el QA de UI contra TEST (bloque 5) encontró que `%` y `_` en el filtro de cliente de `/historial/` devolvían
+todas las filas (se interpretaban como comodines de LIKE), que un 400 de validación mostraba solo "Datos de entrada
+inválidos" (el frontend descartaba `detalles`), y que offline salía "Failed to fetch" y ante un 500 el texto crudo del
+servidor.
+
+**Qué se hizo:**
+
+- **Filtro de cliente literal:** nuevo `backend/src/utils/like.js` (`escaparLike`) que antepone la barra invertida (el
+  escape por defecto de PostgreSQL) a `%`, `_` y la propia barra; `findCotizaciones` lo aplica antes de armar el patrón
+  de `ilike`.
+- **Mensajes de largo en español:** nuevo helper `textoMax(limite, sujeto)` en `schemas/shared/limites-texto.js`, usado
+  en los cuatro schemas de ramo y en el de ajustes. Ejemplo: "La dirección admite como máximo 500 caracteres." (nombre y
+  contacto del cliente, dirección, cédula o RUC, ciudad, rubro de actividad, descripción del ajuste).
+- **`frontend/shared/api.js`:** el Error conserva `detalles`; para un 400 con `detalles` arma el mensaje con hasta 3
+  pares (los mensajes del backend ya nombran el campo; los de Zod por defecto llevan una etiqueta legible, ej.
+  "Descuento 1, descripción"). Un 5xx muestra "Ocurrió un error en el servidor. Intentá de nuevo en unos minutos."; un
+  fallo de red (`TypeError`) muestra "No hay conexión con el servidor. Revisá tu internet e intentá de nuevo."; los 4xx
+  con mensaje en español se mantienen. Aplica también a `getBlob`. El cotizador (vista previa y modal de guardado) ya
+  mostraba `err.message`, así que no hizo falta tocar su código; el modal de reintento no cambió. `error.body` se
+  conserva (lo usan `propuestas.js` y otros por `codigo`).
+
+**Cómo se verificó:** tests nuevos con RED observado antes de implementar (`like.test.js`, `cotizaciones.repository.test.js`,
+`cotizar-limites-texto.schema.test.js`, `frontend/shared/api.test.js`); cada archivo de backend pasa también sin
+`backend/.env`. Suites completas en verde, `eslint` y `prettier` sin hallazgos en los archivos tocados.
+
+**No verificado contra la base real:** el escape de `%`/`_` se probó con un query builder falso que comprueba el patrón
+exacto enviado a `ilike`; falta confirmar contra la DB de TEST tras el deploy que filtrar por `%` o `_` ya no devuelve
+todo.
+
+**Pendiente:** el filtro `busqueda` del listado de Propuestas Formales usa ILIKE dentro de funciones SQL (migraciones
+069, 075, 076) y probablemente tiene el mismo problema; queda para un cambio aparte (requiere migración). Commit, PR,
+merge y deploy manual a TEST.

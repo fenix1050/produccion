@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 import { ajusteSchema } from './shared/ajuste.schema.js'
-import { LIMITE_CONTACTO, LIMITE_NOMBRE } from './shared/limites-texto.js'
+import { LIMITE_CONTACTO, LIMITE_NOMBRE, textoMax } from './shared/limites-texto.js'
 
 // Datos específicos del riesgo para Auto — van dentro de `cotizaciones.riesgo_datos` (JSONB).
 export const riesgoAutoSchema = z.object({
@@ -25,6 +25,6 @@ export const cotizarAutoSchema = z.object({
   riesgo_datos: riesgoAutoSchema,
   descuentos: z.array(ajusteSchema).max(10).default([]),
   recargos: z.array(ajusteSchema).max(10).default([]),
-  cliente_nombre: z.string().max(LIMITE_NOMBRE).optional(),
-  cliente_contacto: z.string().max(LIMITE_CONTACTO).optional(),
+  cliente_nombre: textoMax(LIMITE_NOMBRE, 'El nombre del cliente').optional(),
+  cliente_contacto: textoMax(LIMITE_CONTACTO, 'El contacto del cliente').optional(),
 })

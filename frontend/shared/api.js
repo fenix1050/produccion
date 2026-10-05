@@ -41,6 +41,80 @@ function redirectToLogin() {
   window.location.assign(loginUrl.pathname)
 }
 
+const MENSAJE_SIN_CONEXION =
+  'No hay conexión con el servidor. Revisá tu internet e intentá de nuevo.'
+const MENSAJE_ERROR_SERVIDOR = 'Ocurrió un error en el servidor. Intentá de nuevo en unos minutos.'
+
+// Nombres legibles de los campos que la API puede rechazar (ruta de Zod sin el prefijo
+// `riesgo_datos.`). Lo que no esté acá cae al nombre técnico con espacios.
+const ETIQUETAS_CAMPO = {
+  cliente_nombre: 'Nombre del cliente',
+  cliente_contacto: 'Contacto del cliente',
+  direccion: 'Dirección',
+  cedula: 'Cédula o RUC',
+  ciudad: 'Ciudad',
+  rubro_actividad: 'Rubro de actividad',
+  descripcion: 'descripción',
+  capital_asegurado: 'Capital asegurado',
+  plan_id: 'Plan',
+}
+
+function etiquetaDeCampo(campo) {
+  const ajuste = /^(descuentos|recargos)\.(\d+)\.(.+)$/.exec(campo)
+  if (ajuste) {
+    const [, lista, indice, resto] = ajuste
+    const nombre = lista === 'descuentos' ? 'Descuento' : 'Recargo'
+    return `${nombre} ${Number(indice) + 1}, ${etiquetaDeCampo(resto)}`
+  }
+  const nombre = campo.replace(/^riesgo_datos\./, '')
+  return ETIQUETAS_CAMPO[nombre] || nombre.replace(/_/g, ' ')
+}
+
+// Los mensajes propios del backend ya nombran el campo ("La dirección admite como máximo…"),
+// así que no se les antepone la etiqueta; el resto (mensajes por defecto de Zod) sí la llevan.
+function mensajeDeDetalles(detalles) {
+  const maximo = 3
+  const partes = detalles.slice(0, maximo).map(({ campo, mensaje }) => {
+    if (/^(El|La|Los|Las) /.test(mensaje)) return mensaje
+    return campo ? `${etiquetaDeCampo(campo)}: ${mensaje}` : mensaje
+  })
+  const resto = detalles.length - maximo
+  if (resto > 0) partes.push(`(y ${resto} más)`)
+  return partes.join(' ')
+}
+
+async function fetchConMensajeDeRed(url, options) {
+  try {
+    return await fetch(url, options)
+  } catch (err) {
+    // fetch solo rechaza con TypeError ante fallas de red ("Failed to fetch"); un abort u otro
+    // error se propaga sin tocar.
+    if (err instanceof TypeError) {
+      const error = new Error(MENSAJE_SIN_CONEXION)
+      error.sinConexion = true
+      throw error
+    }
+    throw err
+  }
+}
+
+// Arma el Error de una respuesta no-ok: conserva status/body/detalles y deja en `message` un texto
+// apto para el usuario (nunca el texto crudo de un 5xx).
+async function errorDeRespuesta(res, path) {
+  const body = await res.json().catch(() => ({}))
+  let mensaje = body.error || `Error ${res.status} al llamar a ${path}`
+  if (res.status >= 500) {
+    mensaje = MENSAJE_ERROR_SERVIDOR
+  } else if (res.status === 400 && Array.isArray(body.detalles) && body.detalles.length > 0) {
+    mensaje = mensajeDeDetalles(body.detalles)
+  }
+  const error = new Error(mensaje)
+  error.status = res.status
+  error.body = body
+  error.detalles = Array.isArray(body.detalles) ? body.detalles : undefined
+  return { error, body }
+}
+
 const METODOS_MUTANTES = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
 
 function headersCsrf(method) {
@@ -57,7 +131,7 @@ function headersCsrf(method) {
 async function request(path, options = {}) {
   const { suppressCsrfRedirect, ...fetchOptions } = options
   const method = (fetchOptions.method || 'GET').toUpperCase()
-  const res = await fetch(`${API_BASE_URL}${path}`, {
+  const res = await fetchConMensajeDeRed(`${API_BASE_URL}${path}`, {
     credentials: 'include',
     headers: { 'Content-Type': 'application/json', ...headersCsrf(method) },
     ...fetchOptions,
@@ -70,7 +144,7 @@ async function request(path, options = {}) {
   }
 
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}))
+    const { error, body } = await errorDeRespuesta(res, path)
 
     if (
       res.status === 403 &&
@@ -81,9 +155,6 @@ async function request(path, options = {}) {
       redirectToLogin()
     }
 
-    const error = new Error(body.error || `Error ${res.status} al llamar a ${path}`)
-    error.status = res.status
-    error.body = body
     throw error
   }
 
@@ -92,7 +163,7 @@ async function request(path, options = {}) {
 }
 
 async function requestBlob(path) {
-  const res = await fetch(`${API_BASE_URL}${path}`, {
+  const res = await fetchConMensajeDeRed(`${API_BASE_URL}${path}`, {
     credentials: 'include',
   })
 
@@ -103,8 +174,7 @@ async function requestBlob(path) {
   }
 
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}))
-    throw new Error(body.error || `Error ${res.status} al llamar a ${path}`)
+    throw (await errorDeRespuesta(res, path)).error
   }
   return res.blob()
 }

@@ -194,3 +194,51 @@ test('actualizarCotizacionAtomica: propaga el error del RPC sin envolverlo (esta
     errorPostgres
   )
 })
+
+// QA de UI 2026-10-05: `%` y `_` en el filtro de cliente actuaban como comodines de LIKE y
+// devolvían todas las filas. El patrón que llega a `ilike` debe tratarlos como literales.
+// Builder falso: no se puede verificar contra la base real, solo el patrón exacto enviado.
+function mockearSupabaseListado(t) {
+  const llamadasIlike = []
+  const builder = {
+    select() {
+      return this
+    },
+    order() {
+      return this
+    },
+    range() {
+      return this
+    },
+    ilike(columna, patron) {
+      llamadasIlike.push({ columna, patron })
+      return this
+    },
+    then(resolve) {
+      return Promise.resolve({ data: [], error: null, count: 0 }).then(resolve)
+    },
+  }
+  t.mock.module('../config/supabase.js', {
+    namedExports: { supabase: { from: () => builder } },
+  })
+  return llamadasIlike
+}
+
+test('findCotizaciones: escapa %, _ y \\ del filtro de cliente para buscarlos como texto literal', async (t) => {
+  const llamadasIlike = mockearSupabaseListado(t)
+  const { findCotizaciones } = await import('./cotizaciones.repository.js?case=filtro-cliente-like')
+
+  await findCotizaciones({ cliente: '100%_a\\b' })
+
+  assert.deepEqual(llamadasIlike, [{ columna: 'cliente_nombre', patron: '%100\\%\\_a\\\\b%' }])
+})
+
+test('findCotizaciones: un filtro de cliente sin comodines mantiene el patrón %texto%', async (t) => {
+  const llamadasIlike = mockearSupabaseListado(t)
+  const { findCotizaciones } =
+    await import('./cotizaciones.repository.js?case=filtro-cliente-plano')
+
+  await findCotizaciones({ cliente: 'Perez' })
+
+  assert.equal(llamadasIlike[0].patron, '%Perez%')
+})

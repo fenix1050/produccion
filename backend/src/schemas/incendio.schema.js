@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 import { ajusteSchema } from './shared/ajuste.schema.js'
-import { LIMITE_CONTACTO, LIMITE_NOMBRE, LIMITE_RUBRO } from './shared/limites-texto.js'
+import { LIMITE_CONTACTO, LIMITE_NOMBRE, LIMITE_RUBRO, textoMax } from './shared/limites-texto.js'
 
 // Datos específicos del riesgo para Incendio — tres formas según el plan (ver
 // incendio.calculator.js): "Edificio y Contenido" (rubro + 2 capitales, tasa por rubro),
@@ -11,7 +11,7 @@ import { LIMITE_CONTACTO, LIMITE_NOMBRE, LIMITE_RUBRO } from './shared/limites-t
 // insuficiente, rubro/tipo de riesgo inexistente, etc.) y corta con 422 explicativo, no hace
 // falta duplicar esa lógica de negocio acá.
 export const riesgoIncendioSchema = z.object({
-  rubro_actividad: z.string().max(LIMITE_RUBRO).optional(),
+  rubro_actividad: textoMax(LIMITE_RUBRO, 'El rubro de actividad').optional(),
   capital_edificio: z.number().nonnegative().optional(),
   capital_contenido: z.number().nonnegative().optional(),
   // Sublímites informativos (a primer riesgo absoluto, % de la suma ya declarada) — no afectan
@@ -33,8 +33,8 @@ export const cotizarIncendioSchema = z.object({
   riesgo_datos: riesgoIncendioSchema,
   descuentos: z.array(ajusteSchema).max(10).default([]),
   recargos: z.array(ajusteSchema).max(10).default([]),
-  cliente_nombre: z.string().max(LIMITE_NOMBRE).optional(),
-  cliente_contacto: z.string().max(LIMITE_CONTACTO).optional(),
+  cliente_nombre: textoMax(LIMITE_NOMBRE, 'El nombre del cliente').optional(),
+  cliente_contacto: textoMax(LIMITE_CONTACTO, 'El contacto del cliente').optional(),
   cuotas: z.number().int().positive().optional(),
   // Moneda de la cotización (migración 034) — default 'PYG' para no romper flujos legacy que
   // todavía no envían este campo.

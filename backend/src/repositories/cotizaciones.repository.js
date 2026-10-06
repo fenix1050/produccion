@@ -1,5 +1,6 @@
 import { supabase } from '../config/supabase.js'
 import { httpError } from '../utils/http-error.js'
+import { escaparLike } from '../utils/like.js'
 
 // Cambio SDD `cotizacion-transaccional`: thin wrappers de UN solo `supabase.rpc()` contra las
 // funciones plpgsql `crear_cotizacion_atomica`/`actualizar_cotizacion_atomica` (migración
@@ -84,7 +85,7 @@ export async function findCotizaciones({
 
   if (ramoId) query = query.eq('ramo_id', ramoId)
   if (estado) query = query.eq('estado', estado)
-  if (cliente) query = query.ilike('cliente_nombre', `%${cliente}%`)
+  if (cliente) query = query.ilike('cliente_nombre', `%${escaparLike(cliente)}%`)
   if (fechaDesde) query = query.gte('created_at', fechaDesde)
   if (fechaHasta) query = query.lte('created_at', `${fechaHasta}T23:59:59`)
   if (agenteId) query = query.eq('agente_id', agenteId)

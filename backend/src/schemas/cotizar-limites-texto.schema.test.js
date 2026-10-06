@@ -143,3 +143,60 @@ describe('descripcion de descuentos y recargos: máximo 200', () => {
     }
   }
 })
+
+// QA de UI 2026-10-05: el 400 decía el texto en inglés de Zod ("String must contain at most N
+// character(s)") sin nombre de campo legible. El mensaje tiene que estar en español y decir el límite.
+describe('mensajes de límite de largo en español', () => {
+  const mensajeDe = (ramo, mutar) => {
+    const r = BODIES_VALIDOS[ramo].schema.safeParse(conCambio(ramo, mutar))
+    assert.equal(r.success, false)
+    return r.error.issues[0].message
+  }
+
+  test('cliente_nombre', () => {
+    assert.equal(
+      mensajeDe('mrc', (b) => (b.cliente_nombre = largo(201))),
+      'El nombre del cliente admite como máximo 200 caracteres.'
+    )
+  })
+
+  test('cliente_contacto', () => {
+    assert.equal(
+      mensajeDe('auto', (b) => (b.cliente_contacto = largo(201))),
+      'El contacto del cliente admite como máximo 200 caracteres.'
+    )
+  })
+
+  test('campos de riesgo de MRC', () => {
+    assert.equal(
+      mensajeDe('mrc', (b) => (b.riesgo_datos.direccion = largo(501))),
+      'La dirección admite como máximo 500 caracteres.'
+    )
+    assert.equal(
+      mensajeDe('mrc', (b) => (b.riesgo_datos.cedula = largo(51))),
+      'La cédula o RUC admite como máximo 50 caracteres.'
+    )
+    assert.equal(
+      mensajeDe('mrc', (b) => (b.riesgo_datos.ciudad = largo(101))),
+      'La ciudad admite como máximo 100 caracteres.'
+    )
+    assert.equal(
+      mensajeDe('mrc', (b) => (b.riesgo_datos.rubro_actividad = largo(201))),
+      'El rubro de actividad admite como máximo 200 caracteres.'
+    )
+  })
+
+  test('rubro_actividad de Incendio', () => {
+    assert.equal(
+      mensajeDe('incendio', (b) => (b.riesgo_datos.rubro_actividad = largo(201))),
+      'El rubro de actividad admite como máximo 200 caracteres.'
+    )
+  })
+
+  test('descripcion de descuentos y recargos', () => {
+    assert.equal(
+      mensajeDe('vida-ap', (b) => (b.descuentos = [{ descripcion: largo(201), porcentaje: 5 }])),
+      'La descripción del ajuste admite como máximo 200 caracteres.'
+    )
+  })
+})

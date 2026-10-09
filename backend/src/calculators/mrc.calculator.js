@@ -196,6 +196,34 @@ export async function calcularPrima({
     })
   }
 
+  // Tope de la SUMA TOTAL asegurada (decisión de Kevin, 2026-10-09): edificio + contenido +
+  // coberturas adicionales que cuentan para el total <= plan.responsabilidad_maxima_cotizable.
+  // "Cuenta para el total" es la misma definición del resumen "Suma Asegurada total" (template
+  // de la Carta Oferta y panel del cotizador): no sublímites y no las marcadas
+  // incluye_en_suma_asegurada_total = false. El chequeo edificio + contenido de
+  // calcularCostoEdificioYContenido dispara antes, con su propio mensaje.
+  const sumaAseguradaTotal =
+    capitalEdificio +
+    capitalContenido +
+    coberturasAdicionalesValidadas.reduce(
+      (acc, c) =>
+        acc +
+        (c.tipo_aplicacion !== 'sublimite' && c.incluye_en_suma_asegurada_total !== false
+          ? c.monto
+          : 0),
+      0
+    )
+  if (
+    plan.responsabilidad_maxima_cotizable != null &&
+    sumaAseguradaTotal > plan.responsabilidad_maxima_cotizable
+  ) {
+    throw httpError(
+      422,
+      `La suma asegurada total (edificio + contenido + coberturas adicionales) supera la Responsabilidad Máx. Cotizable del plan "${plan.nombre}" (Gs. ${plan.responsabilidad_maxima_cotizable}).`,
+      `La suma asegurada total (edificio + contenido + coberturas adicionales) supera el máximo cotizable para este plan (Gs. ${plan.responsabilidad_maxima_cotizable.toLocaleString('es-PY')}).`
+    )
+  }
+
   // Incendio Edificio + Incendio Contenido cuentan siempre como 2 coberturas fijas — se suma
   // lo que el agente agregó como cobertura adicional (sin contar sub-límites) para el mínimo.
   const cantidadCoberturas =

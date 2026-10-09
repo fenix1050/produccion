@@ -725,3 +725,94 @@ describe('mrc.calculator — MRC-specific: dos líneas de cobertura + adicional,
     assert.ok(codigos.includes('responsabilidad_civil'))
   })
 })
+
+describe('mrc.calculator — tope de la suma total asegurada (edificio + contenido + adicionales)', () => {
+  // Plan con tope 5.000.000.000 (planBase). Edificio + contenido = 4.000.000.000 solos NO lo superan.
+  const riesgoConAdicional = (sumaAdicional, codigo = 'responsabilidad_civil') => ({
+    rubro_actividad: 'Bazar',
+    capital_edificio: 2_000_000_000,
+    capital_contenido: 2_000_000_000,
+    coberturas_adicionales: [{ codigo, suma_asegurada: sumaAdicional }],
+  })
+
+  const calcular = (riesgoDatos, plan = planBase(), catalogoRamo = catalogoBase()) =>
+    calcularPrima({
+      plan,
+      riesgoDatos,
+      rubro: rubroBase(),
+      catalogoRamo,
+      tasasRamo: tasasBase(),
+    })
+
+  test('rechaza con 422 si edificio + contenido + adicionales supera el máximo del plan', async () => {
+    await assert.rejects(
+      () => calcular(riesgoConAdicional(1_000_000_001)),
+      (error) =>
+        error.status === 422 &&
+        /suma asegurada total/i.test(error.publicMessage ?? error.message) &&
+        /5\.000\.000\.000/.test(error.publicMessage ?? error.message)
+    )
+  })
+
+  test('acepta la suma total exactamente igual al máximo del plan', async () => {
+    const resultado = await calcular(riesgoConAdicional(1_000_000_000))
+    assert.ok(resultado.prima > 0)
+  })
+
+  test('un sublímite no cuenta para el total', async () => {
+    const catalogo = [
+      ...catalogoBase(),
+      {
+        codigo: 'sublimite_x',
+        nombre: 'Sublímite X',
+        categoria: 'Sublímites',
+        franquicia_default: null,
+        incluye_en_suma_asegurada_total: true,
+      },
+    ]
+    const tasas = [
+      ...tasasBase(),
+      { coberturas_catalogo: { codigo: 'sublimite_x' }, tasa_valor: 1, unidad: 'permil' },
+    ]
+    const resultado = await calcularPrima({
+      plan: planBase(),
+      riesgoDatos: {
+        ...riesgoConAdicional(1_000_000),
+        coberturas_adicionales: [
+          { codigo: 'responsabilidad_civil', suma_asegurada: 1_000_000 },
+          { codigo: 'sublimite_x', suma_asegurada: 9_000_000_000 },
+        ],
+      },
+      rubro: rubroBase(),
+      catalogoRamo: catalogo,
+      tasasRamo: tasas,
+    })
+    assert.ok(resultado.prima > 0)
+  })
+
+  test('una cobertura con incluye_en_suma_asegurada_total = false no cuenta para el total', async () => {
+    const catalogo = catalogoBase().map((c) =>
+      c.codigo === 'robo_contenido' ? { ...c, incluye_en_suma_asegurada_total: false } : c
+    )
+    const resultado = await calcular(
+      {
+        ...riesgoConAdicional(1_000_000),
+        coberturas_adicionales: [
+          { codigo: 'responsabilidad_civil', suma_asegurada: 1_000_000 },
+          { codigo: 'robo_contenido', suma_asegurada: 9_000_000_000 },
+        ],
+      },
+      planBase(),
+      catalogo
+    )
+    assert.ok(resultado.prima > 0)
+  })
+
+  test('plan con responsabilidad_maxima_cotizable null no valida el tope', async () => {
+    const resultado = await calcular(
+      riesgoConAdicional(9_000_000_000),
+      planBase({ responsabilidad_maxima_cotizable: null })
+    )
+    assert.ok(resultado.prima > 0)
+  })
+})

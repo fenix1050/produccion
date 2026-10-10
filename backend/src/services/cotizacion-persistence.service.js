@@ -9,7 +9,7 @@ import { construirVariantes } from './cotizacion-pricing.service.js'
 
 /**
  * Calcula y persiste la cotización completa: cabecera, variantes y planes de pago
- * por forma de pago. Asigna número(s) correlativo(s) por variante.
+ * por forma de pago. Reserva un correlativo para la cabecera; las variantes llevan un ordinal.
  */
 export async function crearCotizacion(body, usuario) {
   const { plan, ramo, datosValidados } = await validarYResolverContexto(body, usuario)
@@ -187,8 +187,8 @@ async function armarPayloadDetalle({
     })
   }
 
-  // El `numero_variante` (correlativo por variante) ya NO se pide acá — el RPC lo reserva
-  // internamente por variante vía `siguiente_correlativo` dentro de la misma transacción.
+  // El `numero_variante` ya NO se pide acá — el RPC lo asigna como ordinal por cotización
+  // ('1', '2', ...) dentro de la misma transacción (migración 082), sin consumir correlativos.
   const variantes = variantesCalculadas.variantes.map((variante) => {
     // Descuento/recargo manual del agente (mrc/incendio hoy — ver sumarAjustes en esos
     // calculadores) — se guarda el total ya topado por plan.descuento_maximo/recargo_maximo,

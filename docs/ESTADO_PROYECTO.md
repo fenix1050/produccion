@@ -3742,3 +3742,34 @@ variables de Supabase (falla igual en `main` limpio sin ellas); en la suite comp
 
 **Pendiente:** merge y deploy manual a TEST para confirmar que un `GET /cotizaciones/<id>` roto ya no devuelve
 `codigo`. Sigue abierta la numeración de 2 en 2 (decisión de Kevin).
+
+## 112. `numero_variante` pasa a ser un ordinal por cotización: la numeración MRC deja de avanzar de a 2 (2026-10-10)
+
+**Por qué:** el QA adversarial de TEST mostró cotizaciones MRC numeradas 593, 595, 597... Causa:
+`_insertar_detalle_cotizacion` (migración 052) llamaba a `siguiente_correlativo(p_ramo_id)` por cada variante para
+poblar `cotizacion_variantes.numero_variante`, con el mismo contador por ramo que `numero_cotizacion`. Una cotización
+de 1 variante consumía 2 números y cada edición (borra y reinserta variantes) quemaba 1 más por variante. Kevin decidió
+(2026-10-10) que `numero_variante` sea un ordinal por cotización, sin tocar datos existentes.
+
+**Qué se hizo:**
+
+- **`backend/migrations/082_numero_variante_ordinal.sql`:** `CREATE OR REPLACE` solo del helper
+  `_insertar_detalle_cotizacion` (misma firma, `SECURITY INVOKER`, `search_path`). `numero_variante` se calcula con un
+  contador local (`'1'`, `'2'`, ...) y ya no llama a `siguiente_correlativo`. `crear_cotizacion_atomica` (reserva UN
+  número para la cabecera) y `actualizar_cotizacion_atomica` no cambian; en la edición el ordinal reinicia en `'1'`.
+  Sin `GRANT`/`REVOKE` ni cambios de esquema; `UNIQUE (cotizacion_id, numero_variante)` (042) se cumple por construcción.
+- **Datos existentes y `correlativos` no se tocan:** los números y huecos históricos quedan como están.
+- `backend/scripts/verificar-cotizacion-atomica.sql` ajustado al nuevo consumo (1 correlativo por alta, variante `'1'`).
+- Test nuevo `082_numero_variante_ordinal.test.js`, agregado a `test:migrations:pf3` de `backend/package.json`.
+
+**Cómo se verificó:** test de migración con RED observado (la migración no existía) y luego GREEN, también sin
+`backend/.env` corriendo desde la raíz; `verificar-numeracion-migraciones.js` sin colisiones.
+
+**No verificado:** ninguna prueba contra una base real (ni TEST ni PROD); el script `verificar-cotizacion-atomica.sql`
+actualizado no se ejecutó.
+
+**Pendiente (aplicación manual):** tras el merge, aplicar `082` primero a TEST con el psql scoped
+(`claude-test-deploy-psql`, archivo por stdin) y después a PROD a mano por Kevin. Verificar: crear una cotización MRC
+y confirmar que `numero_cotizacion` es consecutivo al anterior y que su `numero_variante` es `'1'`; crear una con 2
+variantes (`'1'`,`'2'`) y editar una, confirmando que el correlativo no avanza. El correlativo sigue desde el último
+número emitido (los huecos viejos no se rellenan).

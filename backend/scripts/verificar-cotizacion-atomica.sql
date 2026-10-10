@@ -45,6 +45,7 @@ DECLARE
   v_correlativo_tras_ok INT;
   v_cotizacion_id INT;
   v_count INT;
+  v_numero_variante TEXT;
   v_cliente_antes TEXT;
   v_cliente_tras_fallo TEXT;
   v_variantes_antes INT;
@@ -146,23 +147,28 @@ BEGIN
     )
   );
 
-  -- El camino feliz consume 2 correlativos (1 para numero_cotizacion de la cabecera + 1 para
-  -- numero_variante de la única variante -- comparten el mismo contador POR RAMO, migración
-  -- 042), no 1 -- lo que importa acá es que el intento fallido de arriba (que llegó a consumir
-  -- 3: cabecera + variante1 + variante2 antes de fallar en el FK de variante2) NO dejó ningún
-  -- residuo: el camino feliz arranca exactamente donde arrancaría si el intento fallido nunca
-  -- hubiera ocurrido.
+  -- Desde la migración 082 el camino feliz consume 1 solo correlativo (el de numero_cotizacion
+  -- de la cabecera): numero_variante es un ordinal por cotización y ya no toca `correlativos`.
+  -- Lo que importa acá es que el intento fallido de arriba (que llegó a reservar el de la
+  -- cabecera antes de fallar en el FK de la variante 2) NO dejó ningún residuo: el camino feliz
+  -- arranca exactamente donde arrancaría si el intento fallido nunca hubiera ocurrido.
   SELECT ultimo_numero INTO v_correlativo_tras_ok FROM correlativos WHERE ramo_id = v_ramo_id;
   INSERT INTO _verificacion_resultados VALUES (
-    '4. correlativo avanzó exactamente 2 desde la base (cabecera + 1 variante, no arrastra nada del intento fallido)',
-    (v_correlativo_antes + 2)::text, v_correlativo_tras_ok::text,
-    v_correlativo_tras_ok = v_correlativo_antes + 2
+    '4. correlativo avanzó exactamente 1 desde la base (solo la cabecera, no arrastra nada del intento fallido)',
+    (v_correlativo_antes + 1)::text, v_correlativo_tras_ok::text,
+    v_correlativo_tras_ok = v_correlativo_antes + 1
   );
 
   SELECT count(*) INTO v_count FROM cotizacion_variantes WHERE cotizacion_id = v_cotizacion_id;
   INSERT INTO _verificacion_resultados VALUES (
     '5. la cotización exitosa insertó su variante',
     '1', v_count::text, v_count = 1
+  );
+
+  SELECT numero_variante INTO v_numero_variante FROM cotizacion_variantes WHERE cotizacion_id = v_cotizacion_id;
+  INSERT INTO _verificacion_resultados VALUES (
+    '5b. numero_variante de la única variante es el ordinal ''1'' (migración 082)',
+    '1', v_numero_variante, v_numero_variante = '1'
   );
 
   -- PASO 3: actualizar_cotizacion_atomica con el mismo forma_pago_id inválido -- debe fallar sin

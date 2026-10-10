@@ -11,6 +11,18 @@ import {
   textoMax,
 } from './shared/limites-texto.js'
 
+// Tope de sanidad de los montos: las columnas de dinero son NUMERIC(14,2) (< 1e12). Un valor
+// mayor (o Infinity/1e308, que JSON.parse acepta) terminaba en un 500 por `22003` al persistir.
+const MONTO_MAXIMO = 999_999_999_999
+
+function monto(etiqueta) {
+  const mensaje = `${etiqueta} supera el máximo permitido.`
+  return z
+    .number({ invalid_type_error: `${etiqueta} debe ser un número.` })
+    .finite(mensaje)
+    .max(MONTO_MAXIMO, mensaje)
+}
+
 // Datos específicos del riesgo para MRC (Multirriesgo Comercio) — van dentro de
 // `cotizaciones.riesgo_datos` (JSONB). Cédula/dirección viven acá porque `cotizaciones`
 // no tiene columnas propias para datos de contacto del cliente (solo cliente_nombre/contacto).
@@ -20,13 +32,13 @@ export const riesgoMrcSchema = z
     direccion: textoMax(LIMITE_DIRECCION, 'La dirección').min(1),
     rubro_actividad: textoMax(LIMITE_RUBRO, 'El rubro de actividad').min(1),
     ciudad: textoMax(LIMITE_CIUDAD, 'La ciudad').min(1),
-    capital_edificio: z.number().nonnegative().default(0),
-    capital_contenido: z.number().nonnegative().default(0),
+    capital_edificio: monto('El capital de edificio').nonnegative().default(0),
+    capital_contenido: monto('El capital de contenido').nonnegative().default(0),
     coberturas_adicionales: z
       .array(
         z.object({
           codigo: z.string().min(1),
-          suma_asegurada: z.number().positive(),
+          suma_asegurada: monto('La suma asegurada de la cobertura adicional').positive(),
         })
       )
       .default([]),
@@ -47,7 +59,7 @@ export const riesgoMrcSchema = z
 // Body de POST /api/cotizaciones/calcular y POST /api/cotizaciones para ramo = 'mrc'.
 export const cotizarMrcSchema = z.object({
   plan_id: z.number().int(),
-  capital_asegurado: z.number().nonnegative(),
+  capital_asegurado: monto('El capital asegurado').nonnegative(),
   riesgo_datos: riesgoMrcSchema,
   descuentos: z.array(ajusteSchema).max(10).default([]),
   recargos: z.array(ajusteSchema).max(10).default([]),

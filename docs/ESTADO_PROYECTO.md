@@ -3701,3 +3701,19 @@ todo.
 **Pendiente:** el filtro `busqueda` del listado de Propuestas Formales usa ILIKE dentro de funciones SQL (migraciones
 069, 075, 076) y probablemente tiene el mismo problema; queda para un cambio aparte (requiere migración). Commit, PR,
 merge y deploy manual a TEST.
+
+## 110. Tope de la suma total asegurada en MRC y topes de sanidad en los montos (2026-10-09)
+
+**Por qué:** el QA adversarial de TEST (2026-10-01/02) mostró que `coberturas_adicionales[].suma_asegurada` no tenía tope: con `1e308` la prima daba `8e305` y al guardar fallaba con `22003` (500); con `9e9` se persistió una prima de ~72 M. La Responsabilidad Máx. Cotizable del plan solo se comparaba contra edificio + contenido. Decisión de Kevin (2026-10-09): el tope se aplica a la **suma total**, no por línea.
+
+**Qué se hizo:**
+
+- **Calculador MRC** (`backend/src/calculators/mrc.calculator.js`): tras validar las coberturas adicionales, rechaza con 422 si edificio + contenido + adicionales que cuentan supera `plan.responsabilidad_maxima_cotizable` (mensaje: "La suma asegurada total (edificio + contenido + coberturas adicionales) supera el máximo cotizable para este plan (Gs. ...)"). Plan con tope `null` no valida. El chequeo previo de edificio + contenido se mantiene y dispara primero, con su mensaje de siempre.
+- **Qué cuenta para el total:** la misma definición de "Suma Asegurada total" de la Carta Oferta (`templates/oferta/mrc.js`) y del panel del cotizador (`capitalTotalAsegurado` en `frontend/cotizar/domain-rules.js`): edificio + contenido + adicionales que no sean sublímite (`categoria = 'Sublímites'`) y cuyo `incluye_en_suma_asegurada_total` no sea `false` (hoy "Robo valores ventanilla" queda afuera). El flag sale del catálogo del ramo ya cargado en el calculador.
+- **Schema MRC** (`backend/src/schemas/mrc.schema.js`): `capital_edificio`, `capital_contenido`, `capital_asegurado` y `suma_asegurada` ahora son `.finite()` y con máximo 999.999.999.999 (debajo del límite de `NUMERIC(14,2)`), con mensajes en español que nombran el campo (ej. "La suma asegurada de la cobertura adicional supera el máximo permitido.").
+
+**Cómo se verificó:** tests nuevos con RED observado antes de implementar (`mrc.calculator.test.js`: tope total, igualdad exacta, sublímite y cobertura con flag en false que no cuentan, tope `null`; `mrc.schema.test.js` nuevo: `1e308`, `Infinity`, `1e12` y el máximo exacto). Ambos archivos pasan también sin `backend/.env`. Suite de backend completa en verde, `eslint` y `prettier` sin hallazgos en los archivos tocados.
+
+**No verificado en TEST:** falta desplegar y confirmar contra TEST que una cotización MRC por encima del máximo responde 422 con el mensaje claro y que `1e308`/`1e999` responden 400 sin 500.
+
+**Pendiente:** commit, PR, merge y deploy manual a TEST. Siguen abiertos (decisión de Kevin) la numeración de 2 en 2 y el `codigo` de Postgres en los 500; topes por cobertura en el catálogo quedan fuera de alcance.

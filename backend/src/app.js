@@ -84,8 +84,19 @@ export function createApp() {
 // por PF_BORRADOR_NO_EDITABLE se mostraba como "conflicto de revisión, recargue" aunque
 // la causa real era otra). `undefined` se omite solo en la serialización JSON, así que
 // esto no cambia el shape de una respuesta que no traía código.
+// Solo los códigos de dominio propios se devuelven al cliente. Un error crudo de PostgREST/Postgres
+// (`22P02`, `23514`, `PGRST116`) o de sistema (`ECONNRESET`) también trae `err.code`, y exponerlo
+// filtra detalle interno de la base (QA adversarial 2026-10-01).
+const CODIGO_DE_DOMINIO = /^(PF|CARTA)_[A-Z0-9_]+$/
+
 export function manejarErrorCentral(err, _req, res, _next) {
-  console.error(err.stack || err.message || err)
+  // El `stack` de un PostgrestError no trae code/details/hint: se loguean aparte para no perder el
+  // SQLSTATE ahora que no viaja en la respuesta.
+  console.error(err.stack || err.message || err, {
+    code: err.code,
+    details: err.details,
+    hint: err.hint,
+  })
 
   if (err instanceof ZodError) {
     return res.status(400).json({
@@ -110,6 +121,6 @@ export function manejarErrorCentral(err, _req, res, _next) {
 
   res.status(status).json({
     error: err.publicMessage || 'Error interno del servidor',
-    codigo: err.code,
+    codigo: CODIGO_DE_DOMINIO.test(err.code ?? '') ? err.code : undefined,
   })
 }

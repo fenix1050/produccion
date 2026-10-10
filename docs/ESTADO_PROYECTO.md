@@ -3717,3 +3717,28 @@ merge y deploy manual a TEST.
 **No verificado en TEST:** falta desplegar y confirmar contra TEST que una cotización MRC por encima del máximo responde 422 con el mensaje claro y que `1e308`/`1e999` responden 400 sin 500.
 
 **Pendiente:** commit, PR, merge y deploy manual a TEST. Siguen abiertos (decisión de Kevin) la numeración de 2 en 2 y el `codigo` de Postgres en los 500; topes por cobertura en el catálogo quedan fuera de alcance.
+
+## 111. Los errores 5xx ya no exponen el código de Postgres (2026-10-10)
+
+**Por qué:** el QA adversarial de TEST mostró que un error crudo de la base salía como
+`{"error":"Error interno del servidor","codigo":"22P02"}`. `manejarErrorCentral` devolvía `err.code` siempre que
+existiera, así que filtraba el SQLSTATE (`22P02`, `22003`, `23514`) y los códigos de PostgREST (`PGRST116`) a quien
+llamara a la API. Era uno de los puntos abiertos del QA, decidido junto con Kevin.
+
+**Qué se hizo:**
+
+- **`backend/src/app.js`:** `codigo` solo se devuelve cuando es un código de dominio propio (`PF_*` o `CARTA_*`,
+  p. ej. `PF_REVISION_CONFLICT`, `PF_PDF_FIT_FAILED`, `CARTA_OFERTA_SNAPSHOT_OBSOLETO`), también en un 5xx. Cualquier
+  otro (SQLSTATE, `PGRST*`, códigos de sistema como `ECONNRESET`) se omite de la respuesta.
+- **Observabilidad:** el log del servidor ahora incluye `code`, `details` y `hint` del error. Antes solo se logueaba
+  el `stack`, que en un `PostgrestError` no trae el SQLSTATE; sin este cambio, ocultarlo de la respuesta lo habría
+  perdido del todo.
+- El único consumidor del frontend es `PF_REVISION_CONFLICT` (un 409 de dominio), que no cambia.
+
+**Cómo se verificó:** 4 tests nuevos en `backend/src/app.test.js` con RED observado (fallaron los 3 de
+comportamiento; el de "conservar PF_/CARTA_" ya pasaba como control). `npm test --workspace=backend`: 597 tests, 596
+pasan, 0 fallan, 1 salteado de antes. eslint y prettier sin hallazgos. Nota: `app.test.js` corrido solo necesita las
+variables de Supabase (falla igual en `main` limpio sin ellas); en la suite completa pasa. No se probó contra TEST.
+
+**Pendiente:** merge y deploy manual a TEST para confirmar que un `GET /cotizaciones/<id>` roto ya no devuelve
+`codigo`. Sigue abierta la numeración de 2 en 2 (decisión de Kevin).

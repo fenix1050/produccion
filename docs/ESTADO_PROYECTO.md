@@ -3773,3 +3773,35 @@ actualizado no se ejecutó.
 y confirmar que `numero_cotizacion` es consecutivo al anterior y que su `numero_variante` es `'1'`; crear una con 2
 variantes (`'1'`,`'2'`) y editar una, confirmando que el correlativo no avanza. El correlativo sigue desde el último
 número emitido (los huecos viejos no se rellenan).
+
+## 113. Segunda ronda de QA sobre TEST y estado real de PROD antes de promover (2026-10-13)
+
+**Migración `082` en TEST:** aplicada a mano con el psql scoped y verificada con datos reales: dos cotizaciones MRC
+consecutivas (`MRC-634`, `MRC-635`), `numero_variante = '1'` en cada una, correlativo +1 por alta. Editar una
+cotización no consumió números. Las cotizaciones de prueba se borraron por id. El correlativo no retrocede: los números
+usados por las pruebas quedan como hueco.
+
+**Segunda ronda de QA (TEST, usuario agente):** la regresión de #467, #468, #469 y #463 dio 0 fallas. Pasaron sin
+hallazgos: acceso sin sesión (401/403), CSRF ausente, falso o vacío (403), permisos de admin para un agente (403),
+parámetros de query raros en listados, y el ciclo crear/editar/PDF con numeración consecutiva. Hallazgo real: los
+endpoints `GET /ramos/:id/planes`, `/ramos/:id/coberturas-catalogo`, `/planes/:id/coberturas` y
+`/planes/:id/clausulas` pasaban el `:id` crudo a Supabase y respondían 500 ante un id no numérico (misma clase que
+#463). `GET /ramos/rubros-actividad?ramo_id=` tampoco tenía tope máximo. Se valida en el controller
+(`ramoIdParamsSchema`, `planIdParamsSchema`, `ID_MAXIMO`) y responde 400 con mensaje en español. Falso positivo:
+`POST /propuestas/textos` con body vacío responde 400 antes del 403 porque el permiso se chequea en el service
+(`emision.service.js`) después de validar el body.
+
+**Estado real de PROD (relevado a mano por Kevin el 2026-10-12, solo lectura):**
+
+- El backend de PROD corre la imagen `cotizador-backend:6f56e17c…` (commit `6f56e17`, 2026-09-02): 95 commits por
+  detrás de `main`.
+- La DB de PROD no tiene ninguna tabla ni función de Carta Oferta ni de Propuesta Formal: solo las funciones de
+  cotización de la migración `052`. Faltan las migraciones `066` a `082`.
+- En PROD no corre ningún servicio de Storage (en TEST sí: `cotizador-test-storage`), y el backend nuevo guarda y
+  descarga PDFs con `supabase.storage`. Hay que resolverlo antes de promover.
+- No se verificó si las migraciones `053` a `065` están aplicadas en PROD.
+
+**No verificado:** la UI (Playwright) no se repitió en esta ronda; nada se desplegó ni se aplicó en PROD.
+
+**Pendiente:** ensayar `066`–`082` sobre una restauración del backup de PROD, resolver Storage en PROD y recién
+después armar los comandos de promoción (manual, backend y frontend juntos, invalida todas las sesiones).

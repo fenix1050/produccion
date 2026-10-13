@@ -1,6 +1,18 @@
-import { rubrosActividadQuerySchema } from '../schemas/ramos.schema.js'
+import {
+  planIdParamsSchema,
+  ramoIdParamsSchema,
+  rubrosActividadQuerySchema,
+} from '../schemas/ramos.schema.js'
 import * as ramosService from '../services/ramos.service.js'
 import { httpError } from '../utils/http-error.js'
+
+function parsearId(schema, params) {
+  const parseo = schema.safeParse(params)
+  if (!parseo.success) {
+    throw httpError(400, parseo.error.issues.map((issue) => issue.message).join('; '))
+  }
+  return parseo.data.id
+}
 
 export async function listarRamos(_req, res, next) {
   try {
@@ -13,7 +25,7 @@ export async function listarRamos(_req, res, next) {
 
 export async function listarPlanesDeRamo(req, res, next) {
   try {
-    const planes = await ramosService.listarPlanesDeRamo(req.params.id)
+    const planes = await ramosService.listarPlanesDeRamo(parsearId(ramoIdParamsSchema, req.params))
     res.json(planes)
   } catch (err) {
     next(err)
@@ -22,7 +34,9 @@ export async function listarPlanesDeRamo(req, res, next) {
 
 export async function listarCoberturasDePlan(req, res, next) {
   try {
-    const coberturas = await ramosService.listarCoberturasDePlan(req.params.id)
+    const coberturas = await ramosService.listarCoberturasDePlan(
+      parsearId(planIdParamsSchema, req.params)
+    )
     res.json(coberturas)
   } catch (err) {
     next(err)
@@ -34,7 +48,9 @@ export async function listarCoberturasDePlan(req, res, next) {
 // cláusulas del ramo, que se selecciona a mano por cotización (cotizacion_clausulas).
 export async function listarClausulasObligatoriasDePlan(req, res, next) {
   try {
-    const clausulas = await ramosService.listarClausulasObligatoriasDePlan(req.params.id)
+    const clausulas = await ramosService.listarClausulasObligatoriasDePlan(
+      parsearId(planIdParamsSchema, req.params)
+    )
     res.json(clausulas)
   } catch (err) {
     next(err)
@@ -64,7 +80,9 @@ export async function listarRubrosActividad(req, res, next) {
 // selector de "Coberturas adicionales" con TODAS las coberturas/sublímites disponibles.
 export async function listarCoberturasCatalogoDeRamo(req, res, next) {
   try {
-    const coberturas = await ramosService.listarCoberturasCatalogoDeRamo(req.params.id)
+    const coberturas = await ramosService.listarCoberturasCatalogoDeRamo(
+      parsearId(ramoIdParamsSchema, req.params)
+    )
     res.json(coberturas)
   } catch (err) {
     next(err)

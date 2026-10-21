@@ -3805,3 +3805,39 @@ endpoints `GET /ramos/:id/planes`, `/ramos/:id/coberturas-catalogo`, `/planes/:i
 
 **Pendiente:** ensayar `066`–`082` sobre una restauración del backup de PROD, resolver Storage en PROD y recién
 después armar los comandos de promoción (manual, backend y frontend juntos, invalida todas las sesiones).
+
+## 114. Promoción a PROD: Storage, migraciones 066–082, backend y frontend (2026-10-19 al 2026-10-21)
+
+Todo se ejecutó a mano por Kevin en la VPS, un comando por vez; Claude no accedió a PROD. PROD todavía no recibe tráfico
+real.
+
+**Storage (2026-10-19, `docs/RUNBOOK_STORAGE_PROD.md`):** servicio `storage` agregado al compose de
+`/opt/cotizador/supabase`, Envoy recreado con la ruta `/storage/v1/`. Dos desvíos respecto del plan: la contraseña de
+PROD tiene caracteres reservados y rompía el parseo de `DATABASE_URL` (se agregó `POSTGRES_PASSWORD_URLENC` al `.env`),
+y la contraseña del rol `supabase_storage_admin` no coincidía con `POSTGRES_PASSWORD` (se alineó con `ALTER ROLE`).
+Verificado: Storage `healthy`, `storage.buckets` existe, el backend recibe 200 en `/health`, `/storage/v1/status` y
+`/rest/v1/ramos` por el Envoy nuevo.
+
+**Migraciones:** `053` a `065` ya estaban aplicadas en PROD (comprobado por huellas de estructura y de datos sobre la
+restauración). `066` a `082` se ensayaron sobre una restauración del dump de PROD en un contenedor aislado
+(`--network none`, sin puertos) y después se aplicaron en PROD con un respaldo tomado justo antes
+(`prod-20261021-134725.dump`). Verificado: los dos buckets, las 5 tablas nuevas y el helper de `082` con numeración por
+ordinal. Una migración por transacción; el bucle se frena en el primer error.
+
+**Backend:** imagen `cotizador-backend:1f83bf367433f58ad1f5856d1c3c788f2c314798` construida desde un worktree aparte (para
+no tocar el `docker-compose.yml` ni el `Caddyfile` vivos de `/opt/cotizador/app`, que siguen en `29c3975`), desplegada con
+`BACKEND_IMAGE=… docker compose up -d --no-deps --no-build --force-recreate backend`. El código nuevo no pide variables
+de entorno nuevas. Rollback: `~/deploy-backups/backend-prod/previous-image-tag.txt` →
+`cotizador-backend:6f56e17c2b9d9777fc66f7a373c4221a2ca39dc6` (la imagen vieja sigue en el host).
+
+**Frontend:** copiado a `/opt/cotizador/frontend-prod` con `tar` excluyendo `shared/config.js` (es por entorno y no está
+en el repo). Respaldo previo en `~/deploy-backups/frontend-prod-20261021-155904`. Contenido idéntico al commit
+(`diff -rq`). No borra archivos que ya no existan en el repo.
+
+**Verificación:** Kevin probó en `cotizador.lat` el login, la Carta Oferta en PDF y la emisión de la Propuesta Formal:
+todo funcionó. Logs del backend de las últimas 2 h: solo errores de validación esperados (sin token antes de loguearse y la
+regla de mínimo de coberturas de MRC).
+
+**Pendiente:** el check de las 03:30 en healthchecks.io (lo mira Kevin); la verificación de recuperación desde Drive
+(no autorizada); un runbook propio del deploy a PROD (este quedó documentado solo aquí); ILIKE en el listado de
+Propuestas (necesita migración), hallazgos bajos de UI y `generarPdfOferta` llamando a `findPlanById`.

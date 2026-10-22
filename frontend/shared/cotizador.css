@@ -564,7 +564,10 @@ button {
     display: none;
   }
 
+  /* min-width: 0 — sin esto el flex item no baja de su min-content (breadcrumb + usuario) y
+     empuja el avatar fuera del viewport; ver topbar-responsive.test.js. */
   .topbar__crumb-area {
+    min-width: 0;
     padding: 10px 12px;
     gap: 8px;
   }

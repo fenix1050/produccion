@@ -1,0 +1,138 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-22T00:00:00Z",
+  "title": "Design System: Cotizador Tajy",
+  "extensions": {
+    "colorMeta": {
+      "tajy-red": {
+        "role": "primary",
+        "displayName": "Tajy Red",
+        "canonical": "#d8132e",
+        "tonalRamp": [
+          "#3a0610",
+          "#5c0e10",
+          "#7a0f11",
+          "#a20e25",
+          "#b8102a",
+          "#d8132e",
+          "#ff2a3d",
+          "#fbeaea"
+        ]
+      },
+      "warm-paper": {
+        "role": "neutral",
+        "displayName": "Warm Paper",
+        "canonical": "#f4f3f1",
+        "tonalRamp": [
+          "#1a1a1a",
+          "#333333",
+          "#444444",
+          "#6e6e6e",
+          "#cccccc",
+          "#dddddd",
+          "#f4f3f1",
+          "#ffffff"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "heading": { "displayName": "Heading (Sora)", "purpose": "Page and section headings." },
+      "body": { "displayName": "Body (Public Sans)", "purpose": "Forms, tables, UI text." }
+    },
+    "shadows": [
+      {
+        "name": "card-light",
+        "value": "0 4px 12px rgba(0,0,0,0.08)",
+        "purpose": "Card shadow in the light theme."
+      },
+      {
+        "name": "card-dark",
+        "value": "0 12px 30px rgba(0,0,0,0.42)",
+        "purpose": "Card shadow in the dark theme."
+      }
+    ],
+    "motion": [
+      { "name": "panel-fade", "value": "0.2s ease", "purpose": "Panel entrance." },
+      {
+        "name": "view-slide",
+        "value": "0.28s cubic-bezier(0.2, 0.8, 0.2, 1)",
+        "purpose": "Directional transition between quote steps; disabled under reduced motion."
+      }
+    ],
+    "breakpoints": [
+      { "name": "lg", "value": "1024px" },
+      { "name": "md", "value": "768px" },
+      { "name": "sm", "value": "480px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Solid red main action.",
+      "html": "<button class=\"ds-btn-primary\">Cotizar</button>",
+      "css": ".ds-btn-primary { background: var(--tajy-red, #d8132e); color: #fff; border: none; border-radius: var(--tajy-radius-md, 9px); padding: 10px 20px; font-weight: 600; font-family: inherit; cursor: pointer; transition: background 0.15s; } .ds-btn-primary:hover { background: var(--tajy-red-hover, #b8102a); } .ds-btn-primary:active { background: var(--tajy-red-active, #a20e25); } .ds-btn-primary:focus-visible { outline: 3px solid rgba(216,19,46,0.35); outline-offset: 2px; }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Form field with red focus ring.",
+      "html": "<input class=\"ds-input\" placeholder=\"Capital asegurado\">",
+      "css": ".ds-input { background: var(--tajy-input-bg, #fff); color: var(--tajy-ink, #1a1a1a); border: 1px solid var(--tajy-border, #ddd); border-radius: var(--tajy-radius-md, 9px); padding: 10px 12px; font-family: inherit; font-size: 14px; } .ds-input:focus { outline: none; border-color: var(--tajy-red, #d8132e); box-shadow: 0 0 0 3px rgba(216,19,46,0.12); }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Surface container on warm paper.",
+      "html": "<div class=\"ds-card\">Resumen de cotización</div>",
+      "css": ".ds-card { background: var(--tajy-surface, #fff); border: 1px solid var(--tajy-border-light, #eee); border-radius: var(--tajy-radius-xl, 14px); box-shadow: var(--tajy-shadow-card, 0 4px 12px rgba(0,0,0,0.08)); padding: 20px; color: var(--tajy-ink, #1a1a1a); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "El Mostrador de Precisión",
+    "overview": "A working counter, not a showroom. Numbers are the content; everything else steps back. Warm paper and white surfaces, near-black ink, and Tajy red reserved for action, selection, and brand.",
+    "keyCharacteristics": [
+      "Red is scarce and meaningful (action, selection, brand).",
+      "Tonal, flat surfaces; shadow appears as a response to state.",
+      "Accessible contrast is a hard rule, with dedicated a11y token variants.",
+      "Same semantic tokens in light and dark; dark only redefines values."
+    ],
+    "rules": [
+      {
+        "name": "The Scarce Red Rule",
+        "body": "Red marks action or state, never decoration.",
+        "section": "colors"
+      },
+      {
+        "name": "The Contrast Floor Rule",
+        "body": "Text colors must reach WCAG AA (4.5:1) on their actual background; use the -a11y / -fg variants.",
+        "section": "colors"
+      },
+      {
+        "name": "The Tabular Number Rule",
+        "body": "Money and quote figures must align; use mono or tabular figures where amounts stack.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat-Until-State Rule",
+        "body": "Surfaces stay flat; shadow and glow appear on hover, focus, or selection.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do use --tajy-* tokens for every color; add dark overrides in shared/theme-dark.css.",
+      "Do keep red for actions, selection, and brand.",
+      "Do verify 4.5:1 contrast in both themes.",
+      "Do test layouts at 375px."
+    ],
+    "donts": [
+      "Don't hardcode hex colors in component CSS.",
+      "Don't use blue-tinted grays in the dark content area.",
+      "Don't add decorative shadows or gradients at rest in the light theme.",
+      "Don't put custom properties inside @media queries."
+    ]
+  }
+}

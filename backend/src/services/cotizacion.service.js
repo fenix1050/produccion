@@ -1,6 +1,7 @@
 import { getCalculador } from '../calculators/index.js'
 import * as cotizacionesRepository from '../repositories/cotizaciones.repository.js'
 import * as ramosRepository from '../repositories/ramos.repository.js'
+import { buscarOCortar404 } from '../utils/buscar-o-cortar-404.js'
 
 import { verificarPropiedad } from './cotizacion-authorization.service.js'
 import { validarYResolverContexto } from './cotizacion-context.service.js'
@@ -61,8 +62,14 @@ export async function generarPdfOferta(id, usuario) {
     verificarPropiedad(cotizacion, usuario)
     t1 = Date.now()
     const [plan, ramo, planCoberturas] = await Promise.all([
-      ramosRepository.findPlanById(cotizacion.plan_id),
-      ramosRepository.findRamoById(cotizacion.ramo_id),
+      buscarOCortar404(
+        () => ramosRepository.findPlanById(cotizacion.plan_id),
+        'Plan no encontrado'
+      ),
+      buscarOCortar404(
+        () => ramosRepository.findRamoById(cotizacion.ramo_id),
+        'Ramo no encontrado'
+      ),
       ramosRepository.findCoberturasByPlanId(cotizacion.plan_id),
     ])
     t2 = Date.now()

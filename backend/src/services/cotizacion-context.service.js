@@ -2,23 +2,12 @@ import * as coberturasRepository from '../repositories/coberturas.repository.js'
 import * as ramosRepository from '../repositories/ramos.repository.js'
 import { planIdBodySchema } from '../schemas/cotizaciones.schema.js'
 import { getSchemaCotizar } from '../schemas/index.js'
+import { buscarOCortar404 } from '../utils/buscar-o-cortar-404.js'
 import { httpError } from '../utils/http-error.js'
-import { CODIGO_POSTGREST_SIN_FILAS } from '../utils/postgres-errors.js'
 
 import { withCache } from './cache.js'
 import { normalizarFranquiciasMrc } from './mrc-franquicia-authorization.service.js'
 import { resolverUmbralInspeccion } from './umbral-inspeccion.service.js'
-
-// `.single()` sin filas llega como error de PostgREST: para el cliente es un recurso inexistente
-// (404 en español), no un fallo interno que filtre el código.
-async function buscarOCortar404(buscar, mensaje) {
-  try {
-    return await buscar()
-  } catch (error) {
-    if (error?.code === CODIGO_POSTGREST_SIN_FILAS) throw httpError(404, mensaje)
-    throw error
-  }
-}
 
 export async function validarYResolverContexto(body, usuario) {
   if (body === null || typeof body !== 'object' || Array.isArray(body)) {

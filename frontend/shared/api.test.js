@@ -219,3 +219,75 @@ test('getBlob aplica los mismos mensajes claros de red y de 5xx', async () => {
     'Ocurrió un error en el servidor. Intentá de nuevo en unos minutos.'
   )
 })
+
+const AVISO_SESION_EXPIRADA = 'Tu sesión expiró. Ingresá de nuevo para continuar.'
+
+const respuestaMe = () =>
+  new Response(JSON.stringify({ usuario: { id: 7 }, csrfToken: 'csrf' }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  })
+
+test('un 401 a mitad de sesión deja un aviso de sesión expirada para la pantalla de login', async () => {
+  let call = 0
+  const fetchMock = async () => {
+    call += 1
+    return call === 1 ? respuestaMe() : new Response('{}', { status: 401 })
+  }
+  const { api, auth } = await importarApiFresco(fetchMock, 'aviso-401-mid-session')
+
+  await auth.cargarSesion()
+  await assert.rejects(() => api.get('/cotizaciones'))
+
+  assert.equal(auth.consumirAvisoLogin(), AVISO_SESION_EXPIRADA)
+  assert.equal(auth.consumirAvisoLogin(), null, 'el aviso se muestra una sola vez')
+})
+
+test('un 401 al cargar una página nueva con una sesión que estaba activa en la pestaña también avisa', async () => {
+  const fetchMock = async () => new Response('{}', { status: 401 })
+  const { auth } = await importarApiFresco(fetchMock, 'aviso-401-nueva-pagina')
+  window.sessionStorage.setItem('tajy_sesion_activa', '1')
+
+  assert.equal(await auth.cargarSesion(), null)
+
+  assert.equal(auth.consumirAvisoLogin(), AVISO_SESION_EXPIRADA)
+})
+
+test('un 401 en la primera visita (sin sesión previa) no dice que la sesión expiró', async () => {
+  const fetchMock = async () => new Response('{}', { status: 401 })
+  const { auth } = await importarApiFresco(fetchMock, 'aviso-401-primera-visita')
+
+  assert.equal(await auth.cargarSesion(), null)
+
+  assert.equal(auth.consumirAvisoLogin(), null)
+})
+
+test('logout() borra la marca de sesión activa: un 401 posterior no avisa expiración', async () => {
+  let call = 0
+  const fetchMock = async () => {
+    call += 1
+    if (call === 1) return respuestaMe()
+    if (call === 2) return new Response(null, { status: 204 })
+    return new Response('{}', { status: 401 })
+  }
+  const { auth } = await importarApiFresco(fetchMock, 'aviso-logout-limpia-marca')
+
+  await auth.cargarSesion()
+  await auth.logout()
+  assert.equal(await auth.cargarSesion(), null)
+
+  assert.equal(auth.consumirAvisoLogin(), null)
+})
+
+test('consumirAvisoLogin tolera que sessionStorage no esté disponible', async () => {
+  const { auth } = await importarApiFresco(async () => respuestaMe(), 'aviso-sin-storage')
+  Object.defineProperty(window, 'sessionStorage', {
+    get() {
+      throw new Error('storage bloqueado')
+    },
+    configurable: true,
+  })
+
+  assert.equal(auth.consumirAvisoLogin(), null)
+  assert.equal((await auth.cargarSesion()).id, 7)
+})

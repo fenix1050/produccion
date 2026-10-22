@@ -223,6 +223,7 @@ async function init() {
     window.location.href = '../cotizar/'
     return
   }
+  state.error = auth.consumirAvisoLogin() ?? ''
   render()
   hideSplash()
 }

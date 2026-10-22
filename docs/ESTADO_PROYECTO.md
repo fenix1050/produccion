@@ -3841,3 +3841,34 @@ regla de mínimo de coberturas de MRC).
 **Pendiente:** el check de las 03:30 en healthchecks.io (lo mira Kevin); la verificación de recuperación desde Drive
 (no autorizada); un runbook propio del deploy a PROD (este quedó documentado solo aquí); ILIKE en el listado de
 Propuestas (necesita migración), hallazgos bajos de UI y `generarPdfOferta` llamando a `findPlanById`.
+
+## 115. Deploy a PROD de la migración 083 y del frontend `ab21256` (2026-10-22)
+
+Ejecutado a mano por Kevin en la VPS siguiendo `docs/RUNBOOK_DEPLOY_PROD.md`, un comando por vez; Claude no accedió a
+PROD. Ya estaba probado en TEST. El backend **no** se desplegó: PROD sigue en
+`cotizador-backend:1f83bf367433f58ad1f5856d1c3c788f2c314798`, así que el 404 de `generarPdfOferta` (#486) queda para el
+próximo deploy de backend.
+
+**Respaldo (etapa 1):** `prod-20261022-161943.dump` (490988 bytes, 815 entradas en el TOC, verificación ok), tomado justo
+antes de migrar. Es el punto de retorno de la DB.
+
+**Migración `083` (etapa 2):** la huella (cantidad de `replace(` en el cuerpo de `listar_cartas_oferta_aptas_propuesta` y
+`listar_propuestas_formales`) daba 0 y 0 sobre una restauración del dump, o sea que no estaba aplicada. Se ensayó en un
+contenedor aislado (`ens-pg`, `--network none`) y dio 6 y 9; se aplicó en `cotizador-supabase-db` y la huella en PROD dio
+también 6 y 9. Solo reemplaza dos funciones (misma firma de retorno), así que el backend viejo sigue funcionando.
+
+**Frontend (etapa 4):** copiado a `/opt/cotizador/frontend-prod` desde un worktree en el SHA completo
+`ab212561192fe1cab552ecb863e78d03dc0fdb96` (incluye #482 a #485), excluyendo `shared/config.js` (intacto: misma fecha y
+tamaño). Respaldo previo en `~/deploy-backups/frontend-prod-<fecha>` en la VPS. `diff -rq` sin diferencias y sin archivos
+sobrantes. Cabe aclarar que el commit de `main` al momento del deploy era `c593c91` (solo docs); se desplegó `ab21256`,
+el que se probó en TEST.
+
+**Verificación (etapa 5):** en la pantalla "Preparar Propuesta Formal" de `cotizador.lat`, buscar con `%` y con `_` no
+devuelve cartas, y con el campo vacío aparece `MRC-574`, así que el escape funciona y no es una lista vacía. El login con
+campos vacíos muestra "Ingresá tu email y tu contraseña." (#482). Logs del backend de las últimas 2 h: solo
+"Falta el token de autenticación", esperado. No se probó en PROD la cotización con PDF (evita crear datos).
+
+**Limpieza:** `ens-pg`, logs en `/tmp`, el worktree de build y `~/migraciones-ensayo` eliminados. Los respaldos quedan.
+
+**Pendiente:** el próximo deploy de backend (incluye #486); el resto de pendientes de la sección 114 que no se
+mencionan acá.

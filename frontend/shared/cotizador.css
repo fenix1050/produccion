@@ -1166,6 +1166,22 @@ button {
   margin: 0 10px;
 }
 
+/* Las tres etiquetas (nowrap, sin encoger) no caben en 320-480px: el paso 3 quedaba cortado.
+   El círculo numerado sigue identificando cada paso; solo el activo conserva su texto. */
+@media (max-width: 480px) {
+  .stepper {
+    padding: 14px 12px;
+  }
+
+  .stepper__label:not(.stepper__label--active) {
+    display: none;
+  }
+
+  .stepper__connector {
+    margin: 0 8px;
+  }
+}
+
 .plan-row__label {
   font-size: 12px;
   font-weight: 600;
@@ -1924,6 +1940,13 @@ button {
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+  min-width: 0;
+}
+
+/* Algunos selects de la barra llevan `style="width: auto"` inline y miden lo que ocupe su
+   opción más larga; sin tope se pasan del borde de la tarjeta en pantallas angostas. */
+.card__title__actions .field-input {
+  max-width: 100%;
 }
 
 .coberturas-section {

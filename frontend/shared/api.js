@@ -31,6 +31,44 @@ function clearSession() {
   sesionCargada = false
 }
 
+// ---- Aviso de sesión expirada ----
+// Un 401 a mitad de uso redirige a login sin explicación. Para avisar "tu sesión expiró" sin
+// confundirlo con una primera visita (que también recibe 401 en /auth/me), se marca en
+// sessionStorage —por pestaña— que hubo una sesión activa. sessionStorage puede estar
+// bloqueado o lanzar; el aviso es solo cortesía de UX, así que nunca debe romper la app.
+const CLAVE_SESION_ACTIVA = 'tajy_sesion_activa'
+const CLAVE_AVISO_LOGIN = 'tajy_aviso_login'
+const AVISO_SESION_EXPIRADA = 'Tu sesión expiró. Ingresá de nuevo para continuar.'
+
+function leerStorage(clave) {
+  try {
+    return window.sessionStorage.getItem(clave)
+  } catch {
+    return null
+  }
+}
+
+function escribirStorage(clave, valor) {
+  try {
+    if (valor === null) window.sessionStorage.removeItem(clave)
+    else window.sessionStorage.setItem(clave, valor)
+  } catch {
+    // intencional: sin storage simplemente no hay aviso
+  }
+}
+
+function registrarSesionVencida() {
+  if (leerStorage(CLAVE_SESION_ACTIVA)) escribirStorage(CLAVE_AVISO_LOGIN, AVISO_SESION_EXPIRADA)
+  escribirStorage(CLAVE_SESION_ACTIVA, null)
+}
+
+// Devuelve el aviso pendiente para la pantalla de login (una sola vez) o null.
+function consumirAvisoLogin() {
+  const aviso = leerStorage(CLAVE_AVISO_LOGIN)
+  escribirStorage(CLAVE_AVISO_LOGIN, null)
+  return aviso
+}
+
 // Ruta relativa a login desde cualquier shell (cotizar/historial/admin/login están todos
 // al mismo nivel bajo frontend/, así que desde adentro de cada uno es "../login/").
 function redirectToLogin() {
@@ -139,6 +177,7 @@ async function request(path, options = {}) {
 
   if (res.status === 401) {
     clearSession()
+    registrarSesionVencida()
     redirectToLogin()
     throw new Error('Sesión expirada o inválida')
   }
@@ -169,6 +208,7 @@ async function requestBlob(path) {
 
   if (res.status === 401) {
     clearSession()
+    registrarSesionVencida()
     redirectToLogin()
     throw new Error('Sesión expirada o inválida')
   }
@@ -221,6 +261,7 @@ async function cargarSesion() {
       usuarioCacheado = usuario
       csrfTokenCacheado = csrfToken
       sesionCargada = true
+      escribirStorage(CLAVE_SESION_ACTIVA, '1')
       return usuario
     } catch {
       clearSession()
@@ -247,6 +288,7 @@ async function logout() {
     // intencional: logout del cliente sigue adelante pase lo que pase acá
   } finally {
     clearSession()
+    escribirStorage(CLAVE_SESION_ACTIVA, null)
   }
 }
 
@@ -254,6 +296,7 @@ export const auth = {
   getUsuario,
   clearSession,
   cargarSesion,
+  consumirAvisoLogin,
   logout,
   isLoggedIn,
   tieneAccesoAdmin,

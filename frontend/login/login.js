@@ -1,6 +1,7 @@
 import { api, auth } from '../shared/api.js'
 import { escapeHtml } from '../shared/dom.js'
 import { initConstellationFx, initLoginFx } from '../shared/fx.js'
+import { validarCredenciales } from './validacion.js'
 
 // Pantalla de login del Cotizador Tajy — WU4 (auth de frontend). Formulario
 // email/password contra POST /api/auth/login; guarda token+usuario y redirige
@@ -163,6 +164,14 @@ async function onSubmit(e) {
   const password = form.password.value
 
   state.email = email
+
+  const errorValidacion = validarCredenciales({ email, password })
+  if (errorValidacion) {
+    state.error = errorValidacion
+    render()
+    return
+  }
+
   state.error = ''
   state.enviando = true
   render()

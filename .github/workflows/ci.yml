@@ -43,7 +43,7 @@ jobs:
           PUPPETEER_SKIP_DOWNLOAD: 'true'
 
       - name: Install Chromium for E2E smoke
-        run: npm run e2e:install:chromium:ci --workspace=backend
+        run: npm run e2e:install:chromium --workspace=backend
 
       - name: Install Puppeteer Chrome for PDF smoke
         run: npm run e2e:install:puppeteer --workspace=backend

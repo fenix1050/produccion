@@ -21,6 +21,10 @@ function mockear(t, { findPlanById, findRamoById }) {
       findCoberturasByPlanId: async () => [],
     },
   })
+  // Sin estos mocks, importar cotizacion.service.js arrastra supabase.js (que exige .env);
+  // localmente pasaba por tener .env, y en CI no.
+  t.mock.module('../repositories/coberturas.repository.js', { namedExports: {} })
+  t.mock.module('./tipo-cambio.service.js', { namedExports: {} })
   t.mock.module('./carta-oferta.service.js', {
     namedExports: { generarCartaOfertaPersistida: async () => Buffer.from('pdf') },
   })

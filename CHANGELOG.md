@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.1.69](https://github.com/fenix1050/produccion/compare/v0.1.68...v0.1.69) (2026-10-22)
+
+
+### Features
+
+* **login:** avisar que la sesión expiró cuando un 401 redirige a login ([#483](https://github.com/fenix1050/produccion/issues/483)) ([a5e062b](https://github.com/fenix1050/produccion/commit/a5e062b3a6ed271c35d994daa5556e59f366e787))
+* **ops:** alertas del backup de PROD con pings a healthchecks.io ([#456](https://github.com/fenix1050/produccion/issues/456)) ([674e910](https://github.com/fenix1050/produccion/commit/674e910c8daf7008f26777ea10737b9f1dc44757))
+* **propuesta:** mostrar email y fecha de emision en la firma del agente ([#462](https://github.com/fenix1050/produccion/issues/462)) ([31936f9](https://github.com/fenix1050/produccion/commit/31936f99accd451a69f9a13b29dda6eba0e759fe))
+
+
+### Bug Fixes
+
+* **api:** no exponer el código de Postgres en las respuestas de error ([#469](https://github.com/fenix1050/produccion/issues/469)) ([5607ce3](https://github.com/fenix1050/produccion/commit/5607ce341cdab961f07d412545c611a0f6a6f578))
+* **api:** responder 400 ante ids inválidos en las rutas de ramos y planes ([#474](https://github.com/fenix1050/produccion/issues/474)) ([1f83bf3](https://github.com/fenix1050/produccion/commit/1f83bf367433f58ad1f5856d1c3c788f2c314798))
+* **api:** responder 4xx en vez de 500 ante entradas inválidas del QA adversarial ([#463](https://github.com/fenix1050/produccion/issues/463)) ([700c81c](https://github.com/fenix1050/produccion/commit/700c81ca2d4826cdf61c914c264ef07c22dae72b))
+* **db:** escapar comodines % y _ en la búsqueda de propuestas formales ([#480](https://github.com/fenix1050/produccion/issues/480)) ([4fca06e](https://github.com/fenix1050/produccion/commit/4fca06e66495c008d953f88f797818a997e3cbdb))
+* **db:** que crear o editar una cotización no queme números del correlativo ([#470](https://github.com/fenix1050/produccion/issues/470)) ([a76402f](https://github.com/fenix1050/produccion/commit/a76402f9480382e9670915d7bc51b49a7f41e519))
+* **login:** validar email y contraseña en el cliente antes del POST ([#482](https://github.com/fenix1050/produccion/issues/482)) ([d586190](https://github.com/fenix1050/produccion/commit/d586190c85022ac0b3e1a7d49816171037f41796))
+* **mrc:** topar la suma asegurada total y rechazar montos absurdos ([#468](https://github.com/fenix1050/produccion/issues/468)) ([41b796d](https://github.com/fenix1050/produccion/commit/41b796d16acdae7e3455c2c0b5185356057449f8))
+* **pdf-oferta:** responder 404 si el plan o el ramo de la cotización no existen ([#486](https://github.com/fenix1050/produccion/issues/486)) ([b3a6ba2](https://github.com/fenix1050/produccion/commit/b3a6ba247396e6e0e6afe9b15c6fcd0cd05e3dda))
+* **scripts:** que el preflight del deploy a TEST no pise el puntero de rollback ([#461](https://github.com/fenix1050/produccion/issues/461)) ([09aaba4](https://github.com/fenix1050/produccion/commit/09aaba4fd3a036fda3ff8ce3010b8af8dc5ccb49))
+* **ui:** filtro de cliente literal y mensajes de error claros en el cotizador ([#467](https://github.com/fenix1050/produccion/issues/467)) ([2f55393](https://github.com/fenix1050/produccion/commit/2f553936524a16683e4351e405f81246a7ab7420))
+* **ui:** que el stepper de cotizar y el select de plan de admin quepan a 375px ([#485](https://github.com/fenix1050/produccion/issues/485)) ([8733cdd](https://github.com/fenix1050/produccion/commit/8733cddc49424d7bc96fb110e8e80a40499f4877))
+* **ui:** que la topbar quepa en pantallas angostas (avatar fuera de pantalla) ([#484](https://github.com/fenix1050/produccion/issues/484)) ([e3bdc65](https://github.com/fenix1050/produccion/commit/e3bdc659676d35e7bcd90436c306f385cdae77b7))
+
 ## [0.1.68](https://github.com/fenix1050/produccion/compare/v0.1.67...v0.1.68) (2026-09-30)
 
 

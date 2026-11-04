@@ -608,8 +608,14 @@ export function buildMrcPropuestaV3Html(
   const insuredSection = insuredPanel(insured, proposer, draft)
   const modalitySection = `<section class="modality">${icon('shield')}<div><b>Modalidad de la Cobertura Solicitada : 1020</b><small>RIESGOS VARIOS / MULTIRRIESGO COMERCIO</small></div></section>`
   const riskSection = riskTable(draft, risk, coverages, totalCoverage, commercial.variante?.prima)
-  const declarationsSection = `<section class="card declarations-box"><h2 class="section-heading">${icon('document')}Declaraciones</h2><div class="conditions-flow fit-flex fit-box" data-fit-section="declarations" data-fit-target="8" data-fit-minimum="6" data-fit-step="0.2">${declarations}${funds}${authorizations}</div></section>`
-  const conditionsSection = `<section class="card conditions-box"><h2 class="section-heading">${icon('document')}Condiciones</h2><div class="conditions-flow fit-flex fit-box" data-fit-section="conditions" data-fit-target="8" data-fit-minimum="4.6" data-fit-step="0.2">${legalFlowV3(texts.condiciones_mrc?.contenido)}</div></section>`
+  // Layout de tres páginas: Declaraciones y Condiciones comparten la página 2 en cajas flexibles y
+  // acotadas, y el ajuste solo baja desde el objetivo, así que con 8px sobraba espacio al final de
+  // ambas. Con un objetivo mayor el ajuste las reduce hasta que entran y las llena. En los demás
+  // layouts las cajas miden lo que mide su texto (flex: 0 0 auto): un objetivo mayor ahí desbordaría
+  // la página, por eso se mantiene en 8.
+  const legalFitTarget = layout === 'three-page' ? 10 : 8
+  const declarationsSection = `<section class="card declarations-box"><h2 class="section-heading">${icon('document')}Declaraciones</h2><div class="conditions-flow fit-flex fit-box" data-fit-section="declarations" data-fit-target="${legalFitTarget}" data-fit-minimum="6" data-fit-step="0.2">${declarations}${funds}${authorizations}</div></section>`
+  const conditionsSection = `<section class="card conditions-box"><h2 class="section-heading">${icon('document')}Condiciones</h2><div class="conditions-flow fit-flex fit-box" data-fit-section="conditions" data-fit-target="${legalFitTarget}" data-fit-minimum="4.6" data-fit-step="0.2">${legalFlowV3(texts.condiciones_mrc?.contenido)}</div></section>`
   const principalCoveragesSection = `<section class="card principal-coverages-box"><h2 class="section-heading">${icon('shield')}Coberturas principales</h2><div class="conditions-flow fit-flex fit-box" data-fit-section="principal-coverages" data-fit-target="8" data-fit-minimum="4.8" data-fit-step="0.2">${principalCoveragesFlowV3(texts.coberturas_principales?.contenido)}</div></section>`
   const paymentSection = `<div class="payment-row-shell"><div class="payment-row">
         <section class="finance-card"><h2>${icon('coins')}Costo del seguro</h2><div class="payment-lines">${paymentLine('Prima:', money(commercial.variante?.prima))}${paymentLine('R.P.F.:', money(payment.rpf_monto))}${paymentLine('Sub-Total:', [commercial.variante?.prima, payment.rpf_monto].every((value) => value != null && value !== '' && Number.isFinite(Number(value))) ? money(Number(commercial.variante.prima) + Number(payment.rpf_monto)) : UNAVAILABLE)}${paymentLine('I.V.A.:', money(payment.iva_monto))}${paymentLine('Costo Total:', money(payment.premio_total), 'cost-total')}</div></section>

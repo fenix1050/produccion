@@ -3983,3 +3983,18 @@ rojo. Causa: `.header-meta` tenía `margin-top: -1mm` en `backend/src/templates/
   completas. Render con el servicio real (`renderPropuestaMrcPdf`) sobre el snapshot de la Propuesta 25 de TEST, antes y
   después: ambos de 3 páginas, la página 1 entra completa y la separación se ve. Falta confirmar en TEST con un PDF nuevo.
 - **Deploy:** solo backend (el PDF se genera ahí). Pendiente.
+
+## 122. Propuesta Formal (PDF v3, layout de 3 páginas): Declaraciones y Condiciones llenan su caja (2026-11-04)
+
+Pedido de Kevin: en la página 2 sobraba espacio al final de las cajas de Declaraciones y Condiciones. Causa: el ajuste de
+fuente (`data-fit-target` / `data-fit-minimum` / `data-fit-step` en `backend/src/templates/propuesta/mrc-v3.js`) parte del
+tamaño objetivo y solo lo baja hasta que el texto entra; nunca sube, y el objetivo era 8 px.
+
+- **Cambio:** `legalFitTarget` = 10 px **solo** con `layout === 'three-page'` (cajas flexibles y acotadas); el ajuste lo reduce
+  hasta que entra y llena la caja. En `two-page`, `three-page-tall` y `four-page` se mantiene en 8: ahí las cajas miden lo
+  que mide su texto (`flex: 0 0 auto`) y un objetivo mayor desbordaría la página.
+- **Alcance:** solo PDF nuevos; las Propuestas emitidas guardan su PDF y no se regeneran. Sin subir la revisión del renderer.
+- **Límite:** con textos cortos el tamaño llega a 10 px y no más; con textos largos el ajuste baja solo.
+- **Verificación:** RED observado; tests de plantillas 51/51; render con el servicio real sobre el snapshot de la Propuesta 25
+  de TEST: 3 páginas y ambas cajas llenas (Kevin lo vio y aprobó). Falta confirmar en TEST con un PDF nuevo tras el deploy.
+- **Deploy:** solo backend. Pendiente.

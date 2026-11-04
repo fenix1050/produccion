@@ -419,11 +419,15 @@ test('PF-4 numero_poliza is an optional step-5 field that mirrors the backend li
 
   const backendMax = schemaSource.match(/numero_poliza: texto\((\d+)\)/)?.[1]
   assert.ok(backendMax, 'backend numero_poliza limit must exist')
+  // Same helper as the other step inputs, so it keeps the shared `field-input` styling.
   assert.match(
     moduleSource,
-    new RegExp(`<input[^>]*name="numero_poliza"[^>]*maxlength="${backendMax}"`)
+    new RegExp(
+      String.raw`inputField\(\s*'numero_poliza',\s*'Número de póliza \(opcional\)',[\s\S]*?maxLength: ${backendMax}\s*\}`
+    )
   )
-  assert.match(moduleSource, /Número de póliza \(opcional\)/)
+  assert.match(moduleSource, /options\.maxLength \? `maxlength="\$\{options\.maxLength\}"` : ''/)
+  assert.doesNotMatch(moduleSource, /<input[^>]*name="numero_poliza"/)
   assert.match(
     moduleSource,
     /if \(has\('numero_poliza'\)\) draft\.numero_poliza = text\('numero_poliza'\)/

@@ -658,7 +658,7 @@ test('v4 page 3 renders SI/NO declarations as accent blocks without the source a
   assert.match(body, /<span class="motive-writing-line" aria-hidden="true"><\/span>/)
 })
 
-test('v4 page 3 renders the signature mode row with label and the three options', () => {
+test('v4 page 3 renders the signature mode row with only the digital and handwritten options', () => {
   const body = pageBody(
     withTexts({ declaracion_jurada_origen_fondos: { contenido: FONDOS_REAL } }),
     'declarations'
@@ -669,8 +669,21 @@ test('v4 page 3 renders the signature mode row with label and the three options'
     ''
   assert.match(row, /<b class="choice-row-label">Modalidad de firma<\/b>/)
   assert.match(row, /<span>Electrónica c\/Firma Digital<\/span>/)
-  assert.match(row, /<span>Impresa c\/Firma Facsimilar<\/span>/)
+  assert.doesNotMatch(row, /Facsimilar/i)
   assert.match(row, /<span>Impresa c\/Firma Manuscrita<\/span>/)
+  assert.equal((row.match(/<span>/g) ?? []).length, 2)
+})
+
+test('v4 titles pair the ink first line with a red second line', () => {
+  assert.match(PROPUESTA_FORMAL_V4_STYLE, /\.cover-title span \{[^}]*color: var\(--v4-red\)/)
+  assert.match(PROPUESTA_FORMAL_V4_STYLE, /\.topic-title span \{[^}]*color: var\(--v4-red\)/)
+  assert.doesNotMatch(PROPUESTA_FORMAL_V4_STYLE, /\.topic-title span \{[^}]*#8b929a/)
+})
+
+test('v4 checked checkbox draws a crisp vector X instead of rasterized gradients', () => {
+  const rule = PROPUESTA_FORMAL_V4_STYLE.match(/\.cb\.on::after \{[^}]*\}/)?.[0] ?? ''
+  assert.match(rule, /data:image\/svg\+xml/)
+  assert.doesNotMatch(rule, /linear-gradient/)
 })
 
 test('v4 page 4 digital policy authorizations keep numbering emphasis and delivery options', () => {

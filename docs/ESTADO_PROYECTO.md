@@ -4051,5 +4051,11 @@ minimalista.pdf` (5 páginas, una por tema) con el logo rojo y negro. Por ser un
   daba 3 páginas y v4 da 5 páginas A4 con todos los datos, barras de distribución y sublímites parseados del texto real.
   Fixtures densos (45 coberturas, observaciones y textos legales largos): 8 páginas, sin pérdida ni duplicación de bloques.
   Falta confirmar en TEST con un PDF nuevo tras el deploy.
+- **Ajustes tras probar en TEST (2026-11-04):** (1) el campo Número de póliza usa el helper `inputField` (clase `field-input`) como
+  el resto del paso 5, con `maxLength` opcional; (2) la X de los recuadros marcados es un SVG vectorial (antes gradientes que
+  se veían borrosos) con recuadro más grande y borde oscuro; (3) la segunda línea de los títulos pasa de gris a rojo de marca
+  (portada y títulos de tema); (4) la fila "Modalidad de firma" ofrece solo Firma Digital y Firma Manuscrita: la v4 filtra la
+  opción "Facsimilar" del texto oficial, que en la base sigue completo (v1 a v3 lo siguen mostrando); quitarlo del texto
+  oficial requiere una versión nueva desde el panel de textos de Propuesta.
 - **Deploy:** backend (el PDF se genera ahí) y frontend (campo Número de póliza). Pendiente; se suma al deploy manual a PROD de
   #486, #496, #498, #501, #502, #503 y frontend #497 a #500. Desplegar el backend primero.

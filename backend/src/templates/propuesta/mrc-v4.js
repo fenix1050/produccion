@@ -107,7 +107,7 @@ export const PROPUESTA_FORMAL_V4_STYLE = `
   .cover-title-block { min-width: 0; }
   .cover-eyebrow { margin: 1.6mm 0 0; font-size: 5.8pt; font-weight: 700; letter-spacing: .15em; text-transform: uppercase; color: var(--v4-red); }
   .cover-title { margin: 2.6mm 0 0; font-size: 19.5pt; line-height: 1.2; font-weight: 700; letter-spacing: -.03em; color: var(--v4-ink); }
-  .cover-title span { display: block; color: var(--v4-slate-mid); }
+  .cover-title span { display: block; color: var(--v4-red); }
   .cover-subtitle { margin: 2.4mm 0 0; font-size: 6.9pt; color: var(--v4-muted); }
   .cover-number-block { padding-left: 5mm; border-left: .3mm solid var(--v4-rule); align-self: start; height: 22.2mm; display: flex; flex-direction: column; justify-content: space-between; }
   .cover-number-label { font-size: 5.1pt; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--v4-muted); }
@@ -165,8 +165,9 @@ export const PROPUESTA_FORMAL_V4_STYLE = `
   .datum-value { font-size: 7.1pt; font-weight: 700; color: var(--v4-ink); overflow-wrap: anywhere; }
   .choice-band { margin-top: 3.2mm; padding: 2.2mm 2.6mm; display: flex; align-items: center; gap: 3mm; background: var(--v4-wash); font-size: 6.4pt; color: var(--v4-body); }
   .choice-dot { width: .9mm; height: .9mm; border-radius: 50%; background: var(--v4-bar-light); }
-  .cb { display: inline-block; width: 2.1mm; height: 2.1mm; margin: 0 .6mm; border: .25mm solid var(--v4-muted); vertical-align: -.3mm; position: relative; }
-  .cb.on::after { content: ''; position: absolute; inset: .2mm; background: linear-gradient(to top right, transparent calc(50% - .2mm), var(--v4-ink) calc(50% - .2mm) calc(50% + .2mm), transparent calc(50% + .2mm)), linear-gradient(to bottom right, transparent calc(50% - .2mm), var(--v4-ink) calc(50% - .2mm) calc(50% + .2mm), transparent calc(50% + .2mm)); }
+  .cb { display: inline-block; width: 2.5mm; height: 2.5mm; margin: 0 .6mm; border: .25mm solid var(--v4-muted); vertical-align: -.5mm; position: relative; }
+  .cb.on { border-color: var(--v4-ink); }
+  .cb.on::after { content: ''; position: absolute; inset: 0; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M2.2 2.2L7.8 7.8M7.8 2.2L2.2 7.8' stroke='%231f2b38' stroke-width='1.6' stroke-linecap='round' fill='none'/%3E%3C/svg%3E") center / 100% 100% no-repeat; }
   .fine-print { margin: 2.2mm 0 0; font-size: 5.6pt; line-height: 1.4; color: var(--v4-faint); }
 
   /* Locations. */
@@ -191,7 +192,7 @@ export const PROPUESTA_FORMAL_V4_STYLE = `
   .topic-intro { padding-top: 9.5mm; }
   .topic-eyebrow { margin: 0; font-size: 5.4pt; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--v4-red); }
   .topic-title { margin: 2.8mm 0 0; font-size: 19.5pt; line-height: 1.2; font-weight: 700; letter-spacing: -.03em; color: var(--v4-ink); }
-  .topic-title span { display: block; color: #8b929a; }
+  .topic-title span { display: block; color: var(--v4-red); }
   .topic-subtitle { margin: 3mm 0 0; font-size: 6.6pt; color: var(--v4-muted); }
 
   .topic-intro + .section-title { margin-top: 5.5mm; }
@@ -676,8 +677,12 @@ const REPLACED_SOURCE_HEADINGS = new Set([
 
 function declarationBlock(element) {
   if (element.startsWith('<div class="declaration-choice-group')) {
-    const options = element.match(/<span>[\s\S]*?<\/span>/g) ?? []
     const signatures = element.includes('declaration-choice-group--signatures')
+    // Facsimile signatures are no longer used, so that option is not offered on the v4 row.
+    // The official text stored in the database is left untouched (v1-v3 still render it).
+    const options = (element.match(/<span>[\s\S]*?<\/span>/g) ?? []).filter(
+      (option) => !(signatures && /facsimil/i.test(option))
+    )
     return [
       `<div class="choice-row choice-row--${signatures ? 'signatures' : 'delivery'}" data-block>${signatures ? '<b class="choice-row-label">Modalidad de firma</b>' : ''}${options.join('')}</div>`,
     ]

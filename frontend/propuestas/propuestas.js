@@ -959,7 +959,7 @@ function renderRevisionPanel(propuesta) {
             valor('tipo_firma'),
             true
           )}
-          <label class="pf-field"><span>Número de póliza (opcional)</span><input name="numero_poliza" type="text" maxlength="40" value="${escapeHtml(valor('numero_poliza'))}" /></label>
+          ${inputField('numero_poliza', 'Número de póliza (opcional)', valor('numero_poliza'), 'text', false, { maxLength: 40 })}
           <label class="pf-field pf-field--wide"><span>Descripción detallada (opcional)</span><textarea name="descripcion_detallada" rows="3" maxlength="${DESCRIPCION_DETALLADA_MAX_CARACTERES}">${escapeHtml(valor('descripcion_detallada'))}</textarea>${renderContadorDescripcion(valor('descripcion_detallada'))}</label>
           <label class="pf-field pf-field--wide"><span>Observaciones (opcional)</span><textarea name="observaciones" rows="3">${escapeHtml(valor('observaciones'))}</textarea></label>
         </div>
@@ -1333,7 +1333,8 @@ function inputField(name, label, value, type = 'text', required = false, options
           : (value ?? '')
   const formatAttribute = options.format ? `data-format="${options.format}"` : ''
   const inputModeAttribute = options.inputMode ? `inputmode="${options.inputMode}"` : ''
-  return `<label class="pf-field"><span>${escapeHtml(label)}${required ? requiredMark() : ''}</span><input class="field-input" type="${safeType}" name="${escapeHtml(name)}" value="${escapeHtml(formattedValue)}" ${inputModeAttribute} ${formatAttribute} ${required ? 'required' : ''} /></label>`
+  const maxLengthAttribute = options.maxLength ? `maxlength="${options.maxLength}"` : ''
+  return `<label class="pf-field"><span>${escapeHtml(label)}${required ? requiredMark() : ''}</span><input class="field-input" type="${safeType}" name="${escapeHtml(name)}" value="${escapeHtml(formattedValue)}" ${inputModeAttribute} ${formatAttribute} ${maxLengthAttribute} ${required ? 'required' : ''} /></label>`
 }
 
 function phoneField(name, label, value, required = false) {

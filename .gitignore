@@ -28,3 +28,11 @@ skills-lock.json
 
 # Playwright traces and screenshots retained only on failure.
 test-results/
+
+# Archivos personales de herramientas locales (no se comparten).
+.claude/agents/
+.claude/settings.local.json.bak-*
+.gentle-ai-default-agent.json
+
+# Referencia visual con datos personales de prueba (nombre, correo, teléfono): el repo es público.
+docs/references/Modelo propuesta formal minimalista.pdf

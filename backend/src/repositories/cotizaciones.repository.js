@@ -73,6 +73,10 @@ export async function findCotizacionById(id) {
 // variante `sin_franquicia` por cotización, así que no hay ambigüedad real al elegirla en el
 // frontend (ver historial.js, primaRepresentativa()).
 //
+// `propuestas_formales(estado)` (embebido por la FK cotizacion_variante_id, migración 069) deja que
+// el frontend deshabilite "Editar" cuando hay una Propuesta emitida/anulada: `cartas-aptas` no sirve
+// para eso porque excluye las cartas ya emitidas (migración 080).
+//
 // `*` expone `moneda` por fila (migración 034) — el frontend de historial la usa para no sumar
 // primas de cotizaciones en monedas distintas (requirement "Historial does not aggregate across
 // currencies").
@@ -92,7 +96,7 @@ export async function findCotizaciones({
     // Oferta" fila por fila sin pegarle a /ramos de nuevo (mismo criterio que
     // BUILDERS_POR_CALCULADOR en backend/src/templates/oferta/index.js: hoy solo 'mrc').
     .select(
-      '*, ramos(nombre_display, calculador), planes(nombre), cotizacion_variantes(tipo_franquicia, prima)',
+      '*, ramos(nombre_display, calculador), planes(nombre), cotizacion_variantes(tipo_franquicia, prima, propuestas_formales(estado))',
       { count: 'exact' }
     )
     .order('created_at', { ascending: false })

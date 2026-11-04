@@ -95,12 +95,15 @@
   white-space: nowrap;
 }
 
+/* Con 3 acciones ("Ver detalle", "Preparar propuesta", "Descargar Carta Oferta") la fila no entra
+   en una sola línea y la tabla ganaba scroll horizontal. Cada botón conserva su texto en una
+   línea (nowrap) y el grupo baja a otra línea en vez de ensanchar la columna. */
 .historial-tabla__actions {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 6px;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
 }
 
 /* "Ver detalle" es la acción frecuente (toda fila la tiene) — texto sin borde para que no

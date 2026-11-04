@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import { decidirAccionPropuesta, propuestaBloqueaEdicion } from './propuesta-accion.js'
+import { decidirAccionPropuesta, cotizacionTienePropuestaCerrada } from './propuesta-accion.js'
 
 // decidirAccionPropuesta es puro (sin DOM): decide, para una fila de cartas-aptas, qué
 // acción ofrecer desde Historial. Debe conservar EXACTAMENTE el literal
@@ -69,17 +69,37 @@ test('cartaApta ausente devuelve null', () => {
 })
 
 // Una cotización con Propuesta Formal emitida o anulada ya no se puede editar (el backend responde
-// 409). El historial lo anticipa con la carta apta de esa cotización para deshabilitar "Editar".
-test('propuestaBloqueaEdicion: bloquea con propuesta emitida o anulada', () => {
-  assert.equal(propuestaBloqueaEdicion({ propuesta_actual_estado: 'emitida' }), true)
-  assert.equal(propuestaBloqueaEdicion({ propuesta_actual_estado: 'anulada' }), true)
+// 409). `cartas-aptas` NO sirve para detectarlo: excluye las cartas que ya tienen una Propuesta
+// emitida (migración 080). El listado de cotizaciones trae las propuestas de cada variante.
+const variante = (...estados) => ({ propuestas_formales: estados.map((estado) => ({ estado })) })
+
+test('cotizacionTienePropuestaCerrada: bloquea con propuesta emitida o anulada en alguna variante', () => {
+  assert.equal(
+    cotizacionTienePropuestaCerrada({ cotizacion_variantes: [variante('emitida')] }),
+    true
+  )
+  assert.equal(
+    cotizacionTienePropuestaCerrada({ cotizacion_variantes: [variante('anulada')] }),
+    true
+  )
+  assert.equal(
+    cotizacionTienePropuestaCerrada({
+      cotizacion_variantes: [variante(), variante('borrador', 'emitida')],
+    }),
+    true
+  )
 })
 
-test('propuestaBloqueaEdicion: no bloquea con borrador, estados vivos, reemplazada, sin propuesta o sin carta', () => {
+test('cotizacionTienePropuestaCerrada: no bloquea con borrador, estados vivos, reemplazada, sin propuestas o sin datos', () => {
   for (const estado of ['borrador', 'en_revision', 'generando_pdf', 'error_pdf', 'reemplazada']) {
-    assert.equal(propuestaBloqueaEdicion({ propuesta_actual_estado: estado }), false, estado)
+    assert.equal(
+      cotizacionTienePropuestaCerrada({ cotizacion_variantes: [variante(estado)] }),
+      false,
+      estado
+    )
   }
-  assert.equal(propuestaBloqueaEdicion({ propuesta_actual_estado: null }), false)
-  assert.equal(propuestaBloqueaEdicion({}), false)
-  assert.equal(propuestaBloqueaEdicion(undefined), false)
+  assert.equal(cotizacionTienePropuestaCerrada({ cotizacion_variantes: [variante()] }), false)
+  assert.equal(cotizacionTienePropuestaCerrada({ cotizacion_variantes: [{}] }), false)
+  assert.equal(cotizacionTienePropuestaCerrada({}), false)
+  assert.equal(cotizacionTienePropuestaCerrada(undefined), false)
 })

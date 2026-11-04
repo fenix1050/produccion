@@ -4,7 +4,7 @@ import { getRamos } from '../shared/catalogo.js'
 import { escapeHtml, enfocarPrimerElemento, atraparFoco, renderBanner } from '../shared/dom.js'
 import { renderSidebarFooter, renderTopbar as renderTopbarShell } from '../shared/sidebar.js'
 import { fmtMoneda } from '../shared/format.js'
-import { decidirAccionPropuesta, propuestaBloqueaEdicion } from './propuesta-accion.js'
+import { decidirAccionPropuesta, cotizacionTienePropuestaCerrada } from './propuesta-accion.js'
 
 // Historial de cotizaciones (Fase 5/WU5) — mismo patrón Vanilla JS que admin.js: state +
 // renderApp() que reconstruye innerHTML + bindEvents() post-render + modal vía state.modal.
@@ -137,11 +137,6 @@ function dentroDeVentana30Dias(createdAt) {
   return Date.now() - creado <= VENTANA_EDICION_MS
 }
 
-// Carta apta (con el estado de su Propuesta Formal) de una cotización del listado, si la hay.
-function cartaAptaDe(cotizacion) {
-  return state.cartasAptas.find((carta) => carta.cotizacion_id === cotizacion.id)
-}
-
 function puedeEditar(cotizacion) {
   const usuario = auth.getUsuario()
   if (!usuario) return false
@@ -149,7 +144,7 @@ function puedeEditar(cotizacion) {
   return (
     esDueno &&
     dentroDeVentana30Dias(cotizacion.created_at) &&
-    !propuestaBloqueaEdicion(cartaAptaDe(cotizacion))
+    !cotizacionTienePropuestaCerrada(cotizacion)
   )
 }
 
@@ -160,7 +155,7 @@ function motivoNoEditable(cotizacion) {
   if (!dentroDeVentana30Dias(cotizacion.created_at)) {
     return 'Ya pasaron más de 30 días desde que se generó esta cotización — no se puede editar.'
   }
-  if (propuestaBloqueaEdicion(cartaAptaDe(cotizacion))) {
+  if (cotizacionTienePropuestaCerrada(cotizacion)) {
     return 'Esta cotización ya tiene una Propuesta Formal emitida y no se puede editar.'
   }
   return ''
@@ -415,7 +410,7 @@ function renderTabla() {
       const prima = primaRepresentativa(c)
       const moneda = c.moneda ?? 'PYG'
       const puedeOferta = ofertaDisponible(c)
-      const cartaApta = cartaAptaDe(c)
+      const cartaApta = state.cartasAptas.find((carta) => carta.cotizacion_id === c.id)
       return `
       <tr>
         <td data-label="Número"><span class="historial-tabla__numero">${escapeHtml(c.numero_cotizacion)}</span></td>

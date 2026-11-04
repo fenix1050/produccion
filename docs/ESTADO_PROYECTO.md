@@ -3920,3 +3920,23 @@ Complementa la sección 116 (el backend responde 409 al editar una cotización c
   133 pass. El test de fuente de `historial.test.js` pasó a aceptar imports adicionales de `propuesta-accion.js`. **No se
   verificó en un navegador** (render del botón deshabilitado y su tooltip): queda para TEST tras el deploy del frontend.
 - **Pendiente:** probar en TEST (backend 409 + frontend); deploy a TEST y PROD, manual.
+
+## 118. Corrección: el historial no detectaba la Propuesta emitida; acciones sin scroll horizontal (2026-11-04)
+
+**Error de la sección 117:** se asumió que `GET /propuestas/cartas-aptas` devolvía las cartas con su Propuesta emitida y
+`propuesta_actual_estado`. No es así: la migración 080 (`motivo_ineligibilidad_carta_propuesta`) **excluye** las cartas que
+ya tienen una Propuesta `emitida`. Detectado en TEST (2026-11-04): la cotización MRC-639, con la Propuesta 19 emitida, seguía
+mostrando "Editar" habilitado. No se había verificado esa premisa contra las migraciones ni probado en un navegador.
+
+**Corrección:**
+
+- `findCotizaciones` embebe `propuestas_formales(estado)` dentro de `cotizacion_variantes` (FK `cotizacion_variante_id`,
+  migración 069): la misma relación que usa el 409 del backend (sección 116).
+- `propuestaBloqueaEdicion(carta)` se reemplaza por `cotizacionTienePropuestaCerrada(cotizacion)` en `propuesta-accion.js`
+  (true con `emitida`/`anulada` en alguna variante). `historial.js` la usa en `puedeEditar` y `motivoNoEditable`.
+- **Scroll horizontal:** con tres acciones ("Ver detalle", "Preparar propuesta", "Descargar Carta Oferta") la columna
+  ensanchaba la tabla. `.historial-tabla__actions` pasa a `flex-wrap: wrap`; cada botón conserva su texto en una línea.
+
+**Verificación:** RED observado (`does not provide an export named 'cotizacionTienePropuestaCerrada'`); el test nuevo del
+repositorio falla sin el embed (10 pass / 1 fail) y pasa con él (11/11); frontend de historial 14/14. Pendiente verificar el
+embed PostgREST y el CSS contra TEST.

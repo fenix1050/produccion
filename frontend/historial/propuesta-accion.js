@@ -58,3 +58,14 @@ export function decidirAccionPropuesta(carta) {
     href: `../propuestas/?carta=${carta.id}`,
   }
 }
+
+// Una cotización con Propuesta Formal emitida o anulada ya no se puede editar: el backend
+// responde 409 (los snapshots son inmutables). Con la carta apta de la cotización (fila de
+// `GET /propuestas/cartas-aptas`), el Historial deshabilita "Editar" en vez de dejar que el
+// usuario llegue al error. Si no hay carta o el estado no es terminal, no bloquea: el backend
+// sigue siendo la autoridad.
+const ESTADOS_QUE_BLOQUEAN_EDICION = ['emitida', 'anulada']
+
+export function propuestaBloqueaEdicion(carta) {
+  return ESTADOS_QUE_BLOQUEAN_EDICION.includes(carta?.propuesta_actual_estado)
+}

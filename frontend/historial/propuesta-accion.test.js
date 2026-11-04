@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import { decidirAccionPropuesta } from './propuesta-accion.js'
+import { decidirAccionPropuesta, propuestaBloqueaEdicion } from './propuesta-accion.js'
 
 // decidirAccionPropuesta es puro (sin DOM): decide, para una fila de cartas-aptas, qué
 // acción ofrecer desde Historial. Debe conservar EXACTAMENTE el literal
@@ -66,4 +66,20 @@ test('degradación: sin campos de 075 pero con propuesta_borrador_id (comportami
 test('cartaApta ausente devuelve null', () => {
   assert.equal(decidirAccionPropuesta(null), null)
   assert.equal(decidirAccionPropuesta(undefined), null)
+})
+
+// Una cotización con Propuesta Formal emitida o anulada ya no se puede editar (el backend responde
+// 409). El historial lo anticipa con la carta apta de esa cotización para deshabilitar "Editar".
+test('propuestaBloqueaEdicion: bloquea con propuesta emitida o anulada', () => {
+  assert.equal(propuestaBloqueaEdicion({ propuesta_actual_estado: 'emitida' }), true)
+  assert.equal(propuestaBloqueaEdicion({ propuesta_actual_estado: 'anulada' }), true)
+})
+
+test('propuestaBloqueaEdicion: no bloquea con borrador, estados vivos, reemplazada, sin propuesta o sin carta', () => {
+  for (const estado of ['borrador', 'en_revision', 'generando_pdf', 'error_pdf', 'reemplazada']) {
+    assert.equal(propuestaBloqueaEdicion({ propuesta_actual_estado: estado }), false, estado)
+  }
+  assert.equal(propuestaBloqueaEdicion({ propuesta_actual_estado: null }), false)
+  assert.equal(propuestaBloqueaEdicion({}), false)
+  assert.equal(propuestaBloqueaEdicion(undefined), false)
 })

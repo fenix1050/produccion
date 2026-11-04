@@ -4,7 +4,7 @@ import { getRamos } from '../shared/catalogo.js'
 import { escapeHtml, enfocarPrimerElemento, atraparFoco, renderBanner } from '../shared/dom.js'
 import { renderSidebarFooter, renderTopbar as renderTopbarShell } from '../shared/sidebar.js'
 import { fmtMoneda } from '../shared/format.js'
-import { decidirAccionPropuesta } from './propuesta-accion.js'
+import { decidirAccionPropuesta, propuestaBloqueaEdicion } from './propuesta-accion.js'
 
 // Historial de cotizaciones (Fase 5/WU5) — mismo patrón Vanilla JS que admin.js: state +
 // renderApp() que reconstruye innerHTML + bindEvents() post-render + modal vía state.modal.
@@ -137,11 +137,20 @@ function dentroDeVentana30Dias(createdAt) {
   return Date.now() - creado <= VENTANA_EDICION_MS
 }
 
+// Carta apta (con el estado de su Propuesta Formal) de una cotización del listado, si la hay.
+function cartaAptaDe(cotizacion) {
+  return state.cartasAptas.find((carta) => carta.cotizacion_id === cotizacion.id)
+}
+
 function puedeEditar(cotizacion) {
   const usuario = auth.getUsuario()
   if (!usuario) return false
   const esDueno = usuario.rol === 'admin' || cotizacion.agente_id === usuario.id
-  return esDueno && dentroDeVentana30Dias(cotizacion.created_at)
+  return (
+    esDueno &&
+    dentroDeVentana30Dias(cotizacion.created_at) &&
+    !propuestaBloqueaEdicion(cartaAptaDe(cotizacion))
+  )
 }
 
 function motivoNoEditable(cotizacion) {
@@ -150,6 +159,9 @@ function motivoNoEditable(cotizacion) {
   if (!esDueno) return 'No tenés permiso para editar esta cotización.'
   if (!dentroDeVentana30Dias(cotizacion.created_at)) {
     return 'Ya pasaron más de 30 días desde que se generó esta cotización — no se puede editar.'
+  }
+  if (propuestaBloqueaEdicion(cartaAptaDe(cotizacion))) {
+    return 'Esta cotización ya tiene una Propuesta Formal emitida y no se puede editar.'
   }
   return ''
 }
@@ -403,7 +415,7 @@ function renderTabla() {
       const prima = primaRepresentativa(c)
       const moneda = c.moneda ?? 'PYG'
       const puedeOferta = ofertaDisponible(c)
-      const cartaApta = state.cartasAptas.find((carta) => carta.cotizacion_id === c.id)
+      const cartaApta = cartaAptaDe(c)
       return `
       <tr>
         <td data-label="Número"><span class="historial-tabla__numero">${escapeHtml(c.numero_cotizacion)}</span></td>
@@ -432,8 +444,8 @@ function renderTabla() {
             }
             ${
               puedeOferta
-                ? `<button class="btn-outline historial-tabla__btn-oferta" data-action="descargar-oferta" data-id="${c.id}" data-numero="${escapeHtml(c.numero_cotizacion)}">Carta Oferta</button>`
-                : `<button class="btn-outline historial-tabla__btn-oferta historial-oferta-disabled" disabled aria-disabled="true" aria-label="Carta Oferta no disponible para este ramo todavía" title="Carta Oferta no disponible para este ramo todavía">Carta Oferta</button>`
+                ? `<button class="btn-outline historial-tabla__btn-oferta" data-action="descargar-oferta" data-id="${c.id}" data-numero="${escapeHtml(c.numero_cotizacion)}">Descargar Carta Oferta</button>`
+                : `<button class="btn-outline historial-tabla__btn-oferta historial-oferta-disabled" disabled aria-disabled="true" aria-label="Carta Oferta no disponible para este ramo todavía" title="Carta Oferta no disponible para este ramo todavía">Descargar Carta Oferta</button>`
             }
           </div>
         </td>

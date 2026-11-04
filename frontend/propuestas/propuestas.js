@@ -344,6 +344,7 @@ function leerFormulario() {
   }
   if (has('descripcion_detallada')) draft.descripcion_detallada = text('descripcion_detallada')
   if (has('observaciones')) draft.observaciones = text('observaciones')
+  if (has('numero_poliza')) draft.numero_poliza = text('numero_poliza')
   if (has('tipo_firma')) draft.tipo_firma = data.get('tipo_firma') || undefined
   return draft
 }
@@ -958,6 +959,7 @@ function renderRevisionPanel(propuesta) {
             valor('tipo_firma'),
             true
           )}
+          <label class="pf-field"><span>Número de póliza (opcional)</span><input name="numero_poliza" type="text" maxlength="40" value="${escapeHtml(valor('numero_poliza'))}" /></label>
           <label class="pf-field pf-field--wide"><span>Descripción detallada (opcional)</span><textarea name="descripcion_detallada" rows="3" maxlength="${DESCRIPCION_DETALLADA_MAX_CARACTERES}">${escapeHtml(valor('descripcion_detallada'))}</textarea>${renderContadorDescripcion(valor('descripcion_detallada'))}</label>
           <label class="pf-field pf-field--wide"><span>Observaciones (opcional)</span><textarea name="observaciones" rows="3">${escapeHtml(valor('observaciones'))}</textarea></label>
         </div>

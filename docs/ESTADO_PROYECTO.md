@@ -4005,7 +4005,9 @@ Pedido de Kevin (probando el PDF nuevo en TEST): los valores en rojo de "Costo d
 también el resto de los textos de esas cards. En `backend/src/templates/propuesta/mrc-v3.js`: `.payment-line` y
 `.payment-line span` (etiquetas y valores) a `#000`; `.debit-copy`, `.debit-type`, `.debit-line` y `.debit-bank` ("No disponible",
 que era gris) a `#000`; y `.collection-clause .conditions-flow` a `#000` solo para la Cláusula adicional de cobranzas (la regla
-compartida `.conditions-flow` de Declaraciones y Condiciones no cambia). Los títulos rojos de cada card siguen en rojo.
+compartida `.conditions-flow` de Declaraciones y Condiciones no cambia). Por pedido posterior de Kevin, también los **títulos** de
+las cards pasan a negro (`.finance-card h2` y `.collection-clause .section-heading`): se mantienen el fondo rosado degradé y el
+ícono rojo.
 
 - **Interpretación:** "los textos de las cards" se tomó como todo el texto de la franja de pago (Costo del seguro, Forma de
   pago, Autorización de débito y Cláusula de cobranzas). Ajustable si se quería menos o más alcance.

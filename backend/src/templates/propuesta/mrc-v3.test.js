@@ -943,6 +943,11 @@ test('MRC proposal v3 prints the payment, debit and collection card texts in bla
   assert.match(rule('.collection-clause .conditions-flow'), /color: #000;/)
   assert.doesNotMatch(rule('.conditions-flow'), /color: #000;/)
 
-  // Los títulos de cada card siguen en rojo.
-  assert.match(rule('.finance-card h2'), /color: var\(--v3-red\);/)
+  // Los títulos de cada card también van en negro (el fondo rosado y el ícono rojo se mantienen).
+  assert.match(rule('.finance-card h2'), /color: #000;/)
+  assert.doesNotMatch(rule('.finance-card h2'), /color: var\(--v3-red\)/)
+
+  // Mismo criterio para el título de la Cláusula adicional de cobranzas (conserva su fondo rosado).
+  assert.match(rule('.collection-clause .section-heading'), /color: #000;/)
+  assert.doesNotMatch(rule('.collection-clause .section-heading'), /var\(--v3-red\);/)
 })

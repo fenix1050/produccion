@@ -262,7 +262,7 @@ export const PROPUESTA_FORMAL_V3_STYLE = `
   .payment-row-shell { min-height: 0; padding: 1mm; border: .7px solid var(--v3-line); border-radius: var(--v3-radius); }
   .payment-row { min-height: 0; display: grid; grid-template-columns: 1fr 1fr 1.55fr; gap: 1.5mm; }
   .finance-card { min-width: 0; border: .7px solid var(--v3-line); border-radius: 1.7mm; overflow: hidden; }
-  .finance-card h2 { min-height: 7mm; margin: 0; padding: 1mm 1.5mm; display: flex; align-items: center; gap: 2mm; color: var(--v3-red); background: linear-gradient(90deg, var(--v3-pink), #fff); font-size: 8px; text-transform: uppercase; }
+  .finance-card h2 { min-height: 7mm; margin: 0; padding: 1mm 1.5mm; display: flex; align-items: center; gap: 2mm; color: #000; background: linear-gradient(90deg, var(--v3-pink), #fff); font-size: 8px; text-transform: uppercase; }
   .finance-card h2 .icon { width: 6.5mm; height: 6.5mm; padding: 1.25mm; }
   .payment-lines { padding: 1.5mm 2.2mm; }
   .payment-line { min-height: 6mm; padding: .8mm 0; display: grid; grid-template-columns: 45% 55%; align-items: center; border-bottom: .5px solid var(--v3-line); color: #000; font-size: 7.2px; line-height: 1.25; }
@@ -276,7 +276,7 @@ export const PROPUESTA_FORMAL_V3_STYLE = `
   .debit-line { min-height: 4.5mm; padding: 0 1.5mm; display: grid; grid-template-columns: 15mm 1fr; align-items: center; color: #000; font-size: 6.8px; }
   .collection-clause .conditions-flow { color: #000; }
   .debit-line i { height: 4mm; border: .65px solid var(--v3-muted); border-radius: .7mm; }
-  .collection-clause .section-heading { color: var(--v3-red); background: linear-gradient(90deg, var(--v3-pink), #fff); }
+  .collection-clause .section-heading { color: #000; background: linear-gradient(90deg, var(--v3-pink), #fff); }
   .collection-clause .legal-paragraph { margin: 0; font-size: 7px; line-height: 1.15; overflow-wrap: anywhere; }
   .observations { min-height: 0; }
   .observation-value { min-height: 4mm; padding: 1mm; font-size: 8px; line-height: 1.3; overflow-wrap: anywhere; white-space: normal; }

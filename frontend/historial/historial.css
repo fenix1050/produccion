@@ -95,15 +95,14 @@
   white-space: nowrap;
 }
 
-/* Con 3 acciones ("Ver detalle", "Preparar propuesta", "Descargar Carta Oferta") la fila no entra
-   en una sola línea y la tabla ganaba scroll horizontal. Cada botón conserva su texto en una
-   línea (nowrap) y el grupo baja a otra línea en vez de ensanchar la columna. */
+/* Las acciones de la fila ("Ver detalle", "Preparar propuesta" y la descarga de la Carta Oferta,
+   que es de solo ícono) entran en una línea: sin wrap ni scroll lateral. */
 .historial-tabla__actions {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 6px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
 /* "Ver detalle" es la acción frecuente (toda fila la tiene) — texto sin borde para que no
@@ -132,6 +131,28 @@
   padding: 6px 12px;
   font-size: 12px;
   white-space: nowrap;
+}
+
+/* Botón de solo ícono (descarga de la Carta Oferta): cuadrado, con el texto en aria-label/title. */
+.historial-tabla__btn-icono {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.historial-tabla__btn-icono:focus-visible {
+  outline: 2px solid var(--tajy-red);
+  outline-offset: 2px;
+}
+
+/* Mientras se genera el PDF (Puppeteer) el botón queda deshabilitado: sin esto no daba señal. */
+.historial-tabla__btn-icono--cargando {
+  opacity: 0.55;
+  cursor: progress;
 }
 
 .historial-tabla__btn-propuesta {

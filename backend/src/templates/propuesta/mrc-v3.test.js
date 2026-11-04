@@ -920,3 +920,29 @@ test('MRC proposal v3 raises the declarations and conditions fit target only in 
     assert.match(html, /data-fit-section="conditions" data-fit-target="8"/, layout)
   }
 })
+
+test('MRC proposal v3 prints the payment, debit and collection card texts in black', () => {
+  const html = buildMrcPropuestaV3Html(fixture())
+  // Bloque CSS de una regla exacta: `<selector> { ... }` (con espacio antes de la llave).
+  const rule = (selector) => {
+    const start = html.indexOf(`  ${selector} {`)
+    return start === -1 ? '' : html.slice(start, html.indexOf('}', start) + 1)
+  }
+
+  // Valores (antes en rojo) y etiquetas de Costo del seguro / Forma de pago.
+  assert.match(rule('.payment-line span'), /color: #000;/)
+  assert.doesNotMatch(rule('.payment-line span'), /var\(--v3-red\)/)
+  assert.match(rule('.payment-line'), /color: #000;/)
+
+  // Autorización de débito: texto, tipo de tarjeta, etiquetas de los campos y "No disponible".
+  for (const selector of ['.debit-copy', '.debit-type', '.debit-line', '.debit-bank']) {
+    assert.match(rule(selector), /color: #000;/, selector)
+  }
+
+  // Cláusula adicional de cobranzas, sin tocar `.conditions-flow` de Declaraciones y Condiciones.
+  assert.match(rule('.collection-clause .conditions-flow'), /color: #000;/)
+  assert.doesNotMatch(rule('.conditions-flow'), /color: #000;/)
+
+  // Los títulos de cada card siguen en rojo.
+  assert.match(rule('.finance-card h2'), /color: var\(--v3-red\);/)
+})

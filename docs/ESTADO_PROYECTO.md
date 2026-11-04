@@ -3998,3 +3998,17 @@ tamaño objetivo y solo lo baja hasta que el texto entra; nunca sube, y el objet
 - **Verificación:** RED observado; tests de plantillas 51/51; render con el servicio real sobre el snapshot de la Propuesta 25
   de TEST: 3 páginas y ambas cajas llenas (Kevin lo vio y aprobó). Falta confirmar en TEST con un PDF nuevo tras el deploy.
 - **Deploy:** solo backend. Pendiente.
+
+## 123. Propuesta Formal (PDF v3): textos de la franja de pago en negro (2026-11-04)
+
+Pedido de Kevin (probando el PDF nuevo en TEST): los valores en rojo de "Costo del seguro" y "Forma de pago" pasan a negro, y
+también el resto de los textos de esas cards. En `backend/src/templates/propuesta/mrc-v3.js`: `.payment-line` y
+`.payment-line span` (etiquetas y valores) a `#000`; `.debit-copy`, `.debit-type`, `.debit-line` y `.debit-bank` ("No disponible",
+que era gris) a `#000`; y `.collection-clause .conditions-flow` a `#000` solo para la Cláusula adicional de cobranzas (la regla
+compartida `.conditions-flow` de Declaraciones y Condiciones no cambia). Los títulos rojos de cada card siguen en rojo.
+
+- **Interpretación:** "los textos de las cards" se tomó como todo el texto de la franja de pago (Costo del seguro, Forma de
+  pago, Autorización de débito y Cláusula de cobranzas). Ajustable si se quería menos o más alcance.
+- **Alcance:** solo PDF nuevos; las Propuestas emitidas guardan su PDF. Sin subir la revisión del renderer.
+- **Verificación:** RED observado; tests de plantillas 53/53; render con el servicio real sobre el snapshot de la Propuesta 25
+  de TEST: 3 páginas y todo el texto en negro. Falta confirmar en TEST con un PDF nuevo tras el deploy del backend.

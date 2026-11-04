@@ -35,7 +35,7 @@ New renderer revision `pf3-mrc-renderer-v4-r1` for the MRC Propuesta Formal PDF,
 - [x] T5: pages 3-4 (declarations, sworn statement, digital policy, particular conditions). RED 8 failing, GREEN 34/34 cumulative.
 - [x] T6: page 5 (cost and payment, debit, collection clause, observations, three signatures, ecological row). RED 10 failing, GREEN 44/44 final; mrc-v2/v3/mrc suites still green (97 total).
 - [x] T7: pure `planPagination` + in-page paginator script (`mrc-v4-pagination.js`), `waitForProposalV4Ready`/`printV4ProposalPdf`/`ProposalPaginationError` and the v4 dispatch in the service. RED observed per piece; real-browser check: normal = 5 pages, dense A = 8, dense B = 8, footers consistent, no block lost or duplicated.
-- [ ] T8: visual verification (normal + dense snapshot), ESTADO_PROYECTO section 124, Engram, PR.
+- [x] T8 (partial): visual verification done with the real Propuesta 25 snapshot from TEST (read-only, authorized by Kevin): v3 = 3 pages, v4 = 5 A4 pages; dense fixtures = 8 pages. ESTADO_PROYECTO section 124 written. Pending: Engram save, PR.
 
 ## Progress
 

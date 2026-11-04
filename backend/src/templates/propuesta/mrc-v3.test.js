@@ -889,3 +889,25 @@ test('MRC proposal v3 tall three-page layout keeps page one for the risk detail 
     assert.equal((html.match(new RegExp(`data-fit-section="${section}"`, 'g')) ?? []).length, 1)
   }
 })
+
+// En el layout de tres páginas, Declaraciones y Condiciones comparten la página 2 con cajas flexibles
+// y acotadas: el ajuste solo baja desde el tamaño objetivo, así que con 8px sobraba espacio al final
+// de ambas cajas. Un objetivo mayor (el ajuste lo reduce hasta que entra) las llena. En los demás
+// layouts las cajas miden lo que mide su texto: ahí el objetivo se mantiene en 8.
+test('MRC proposal v3 raises the declarations and conditions fit target only in the three-page layout', () => {
+  const threePage = buildMrcPropuestaV3Html(fixture(), { layout: 'three-page' })
+  assert.match(
+    threePage,
+    /data-fit-section="declarations" data-fit-target="10" data-fit-minimum="6"/
+  )
+  assert.match(
+    threePage,
+    /data-fit-section="conditions" data-fit-target="10" data-fit-minimum="4\.6"/
+  )
+
+  for (const layout of ['two-page', 'three-page-tall', 'four-page']) {
+    const html = buildMrcPropuestaV3Html(fixture(), { layout })
+    assert.match(html, /data-fit-section="declarations" data-fit-target="8"/, layout)
+    assert.match(html, /data-fit-section="conditions" data-fit-target="8"/, layout)
+  }
+})

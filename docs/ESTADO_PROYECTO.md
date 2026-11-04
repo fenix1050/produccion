@@ -3967,3 +3967,18 @@ como accionable. Solo en modo oscuro (`shared/theme-dark.css`): texto en `--tajy
 `inset box-shadow` con `--tajy-border-strong` (no suma 2 px de layout, a diferencia de un `border`); hover rosado con
 contorno `--tajy-border-accent`. El tema claro no cambia. Verificado con el render estático en Chromium (claro y oscuro): sin
 scroll lateral y acciones de 34 px de alto; es un render aislado, falta verlo en TEST con datos reales tras el deploy.
+
+## 122. Propuesta Formal (PDF v3, layout de 3 páginas): Declaraciones y Condiciones llenan su caja (2026-11-04)
+
+Pedido de Kevin: en la página 2 sobraba espacio al final de las cajas de Declaraciones y Condiciones. Causa: el ajuste de
+fuente (`data-fit-target` / `data-fit-minimum` / `data-fit-step` en `backend/src/templates/propuesta/mrc-v3.js`) parte del
+tamaño objetivo y solo lo baja hasta que el texto entra; nunca sube, y el objetivo era 8 px.
+
+- **Cambio:** `legalFitTarget` = 10 px **solo** con `layout === 'three-page'` (cajas flexibles y acotadas); el ajuste lo reduce
+  hasta que entra y llena la caja. En `two-page`, `three-page-tall` y `four-page` se mantiene en 8: ahí las cajas miden lo
+  que mide su texto (`flex: 0 0 auto`) y un objetivo mayor desbordaría la página.
+- **Alcance:** solo PDF nuevos; las Propuestas emitidas guardan su PDF y no se regeneran. Sin subir la revisión del renderer.
+- **Límite:** con textos cortos el tamaño llega a 10 px y no más; con textos largos el ajuste baja solo.
+- **Verificación:** RED observado; tests de plantillas 51/51; render con el servicio real sobre el snapshot de la Propuesta 25
+  de TEST: 3 páginas y ambas cajas llenas (Kevin lo vio y aprobó). Falta confirmar en TEST con un PDF nuevo tras el deploy.
+- **Deploy:** solo backend. Pendiente.

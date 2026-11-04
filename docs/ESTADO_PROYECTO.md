@@ -3904,3 +3904,19 @@ después de la implementación; `npm test` completo: 635 tests, 634 pass, 0 fail
 - Frontend: deshabilitar "Editar" en el historial cuando hay Propuesta emitida (hoy el usuario llega al 409).
 - Renombrar el botón "Carta Oferta" del historial a "Descargar Carta Oferta".
 - Deploy a TEST y a PROD, manual como siempre; el backend de PROD sigue sin #486.
+
+## 117. Historial: "Editar" deshabilitado con Propuesta emitida y botón "Descargar Carta Oferta" (2026-11-04)
+
+Complementa la sección 116 (el backend responde 409 al editar una cotización con Propuesta Formal emitida/anulada).
+
+- **Editar deshabilitado:** el historial ya cargaba `GET /propuestas/cartas-aptas` con `cotizacion_id` y
+  `propuesta_actual_estado`, así que no hizo falta tocar el backend. Nueva función pura `propuestaBloqueaEdicion(carta)` en
+  `frontend/historial/propuesta-accion.js` (true con `emitida` o `anulada`); `puedeEditar`/`motivoNoEditable` de
+  `historial.js` la usan y el tooltip del botón explica el motivo. El backend sigue siendo la autoridad: si el frontend no
+  detecta la Propuesta (p. ej. la cotización no está entre las 100 cartas que trae el listado, o la propuesta actual es un
+  borrador posterior a una anulada), el usuario ve el 409 con el mensaje claro.
+- **Rename:** el botón "Carta Oferta" de la fila pasa a "Descargar Carta Oferta" (habilitado y deshabilitado).
+- **Verificación:** RED observado (`propuestaBloqueaEdicion is not defined`), GREEN; `node --test` del frontend: 133 tests,
+  133 pass. El test de fuente de `historial.test.js` pasó a aceptar imports adicionales de `propuesta-accion.js`. **No se
+  verificó en un navegador** (render del botón deshabilitado y su tooltip): queda para TEST tras el deploy del frontend.
+- **Pendiente:** probar en TEST (backend 409 + frontend); deploy a TEST y PROD, manual.

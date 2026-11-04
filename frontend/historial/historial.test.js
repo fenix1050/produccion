@@ -11,7 +11,7 @@ test('historial.js delega la decisión de acción a propuesta-accion.js', async 
   const src = await readFile(new URL('./historial.js', import.meta.url), 'utf8')
   assert.match(
     src,
-    /import\s*\{\s*decidirAccionPropuesta\s*\}\s*from\s*['"]\.\/propuesta-accion\.js['"]/
+    /import\s*\{[^}]*decidirAccionPropuesta[^}]*\}\s*from\s*['"]\.\/propuesta-accion\.js['"]/
   )
   assert.match(src, /decidirAccionPropuesta\(cartaApta\)/)
 })

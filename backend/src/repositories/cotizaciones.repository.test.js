@@ -309,3 +309,33 @@ test('existePropuestaFormalCerrada: propaga el error de Supabase en vez de asumi
     (err) => err === errorPostgres
   )
 })
+
+// El Historial deshabilita "Editar" con una Propuesta emitida/anulada usando este embed: no puede
+// salir de `cartas-aptas` (excluye las cartas ya emitidas, migración 080).
+test('findCotizaciones: embebe las propuestas formales de cada variante para detectar las cerradas', async (t) => {
+  const selects = []
+  const builder = {
+    select(columnas) {
+      selects.push(columnas)
+      return this
+    },
+    order() {
+      return this
+    },
+    range() {
+      return this
+    },
+    then(resolve) {
+      return Promise.resolve({ data: [], error: null, count: 0 }).then(resolve)
+    },
+  }
+  t.mock.module('../config/supabase.js', {
+    namedExports: { supabase: { from: () => builder } },
+  })
+  const { findCotizaciones } =
+    await import('./cotizaciones.repository.js?case=listado-embebe-propuestas')
+
+  await findCotizaciones({})
+
+  assert.match(selects[0], /cotizacion_variantes\([^)]*propuestas_formales\(estado\)\)/)
+})

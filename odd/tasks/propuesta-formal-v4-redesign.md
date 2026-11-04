@@ -29,18 +29,18 @@ New renderer revision `pf3-mrc-renderer-v4-r1` for the MRC Propuesta Formal PDF,
 - [x] T0: optional `numero_poliza` in draft schema (`propuestas.schema.js`) and form step 5 (`frontend/propuestas/propuestas.js`). RED observed (schema test + PF-4 frontend test), GREEN: backend schema+propuestas services 56/56, frontend propuestas 19/19.
 - [x] T1: `PROPUESTA_FORMAL_V4_RENDERER_REVISION` declared (value `pf3-mrc-renderer-v4-r1`); alias stays v3 so each commit remains deployable. RED (missing export) then GREEN on `document-snapshot.service.test.js`.
 - [ ] T1b (moved to the end, with T7/T8): flip `PROPUESTA_FORMAL_RENDERER_REVISION` to v4, add the dispatch branch in `propuesta-pdf.service.js`, update snapshot test (lines 458-479) to assert alias and `renderer_identity.revision` = v4.
-- [ ] T2: `mrc-v4.js` skeleton: tokens, styles, cover header, continuation header, footer.
-- [ ] T3: page 1 (cover, identification, locations, risk, Suma Asegurada / Prima band).
-- [ ] T4: page 2 (sums table, main coverages, capital distribution bars, sublimits).
-- [ ] T5: pages 3-4 (declarations, sworn statement, digital policy, particular conditions).
-- [ ] T6: page 5 (cost and payment, debit, collection clause, observations, three signatures, ecological row).
+- [x] T2: `mrc-v4.js` skeleton: tokens, styles, cover header, continuation header (`renderContinuationHeader` helper), footer. RED observed (module missing, 1 file failing), GREEN 9/9.
+- [x] T3: page 1 (cover, identification, locations, risk, Suma Asegurada / Prima band). RED 8 failing, GREEN 17/17 cumulative.
+- [x] T4: page 2 (sums table, main coverages, capital distribution bars, sublimits). RED 9 failing, GREEN 26/26 cumulative.
+- [x] T5: pages 3-4 (declarations, sworn statement, digital policy, particular conditions). RED 8 failing, GREEN 34/34 cumulative.
+- [x] T6: page 5 (cost and payment, debit, collection clause, observations, three signatures, ecological row). RED 10 failing, GREEN 44/44 final; mrc-v2/v3/mrc suites still green (97 total).
 - [ ] T7: pagination-with-continuation engine + service print/wait + fallback tests.
 - [ ] T8: visual verification (normal + dense snapshot), ESTADO_PROYECTO section 124, Engram, PR.
 
 ## Progress
 
-Branch created. T0 done and committed.
+Branch created. T0 done and committed. T1 declared. T2-T6 implemented in `backend/src/templates/propuesta/mrc-v4.js` (+ test), not committed; visually compared against the mockup (see report). Pagination contract: every direct child of `.page-body` is `data-block`; continuation header = exported `renderContinuationHeader({topic, number, logo})`.
 
 ## Next step
 
-T1: V4 revision constant, alias, dispatch, snapshot test (RED first).
+T7: pagination-with-continuation engine + service print/wait; then T1b dispatch/alias flip; T8 visual verification.

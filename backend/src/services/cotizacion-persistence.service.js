@@ -84,6 +84,14 @@ export async function actualizarCotizacion(id, body, usuario) {
     throw httpError(422, mensaje, mensaje)
   }
 
+  // Con una Propuesta Formal emitida/anulada los snapshots son inmutables (trigger de la migración
+  // 071) y el RPC fallaría con 500 al borrar las variantes: se corta acá con un 409 claro, antes
+  // de validar/calcular. Un borrador no bloquea.
+  if (await cotizacionesRepository.existePropuestaFormalCerrada(id)) {
+    const mensaje = 'Esta cotización ya tiene una Propuesta Formal emitida y no se puede editar.'
+    throw httpError(409, mensaje, mensaje)
+  }
+
   const { plan, ramo, datosValidados } = await validarYResolverContexto(body, usuario)
 
   // No se puede "editar" una cotización cambiándole el ramo: coberturas/schema/tasas son

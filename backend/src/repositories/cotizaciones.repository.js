@@ -22,6 +22,21 @@ export async function actualizarCotizacionAtomica(payload) {
   return data
 }
 
+// Una cotización con Propuesta Formal `emitida` o `anulada` ya no se puede editar: el RPC
+// `actualizar_cotizacion_atomica` borra las variantes, y la FK `propuestas_formales.
+// cotizacion_variante_id` (ON DELETE SET NULL) dispara el trigger que protege los snapshots
+// emitidos (migraciones 069/071) -> 500. Un borrador NO cuenta: no es inmutable. El join es
+// `propuestas_formales -> cotizacion_variantes!inner` filtrando por `cotizacion_id`.
+export async function existePropuestaFormalCerrada(cotizacionId) {
+  const { count, error } = await supabase
+    .from('propuestas_formales')
+    .select('id, cotizacion_variantes!inner(cotizacion_id)', { count: 'exact', head: true })
+    .eq('cotizacion_variantes.cotizacion_id', cotizacionId)
+    .in('estado', ['emitida', 'anulada'])
+  if (error) throw error
+  return (count ?? 0) > 0
+}
+
 // `*` ya expone `moneda`/`tipo_cambio_snapshot`/`tipo_cambio_fuente`/`tipo_cambio_fecha`
 // (migración 034) sin necesidad de listarlas a mano — son columnas reales de `cotizaciones`.
 export async function findCotizacionById(id) {

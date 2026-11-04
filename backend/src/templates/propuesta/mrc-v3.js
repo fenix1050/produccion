@@ -159,7 +159,7 @@ export const PROPUESTA_FORMAL_V3_STYLE = `
   .header-page { justify-self: end; padding: 1.3mm 2mm; border: .7px solid rgba(255,255,255,.95); border-radius: 5mm; font-size: 7.8px; font-weight: 700; white-space: nowrap; }
   .header-meta {
     min-height: 21mm;
-    margin-top: -1mm;
+    margin-top: 2mm;
     padding: 2mm 2.5mm;
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));

@@ -3967,3 +3967,19 @@ como accionable. Solo en modo oscuro (`shared/theme-dark.css`): texto en `--tajy
 `inset box-shadow` con `--tajy-border-strong` (no suma 2 px de layout, a diferencia de un `border`); hover rosado con
 contorno `--tajy-border-accent`. El tema claro no cambia. Verificado con el render estático en Chromium (claro y oscuro): sin
 scroll lateral y acciones de 34 px de alto; es un render aislado, falta verlo en TEST con datos reales tras el deploy.
+
+## 121. Propuesta Formal (PDF v3): más separación entre el banner y la tarjeta de datos (2026-11-04)
+
+Pedido de Kevin: la tarjeta de datos del encabezado (Propuesta N.º, Fecha de Emisión, Vigencia, etc.) se veía pegada al banner
+rojo. Causa: `.header-meta` tenía `margin-top: -1mm` en `backend/src/templates/propuesta/mrc-v3.js`, o sea que se superponía
+1 mm al banner. Ahora `margin-top: 2mm` (3 mm más de separación).
+
+- **Alcance:** solo el template v3 y solo los PDF que se generen de ahora en adelante. Las Propuestas ya emitidas guardan su
+  PDF en Storage y no se regeneran (inmutables, trigger de la migración 071). No se subió `PROPUESTA_FORMAL_V3_RENDERER_REVISION`
+  (`r1`): los cambios visuales previos del v3 tampoco la subieron.
+- **Riesgo conocido:** el servicio escala solo de layout (`two-page` → `three-page` → `three-page-tall` → `four-page`) si algo no
+  entra, así que un documento muy denso que justo entraba en dos páginas podría pasar a tres. No falla: solo cambia el layout.
+- **Verificación:** RED observado (`margin-top: 2mm` ausente); tests de plantillas 51/51; hook de commit con las suites
+  completas. Render con el servicio real (`renderPropuestaMrcPdf`) sobre el snapshot de la Propuesta 25 de TEST, antes y
+  después: ambos de 3 páginas, la página 1 entra completa y la separación se ve. Falta confirmar en TEST con un PDF nuevo.
+- **Deploy:** solo backend (el PDF se genera ahí). Pendiente.

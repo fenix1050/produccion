@@ -3958,3 +3958,12 @@ se perdía contra el fondo.
   fila con los CSS reales en Chromium (Playwright), claro y oscuro: `scrollWidth == clientWidth` (sin scroll lateral) y
   acciones en una línea (34 px de alto). No es la pantalla real con datos: falta verlo en TEST tras el deploy del frontend
   (solo frontend, sin backend).
+
+## 120. Historial: "Ver detalle" legible en modo oscuro (2026-11-04)
+
+Seguimiento de la sección 119 (Kevin, probando en TEST): el botón "Ver detalle" se perdía contra el fondo oscuro. Era un
+botón ghost (sin borde ni relleno) con el gris del cuerpo de texto (`--tajy-text-body`, #bfbfc5) sobre #0e0e12: no se leía
+como accionable. Solo en modo oscuro (`shared/theme-dark.css`): texto en `--tajy-ink`, fondo `--tajy-chip-bg` y contorno
+`inset box-shadow` con `--tajy-border-strong` (no suma 2 px de layout, a diferencia de un `border`); hover rosado con
+contorno `--tajy-border-accent`. El tema claro no cambia. Verificado con el render estático en Chromium (claro y oscuro): sin
+scroll lateral y acciones de 34 px de alto; es un render aislado, falta verlo en TEST con datos reales tras el deploy.

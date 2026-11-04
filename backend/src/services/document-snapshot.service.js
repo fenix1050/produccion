@@ -9,6 +9,9 @@ export const CARTA_OFERTA_RENDERER_REVISION = 'pf1-renderer-r2'
 export const PROPUESTA_FORMAL_V1_RENDERER_REVISION = 'pf3-mrc-renderer-r16'
 export const PROPUESTA_FORMAL_V2_RENDERER_REVISION = 'pf3-mrc-renderer-v2-r1'
 export const PROPUESTA_FORMAL_V3_RENDERER_REVISION = 'pf3-mrc-renderer-v3-r1'
+export const PROPUESTA_FORMAL_V4_RENDERER_REVISION = 'pf3-mrc-renderer-v4-r1'
+// The v4 revision is declared but NOT active yet: this alias flips to v4 only once the v4 template
+// and its dispatch in propuesta-pdf.service.js exist, so every commit stays deployable.
 export const PROPUESTA_FORMAL_RENDERER_REVISION = PROPUESTA_FORMAL_V3_RENDERER_REVISION
 
 export function canonicalStringify(value) {

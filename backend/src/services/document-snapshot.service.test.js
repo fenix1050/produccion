@@ -12,6 +12,7 @@ import {
   PROPUESTA_FORMAL_V1_RENDERER_REVISION,
   PROPUESTA_FORMAL_V2_RENDERER_REVISION,
   PROPUESTA_FORMAL_V3_RENDERER_REVISION,
+  PROPUESTA_FORMAL_V4_RENDERER_REVISION,
 } from './document-snapshot.service.js'
 
 test('canonicalStringify and hashSnapshot are stable when object key order differs', () => {
@@ -469,6 +470,7 @@ test('buildPropuestaFormalSnapshot preserves v1 and v2 while activating the MRC 
   assert.equal(PROPUESTA_FORMAL_V1_RENDERER_REVISION, 'pf3-mrc-renderer-r16')
   assert.equal(PROPUESTA_FORMAL_V2_RENDERER_REVISION, 'pf3-mrc-renderer-v2-r1')
   assert.equal(PROPUESTA_FORMAL_V3_RENDERER_REVISION, 'pf3-mrc-renderer-v3-r1')
+  assert.equal(PROPUESTA_FORMAL_V4_RENDERER_REVISION, 'pf3-mrc-renderer-v4-r1')
   assert.equal(PROPUESTA_FORMAL_RENDERER_REVISION, PROPUESTA_FORMAL_V3_RENDERER_REVISION)
   assert.equal(result.snapshot.renderer_identity.revision, PROPUESTA_FORMAL_V3_RENDERER_REVISION)
   assert.equal(

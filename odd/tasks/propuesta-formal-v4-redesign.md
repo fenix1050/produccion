@@ -27,7 +27,8 @@ New renderer revision `pf3-mrc-renderer-v4-r1` for the MRC Propuesta Formal PDF,
 ## Tasks
 
 - [x] T0: optional `numero_poliza` in draft schema (`propuestas.schema.js`) and form step 5 (`frontend/propuestas/propuestas.js`). RED observed (schema test + PF-4 frontend test), GREEN: backend schema+propuestas services 56/56, frontend propuestas 19/19.
-- [ ] T1: `PROPUESTA_FORMAL_V4_RENDERER_REVISION`, alias to v4, dispatch in `propuesta-pdf.service.js`, update snapshot test (lines 458-479).
+- [x] T1: `PROPUESTA_FORMAL_V4_RENDERER_REVISION` declared (value `pf3-mrc-renderer-v4-r1`); alias stays v3 so each commit remains deployable. RED (missing export) then GREEN on `document-snapshot.service.test.js`.
+- [ ] T1b (moved to the end, with T7/T8): flip `PROPUESTA_FORMAL_RENDERER_REVISION` to v4, add the dispatch branch in `propuesta-pdf.service.js`, update snapshot test (lines 458-479) to assert alias and `renderer_identity.revision` = v4.
 - [ ] T2: `mrc-v4.js` skeleton: tokens, styles, cover header, continuation header, footer.
 - [ ] T3: page 1 (cover, identification, locations, risk, Suma Asegurada / Prima band).
 - [ ] T4: page 2 (sums table, main coverages, capital distribution bars, sublimits).

@@ -1,6 +1,9 @@
 node_modules/
 .env
 .env.local
+
+# Configuración local de OpenCode: la genera el instalador de Gentle AI (agentes y modelos personales).
+opencode.json
 backend/.env.qa
 backend/tmp/
 frontend/shared/config.js

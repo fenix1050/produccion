@@ -889,3 +889,12 @@ test('MRC proposal v3 tall three-page layout keeps page one for the risk detail 
     assert.equal((html.match(new RegExp(`data-fit-section="${section}"`, 'g')) ?? []).length, 1)
   }
 })
+
+test('MRC proposal v3 separates the header meta card from the banner above it', () => {
+  const html = buildMrcPropuestaV3Html(fixture())
+  const headerMetaRule = html.match(/\.header-meta \{[^}]+\}/)?.[0] ?? ''
+
+  // Antes era `margin-top: -1mm` (la tarjeta se superponía al banner y se veía pegada).
+  assert.match(headerMetaRule, /margin-top: 2mm;/)
+  assert.doesNotMatch(headerMetaRule, /margin-top: -/)
+})

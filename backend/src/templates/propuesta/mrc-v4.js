@@ -818,7 +818,7 @@ function paymentFormBlocks(commercial) {
       <div class="debit">
         <p class="debit-copy">En mi carácter de titular de cuenta autorizo irrevocablemente a debitar de mi Tarjeta de Crédito indicada más abajo el importe correspondiente a las cuotas de la póliza emitida por ASEGURADORA TAJY a mi favor, según la opción indicada más arriba.</p>
         <div class="debit-types"><span><i class="cb"></i> Visa</span><span><i class="cb"></i> Mastercard</span><span><i class="cb"></i> Cuenta Corriente</span></div>
-        <div class="debit-line"><span class="debit-label">Número</span><span class="debit-value">${UNAVAILABLE}</span></div>
+        <div class="debit-line"><span class="debit-label">Número</span><span class="debit-value"></span></div>
         <div class="debit-line"><span class="debit-label">Vencimiento</span><span class="debit-value"></span></div>
       </div>
     </div>`,

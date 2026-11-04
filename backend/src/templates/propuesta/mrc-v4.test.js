@@ -862,10 +862,11 @@ test('v4 page 5 payment method, installments and the debit authorization', () =>
   assert.match(body, /<i class="cb"><\/i> Visa/)
   assert.match(body, /<i class="cb"><\/i> Mastercard/)
   assert.match(body, /<i class="cb"><\/i> Cuenta Corriente/)
-  assert.match(
-    body,
-    /<span class="debit-label">Número<\/span><span class="debit-value">No disponible<\/span>/
-  )
+  // The cardholder fills the card number in by hand on the printed sheet, so it stays blank.
+  assert.match(body, /<span class="debit-label">Número<\/span><span class="debit-value"><\/span>/)
+  const debitBlock =
+    body.match(/<div class="debit-line">[\s\S]*?Vencimiento[\s\S]*?<\/div>/)?.[0] ?? ''
+  assert.doesNotMatch(debitBlock, /No disponible/)
   assert.match(
     body,
     /<span class="debit-label">Vencimiento<\/span><span class="debit-value"><\/span>/

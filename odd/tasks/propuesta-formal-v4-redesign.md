@@ -37,7 +37,7 @@ New renderer revision `pf3-mrc-renderer-v4-r1` for the MRC Propuesta Formal PDF,
 - [x] T7: pure `planPagination` + in-page paginator script (`mrc-v4-pagination.js`), `waitForProposalV4Ready`/`printV4ProposalPdf`/`ProposalPaginationError` and the v4 dispatch in the service. RED observed per piece; real-browser check: normal = 5 pages, dense A = 8, dense B = 8, footers consistent, no block lost or duplicated.
 - [x] T8 (partial): visual verification done with the real Propuesta 25 snapshot from TEST (read-only, authorized by Kevin): v3 = 3 pages, v4 = 5 A4 pages; dense fixtures = 8 pages. ESTADO_PROYECTO section 124 written. Pending: Engram save, PR.
 
-- [x] T9 (post-TEST feedback from Kevin): numero_poliza field uses `inputField` like the other step-5 inputs; crisp SVG checkbox X; red second title line; signature row without the facsimile option (v4 filters it, official text untouched). RED observed (3 template tests + PF-4 frontend), GREEN: v4/v3/pagination 99, frontend propuestas 19. Pending: commit, push, redeploy to TEST (needs Kevin's authorization per step).
+- [x] T9 (post-TEST feedback from Kevin; also the card number line in the debit authorization now stays blank, the insured fills it by hand on the printed sheet): numero_poliza field uses `inputField` like the other step-5 inputs; crisp SVG checkbox X; red second title line; signature row without the facsimile option (v4 filters it, official text untouched). RED observed (3 template tests + PF-4 frontend), GREEN: v4/v3/pagination 99, frontend propuestas 19. Pending: commit, push, redeploy to TEST (needs Kevin's authorization per step).
 
 ## Progress
 

@@ -34,6 +34,11 @@ const ESTADO_BADGE = {
 // sin pegarle de nuevo a la API por cada fila.
 const CALCULADORES_CON_OFERTA_PDF = ['mrc']
 
+// Ícono de descarga (flecha hacia una bandeja). El botón "Descargar Carta Oferta" es de solo
+// ícono para que la columna de acciones entre en una línea sin scroll lateral; el texto vive en
+// aria-label/title.
+const ICON_DESCARGA = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 4v11"></path><path d="m7.5 11 4.5 4.5 4.5-4.5"></path><path d="M5 19.5h14"></path></svg>`
+
 const state = {
   ramos: [],
   cotizaciones: [],
@@ -259,11 +264,12 @@ function cerrarModal() {
 async function descargarOferta(boton, id, numeroCotizacion) {
   // El PDF tarda un rato en generarse (Puppeteer) y el botón no daba ninguna señal mientras
   // tanto, así que un click impaciente terminaba en varias descargas del mismo archivo.
-  const textoOriginal = boton.textContent
+  const htmlOriginal = boton.innerHTML
+  const ariaLabelOriginal = boton.getAttribute('aria-label')
   boton.disabled = true
   boton.setAttribute('aria-disabled', 'true')
   boton.setAttribute('aria-label', 'Descargando la Carta Oferta, esperá a que termine')
-  boton.textContent = 'Descargando…'
+  boton.classList.add('historial-tabla__btn-icono--cargando')
   try {
     const blob = await api.getBlob(`/cotizaciones/${id}/pdf-oferta`)
     const url = URL.createObjectURL(blob)
@@ -279,8 +285,9 @@ async function descargarOferta(boton, id, numeroCotizacion) {
   } finally {
     boton.disabled = false
     boton.removeAttribute('aria-disabled')
-    boton.removeAttribute('aria-label')
-    boton.textContent = textoOriginal
+    boton.classList.remove('historial-tabla__btn-icono--cargando')
+    boton.setAttribute('aria-label', ariaLabelOriginal)
+    boton.innerHTML = htmlOriginal
   }
 }
 
@@ -439,8 +446,8 @@ function renderTabla() {
             }
             ${
               puedeOferta
-                ? `<button class="btn-outline historial-tabla__btn-oferta" data-action="descargar-oferta" data-id="${c.id}" data-numero="${escapeHtml(c.numero_cotizacion)}">Descargar Carta Oferta</button>`
-                : `<button class="btn-outline historial-tabla__btn-oferta historial-oferta-disabled" disabled aria-disabled="true" aria-label="Carta Oferta no disponible para este ramo todavía" title="Carta Oferta no disponible para este ramo todavía">Descargar Carta Oferta</button>`
+                ? `<button class="btn-outline historial-tabla__btn-oferta historial-tabla__btn-icono" data-action="descargar-oferta" data-id="${c.id}" data-numero="${escapeHtml(c.numero_cotizacion)}" aria-label="Descargar Carta Oferta" title="Descargar Carta Oferta">${ICON_DESCARGA}</button>`
+                : `<button class="btn-outline historial-tabla__btn-oferta historial-tabla__btn-icono historial-oferta-disabled" disabled aria-disabled="true" aria-label="Carta Oferta no disponible para este ramo todavía" title="Carta Oferta no disponible para este ramo todavía">${ICON_DESCARGA}</button>`
             }
           </div>
         </td>

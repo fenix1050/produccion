@@ -1119,6 +1119,19 @@ html[data-theme='dark'] .btn-outline {
   background: var(--tajy-chip-bg);
 }
 
+/* En dark el botón de contorno rojo sobre el fondo casi negro se perdía: relleno rojo tenue y borde
+   más marcado (mismos tokens que los chips rosados) para que se distinga del fondo de la fila. */
+html[data-theme='dark'] .historial-tabla__btn-oferta {
+  background: var(--tajy-pink-strong);
+  border-color: var(--tajy-red-hover);
+  color: var(--tajy-red-hover);
+}
+
+html[data-theme='dark'] .historial-tabla__btn-oferta:not(:disabled):hover {
+  background: var(--tajy-red);
+  color: #fff;
+}
+
 html[data-theme='dark'] .bv-volver:hover {
   color: var(--tajy-ink);
 }

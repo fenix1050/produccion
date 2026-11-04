@@ -3940,3 +3940,21 @@ mostrando "Editar" habilitado. No se había verificado esa premisa contra las mi
 **Verificación:** RED observado (`does not provide an export named 'cotizacionTienePropuestaCerrada'`); el test nuevo del
 repositorio falla sin el embed (10 pass / 1 fail) y pasa con él (11/11); frontend de historial 14/14. Pendiente verificar el
 embed PostgREST y el CSS contra TEST.
+
+## 119. Historial: botón de descarga de solo ícono y contraste en modo oscuro (2026-11-04)
+
+Tras la corrección de la sección 118 (probada en TEST por Kevin: "Editar" deshabilitado con Propuesta emitida funciona), el
+layout de acciones seguía sin gustar: con tres botones la fila bajaba a dos líneas, y en modo oscuro el botón de contorno rojo
+se perdía contra el fondo.
+
+- **Decisión (Kevin, opción A):** "Descargar Carta Oferta" pasa a ser un botón de **solo ícono** (flecha de descarga, SVG
+  inline `ICON_DESCARGA`), con el texto en `aria-label` y `title`. La variante deshabilitada (ramo sin builder de PDF)
+  también, con su motivo. `.historial-tabla__actions` vuelve a `flex-wrap: nowrap`: sin dos líneas y sin scroll lateral.
+- `descargarOferta` ya no reemplaza `textContent` (habría borrado el ícono): guarda y restaura `innerHTML` y `aria-label`, y
+  marca el estado "descargando" con la clase `historial-tabla__btn-icono--cargando` (opacidad reducida, cursor `progress`).
+- **Modo oscuro:** `.historial-tabla__btn-oferta` con relleno `--tajy-pink-strong`, borde y color `--tajy-red-hover`, y hover
+  sólido rojo (`shared/theme-dark.css`).
+- **Verificación:** RED observado (3 tests de fuente en `historial.test.js`); frontend completo 136/136. Render estático de la
+  fila con los CSS reales en Chromium (Playwright), claro y oscuro: `scrollWidth == clientWidth` (sin scroll lateral) y
+  acciones en una línea (34 px de alto). No es la pantalla real con datos: falta verlo en TEST tras el deploy del frontend
+  (solo frontend, sin backend).

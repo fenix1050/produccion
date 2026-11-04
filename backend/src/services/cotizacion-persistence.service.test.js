@@ -94,6 +94,7 @@ function mockearRepositorios(
     ],
     tasasRamo = [],
     planCoberturas = [],
+    propuestaCerrada = false,
   } = {}
 ) {
   // Cambio SDD `cotizacion-transaccional` (PR2, Phase 2 RED): `insertCotizacion` /
@@ -107,6 +108,7 @@ function mockearRepositorios(
   // que el servicio no tenga que traducir dos veces la misma forma.
   const cotizacionesCreadas = []
   const cotizacionesActualizadas = []
+  const consultasPropuesta = []
 
   // Ver nota grande al inicio del archivo: puente hacia `contextoRepoState` en vez de funciones
   // fijas, porque `cotizacion-context.service.js` (specifier estable) se congela con el PRIMER
@@ -158,6 +160,10 @@ function mockearRepositorios(
         return payload.p_cotizacion_id
       },
       findCotizacionById: async (id) => ({ id, ...insertados }),
+      existePropuestaFormalCerrada: async (id) => {
+        consultasPropuesta.push(id)
+        return propuestaCerrada
+      },
     },
   })
 
@@ -168,7 +174,7 @@ function mockearRepositorios(
     },
   })
 
-  return { cotizacionesCreadas, cotizacionesActualizadas }
+  return { cotizacionesCreadas, cotizacionesActualizadas, consultasPropuesta }
 }
 
 const USUARIO = { id: 1, rol: 'agente' }
@@ -639,6 +645,7 @@ test('actualizarCotizacion con nueva moneda:USD persiste moneda + snapshot vía 
   t.mock.module('../repositories/cotizaciones.repository.js', {
     namedExports: {
       findCotizacionById: async () => cotizacionExistente,
+      existePropuestaFormalCerrada: async () => false,
       actualizarCotizacionAtomica: async (payload) => {
         cotizacionesActualizadas.push(payload)
         return payload.p_cotizacion_id
@@ -711,4 +718,56 @@ test('actualizarCotizacion normaliza un body forjado sin reescribir franquicias 
     'Robo valores ventanilla': null,
     'Daños a los Equipos Electrónicos': 800000,
   })
+})
+
+test('actualizarCotizacion responde 409 si la cotización tiene una Propuesta Formal emitida/anulada y NO llama al RPC', async (t) => {
+  invalidarCacheCatalogos()
+  const existente = {
+    id: 5,
+    ramo_id: RAMO_INCENDIO.id,
+    agente_id: USUARIO.id,
+    created_at: new Date().toISOString(),
+    cotizacion_variantes: [],
+    cotizacion_coberturas: [],
+  }
+  const { cotizacionesActualizadas, consultasPropuesta } = mockearRepositorios(t, {
+    insertados: existente,
+    propuestaCerrada: true,
+  })
+  const { actualizarCotizacion } =
+    await import('./cotizacion-persistence.service.js?case=actualizar-bloqueada-propuesta')
+
+  await assert.rejects(
+    () => actualizarCotizacion(5, { cliente_nombre: 'X' }, USUARIO),
+    (err) => {
+      assert.equal(err.status, 409)
+      assert.match(err.message, /Propuesta Formal/)
+      return true
+    }
+  )
+  assert.deepEqual(consultasPropuesta, [5], 'debe consultar por el id de la cotización')
+  assert.equal(cotizacionesActualizadas.length, 0, 'el RPC atómico no debe llamarse tras un 409')
+})
+
+test('actualizarCotizacion sin Propuesta Formal emitida/anulada sigue actualizando vía el RPC', async (t) => {
+  invalidarCacheCatalogos()
+  const existente = {
+    id: 5,
+    ramo_id: RAMO_INCENDIO.id,
+    agente_id: USUARIO.id,
+    created_at: new Date().toISOString(),
+    cotizacion_variantes: [],
+    cotizacion_coberturas: [],
+  }
+  const { cotizacionesActualizadas, consultasPropuesta } = mockearRepositorios(t, {
+    insertados: existente,
+    propuestaCerrada: false,
+  })
+  const { actualizarCotizacion } =
+    await import('./cotizacion-persistence.service.js?case=actualizar-sin-propuesta-cerrada')
+
+  await actualizarCotizacion(5, bodyBase(), USUARIO)
+
+  assert.deepEqual(consultasPropuesta, [5])
+  assert.equal(cotizacionesActualizadas.length, 1)
 })

@@ -3872,3 +3872,35 @@ campos vacíos muestra "Ingresá tu email y tu contraseña." (#482). Logs del ba
 
 **Pendiente:** el próximo deploy de backend (incluye #486); el resto de pendientes de la sección 114 que no se
 mencionan acá.
+
+## 116. Editar una cotización con Propuesta Formal emitida responde 409 en vez de 500 (2026-11-04)
+
+**Síntoma (TEST):** al editar la cotización 287 (MRC-591) el modal "Proceso de cotización" fallaba en "Generando Carta
+Oferta" con un 500 sobre `PUT /cotizaciones/287`. PROD no estaba afectado.
+
+**Causa (probada en TEST):** `actualizar_cotizacion_atomica` (migración 082) borra las `cotizacion_variantes` de la
+cotización; la FK `propuestas_formales.cotizacion_variante_id` es `ON DELETE SET NULL` (069), y ese UPDATE implícito lo
+bloquea el trigger `proteger_propuesta_formal_emitida` (071): "Los snapshots y artefactos de Propuesta Formal emitidos son
+inmutables" (P0001). Reproducido con `BEGIN; DELETE FROM cotizacion_variantes WHERE cotizacion_id = 287; ROLLBACK;`
+(la 287 tiene la Propuesta 23 `emitida`; los datos quedaron intactos). No se capturó el stack del 500 original: la
+conclusión es que el mecanismo coincide exacto con el error visto, no que se haya observado el mismo intento.
+
+**Decisión (Kevin):** una cotización con Propuesta Formal emitida ya no se puede editar; no se anula la Propuesta
+automáticamente.
+
+**Cambio:** `actualizarCotizacion` consulta `existePropuestaFormalCerrada(id)` (nuevo, en `cotizaciones.repository.js`:
+`propuestas_formales` con join `cotizacion_variantes!inner`, estados `emitida`/`anulada`) justo después del chequeo de los
+30 días y responde 409 "Esta cotización ya tiene una Propuesta Formal emitida y no se puede editar." sin llegar a la RPC.
+Un borrador no bloquea. Sin migraciones.
+
+**Verificación:** RED observado (10 pass / 2 fail) y GREEN en el servicio; tests unitarios del repositorio agregados
+después de la implementación; `npm test` completo: 635 tests, 634 pass, 0 fail, 1 skipped preexistente.
+
+**Pendiente:**
+
+- La consulta PostgREST (`!inner` con filtro sobre la tabla embebida) está solo mockeada; probarla contra TEST tras el
+  deploy. Hoy no hay en TEST una cotización de menos de 30 días con Propuesta emitida (la 287 vence primero por la regla
+  de los 30 días), así que hay que crear una.
+- Frontend: deshabilitar "Editar" en el historial cuando hay Propuesta emitida (hoy el usuario llega al 409).
+- Renombrar el botón "Carta Oferta" del historial a "Descargar Carta Oferta".
+- Deploy a TEST y a PROD, manual como siempre; el backend de PROD sigue sin #486.

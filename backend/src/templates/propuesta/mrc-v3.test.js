@@ -890,6 +890,15 @@ test('MRC proposal v3 tall three-page layout keeps page one for the risk detail 
   }
 })
 
+test('MRC proposal v3 separates the header meta card from the banner above it', () => {
+  const html = buildMrcPropuestaV3Html(fixture())
+  const headerMetaRule = html.match(/\.header-meta \{[^}]+\}/)?.[0] ?? ''
+
+  // Antes era `margin-top: -1mm` (la tarjeta se superponía al banner y se veía pegada).
+  assert.match(headerMetaRule, /margin-top: 2mm;/)
+  assert.doesNotMatch(headerMetaRule, /margin-top: -/)
+})
+
 // En el layout de tres páginas, Declaraciones y Condiciones comparten la página 2 con cajas flexibles
 // y acotadas: el ajuste solo baja desde el tamaño objetivo, así que con 8px sobraba espacio al final
 // de ambas cajas. Un objetivo mayor (el ajuste lo reduce hasta que entra) las llena. En los demás

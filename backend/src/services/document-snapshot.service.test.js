@@ -458,7 +458,7 @@ test('Carta snapshot identity ignores render timestamp but preserves it for rend
   )
 })
 
-test('buildPropuestaFormalSnapshot preserves v1 and v2 while activating the MRC v3 renderer revision', () => {
+test('buildPropuestaFormalSnapshot preserves v1, v2 and v3 while activating the MRC v4 renderer revision', () => {
   const result = buildPropuestaFormalSnapshot({
     propuesta: { id: 1, numero_propuesta: 2, draft_json: {} },
     carta: { id: 3, numero_carta: 'MRC-3', version: 1, snapshot_json: {} },
@@ -471,11 +471,11 @@ test('buildPropuestaFormalSnapshot preserves v1 and v2 while activating the MRC 
   assert.equal(PROPUESTA_FORMAL_V2_RENDERER_REVISION, 'pf3-mrc-renderer-v2-r1')
   assert.equal(PROPUESTA_FORMAL_V3_RENDERER_REVISION, 'pf3-mrc-renderer-v3-r1')
   assert.equal(PROPUESTA_FORMAL_V4_RENDERER_REVISION, 'pf3-mrc-renderer-v4-r1')
-  assert.equal(PROPUESTA_FORMAL_RENDERER_REVISION, PROPUESTA_FORMAL_V3_RENDERER_REVISION)
-  assert.equal(result.snapshot.renderer_identity.revision, PROPUESTA_FORMAL_V3_RENDERER_REVISION)
+  assert.equal(PROPUESTA_FORMAL_RENDERER_REVISION, PROPUESTA_FORMAL_V4_RENDERER_REVISION)
+  assert.equal(result.snapshot.renderer_identity.revision, PROPUESTA_FORMAL_V4_RENDERER_REVISION)
   assert.equal(
     result.templateVersion,
-    `mrc:manual-source-revision:${PROPUESTA_FORMAL_V3_RENDERER_REVISION}`
+    `mrc:manual-source-revision:${PROPUESTA_FORMAL_V4_RENDERER_REVISION}`
   )
   assert.match(result.snapshotHash, /^[a-f0-9]{64}$/)
 })

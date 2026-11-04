@@ -1,6 +1,9 @@
 import { escapeHtml, fmtFecha, fmtGs } from '../oferta/layout.js'
 
+import { buildPaginationScript, planPagination } from './mrc-v4-pagination.js'
 import { UNAVAILABLE, brandMark, declarationFlow, money, text } from './mrc.js'
+
+export { planPagination }
 
 // ---------------------------------------------------------------------------------------
 // Propuesta Formal MRC, renderer v4 ("minimalist" redesign).
@@ -16,7 +19,8 @@ import { UNAVAILABLE, brandMark, declarationFlow, money, text } from './mrc.js'
 //     `data-keep-with-next` so the paginator can avoid stranding them at the bottom.
 //   * Continuation header: use the pure helper `renderContinuationHeader({ topic, number,
 //     logo })`. It returns the same compact header markup pages 2-5 use, marked with
-//     `data-continuation`. (A `<template>` is intentionally NOT embedded in the document.)
+//     `data-continuation` and a "continuación" tag. The document embeds one such header per
+//     topic as inert JSON inside the pagination script (see mrc-v4-pagination.js).
 //   * Footer page numbers are `<span data-page-number>` / `<span data-page-total>` pre-filled
 //     with static defaults (index within the 5 base pages / 5); the paginator recomputes them.
 // ---------------------------------------------------------------------------------------
@@ -80,6 +84,8 @@ export const PROPUESTA_FORMAL_V4_STYLE = `
     background: var(--v4-red);
   }
   .page-body { flex: 1 1 auto; min-height: 0; padding-bottom: 20mm; }
+  /* Continuation pages (added by the paginator) have no big title: keep a gap under the header. */
+  .proposal-page[data-continuation] .page-body { padding-top: 6mm; }
 
   /* Logo: always shown as supplied (red/black), never inverted. */
   .tajy-logo { display: block; width: 100%; height: auto; object-fit: contain; object-position: left top; }
@@ -303,7 +309,8 @@ function coverHeader(snapshot, logoSrc) {
 }
 
 function pageHeader({ topic, number, logo, continuation = false }) {
-  const tag = TOPIC_TAGS[topic] ?? ''
+  const topicTag = TOPIC_TAGS[topic] ?? ''
+  const tag = continuation ? `${topicTag} · continuación` : topicTag
   return `<header class="page-header"${continuation ? ' data-continuation' : ''}>
       <div class="header-logo">${brandMark(logo)}</div>
       <span class="header-label">Propuesta para seguro / Nº ${text(fmtNumero(number))}</span>
@@ -882,6 +889,14 @@ function topicPage(topic, index, { header, body, number }) {
   return `<article class="proposal-page" data-topic="${topic}">${header}<div class="page-body">${body}</div>${footer(number, index + 1, MRC_V4_TOPICS.length)}</article>`
 }
 
+function paginationScript(number, logo) {
+  return buildPaginationScript({
+    continuationHeaders: Object.fromEntries(
+      MRC_V4_TOPICS.map((topic) => [topic, renderContinuationHeader({ topic, number, logo })])
+    ),
+  })
+}
+
 export function buildMrcPropuestaV4Html(snapshot, { tajyLogoDataUri = null } = {}) {
   const { proposal } = snapshot
   const number = proposal.numero_propuesta
@@ -905,8 +920,8 @@ export function buildMrcPropuestaV4Html(snapshot, { tajyLogoDataUri = null } = {
   )
 
   return `<!doctype html>
-<html lang="es" data-proposal-design="v4">
+<html lang="es" data-proposal-design="v4" data-proposal-pagination="pending">
 <head><meta charset="utf-8" /><style>${PROPUESTA_FORMAL_V4_STYLE}</style></head>
-<body>${pages.join('')}</body>
+<body>${pages.join('')}<script>${paginationScript(number, tajyLogoDataUri)}</script></body>
 </html>`
 }

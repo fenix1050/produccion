@@ -4,6 +4,7 @@ import { test } from 'node:test'
 import {
   PROPUESTA_FORMAL_V4_STYLE,
   buildMrcPropuestaV4Html,
+  planPagination,
   renderContinuationHeader,
 } from './mrc-v4.js'
 
@@ -98,7 +99,7 @@ test('v4 skeleton renders the five topic pages in order with the contract markup
   assert.equal((html.match(/<header class="page-header"/g) ?? []).length, 4)
   assert.equal((html.match(/<header class="cover-header"/g) ?? []).length, 1)
   assert.doesNotMatch(html, /data-fit-/)
-  assert.doesNotMatch(html, /<script/)
+  assert.equal((html.match(/<script>/g) ?? []).length, 1)
 })
 
 test('v4 cover header shows eyebrow, title, proposal number and issue date', () => {
@@ -979,4 +980,72 @@ test('v4 page 5 body children are all atomic data-block elements', () => {
   assertAllBlocks(build(), 'payment')
   assertAllBlocks(paymentFixture(CUOTAS), 'payment')
   assertAllBlocks(build({ texts: {} }), 'payment')
+})
+
+// ---------------------------------------------------------------- T7: pagination contract
+
+test('v4 starts in the pending pagination state and re-exports the pure planner', () => {
+  const html = build()
+
+  assert.match(html, /<html lang="es" data-proposal-design="v4" data-proposal-pagination="pending"/)
+  assert.equal(typeof planPagination, 'function')
+})
+
+test('v4 embeds a single pagination script after the last page, serialized from the pure planner', () => {
+  const html = build()
+  const script = /<script>([\s\S]*?)<\/script>/.exec(html)?.[1]
+
+  assert.ok(script, 'inline script present')
+  assert.ok(html.indexOf('<script>') > html.lastIndexOf('</article>'))
+  assert.ok(script.includes(planPagination.toString()))
+  assert.doesNotThrow(() => new Function(script))
+  assert.match(script, /__proposalPaginationMetrics/)
+  assert.match(script, /document\.fonts/)
+  assert.doesNotMatch(script, /data-fit-|V3_LAYOUTS/)
+})
+
+test('v4 pagination script carries the continuation header of every topic as inert JSON', () => {
+  const html = build()
+  const script = /<script>([\s\S]*?)<\/script>/.exec(html)[1]
+  const headers = JSON.parse(/var HEADERS = (\{.*?\});$/ms.exec(script)[1])
+
+  assert.deepEqual(Object.keys(headers), [
+    'cover',
+    'coverage',
+    'declarations',
+    'conditions',
+    'payment',
+  ])
+  for (const topic of Object.keys(headers)) {
+    assert.equal(headers[topic], renderContinuationHeader({ topic, number: 17, logo: LOGO }))
+  }
+  assert.doesNotMatch(script, /<header/)
+})
+
+test('v4 continuation headers carry the continuation marker next to the topic label', () => {
+  const header = renderContinuationHeader({ topic: 'payment', number: 17, logo: LOGO })
+  const regular = build()
+
+  assert.match(header, /Resumen económico · Aceptación · continuación/)
+  assert.doesNotMatch(regular.slice(0, regular.indexOf('<script>')), /continuación/)
+})
+
+test('v4 continuation pages have no big title: the header helper never renders one', () => {
+  const header = renderContinuationHeader({ topic: 'conditions', number: 17, logo: LOGO })
+
+  assert.doesNotMatch(header, /topic-title|cover-title|<h1/)
+})
+
+test('v4 page footers keep numbered placeholders for the paginator', () => {
+  const html = build()
+
+  assert.equal((html.match(/<span data-page-number>/g) ?? []).length, 5)
+  assert.equal((html.match(/<span data-page-total>/g) ?? []).length, 5)
+})
+
+test('v4 styles give continuation pages breathing room under the compact header', () => {
+  assert.match(
+    PROPUESTA_FORMAL_V4_STYLE,
+    /\.proposal-page\[data-continuation\] \.page-body\s*\{[^}]*padding-top:\s*6mm/
+  )
 })

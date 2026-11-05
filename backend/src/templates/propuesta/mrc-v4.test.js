@@ -372,6 +372,7 @@ test('v4 total band uses the light wash gray of the document palette, not a dark
   assert.match(html, /\.total-band\s*\{[^}]*background:\s*var\(--v4-wash\)/)
   assert.doesNotMatch(html, /\.total-band\s*\{[^}]*background:\s*var\(--v4-slate\)/)
   assert.match(html, /\.band-value\s*\{[^}]*color:\s*var\(--v4-ink\)/)
+  assert.match(html, /\.band-label\s*\{[^}]*color:\s*var\(--v4-ink\)/)
 })
 
 test('v4 page 1 shows "No disponible" for missing coverages and prima instead of throwing', () => {

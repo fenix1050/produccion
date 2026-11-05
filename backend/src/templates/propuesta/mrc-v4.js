@@ -185,7 +185,7 @@ export const PROPUESTA_FORMAL_V4_STYLE = `
   .total-band { margin-top: 5.5mm; display: grid; grid-template-columns: 1fr 1fr; background: var(--v4-wash); color: var(--v4-ink); }
   .band-cell { padding: 5.2mm 6mm; display: flex; flex-direction: column; gap: 2mm; }
   .band-cell + .band-cell { border-left: .3mm solid var(--v4-rule); }
-  .band-label { font-size: 5.6pt; letter-spacing: .14em; text-transform: uppercase; color: var(--v4-muted); }
+  .band-label { font-size: 5.6pt; letter-spacing: .14em; text-transform: uppercase; color: var(--v4-ink); }
   .band-value { font-size: 15pt; font-weight: 700; letter-spacing: -.02em; line-height: 1.1; color: var(--v4-ink); }
 
   /* Topic intro (pages 2-5). */

@@ -366,6 +366,14 @@ test('v4 page 1 locations, risk description and total band', () => {
   assert.match(body, /<span class="band-value">Gs\. 2\.351\.250<\/span>/)
 })
 
+test('v4 total band uses the light wash gray of the document palette, not a dark slate', () => {
+  const html = build()
+
+  assert.match(html, /\.total-band\s*\{[^}]*background:\s*var\(--v4-wash\)/)
+  assert.doesNotMatch(html, /\.total-band\s*\{[^}]*background:\s*var\(--v4-slate\)/)
+  assert.match(html, /\.band-value\s*\{[^}]*color:\s*var\(--v4-ink\)/)
+})
+
 test('v4 page 1 shows "No disponible" for missing coverages and prima instead of throwing', () => {
   const base = fixture()
   const html = build({

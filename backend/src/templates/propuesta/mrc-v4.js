@@ -181,12 +181,12 @@ export const PROPUESTA_FORMAL_V4_STYLE = `
   .body-text { margin: 0 0 2.4mm; font-size: 7.1pt; line-height: 1.4; color: var(--v4-body); white-space: pre-line; overflow-wrap: anywhere; }
   .body-text strong { color: var(--v4-ink); }
 
-  /* Dark Suma Asegurada / Prima band. */
-  .total-band { margin-top: 5.5mm; display: grid; grid-template-columns: 1fr 1fr; background: var(--v4-slate); color: #fff; }
+  /* Suma Asegurada / Prima band: same light gray as the other bands of the document. */
+  .total-band { margin-top: 5.5mm; display: grid; grid-template-columns: 1fr 1fr; background: var(--v4-wash); color: var(--v4-ink); }
   .band-cell { padding: 5.2mm 6mm; display: flex; flex-direction: column; gap: 2mm; }
-  .band-cell + .band-cell { border-left: .3mm solid var(--v4-slate-mid); }
-  .band-label { font-size: 5.6pt; letter-spacing: .14em; text-transform: uppercase; color: #d7dde3; }
-  .band-value { font-size: 15pt; font-weight: 700; letter-spacing: -.02em; line-height: 1.1; }
+  .band-cell + .band-cell { border-left: .3mm solid var(--v4-rule); }
+  .band-label { font-size: 5.6pt; letter-spacing: .14em; text-transform: uppercase; color: var(--v4-muted); }
+  .band-value { font-size: 15pt; font-weight: 700; letter-spacing: -.02em; line-height: 1.1; color: var(--v4-ink); }
 
   /* Topic intro (pages 2-5). */
   .topic-intro { padding-top: 9.5mm; }

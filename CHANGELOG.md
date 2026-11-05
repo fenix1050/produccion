@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.70](https://github.com/fenix1050/produccion/compare/v0.1.69...v0.1.70) (2026-11-05)
+
+
+### Bug Fixes
+
+* **propuesta-textos:** alinear los textos MRC de PROD con el modelo publicado en TEST ([#511](https://github.com/fenix1050/produccion/issues/511)) ([5a9dcbb](https://github.com/fenix1050/produccion/commit/5a9dcbbe27e8f550d0f6cccb55ae14bcbaeed80a))
+
 ## [0.1.69](https://github.com/fenix1050/produccion/compare/v0.1.68...v0.1.69) (2026-11-05)
 
 

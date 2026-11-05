@@ -466,9 +466,15 @@ function locationBlocks(insured, proposer) {
     `<div class="location"><span class="location-label">${label}</span><strong class="location-address">${text(address)}</strong><span class="location-sub">${text(city)} · Tel.: ${text(celular(phone))}</span></div>`
   const boxes = [box('Dirección particular', insured.direccion, insured.ciudad, insured.telefono)]
   // Optional asegurado commercial address: hidden when empty or blank.
+  // It carries its own optional ciudad/teléfono; missing parts are omitted, never borrowed from
+  // the particular address.
   if (String(insured.direccion_comercial ?? '').trim()) {
+    const parts = [
+      String(insured.ciudad_comercial ?? '').trim() && text(insured.ciudad_comercial),
+      celular(insured.telefono_comercial) && `Tel.: ${text(celular(insured.telefono_comercial))}`,
+    ].filter(Boolean)
     boxes.push(
-      box('Dirección comercial', insured.direccion_comercial, insured.ciudad, insured.telefono)
+      `<div class="location"><span class="location-label">Dirección comercial</span><strong class="location-address">${text(insured.direccion_comercial)}</strong>${parts.length ? `<span class="location-sub">${parts.join(' · ')}</span>` : ''}</div>`
     )
   }
   // coverBody aliases proposer to insured when the tomador is the asegurado.

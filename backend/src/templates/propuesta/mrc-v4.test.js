@@ -361,6 +361,39 @@ test('v4 locations render the asegurado comercial address only when it is filled
   }
 })
 
+test('v4 comercial box uses its own ciudad and telefono, never the particular ones', () => {
+  const asegurado = fixture().draft.partes.asegurado
+  const grid = locationGrid({
+    partes: {
+      asegurado: {
+        ...asegurado,
+        ciudad: 'Asunción',
+        telefono: '0981111222',
+        direccion_comercial: 'Commercial St',
+        ciudad_comercial: 'Luque <C>',
+        telefono_comercial: '0972333444',
+      },
+    },
+  })
+  const comercial = grid.slice(grid.indexOf('Dirección comercial'))
+  assert.match(comercial, /Luque &lt;C&gt; · Tel\.: 0972-333-444/)
+  assert.doesNotMatch(comercial, /Asunción|0981/)
+  assert.match(grid, /Asunción · Tel\.: 0981-111-222/)
+})
+
+test('v4 comercial box omits the missing ciudad or telefono instead of inventing them', () => {
+  const asegurado = fixture().draft.partes.asegurado
+  const only = (extra) =>
+    locationGrid({ partes: { asegurado: { ...asegurado, direccion_comercial: 'C St', ...extra } } })
+  const sub = (grid) =>
+    grid.slice(grid.indexOf('Dirección comercial')).match(/location-sub">([^<]*)</)?.[1] ?? null
+
+  assert.equal(sub(only({ ciudad_comercial: 'Luque' })), 'Luque')
+  assert.equal(sub(only({ telefono_comercial: '0972333444' })), 'Tel.: 0972-333-444')
+  assert.equal(sub(only({})), null)
+  assert.doesNotMatch(only({}), /No disponible[\s\S]*No disponible[\s\S]*No disponible/)
+})
+
 test('v4 locations add a tomador box only when the tomador is a different person', () => {
   const asegurado = fixture().draft.partes.asegurado
   const grid = locationGrid({

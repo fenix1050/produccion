@@ -22,8 +22,8 @@ export const ID_MAXIMO = 2147483647
 export const planIdBodySchema = z.object({
   plan_id: z
     .number({
-      required_error: 'plan_id es obligatorio',
-      invalid_type_error: 'plan_id debe ser un número',
+      error: (issue) =>
+        issue.input === undefined ? 'plan_id es obligatorio' : 'plan_id debe ser un número',
     })
     .int('plan_id debe ser un número entero')
     .positive('plan_id debe ser positivo')
@@ -32,7 +32,7 @@ export const planIdBodySchema = z.object({
 
 export const cotizacionIdParamsSchema = z.object({
   id: z.coerce
-    .number({ invalid_type_error: 'El id de la cotización debe ser un número' })
+    .number({ error: 'El id de la cotización debe ser un número' })
     .int('El id de la cotización debe ser un número entero')
     .positive('El id de la cotización debe ser positivo')
     .max(ID_MAXIMO, 'El id de la cotización es demasiado grande'),

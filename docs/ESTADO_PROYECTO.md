@@ -4114,3 +4114,11 @@ muestra solo sus propios valores (nunca los de la dirección particular) y omite
 frontend 21.
 
 **Deploy:** backend (PDF y esquema) y frontend (formulario). Pendiente: TEST con autorización y después PROD manual.
+
+## 127. Deploy a PROD: dirección particular/comercial con ciudad y teléfono (2026-11-05)
+
+**Qué se desplegó:** `main` en `d823eb25e9972571bb8da1ee89cd9967d4d3558f` (PRs #513 y #515: dirección particular y comercial del asegurado, ciudad y teléfono comerciales opcionales; PDF v4). Sin migraciones nuevas ni variables de entorno nuevas (la 084 ya estaba aplicada), por eso se omitieron las etapas 1 y 2 del runbook.
+
+**Cómo:** `docs/RUNBOOK_DEPLOY_PROD.md`, ejecutado por Kevin en la VPS un comando por vez. Backend: imagen `cotizador-backend:d823eb25…` (mismo ID de imagen, `d0e620e8aa67`, que la desplegada en TEST), `Up (healthy)`, `health 200`; rollback apuntando a `cotizador-backend:1e64a2312471…`. Frontend: copia sin `shared/config.js` (fecha intacta), `diff -rq` sin diferencias.
+
+**Verificación:** Kevin confirmó en `cotizador.lat` que el formulario muestra los cuatro campos y que el PDF de la Propuesta muestra la caja comercial con sus propios datos ("funciona perfecto"). No se pegó la salida del `grep` de errores del backend (paso 11) en esta sesión.

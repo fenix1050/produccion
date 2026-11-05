@@ -282,6 +282,7 @@ function leerFormulario() {
     telefono: () => text('telefono'),
     email: () => text('email'),
     direccion: () => text('direccion'),
+    direccion_comercial: () => text('direccion_comercial'),
     actividad_economica: () => text('actividad_economica'),
     fecha_nacimiento: (value) => value || undefined,
     sexo: (value) => value || undefined,
@@ -852,7 +853,8 @@ function renderAseguradoPanel() {
         <header class="pf-subcard__header"><span class="pf-subcard__icon" aria-hidden="true">${ICON_LOCATION}</span><div><h3 id="pf-address-title">Dirección</h3><p>Domicilio del asegurado.</p></div></header>
         <div class="pf-subcard__body pf-fields">
           ${inputField('ciudad', 'Ciudad', valor('partes.asegurado.ciudad'), 'text', true)}
-          <label class="pf-field pf-field--wide"><span>Dirección${requiredMark()}</span><textarea name="direccion" rows="2" required>${escapeHtml(valor('partes.asegurado.direccion'))}</textarea></label>
+          <label class="pf-field pf-field--wide"><span>Dirección particular${requiredMark()}</span><textarea name="direccion" rows="2" required>${escapeHtml(valor('partes.asegurado.direccion'))}</textarea></label>
+          <label class="pf-field pf-field--wide"><span>Dirección comercial (opcional)</span><textarea name="direccion_comercial" rows="2" maxlength="500">${escapeHtml(valor('partes.asegurado.direccion_comercial'))}</textarea></label>
         </div>
       </section>
     </div>
@@ -1358,7 +1360,8 @@ function etiquetaPendiente(code) {
     'asegurado.nombre_razon_social': 'Nombre o razón social',
     'asegurado.documento': 'C.I.',
     'asegurado.ruc': 'R.U.C.',
-    'asegurado.direccion': 'Dirección',
+    'asegurado.direccion': 'Dirección particular',
+    'asegurado.direccion_comercial': 'Dirección comercial',
     'asegurado.ciudad': 'Ciudad',
     'asegurado.telefono': 'Teléfono',
     'asegurado.email': 'Correo electrónico',

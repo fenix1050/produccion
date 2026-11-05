@@ -326,6 +326,56 @@ test('v4 page 1 state-provider / PEP band uses checkboxes and the fine print lin
   assert.match(body, /Si el asegurado es distinto al tomador, completar el anexo 1\./)
 })
 
+function locationGrid(overrides) {
+  const base = fixture()
+  const body = pageBody(
+    build({
+      draft: {
+        ...base.draft,
+        partes: { ...base.draft.partes, ...overrides.partes },
+      },
+    }),
+    'cover'
+  )
+  return body.match(/<div class="location-grid" data-block>[\s\S]*?<\/div>\s*<\/div>/)?.[0] ?? ''
+}
+
+test('v4 locations render the asegurado comercial address only when it is filled', () => {
+  const asegurado = fixture().draft.partes.asegurado
+  const withCommercial = locationGrid({
+    partes: { asegurado: { ...asegurado, direccion_comercial: 'Av. <Comercial> 99' } },
+  })
+  assert.match(withCommercial, /Dirección particular[\s\S]*Address/)
+  assert.match(withCommercial, /Dirección comercial[\s\S]*Av\. &lt;Comercial&gt; 99/)
+  assert.ok(
+    withCommercial.indexOf('Dirección particular') < withCommercial.indexOf('Dirección comercial')
+  )
+  assert.doesNotMatch(withCommercial, /Dirección del tomador/)
+
+  for (const blank of [undefined, '', '   ']) {
+    const grid = locationGrid({
+      partes: { asegurado: { ...asegurado, direccion_comercial: blank } },
+    })
+    assert.match(grid, /Dirección particular/)
+    assert.doesNotMatch(grid, /Dirección comercial/)
+  }
+})
+
+test('v4 locations add a tomador box only when the tomador is a different person', () => {
+  const asegurado = fixture().draft.partes.asegurado
+  const grid = locationGrid({
+    partes: {
+      tomador_igual_asegurado: false,
+      asegurado: { ...asegurado, direccion_comercial: 'Commercial St' },
+      tomador: { direccion: 'Tomador St', ciudad: 'Luque', telefono: '2' },
+    },
+  })
+  assert.match(grid, /Dirección particular[\s\S]*Address/)
+  assert.match(grid, /Dirección comercial[\s\S]*Commercial St/)
+  assert.match(grid, /Dirección del tomador[\s\S]*Tomador St[\s\S]*Luque · Tel\./)
+  assert.equal((grid.match(/class="location"/g) ?? []).length, 3)
+})
+
 test('v4 page 1 locations, risk description and total band', () => {
   const base = fixture()
   const body = pageBody(
@@ -351,8 +401,9 @@ test('v4 page 1 locations, risk description and total band', () => {
     body,
     /<span class="section-num">02<\/span><span class="section-name">Ubicaciones declaradas<\/span>/
   )
-  assert.match(body, /Dirección comercial/)
   assert.match(body, /Dirección particular/)
+  assert.doesNotMatch(body, /Dirección comercial/)
+  assert.doesNotMatch(body, /Dirección del tomador/)
   assert.match(body, /City · Tel\./)
   assert.match(
     body,
@@ -364,6 +415,10 @@ test('v4 page 1 locations, risk description and total band', () => {
   assert.match(body, /Suma asegurada total/i)
   assert.match(body, /<span class="band-value">Gs\. 540\.500\.000<\/span>/)
   assert.match(body, /<span class="band-value">Gs\. 2\.351\.250<\/span>/)
+})
+
+test('v4 location grid separates its rows so a third box does not touch the first', () => {
+  assert.match(build(), /\.location-grid\s*\{[^}]*row-gap:\s*[\d.]+mm/)
 })
 
 test('v4 total band uses the light wash gray of the document palette, not a dark slate', () => {

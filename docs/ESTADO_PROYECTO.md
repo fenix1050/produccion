@@ -4090,3 +4090,22 @@ igual, y la segunda corrida no agrega filas.
 **Pendiente (Kevin, manual):** aplicar la 084 en PROD siguiendo `docs/RUNBOOK_DEPLOY_PROD.md`, etapa 2 (respaldo, ensayo sobre
 una restauración del dump, aplicar). Después emitir una Propuesta nueva y compararla con la N.º 23. Las ya emitidas, como la
 N.º 2, conservan su PDF.
+
+## 126. Propuesta Formal: dirección particular y comercial del asegurado (2026-11-05)
+
+Al probar el PDF v4 en PROD, Kevin notó que las cajas "Dirección comercial" y "Dirección particular" mostraban la misma
+dirección, mientras el formulario pedía una sola. Causa: el PDF rotulaba "comercial" a la dirección del tomador y "particular"
+a la del asegurado, y con tomador igual al asegurado (lo habitual) ambas coincidían; "comercial" nunca existió en el formulario.
+
+**Cambio (aprobado por Kevin):** nuevo campo opcional `partes.asegurado.direccion_comercial` (máx. 500, esquema
+`propuestas.schema.js`). En el paso de las partes la "Dirección" pasa a "Dirección particular" (sigue obligatoria) y se suma
+"Dirección comercial (opcional)"; no entra en `readiness`. En el PDF v4: "Dirección particular" es la del asegurado;
+"Dirección comercial" usa `direccion_comercial` y no se dibuja si está vacía; si el tomador es otra persona se agrega la caja
+"Dirección del tomador" para no perder ese dato. La grilla suma `row-gap` para que una tercera caja no quede pegada. Sin
+migración; las Propuestas ya emitidas conservan su PDF; los borradores sin el campo siguen funcionando. v1 a v3 no cambian.
+
+**Verificación:** RED/GREEN por tarea; backend 223/223 (templates, esquema, servicios de propuestas, snapshot, PDF) y frontend
+20/20. Render real con el snapshot de la Propuesta 25 en tres casos (sin comercial, con comercial, tomador distinto): 5
+páginas y cajas correctas.
+
+**Deploy:** backend (PDF y esquema) y frontend (formulario). Pendiente: TEST con autorización y después PROD manual.

@@ -435,6 +435,33 @@ test('PF-4 numero_poliza is an optional step-5 field that mirrors the backend li
   assert.doesNotMatch(moduleSource, /pendientes\.push\('numero_poliza'\)/)
 })
 
+test('PF-5 direccion_comercial is an optional asegurado field next to a required "Dirección particular"', async () => {
+  const [moduleSource, schemaSource] = await Promise.all([
+    readFile(moduleUrl, 'utf8'),
+    readFile(new URL('../../backend/src/schemas/propuestas.schema.js', import.meta.url), 'utf8'),
+  ])
+
+  assert.match(schemaSource, /direccion_comercial: texto\(500\)/)
+  // Existing address is relabelled and stays required.
+  assert.match(
+    moduleSource,
+    /<span>Dirección particular\$\{requiredMark\(\)\}<\/span><textarea name="direccion" rows="2" required>/
+  )
+  // New optional textarea right after it, bound to partes.asegurado.direccion_comercial.
+  assert.match(
+    moduleSource,
+    new RegExp(
+      String.raw`name="direccion" rows="2" required>[^\n]*</textarea></label>\s*<label class="pf-field pf-field--wide"><span>Dirección comercial \(opcional\)</span><textarea name="direccion_comercial" rows="2" maxlength="500">\$\{escapeHtml\(valor\('partes\.asegurado\.direccion_comercial'\)\)\}</textarea>`
+    )
+  )
+  assert.match(moduleSource, /direccion_comercial: \(\) => text\('direccion_comercial'\)/)
+  assert.match(moduleSource, /'asegurado\.direccion_comercial': 'Dirección comercial'/)
+  assert.match(moduleSource, /'asegurado\.direccion': 'Dirección particular'/)
+  // Never part of a readiness list.
+  assert.doesNotMatch(moduleSource, /'direccion_comercial',/)
+  assert.doesNotMatch(moduleSource, /pendientes\.push\([^)]*direccion_comercial/)
+})
+
 test('PF-3 descripcion_detallada caps length, shows a live counter, and mirrors the backend limits', async () => {
   const [moduleSource, stylesheetSource, schemaSource] = await Promise.all([
     readFile(moduleUrl, 'utf8'),

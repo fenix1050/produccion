@@ -4065,3 +4065,28 @@ minimalista.pdf` (5 páginas, una por tema) con el logo rojo y negro. Por ser un
   en verde. PR #506 mergeado a `main` (`1f28b5a`) el 2026-11-05; probado en TEST (backend `43182455b86e`).
 - **Deploy:** backend (el PDF se genera ahí) y frontend (campo Número de póliza). TEST hecho; PROD pendiente; se suma al deploy manual a PROD de
   #486, #496, #498, #501, #502, #503 y frontend #497 a #500. Desplegar el backend primero.
+
+## 125. Textos de la Propuesta Formal MRC: alinear PROD con el modelo de TEST (2026-11-05)
+
+Al probar el deploy a PROD (backend `1e64a23`), el PDF de la Propuesta N.º 2 salió con textos de declaraciones distintos de
+los del modelo aprobado (Propuesta N.º 23 en TEST). No es un fallo del renderer v4: los textos viven en `propuesta_textos`
+y el PDF toma la versión publicada al emitir.
+
+**Diagnóstico (solo lectura, autorizado por Kevin):** se comparó `md5(contenido)` de las filas publicadas de `mrc` en TEST y
+PROD. Difieren 4 claves: `declaraciones_generales` (TEST v1, PROD v2), `declaracion_jurada_origen_fondos`, `condiciones_mrc` y
+`autorizaciones_tomador_poliza_digital` (v2 en ambas, con contenido distinto). Coinciden `coberturas_principales` (v3) y
+`clausula_adicional_cobranzas` (v1). Causa: las migraciones 077 y 078 se aplicaron en PROD pero sus textos nunca llegaron a TEST,
+así que el mismo número de versión guarda contenido distinto en cada base.
+
+**Decisión de Kevin:** el modelo de TEST es el que vale; PROD se alinea con TEST.
+
+**Migración `084_pf3_mrc_textos_alinear_con_test.sql`:** para cada una de las 4 claves inserta el contenido de TEST como la
+versión siguiente (`MAX(version)+1`), la publica y despublica la anterior; las versiones viejas quedan intactas. Es
+idempotente (si el contenido publicado ya es igual al objetivo, no hace nada) y no toca otras claves ni otros productos. En
+TEST es un no-op, porque ya publica ese contenido. Test estático (contenido byte a byte contra el hash de TEST) y ejecución real
+sobre un PostgreSQL descartable con datos tipo PROD: las 4 claves pasan a la versión 3 con el hash de TEST, el resto queda
+igual, y la segunda corrida no agrega filas.
+
+**Pendiente (Kevin, manual):** aplicar la 084 en PROD siguiendo `docs/RUNBOOK_DEPLOY_PROD.md`, etapa 2 (respaldo, ensayo sobre
+una restauración del dump, aplicar). Después emitir una Propuesta nueva y compararla con la N.º 23. Las ya emitidas, como la
+N.º 2, conservan su PDF.

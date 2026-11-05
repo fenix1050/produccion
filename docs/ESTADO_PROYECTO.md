@@ -4122,3 +4122,11 @@ frontend 21.
 **Cómo:** `docs/RUNBOOK_DEPLOY_PROD.md`, ejecutado por Kevin en la VPS un comando por vez. Backend: imagen `cotizador-backend:d823eb25…` (mismo ID de imagen, `d0e620e8aa67`, que la desplegada en TEST), `Up (healthy)`, `health 200`; rollback apuntando a `cotizador-backend:1e64a2312471…`. Frontend: copia sin `shared/config.js` (fecha intacta), `diff -rq` sin diferencias.
 
 **Verificación:** Kevin confirmó en `cotizador.lat` que el formulario muestra los cuatro campos y que el PDF de la Propuesta muestra la caja comercial con sus propios datos ("funciona perfecto"). No se pegó la salida del `grep` de errores del backend (paso 11) en esta sesión.
+
+## 128. Migración de zod 3 a 4 (alertas #34 y #35, 2026-11-05)
+
+**Problema:** dos alertas altas de Dependabot (zod podía agotar memoria al validar colecciones enormes con límite). La versión corregida es 4.6.6, y el PR #495 de Dependabot fallaba en `quality` con 8 tests.
+
+**Causa y cambio:** zod 4 ignora en silencio `invalid_type_error` y `required_error` (salían sus mensajes por defecto en inglés) y rechaza `Infinity` en el propio tipo `number`. Se pasó a la opción `error` en los esquemas de `cotizaciones`, `mrc` y `ramos` (mismos mensajes en español de antes) y `z.record` ahora lleva clave y valor. Solo el backend usa zod; no hay cambios de frontend ni de migraciones.
+
+**Verificación:** RED observado (8 tests) y GREEN: backend 729 pasan, 0 fallan; test nuevo de `plan_id` (RED 2, GREEN 2); `npm audit --omit=dev` sin vulnerabilidades. Pendiente: deploy a TEST con autorización y luego PROD manual (solo backend).

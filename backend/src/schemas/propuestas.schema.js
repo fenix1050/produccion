@@ -42,7 +42,9 @@ const descripcionDetalladaSchema = z
   })
   .optional()
 const jsonScalar = z.union([z.string(), z.number(), z.boolean(), z.null()])
-const jsonValue = z.lazy(() => z.union([jsonScalar, z.array(jsonValue), z.record(jsonValue)]))
+const jsonValue = z.lazy(() =>
+  z.union([jsonScalar, z.array(jsonValue), z.record(z.string(), jsonValue)])
+)
 
 export const propuestaIdParamsSchema = z.object({
   id: z.coerce.number().int().positive(),

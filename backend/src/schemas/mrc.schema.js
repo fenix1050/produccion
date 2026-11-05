@@ -18,7 +18,7 @@ const MONTO_MAXIMO = 999_999_999_999
 function monto(etiqueta) {
   const mensaje = `${etiqueta} supera el máximo permitido.`
   return z
-    .number({ invalid_type_error: `${etiqueta} debe ser un número.` })
+    .number({ error: `${etiqueta} debe ser un número.` })
     .finite(mensaje)
     .max(MONTO_MAXIMO, mensaje)
 }

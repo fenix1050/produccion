@@ -17,7 +17,7 @@ export const rubrosActividadQuerySchema = z.object({
 const idDeRuta = (sujeto) =>
   z.object({
     id: z.coerce
-      .number({ invalid_type_error: `El id del ${sujeto} debe ser un número` })
+      .number({ error: `El id del ${sujeto} debe ser un número` })
       .int(`El id del ${sujeto} debe ser un número entero`)
       .positive(`El id del ${sujeto} debe ser positivo`)
       .max(ID_MAXIMO, `El id del ${sujeto} es demasiado grande`),

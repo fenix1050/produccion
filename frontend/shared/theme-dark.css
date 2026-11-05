@@ -1119,6 +1119,34 @@ html[data-theme='dark'] .btn-outline {
   background: var(--tajy-chip-bg);
 }
 
+/* En dark el botón de contorno rojo sobre el fondo casi negro se perdía: relleno rojo tenue y borde
+   más marcado (mismos tokens que los chips rosados) para que se distinga del fondo de la fila. */
+html[data-theme='dark'] .historial-tabla__btn-oferta {
+  background: var(--tajy-pink-strong);
+  border-color: var(--tajy-red-hover);
+  color: var(--tajy-red-hover);
+}
+
+html[data-theme='dark'] .historial-tabla__btn-oferta:not(:disabled):hover {
+  background: var(--tajy-red);
+  color: #fff;
+}
+
+/* "Ver detalle" es un botón sin borde ni relleno (ghost): en dark, con el gris del cuerpo de
+   texto sobre el fondo casi negro, no se leía como botón. Texto en tinta clara y un contorno
+   sutil (inset box-shadow: no suma 2px de layout como un border) para que se vea accionable. */
+html[data-theme='dark'] .historial-tabla__btn-ghost {
+  color: var(--tajy-ink);
+  background: var(--tajy-chip-bg);
+  box-shadow: inset 0 0 0 1px var(--tajy-border-strong);
+}
+
+html[data-theme='dark'] .historial-tabla__btn-ghost:hover {
+  background: var(--tajy-pink);
+  color: var(--tajy-red-hover);
+  box-shadow: inset 0 0 0 1px var(--tajy-border-accent);
+}
+
 html[data-theme='dark'] .bv-volver:hover {
   color: var(--tajy-ink);
 }

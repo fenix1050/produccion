@@ -157,6 +157,7 @@ function mockearRepositorios(
         return payload.p_cotizacion_id
       },
       findCotizacionById: async (id) => ({ id, ...insertados }),
+      existePropuestaFormalCerrada: async () => false,
     },
   })
 

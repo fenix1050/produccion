@@ -22,6 +22,21 @@ export async function actualizarCotizacionAtomica(payload) {
   return data
 }
 
+// Una cotización con Propuesta Formal `emitida` o `anulada` ya no se puede editar: el RPC
+// `actualizar_cotizacion_atomica` borra las variantes, y la FK `propuestas_formales.
+// cotizacion_variante_id` (ON DELETE SET NULL) dispara el trigger que protege los snapshots
+// emitidos (migraciones 069/071) -> 500. Un borrador NO cuenta: no es inmutable. El join es
+// `propuestas_formales -> cotizacion_variantes!inner` filtrando por `cotizacion_id`.
+export async function existePropuestaFormalCerrada(cotizacionId) {
+  const { count, error } = await supabase
+    .from('propuestas_formales')
+    .select('id, cotizacion_variantes!inner(cotizacion_id)', { count: 'exact', head: true })
+    .eq('cotizacion_variantes.cotizacion_id', cotizacionId)
+    .in('estado', ['emitida', 'anulada'])
+  if (error) throw error
+  return (count ?? 0) > 0
+}
+
 // `*` ya expone `moneda`/`tipo_cambio_snapshot`/`tipo_cambio_fuente`/`tipo_cambio_fecha`
 // (migración 034) sin necesidad de listarlas a mano — son columnas reales de `cotizaciones`.
 export async function findCotizacionById(id) {
@@ -58,6 +73,10 @@ export async function findCotizacionById(id) {
 // variante `sin_franquicia` por cotización, así que no hay ambigüedad real al elegirla en el
 // frontend (ver historial.js, primaRepresentativa()).
 //
+// `propuestas_formales(estado)` (embebido por la FK cotizacion_variante_id, migración 069) deja que
+// el frontend deshabilite "Editar" cuando hay una Propuesta emitida/anulada: `cartas-aptas` no sirve
+// para eso porque excluye las cartas ya emitidas (migración 080).
+//
 // `*` expone `moneda` por fila (migración 034) — el frontend de historial la usa para no sumar
 // primas de cotizaciones en monedas distintas (requirement "Historial does not aggregate across
 // currencies").
@@ -77,7 +96,7 @@ export async function findCotizaciones({
     // Oferta" fila por fila sin pegarle a /ramos de nuevo (mismo criterio que
     // BUILDERS_POR_CALCULADOR en backend/src/templates/oferta/index.js: hoy solo 'mrc').
     .select(
-      '*, ramos(nombre_display, calculador), planes(nombre), cotizacion_variantes(tipo_franquicia, prima)',
+      '*, ramos(nombre_display, calculador), planes(nombre), cotizacion_variantes(tipo_franquicia, prima, propuestas_formales(estado))',
       { count: 'exact' }
     )
     .order('created_at', { ascending: false })

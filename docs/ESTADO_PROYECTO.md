@@ -3872,3 +3872,196 @@ campos vacíos muestra "Ingresá tu email y tu contraseña." (#482). Logs del ba
 
 **Pendiente:** el próximo deploy de backend (incluye #486); el resto de pendientes de la sección 114 que no se
 mencionan acá.
+
+## 116. Editar una cotización con Propuesta Formal emitida responde 409 en vez de 500 (2026-11-04)
+
+**Síntoma (TEST):** al editar la cotización 287 (MRC-591) el modal "Proceso de cotización" fallaba en "Generando Carta
+Oferta" con un 500 sobre `PUT /cotizaciones/287`. PROD no estaba afectado.
+
+**Causa (probada en TEST):** `actualizar_cotizacion_atomica` (migración 082) borra las `cotizacion_variantes` de la
+cotización; la FK `propuestas_formales.cotizacion_variante_id` es `ON DELETE SET NULL` (069), y ese UPDATE implícito lo
+bloquea el trigger `proteger_propuesta_formal_emitida` (071): "Los snapshots y artefactos de Propuesta Formal emitidos son
+inmutables" (P0001). Reproducido con `BEGIN; DELETE FROM cotizacion_variantes WHERE cotizacion_id = 287; ROLLBACK;`
+(la 287 tiene la Propuesta 23 `emitida`; los datos quedaron intactos). No se capturó el stack del 500 original: la
+conclusión es que el mecanismo coincide exacto con el error visto, no que se haya observado el mismo intento.
+
+**Decisión (Kevin):** una cotización con Propuesta Formal emitida ya no se puede editar; no se anula la Propuesta
+automáticamente.
+
+**Cambio:** `actualizarCotizacion` consulta `existePropuestaFormalCerrada(id)` (nuevo, en `cotizaciones.repository.js`:
+`propuestas_formales` con join `cotizacion_variantes!inner`, estados `emitida`/`anulada`) justo después del chequeo de los
+30 días y responde 409 "Esta cotización ya tiene una Propuesta Formal emitida y no se puede editar." sin llegar a la RPC.
+Un borrador no bloquea. Sin migraciones.
+
+**Verificación:** RED observado (10 pass / 2 fail) y GREEN en el servicio; tests unitarios del repositorio agregados
+después de la implementación; `npm test` completo: 635 tests, 634 pass, 0 fail, 1 skipped preexistente.
+
+**Pendiente:**
+
+- La consulta PostgREST (`!inner` con filtro sobre la tabla embebida) está solo mockeada; probarla contra TEST tras el
+  deploy. Hoy no hay en TEST una cotización de menos de 30 días con Propuesta emitida (la 287 vence primero por la regla
+  de los 30 días), así que hay que crear una.
+- Frontend: deshabilitar "Editar" en el historial cuando hay Propuesta emitida (hoy el usuario llega al 409).
+- Renombrar el botón "Carta Oferta" del historial a "Descargar Carta Oferta".
+- Deploy a TEST y a PROD, manual como siempre; el backend de PROD sigue sin #486.
+
+## 117. Historial: "Editar" deshabilitado con Propuesta emitida y botón "Descargar Carta Oferta" (2026-11-04)
+
+Complementa la sección 116 (el backend responde 409 al editar una cotización con Propuesta Formal emitida/anulada).
+
+- **Editar deshabilitado:** el historial ya cargaba `GET /propuestas/cartas-aptas` con `cotizacion_id` y
+  `propuesta_actual_estado`, así que no hizo falta tocar el backend. Nueva función pura `propuestaBloqueaEdicion(carta)` en
+  `frontend/historial/propuesta-accion.js` (true con `emitida` o `anulada`); `puedeEditar`/`motivoNoEditable` de
+  `historial.js` la usan y el tooltip del botón explica el motivo. El backend sigue siendo la autoridad: si el frontend no
+  detecta la Propuesta (p. ej. la cotización no está entre las 100 cartas que trae el listado, o la propuesta actual es un
+  borrador posterior a una anulada), el usuario ve el 409 con el mensaje claro.
+- **Rename:** el botón "Carta Oferta" de la fila pasa a "Descargar Carta Oferta" (habilitado y deshabilitado).
+- **Verificación:** RED observado (`propuestaBloqueaEdicion is not defined`), GREEN; `node --test` del frontend: 133 tests,
+  133 pass. El test de fuente de `historial.test.js` pasó a aceptar imports adicionales de `propuesta-accion.js`. **No se
+  verificó en un navegador** (render del botón deshabilitado y su tooltip): queda para TEST tras el deploy del frontend.
+- **Pendiente:** probar en TEST (backend 409 + frontend); deploy a TEST y PROD, manual.
+
+## 118. Corrección: el historial no detectaba la Propuesta emitida; acciones sin scroll horizontal (2026-11-04)
+
+**Error de la sección 117:** se asumió que `GET /propuestas/cartas-aptas` devolvía las cartas con su Propuesta emitida y
+`propuesta_actual_estado`. No es así: la migración 080 (`motivo_ineligibilidad_carta_propuesta`) **excluye** las cartas que
+ya tienen una Propuesta `emitida`. Detectado en TEST (2026-11-04): la cotización MRC-639, con la Propuesta 19 emitida, seguía
+mostrando "Editar" habilitado. No se había verificado esa premisa contra las migraciones ni probado en un navegador.
+
+**Corrección:**
+
+- `findCotizaciones` embebe `propuestas_formales(estado)` dentro de `cotizacion_variantes` (FK `cotizacion_variante_id`,
+  migración 069): la misma relación que usa el 409 del backend (sección 116).
+- `propuestaBloqueaEdicion(carta)` se reemplaza por `cotizacionTienePropuestaCerrada(cotizacion)` en `propuesta-accion.js`
+  (true con `emitida`/`anulada` en alguna variante). `historial.js` la usa en `puedeEditar` y `motivoNoEditable`.
+- **Scroll horizontal:** con tres acciones ("Ver detalle", "Preparar propuesta", "Descargar Carta Oferta") la columna
+  ensanchaba la tabla. `.historial-tabla__actions` pasa a `flex-wrap: wrap`; cada botón conserva su texto en una línea.
+
+**Verificación:** RED observado (`does not provide an export named 'cotizacionTienePropuestaCerrada'`); el test nuevo del
+repositorio falla sin el embed (10 pass / 1 fail) y pasa con él (11/11); frontend de historial 14/14. Pendiente verificar el
+embed PostgREST y el CSS contra TEST.
+
+## 119. Historial: botón de descarga de solo ícono y contraste en modo oscuro (2026-11-04)
+
+Tras la corrección de la sección 118 (probada en TEST por Kevin: "Editar" deshabilitado con Propuesta emitida funciona), el
+layout de acciones seguía sin gustar: con tres botones la fila bajaba a dos líneas, y en modo oscuro el botón de contorno rojo
+se perdía contra el fondo.
+
+- **Decisión (Kevin, opción A):** "Descargar Carta Oferta" pasa a ser un botón de **solo ícono** (flecha de descarga, SVG
+  inline `ICON_DESCARGA`), con el texto en `aria-label` y `title`. La variante deshabilitada (ramo sin builder de PDF)
+  también, con su motivo. `.historial-tabla__actions` vuelve a `flex-wrap: nowrap`: sin dos líneas y sin scroll lateral.
+- `descargarOferta` ya no reemplaza `textContent` (habría borrado el ícono): guarda y restaura `innerHTML` y `aria-label`, y
+  marca el estado "descargando" con la clase `historial-tabla__btn-icono--cargando` (opacidad reducida, cursor `progress`).
+- **Modo oscuro:** `.historial-tabla__btn-oferta` con relleno `--tajy-pink-strong`, borde y color `--tajy-red-hover`, y hover
+  sólido rojo (`shared/theme-dark.css`).
+- **Verificación:** RED observado (3 tests de fuente en `historial.test.js`); frontend completo 136/136. Render estático de la
+  fila con los CSS reales en Chromium (Playwright), claro y oscuro: `scrollWidth == clientWidth` (sin scroll lateral) y
+  acciones en una línea (34 px de alto). No es la pantalla real con datos: falta verlo en TEST tras el deploy del frontend
+  (solo frontend, sin backend).
+
+## 120. Historial: "Ver detalle" legible en modo oscuro (2026-11-04)
+
+Seguimiento de la sección 119 (Kevin, probando en TEST): el botón "Ver detalle" se perdía contra el fondo oscuro. Era un
+botón ghost (sin borde ni relleno) con el gris del cuerpo de texto (`--tajy-text-body`, #bfbfc5) sobre #0e0e12: no se leía
+como accionable. Solo en modo oscuro (`shared/theme-dark.css`): texto en `--tajy-ink`, fondo `--tajy-chip-bg` y contorno
+`inset box-shadow` con `--tajy-border-strong` (no suma 2 px de layout, a diferencia de un `border`); hover rosado con
+contorno `--tajy-border-accent`. El tema claro no cambia. Verificado con el render estático en Chromium (claro y oscuro): sin
+scroll lateral y acciones de 34 px de alto; es un render aislado, falta verlo en TEST con datos reales tras el deploy.
+
+## 121. Propuesta Formal (PDF v3): más separación entre el banner y la tarjeta de datos (2026-11-04)
+
+Pedido de Kevin: la tarjeta de datos del encabezado (Propuesta N.º, Fecha de Emisión, Vigencia, etc.) se veía pegada al banner
+rojo. Causa: `.header-meta` tenía `margin-top: -1mm` en `backend/src/templates/propuesta/mrc-v3.js`, o sea que se superponía
+1 mm al banner. Ahora `margin-top: 2mm` (3 mm más de separación).
+
+- **Alcance:** solo el template v3 y solo los PDF que se generen de ahora en adelante. Las Propuestas ya emitidas guardan su
+  PDF en Storage y no se regeneran (inmutables, trigger de la migración 071). No se subió `PROPUESTA_FORMAL_V3_RENDERER_REVISION`
+  (`r1`): los cambios visuales previos del v3 tampoco la subieron.
+- **Riesgo conocido:** el servicio escala solo de layout (`two-page` → `three-page` → `three-page-tall` → `four-page`) si algo no
+  entra, así que un documento muy denso que justo entraba en dos páginas podría pasar a tres. No falla: solo cambia el layout.
+- **Verificación:** RED observado (`margin-top: 2mm` ausente); tests de plantillas 51/51; hook de commit con las suites
+  completas. Render con el servicio real (`renderPropuestaMrcPdf`) sobre el snapshot de la Propuesta 25 de TEST, antes y
+  después: ambos de 3 páginas, la página 1 entra completa y la separación se ve. Falta confirmar en TEST con un PDF nuevo.
+- **Deploy:** solo backend (el PDF se genera ahí). Pendiente.
+
+## 122. Propuesta Formal (PDF v3, layout de 3 páginas): Declaraciones y Condiciones llenan su caja (2026-11-04)
+
+Pedido de Kevin: en la página 2 sobraba espacio al final de las cajas de Declaraciones y Condiciones. Causa: el ajuste de
+fuente (`data-fit-target` / `data-fit-minimum` / `data-fit-step` en `backend/src/templates/propuesta/mrc-v3.js`) parte del
+tamaño objetivo y solo lo baja hasta que el texto entra; nunca sube, y el objetivo era 8 px.
+
+- **Cambio:** `legalFitTarget` = 10 px **solo** con `layout === 'three-page'` (cajas flexibles y acotadas); el ajuste lo reduce
+  hasta que entra y llena la caja. En `two-page`, `three-page-tall` y `four-page` se mantiene en 8: ahí las cajas miden lo
+  que mide su texto (`flex: 0 0 auto`) y un objetivo mayor desbordaría la página.
+- **Alcance:** solo PDF nuevos; las Propuestas emitidas guardan su PDF y no se regeneran. Sin subir la revisión del renderer.
+- **Límite:** con textos cortos el tamaño llega a 10 px y no más; con textos largos el ajuste baja solo.
+- **Verificación:** RED observado; tests de plantillas 51/51; render con el servicio real sobre el snapshot de la Propuesta 25
+  de TEST: 3 páginas y ambas cajas llenas (Kevin lo vio y aprobó). Falta confirmar en TEST con un PDF nuevo tras el deploy.
+- **Deploy:** solo backend. Pendiente.
+
+## 123. Propuesta Formal (PDF v3): textos de la franja de pago en negro (2026-11-04)
+
+Pedido de Kevin (probando el PDF nuevo en TEST): los valores en rojo de "Costo del seguro" y "Forma de pago" pasan a negro, y
+también el resto de los textos de esas cards. En `backend/src/templates/propuesta/mrc-v3.js`: `.payment-line` y
+`.payment-line span` (etiquetas y valores) a `#000`; `.debit-copy`, `.debit-type`, `.debit-line` y `.debit-bank` ("No disponible",
+que era gris) a `#000`; y `.collection-clause .conditions-flow` a `#000` solo para la Cláusula adicional de cobranzas (la regla
+compartida `.conditions-flow` de Declaraciones y Condiciones no cambia). Por pedido posterior de Kevin, también los **títulos** de
+las cards pasan a negro (`.finance-card h2` y `.collection-clause .section-heading`): se mantienen el fondo rosado degradé y el
+ícono rojo.
+
+- **Interpretación:** "los textos de las cards" se tomó como todo el texto de la franja de pago (Costo del seguro, Forma de
+  pago, Autorización de débito y Cláusula de cobranzas). Ajustable si se quería menos o más alcance.
+- **Alcance:** solo PDF nuevos; las Propuestas emitidas guardan su PDF. Sin subir la revisión del renderer.
+- **Verificación:** RED observado; tests de plantillas 53/53; render con el servicio real sobre el snapshot de la Propuesta 25
+  de TEST: 3 páginas y todo el texto en negro. Falta confirmar en TEST con un PDF nuevo tras el deploy del backend.
+
+## 124. Propuesta Formal (PDF v4): rediseño minimalista como renderer nuevo (2026-11-04)
+
+Pedido de Kevin: rediseño grande de la Propuesta Formal MRC, replicando lo más fiel posible `docs/references/Modelo propuesta formal
+minimalista.pdf` (5 páginas, una por tema) con el logo rojo y negro. Por ser un rediseño grande va como **revisión nueva**
+`pf3-mrc-renderer-v4-r1` que convive con v1, v2 y v3 sin modificarlas.
+
+- **Qué cambia:**
+  - Template nuevo `backend/src/templates/propuesta/mrc-v4.js`: portada con identificación, ubicaciones, riesgo y franja de
+    Suma Asegurada / Prima; página de coberturas (tabla de sumas, coberturas principales, barras de distribución del capital y
+    sublímites); declaraciones; disposiciones complementarias; y costo y forma de pago con firmas.
+  - Paginación con continuación (`mrc-v4-pagination.js`): una página por tema; si un tema desborda, sigue en una página extra del
+    mismo tema con encabezado compacto "· continuación". No hay ajuste de fuente ni `V3_LAYOUTS`. El planificador es una función
+    pura probada en Node; un script en la página mide, mueve bloques y renumera "Página X de Y". Falla en voz alta
+    (`ProposalPaginationError`, `PF_PDF_PAGINATION_FAILED`) si un bloque no entra ni en una página entera.
+  - Servicio: rama v4 en `renderPropuestaMrcPdf`, `waitForProposalV4Ready` y `printV4ProposalPdf` (A4, sin márgenes). El alias
+    `PROPUESTA_FORMAL_RENDERER_REVISION` pasa a v4, así que las Propuestas **nuevas** usan v4.
+  - Campo opcional **Número de póliza** (`numero_poliza`, máx. 40) en el paso 5 del formulario y en el schema del borrador. El
+    encabezado muestra la celda "Póliza N.º" solo si se cargó; no entra en `readiness` y no bloquea la emisión.
+- **Decisiones de Kevin:** pie "TAJY • Aseguradora Tajy Prop. Coop. S.A." / "Propuesta N.º n · Página X de Y"; sin recuadro
+  amarillo de "Nota de revisión"; sin los textos de maqueta ("Documento conceptual", "Diseño alternativo B"); la celda de
+  Renovación se oculta hasta que exista la API de Sebaout; Modalidad 1020 literal como en v3.
+- **Alcance:** solo PDF nuevos. Las Propuestas emitidas guardan su PDF y snapshot inmutables (trigger de la migración 071) y siguen
+  con su renderer; v1, v2 y v3 siguen resolviéndose. Sin migraciones.
+- **Desviaciones conocidas respecto del modelo:** la fuente es Arial/Helvetica/Liberation Sans (el modelo usa Inter y el renderer
+  no carga fuentes externas); el logo rojo/negro incluye "ASEGURADORA" y se ve más grande que la ficha roja del modelo; en
+  Condiciones particulares se conservaron los párrafos que restauró la migración 078, así que esa página es unas líneas más
+  larga; las dos columnas de Coberturas principales siguen el orden del texto fuente. Los saltos de línea que el usuario escribe
+  en "Descripción detallada" se respetan (`white-space: pre-line`), por lo que ese texto puede verse más angosto que en el modelo.
+- **Imperfecciones menores:** la tabla de sumas no repite su encabezado en una página de continuación, y esas páginas pueden
+  terminar con espacio en blanco porque los bloques son atómicos.
+- **Verificación:** RED observado en cada pieza (schema, formulario, constante, template por página, planificador, servicio,
+  dispatch, activación). 138 tests en verde en los archivos tocados más v3, y el hook de commit corrió las suites completas.
+  Render con el servicio real sobre el snapshot de la Propuesta 25 de TEST (lectura de solo lectura autorizada por Kevin): v3
+  daba 3 páginas y v4 da 5 páginas A4 con todos los datos, barras de distribución y sublímites parseados del texto real.
+  Fixtures densos (45 coberturas, observaciones y textos legales largos): 8 páginas, sin pérdida ni duplicación de bloques.
+  Falta confirmar en TEST con un PDF nuevo tras el deploy.
+- **Ajustes tras probar en TEST (2026-11-04):** (1) el campo Número de póliza usa el helper `inputField` (clase `field-input`) como
+  el resto del paso 5, con `maxLength` opcional; (2) la X de los recuadros marcados es un SVG vectorial (antes gradientes que
+  se veían borrosos) con recuadro más grande y borde oscuro; (3) la segunda línea de los títulos pasa de gris a rojo de marca
+  (portada y títulos de tema); (4) la fila "Modalidad de firma" ofrece solo Firma Digital y Firma Manuscrita: la v4 filtra la
+  opción "Facsimilar" del texto oficial, que en la base sigue completo (v1 a v3 lo siguen mostrando); quitarlo del texto
+  oficial requiere una versión nueva desde el panel de textos de Propuesta.
+- **Segunda ronda de ajustes (2026-11-05):** (5) el número de tarjeta de la autorización de débito queda en blanco, sin "No
+  disponible": el asegurado lo completa a mano en la hoja impresa; (6) la banda de Suma asegurada y Prima pasa del azul
+  pizarra oscuro al gris claro de la paleta (`--v4-wash`, el mismo de la barra "Proveedor del Estado"), con etiquetas y montos
+  en tinta oscura; (7) CodeQL marcó 3 alertas `js/bad-tag-filter` en `mrc-v4.test.js` (regex de `<script>` sin distinguir
+  mayúsculas): falsos positivos, porque solo inspeccionan el HTML propio, pero se corrigieron con el flag `/i` y el check quedó
+  en verde. PR #506 mergeado a `main` (`1f28b5a`) el 2026-11-05; probado en TEST (backend `43182455b86e`).
+- **Deploy:** backend (el PDF se genera ahí) y frontend (campo Número de póliza). TEST hecho; PROD pendiente; se suma al deploy manual a PROD de
+  #486, #496, #498, #501, #502, #503 y frontend #497 a #500. Desplegar el backend primero.

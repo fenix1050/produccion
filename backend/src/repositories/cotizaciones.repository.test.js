@@ -242,3 +242,100 @@ test('findCotizaciones: un filtro de cliente sin comodines mantiene el patrón %
 
   assert.equal(llamadasIlike[0].patron, '%Perez%')
 })
+
+// Una Propuesta Formal emitida/anulada bloquea la edición de su cotización. El builder falso
+// registra la consulta exacta (join, filtro por cotización y estados cerrados): contra la base
+// real solo se puede probar tras el deploy a TEST.
+function mockearSupabasePropuestaCerrada(t, respuesta) {
+  const llamadas = { from: [], select: [], eq: [], in: [] }
+  const builder = {
+    select(columnas, opciones) {
+      llamadas.select.push({ columnas, opciones })
+      return this
+    },
+    eq(columna, valor) {
+      llamadas.eq.push({ columna, valor })
+      return this
+    },
+    in(columna, valores) {
+      llamadas.in.push({ columna, valores })
+      return this
+    },
+    then(resolve) {
+      return Promise.resolve(respuesta).then(resolve)
+    },
+  }
+  t.mock.module('../config/supabase.js', {
+    namedExports: {
+      supabase: {
+        from: (tabla) => {
+          llamadas.from.push(tabla)
+          return builder
+        },
+      },
+    },
+  })
+  return llamadas
+}
+
+test('existePropuestaFormalCerrada: consulta propuestas emitidas/anuladas de la cotización y devuelve true si hay', async (t) => {
+  const llamadas = mockearSupabasePropuestaCerrada(t, { count: 1, error: null })
+  const { existePropuestaFormalCerrada } =
+    await import('./cotizaciones.repository.js?case=propuesta-cerrada-true')
+
+  assert.equal(await existePropuestaFormalCerrada(287), true)
+  assert.deepEqual(llamadas.from, ['propuestas_formales'])
+  assert.match(llamadas.select[0].columnas, /cotizacion_variantes!inner\(cotizacion_id\)/)
+  assert.deepEqual(llamadas.eq, [{ columna: 'cotizacion_variantes.cotizacion_id', valor: 287 }])
+  assert.deepEqual(llamadas.in, [{ columna: 'estado', valores: ['emitida', 'anulada'] }])
+})
+
+test('existePropuestaFormalCerrada: devuelve false si no hay propuestas cerradas (count 0 o null)', async (t) => {
+  mockearSupabasePropuestaCerrada(t, { count: 0, error: null })
+  const { existePropuestaFormalCerrada } =
+    await import('./cotizaciones.repository.js?case=propuesta-cerrada-false')
+
+  assert.equal(await existePropuestaFormalCerrada(5), false)
+})
+
+test('existePropuestaFormalCerrada: propaga el error de Supabase en vez de asumir que no hay propuesta', async (t) => {
+  const errorPostgres = { code: '08006', message: 'connection failure' }
+  mockearSupabasePropuestaCerrada(t, { count: null, error: errorPostgres })
+  const { existePropuestaFormalCerrada } =
+    await import('./cotizaciones.repository.js?case=propuesta-cerrada-error')
+
+  await assert.rejects(
+    () => existePropuestaFormalCerrada(5),
+    (err) => err === errorPostgres
+  )
+})
+
+// El Historial deshabilita "Editar" con una Propuesta emitida/anulada usando este embed: no puede
+// salir de `cartas-aptas` (excluye las cartas ya emitidas, migración 080).
+test('findCotizaciones: embebe las propuestas formales de cada variante para detectar las cerradas', async (t) => {
+  const selects = []
+  const builder = {
+    select(columnas) {
+      selects.push(columnas)
+      return this
+    },
+    order() {
+      return this
+    },
+    range() {
+      return this
+    },
+    then(resolve) {
+      return Promise.resolve({ data: [], error: null, count: 0 }).then(resolve)
+    },
+  }
+  t.mock.module('../config/supabase.js', {
+    namedExports: { supabase: { from: () => builder } },
+  })
+  const { findCotizaciones } =
+    await import('./cotizaciones.repository.js?case=listado-embebe-propuestas')
+
+  await findCotizaciones({})
+
+  assert.match(selects[0], /cotizacion_variantes\([^)]*propuestas_formales\(estado\)\)/)
+})

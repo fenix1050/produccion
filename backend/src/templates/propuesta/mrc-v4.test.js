@@ -99,7 +99,7 @@ test('v4 skeleton renders the five topic pages in order with the contract markup
   assert.equal((html.match(/<header class="page-header"/g) ?? []).length, 4)
   assert.equal((html.match(/<header class="cover-header"/g) ?? []).length, 1)
   assert.doesNotMatch(html, /data-fit-/)
-  assert.equal((html.match(/<script>/g) ?? []).length, 1)
+  assert.equal((html.match(/<script>/gi) ?? []).length, 1)
 })
 
 test('v4 cover header shows eyebrow, title, proposal number and issue date', () => {
@@ -1016,7 +1016,7 @@ test('v4 starts in the pending pagination state and re-exports the pure planner'
 
 test('v4 embeds a single pagination script after the last page, serialized from the pure planner', () => {
   const html = build()
-  const script = /<script>([\s\S]*?)<\/script>/.exec(html)?.[1]
+  const script = /<script>([\s\S]*?)<\/script\s*>/i.exec(html)?.[1]
 
   assert.ok(script, 'inline script present')
   assert.ok(html.indexOf('<script>') > html.lastIndexOf('</article>'))
@@ -1029,7 +1029,7 @@ test('v4 embeds a single pagination script after the last page, serialized from 
 
 test('v4 pagination script carries the continuation header of every topic as inert JSON', () => {
   const html = build()
-  const script = /<script>([\s\S]*?)<\/script>/.exec(html)[1]
+  const script = /<script>([\s\S]*?)<\/script\s*>/i.exec(html)[1]
   const headers = JSON.parse(/var HEADERS = (\{.*?\});$/ms.exec(script)[1])
 
   assert.deepEqual(Object.keys(headers), [

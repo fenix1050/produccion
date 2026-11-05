@@ -3,12 +3,14 @@ import { readFile } from 'node:fs/promises'
 import { getBrowser } from '../templates/oferta/pdf-utils.js'
 import { buildMrcPropuestaV2Html } from '../templates/propuesta/mrc-v2.js'
 import { buildMrcPropuestaV3Html } from '../templates/propuesta/mrc-v3.js'
+import { MRC_V4_TOPICS, buildMrcPropuestaV4Html } from '../templates/propuesta/mrc-v4.js'
 import { buildMrcPropuestaHtml } from '../templates/propuesta/mrc.js'
 
 import {
   PROPUESTA_FORMAL_V1_RENDERER_REVISION,
   PROPUESTA_FORMAL_V2_RENDERER_REVISION,
   PROPUESTA_FORMAL_V3_RENDERER_REVISION,
+  PROPUESTA_FORMAL_V4_RENDERER_REVISION,
 } from './document-snapshot.service.js'
 
 const TAJY_LOGO_PATH = new URL('../assets/tajy-logo.svg', import.meta.url)
@@ -72,6 +74,18 @@ export class ProposalFitOverflowError extends Error {
     this.code = 'PF_PDF_FIT_OVERFLOW'
     this.fitState = 'overflow'
     this.fitEvidence = fitEvidence
+  }
+}
+
+export class ProposalPaginationError extends Error {
+  constructor(state, reason = null) {
+    super(
+      `MRC proposal pagination did not complete safely (${state}${reason ? `: ${reason}` : ''})`
+    )
+    this.name = 'ProposalPaginationError'
+    this.code = 'PF_PDF_PAGINATION_FAILED'
+    this.paginationState = state
+    this.reason = reason
   }
 }
 
@@ -229,6 +243,55 @@ export async function printV3ProposalPdf(page) {
   )
 }
 
+// Waits for the v4 in-page paginator, then validates its metrics: at least the five base pages
+// and every topic present with at least one page. Returns the validated metrics.
+export async function waitForProposalV4Ready(page) {
+  try {
+    await page.waitForFunction(
+      () => globalThis.document.documentElement.dataset.proposalPagination !== 'pending',
+      { timeout: 5000 }
+    )
+  } catch {
+    throw new ProposalPaginationError('timeout')
+  }
+  const result = await page.evaluate(() => ({
+    status: globalThis.document.documentElement.dataset.proposalPagination,
+    error: globalThis.__proposalPaginationError ?? null,
+    metrics: globalThis.__proposalPaginationMetrics ?? null,
+  }))
+  if (result.status === 'error') {
+    throw new ProposalPaginationError('error', result.error ? String(result.error) : null)
+  }
+  if (result.status !== 'complete') throw new ProposalPaginationError('invalid-state')
+
+  const { metrics } = result
+  if (!metrics || typeof metrics !== 'object') throw new ProposalPaginationError('missing-metrics')
+  if (!Number.isInteger(metrics.pages) || metrics.pages < MRC_V4_TOPICS.length) {
+    throw new ProposalPaginationError('invalid-metrics')
+  }
+  const topicPages = new Map(
+    (Array.isArray(metrics.topics) ? metrics.topics : []).map((entry) => [
+      entry?.topic,
+      entry?.pages,
+    ])
+  )
+  if (MRC_V4_TOPICS.some((topic) => !(topicPages.get(topic) >= 1))) {
+    throw new ProposalPaginationError('incomplete-metrics')
+  }
+  return metrics
+}
+
+export async function printV4ProposalPdf(page) {
+  await waitForProposalV4Ready(page)
+  return Buffer.from(
+    await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      margin: { top: '0', bottom: '0', left: '0', right: '0' },
+    })
+  )
+}
+
 function isV3LayoutOverflow(error) {
   return (
     error instanceof ProposalFitOverflowError ||
@@ -270,8 +333,9 @@ export async function renderPropuestaMrcPdf(snapshot) {
   const usesV1Renderer = !rendererIdentity || revision === PROPUESTA_FORMAL_V1_RENDERER_REVISION
   const usesV2Renderer = revision === PROPUESTA_FORMAL_V2_RENDERER_REVISION
   const usesV3Renderer = revision === PROPUESTA_FORMAL_V3_RENDERER_REVISION
+  const usesV4Renderer = revision === PROPUESTA_FORMAL_V4_RENDERER_REVISION
 
-  if (!usesV1Renderer && !usesV2Renderer && !usesV3Renderer) {
+  if (!usesV1Renderer && !usesV2Renderer && !usesV3Renderer && !usesV4Renderer) {
     throw new ProposalRendererRevisionError(revision)
   }
 
@@ -279,6 +343,12 @@ export async function renderPropuestaMrcPdf(snapshot) {
   const page = await browser.newPage()
   try {
     const logoDataUri = await getTajyLogoDataUri()
+    if (usesV4Renderer) {
+      await page.setContent(buildMrcPropuestaV4Html(snapshot, { tajyLogoDataUri: logoDataUri }), {
+        waitUntil: 'load',
+      })
+      return await printV4ProposalPdf(page)
+    }
     if (usesV3Renderer) {
       const headerBackgroundDataUri = await getProposalHeaderBackgroundDataUri()
       const footerSloganDataUri = await getProposalFooterSloganDataUri()

@@ -159,7 +159,7 @@ export const PROPUESTA_FORMAL_V3_STYLE = `
   .header-page { justify-self: end; padding: 1.3mm 2mm; border: .7px solid rgba(255,255,255,.95); border-radius: 5mm; font-size: 7.8px; font-weight: 700; white-space: nowrap; }
   .header-meta {
     min-height: 21mm;
-    margin-top: -1mm;
+    margin-top: 2mm;
     padding: 2mm 2.5mm;
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -262,20 +262,21 @@ export const PROPUESTA_FORMAL_V3_STYLE = `
   .payment-row-shell { min-height: 0; padding: 1mm; border: .7px solid var(--v3-line); border-radius: var(--v3-radius); }
   .payment-row { min-height: 0; display: grid; grid-template-columns: 1fr 1fr 1.55fr; gap: 1.5mm; }
   .finance-card { min-width: 0; border: .7px solid var(--v3-line); border-radius: 1.7mm; overflow: hidden; }
-  .finance-card h2 { min-height: 7mm; margin: 0; padding: 1mm 1.5mm; display: flex; align-items: center; gap: 2mm; color: var(--v3-red); background: linear-gradient(90deg, var(--v3-pink), #fff); font-size: 8px; text-transform: uppercase; }
+  .finance-card h2 { min-height: 7mm; margin: 0; padding: 1mm 1.5mm; display: flex; align-items: center; gap: 2mm; color: #000; background: linear-gradient(90deg, var(--v3-pink), #fff); font-size: 8px; text-transform: uppercase; }
   .finance-card h2 .icon { width: 6.5mm; height: 6.5mm; padding: 1.25mm; }
   .payment-lines { padding: 1.5mm 2.2mm; }
-  .payment-line { min-height: 6mm; padding: .8mm 0; display: grid; grid-template-columns: 45% 55%; align-items: center; border-bottom: .5px solid var(--v3-line); font-size: 7.2px; line-height: 1.25; }
+  .payment-line { min-height: 6mm; padding: .8mm 0; display: grid; grid-template-columns: 45% 55%; align-items: center; border-bottom: .5px solid var(--v3-line); color: #000; font-size: 7.2px; line-height: 1.25; }
   .payment-line:last-child { border-bottom: 0; }
-  .payment-line span { color: var(--v3-red); text-align: right; font-size: 7.4px; font-weight: 700; }
+  .payment-line span { color: #000; text-align: right; font-size: 7.4px; font-weight: 700; }
   .cost-total { margin: 0 -1mm; padding: 1.8mm 1mm; border-radius: 1mm; background: var(--v3-pink); font-size: 8.8px; }
-  .debit-copy { min-height: 12mm; padding: 1.5mm; font-size: 7px; line-height: 1.15; overflow-wrap: anywhere; }
-  .debit-type { min-height: 5mm; padding: 0 1.5mm; display: flex; align-items: center; gap: 1mm; white-space: nowrap; font-size: 6.8px; }
+  .debit-copy { min-height: 12mm; padding: 1.5mm; color: #000; font-size: 7px; line-height: 1.15; overflow-wrap: anywhere; }
+  .debit-type { min-height: 5mm; padding: 0 1.5mm; display: flex; align-items: center; gap: 1mm; white-space: nowrap; color: #000; font-size: 6.8px; }
   .debit-box { width: 3.3mm; height: 3.3mm; border: .65px solid var(--v3-muted); }
-  .debit-bank { margin: .8mm 1.5mm; padding: .8mm 0; min-height: 4mm; border-bottom: .65px solid var(--v3-line); text-align: right; color: var(--v3-muted); }
-  .debit-line { min-height: 4.5mm; padding: 0 1.5mm; display: grid; grid-template-columns: 15mm 1fr; align-items: center; font-size: 6.8px; }
+  .debit-bank { margin: .8mm 1.5mm; padding: .8mm 0; min-height: 4mm; border-bottom: .65px solid var(--v3-line); text-align: right; color: #000; }
+  .debit-line { min-height: 4.5mm; padding: 0 1.5mm; display: grid; grid-template-columns: 15mm 1fr; align-items: center; color: #000; font-size: 6.8px; }
+  .collection-clause .conditions-flow { color: #000; }
   .debit-line i { height: 4mm; border: .65px solid var(--v3-muted); border-radius: .7mm; }
-  .collection-clause .section-heading { color: var(--v3-red); background: linear-gradient(90deg, var(--v3-pink), #fff); }
+  .collection-clause .section-heading { color: #000; background: linear-gradient(90deg, var(--v3-pink), #fff); }
   .collection-clause .legal-paragraph { margin: 0; font-size: 7px; line-height: 1.15; overflow-wrap: anywhere; }
   .observations { min-height: 0; }
   .observation-value { min-height: 4mm; padding: 1mm; font-size: 8px; line-height: 1.3; overflow-wrap: anywhere; white-space: normal; }
@@ -608,8 +609,14 @@ export function buildMrcPropuestaV3Html(
   const insuredSection = insuredPanel(insured, proposer, draft)
   const modalitySection = `<section class="modality">${icon('shield')}<div><b>Modalidad de la Cobertura Solicitada : 1020</b><small>RIESGOS VARIOS / MULTIRRIESGO COMERCIO</small></div></section>`
   const riskSection = riskTable(draft, risk, coverages, totalCoverage, commercial.variante?.prima)
-  const declarationsSection = `<section class="card declarations-box"><h2 class="section-heading">${icon('document')}Declaraciones</h2><div class="conditions-flow fit-flex fit-box" data-fit-section="declarations" data-fit-target="8" data-fit-minimum="6" data-fit-step="0.2">${declarations}${funds}${authorizations}</div></section>`
-  const conditionsSection = `<section class="card conditions-box"><h2 class="section-heading">${icon('document')}Condiciones</h2><div class="conditions-flow fit-flex fit-box" data-fit-section="conditions" data-fit-target="8" data-fit-minimum="4.6" data-fit-step="0.2">${legalFlowV3(texts.condiciones_mrc?.contenido)}</div></section>`
+  // Layout de tres páginas: Declaraciones y Condiciones comparten la página 2 en cajas flexibles y
+  // acotadas, y el ajuste solo baja desde el objetivo, así que con 8px sobraba espacio al final de
+  // ambas. Con un objetivo mayor el ajuste las reduce hasta que entran y las llena. En los demás
+  // layouts las cajas miden lo que mide su texto (flex: 0 0 auto): un objetivo mayor ahí desbordaría
+  // la página, por eso se mantiene en 8.
+  const legalFitTarget = layout === 'three-page' ? 10 : 8
+  const declarationsSection = `<section class="card declarations-box"><h2 class="section-heading">${icon('document')}Declaraciones</h2><div class="conditions-flow fit-flex fit-box" data-fit-section="declarations" data-fit-target="${legalFitTarget}" data-fit-minimum="6" data-fit-step="0.2">${declarations}${funds}${authorizations}</div></section>`
+  const conditionsSection = `<section class="card conditions-box"><h2 class="section-heading">${icon('document')}Condiciones</h2><div class="conditions-flow fit-flex fit-box" data-fit-section="conditions" data-fit-target="${legalFitTarget}" data-fit-minimum="4.6" data-fit-step="0.2">${legalFlowV3(texts.condiciones_mrc?.contenido)}</div></section>`
   const principalCoveragesSection = `<section class="card principal-coverages-box"><h2 class="section-heading">${icon('shield')}Coberturas principales</h2><div class="conditions-flow fit-flex fit-box" data-fit-section="principal-coverages" data-fit-target="8" data-fit-minimum="4.8" data-fit-step="0.2">${principalCoveragesFlowV3(texts.coberturas_principales?.contenido)}</div></section>`
   const paymentSection = `<div class="payment-row-shell"><div class="payment-row">
         <section class="finance-card"><h2>${icon('coins')}Costo del seguro</h2><div class="payment-lines">${paymentLine('Prima:', money(commercial.variante?.prima))}${paymentLine('R.P.F.:', money(payment.rpf_monto))}${paymentLine('Sub-Total:', [commercial.variante?.prima, payment.rpf_monto].every((value) => value != null && value !== '' && Number.isFinite(Number(value))) ? money(Number(commercial.variante.prima) + Number(payment.rpf_monto)) : UNAVAILABLE)}${paymentLine('I.V.A.:', money(payment.iva_monto))}${paymentLine('Costo Total:', money(payment.premio_total), 'cost-total')}</div></section>

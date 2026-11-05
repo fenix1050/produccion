@@ -9,7 +9,10 @@ export const CARTA_OFERTA_RENDERER_REVISION = 'pf1-renderer-r2'
 export const PROPUESTA_FORMAL_V1_RENDERER_REVISION = 'pf3-mrc-renderer-r16'
 export const PROPUESTA_FORMAL_V2_RENDERER_REVISION = 'pf3-mrc-renderer-v2-r1'
 export const PROPUESTA_FORMAL_V3_RENDERER_REVISION = 'pf3-mrc-renderer-v3-r1'
-export const PROPUESTA_FORMAL_RENDERER_REVISION = PROPUESTA_FORMAL_V3_RENDERER_REVISION
+export const PROPUESTA_FORMAL_V4_RENDERER_REVISION = 'pf3-mrc-renderer-v4-r1'
+// Active revision for NEW proposals (v4). v1, v2 and v3 stay declared above because issued
+// proposals keep resolving their own revision in propuesta-pdf.service.js.
+export const PROPUESTA_FORMAL_RENDERER_REVISION = PROPUESTA_FORMAL_V4_RENDERER_REVISION
 
 export function canonicalStringify(value) {
   return JSON.stringify(normalize(value))

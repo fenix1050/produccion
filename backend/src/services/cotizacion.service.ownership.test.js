@@ -82,6 +82,8 @@ function mockModulosBase(t, { findCotizacionById, findCotizaciones, actualizarCo
       findCotizaciones: (...args) => contextoRepoState.cotizaciones.findCotizaciones(...args),
       actualizarCotizacionAtomica: (...args) =>
         contextoRepoState.cotizaciones.actualizarCotizacionAtomica(...args),
+      // Sin Propuesta Formal cerrada por defecto: estos tests cubren ownership, no el 409.
+      existePropuestaFormalCerrada: async () => false,
     },
   })
   contextoRepoState.cotizaciones = {
@@ -423,6 +425,7 @@ describe('actualizarCotizacion — aislamiento horizontal', () => {
         findCotizacionById: (...args) => contextoRepoState.cotizaciones.findCotizacionById(...args),
         actualizarCotizacionAtomica: (...args) =>
           contextoRepoState.cotizaciones.actualizarCotizacionAtomica(...args),
+        existePropuestaFormalCerrada: async () => false,
       },
     })
     sincronizarContextoRepoState({

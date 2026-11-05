@@ -283,6 +283,8 @@ function leerFormulario() {
     email: () => text('email'),
     direccion: () => text('direccion'),
     direccion_comercial: () => text('direccion_comercial'),
+    ciudad_comercial: () => text('ciudad_comercial'),
+    telefono_comercial: () => text('telefono_comercial'),
     actividad_economica: () => text('actividad_economica'),
     fecha_nacimiento: (value) => value || undefined,
     sexo: (value) => value || undefined,
@@ -855,6 +857,8 @@ function renderAseguradoPanel() {
           ${inputField('ciudad', 'Ciudad', valor('partes.asegurado.ciudad'), 'text', true)}
           <label class="pf-field pf-field--wide"><span>Dirección particular${requiredMark()}</span><textarea name="direccion" rows="2" required>${escapeHtml(valor('partes.asegurado.direccion'))}</textarea></label>
           <label class="pf-field pf-field--wide"><span>Dirección comercial (opcional)</span><textarea name="direccion_comercial" rows="2" maxlength="500">${escapeHtml(valor('partes.asegurado.direccion_comercial'))}</textarea></label>
+          ${inputField('ciudad_comercial', 'Ciudad comercial (opcional)', valor('partes.asegurado.ciudad_comercial'))}
+          ${phoneField('telefono_comercial', 'Teléfono comercial (opcional)', valor('partes.asegurado.telefono_comercial'))}
         </div>
       </section>
     </div>
@@ -1362,6 +1366,8 @@ function etiquetaPendiente(code) {
     'asegurado.ruc': 'R.U.C.',
     'asegurado.direccion': 'Dirección particular',
     'asegurado.direccion_comercial': 'Dirección comercial',
+    'asegurado.ciudad_comercial': 'Ciudad comercial',
+    'asegurado.telefono_comercial': 'Teléfono comercial',
     'asegurado.ciudad': 'Ciudad',
     'asegurado.telefono': 'Teléfono',
     'asegurado.email': 'Correo electrónico',

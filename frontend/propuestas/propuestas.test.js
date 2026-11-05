@@ -462,6 +462,26 @@ test('PF-5 direccion_comercial is an optional asegurado field next to a required
   assert.doesNotMatch(moduleSource, /pendientes\.push\([^)]*direccion_comercial/)
 })
 
+test('PF-6 the comercial address also captures an optional ciudad and telefono', async () => {
+  const [moduleSource, schemaSource] = await Promise.all([
+    readFile(moduleUrl, 'utf8'),
+    readFile(new URL('../../backend/src/schemas/propuestas.schema.js', import.meta.url), 'utf8'),
+  ])
+
+  assert.match(schemaSource, /ciudad_comercial: texto\(100\)/)
+  assert.match(schemaSource, /telefono_comercial: texto\(30\)/)
+  // Both fields sit right after the comercial textarea, optional (no required mark).
+  assert.match(
+    moduleSource,
+    /name="direccion_comercial"[^\n]*<\/textarea><\/label>\s*\$\{inputField\('ciudad_comercial', 'Ciudad comercial \(opcional\)', valor\('partes\.asegurado\.ciudad_comercial'\)\)\}\s*\$\{phoneField\('telefono_comercial', 'Teléfono comercial \(opcional\)', valor\('partes\.asegurado\.telefono_comercial'\)\)\}/
+  )
+  assert.match(moduleSource, /ciudad_comercial: \(\) => text\('ciudad_comercial'\)/)
+  assert.match(moduleSource, /telefono_comercial: \(\) => text\('telefono_comercial'\)/)
+  assert.match(moduleSource, /'asegurado\.ciudad_comercial': 'Ciudad comercial'/)
+  assert.match(moduleSource, /'asegurado\.telefono_comercial': 'Teléfono comercial'/)
+  assert.doesNotMatch(moduleSource, /pendientes\.push\([^)]*(ciudad|telefono)_comercial/)
+})
+
 test('PF-3 descripcion_detallada caps length, shows a live counter, and mirrors the backend limits', async () => {
   const [moduleSource, stylesheetSource, schemaSource] = await Promise.all([
     readFile(moduleUrl, 'utf8'),

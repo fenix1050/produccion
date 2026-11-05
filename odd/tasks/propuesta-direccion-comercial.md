@@ -23,6 +23,7 @@ The Propuesta Formal PDF shows two location boxes, "Dirección comercial" and "D
 - [x] T2: form field + persistence + label (RED/GREEN in `frontend/propuestas/propuestas.test.js`).
 - [x] T3: v4 template locations (RED/GREEN in `mrc-v4.test.js`).
 - [x] T4: suites green (backend 126 templates, 220 related; frontend 20), real render of three cases (no comercial, with comercial, tomador distinto), ESTADO section 126.
+- [x] T4b (Kevin, after TEST check, 2026-11-05): the comercial address also captures optional `ciudad_comercial` (max 100) and `telefono_comercial` (max 30). The comercial box shows only its own values, never the particular ones; missing parts are omitted. RED observed (schema, PF-6, 2 template tests), GREEN: backend 184, frontend 21.
 - [ ] T5 (Kevin): TEST deploy authorization, then PROD manual deploy (backend + frontend).
 
 ## Next step

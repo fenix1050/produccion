@@ -77,6 +77,20 @@ test('draftPropuestaSchema: asegurado.direccion_comercial es opcional, se recort
   assert.equal(parse({ direccion_comercial: 'a'.repeat(501) }).success, false)
 })
 
+test('draftPropuestaSchema: asegurado.ciudad_comercial y telefono_comercial son opcionales, se recortan y tienen tope', () => {
+  const parse = (asegurado) => draftPropuestaSchema.safeParse({ partes: { asegurado } })
+
+  assert.equal(parse({ direccion: 'Calle 1' }).success, true)
+  const conValores = parse({ ciudad_comercial: '  Luque ', telefono_comercial: ' 0981-123-456 ' })
+  assert.equal(conValores.success, true)
+  assert.equal(conValores.data.partes.asegurado.ciudad_comercial, 'Luque')
+  assert.equal(conValores.data.partes.asegurado.telefono_comercial, '0981-123-456')
+  assert.equal(parse({ ciudad_comercial: 'a'.repeat(100) }).success, true)
+  assert.equal(parse({ ciudad_comercial: 'a'.repeat(101) }).success, false)
+  assert.equal(parse({ telefono_comercial: '1'.repeat(30) }).success, true)
+  assert.equal(parse({ telefono_comercial: '1'.repeat(31) }).success, false)
+})
+
 test('draftPropuestaSchema: un borrador normal sigue pasando', () => {
   const resultado = draftPropuestaSchema.safeParse({
     partes: { asegurado: { nombre_razon_social: 'Ana Gómez', fecha_nacimiento: '1985-03-12' } },

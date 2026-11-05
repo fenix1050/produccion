@@ -4108,4 +4108,9 @@ migración; las Propuestas ya emitidas conservan su PDF; los borradores sin el c
 20/20. Render real con el snapshot de la Propuesta 25 en tres casos (sin comercial, con comercial, tomador distinto): 5
 páginas y cajas correctas.
 
+**Ampliación (pedida por Kevin tras probar en TEST):** la dirección comercial suma `ciudad_comercial` (máx. 100) y
+`telefono_comercial` (máx. 30), ambos opcionales, debajo de la dirección comercial en el formulario. La caja comercial del PDF
+muestra solo sus propios valores (nunca los de la dirección particular) y omite la parte que falte. RED/GREEN: backend 184 y
+frontend 21.
+
 **Deploy:** backend (PDF y esquema) y frontend (formulario). Pendiente: TEST con autorización y después PROD manual.

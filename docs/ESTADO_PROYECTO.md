@@ -4057,5 +4057,11 @@ minimalista.pdf` (5 páginas, una por tema) con el logo rojo y negro. Por ser un
   (portada y títulos de tema); (4) la fila "Modalidad de firma" ofrece solo Firma Digital y Firma Manuscrita: la v4 filtra la
   opción "Facsimilar" del texto oficial, que en la base sigue completo (v1 a v3 lo siguen mostrando); quitarlo del texto
   oficial requiere una versión nueva desde el panel de textos de Propuesta.
-- **Deploy:** backend (el PDF se genera ahí) y frontend (campo Número de póliza). Pendiente; se suma al deploy manual a PROD de
+- **Segunda ronda de ajustes (2026-11-05):** (5) el número de tarjeta de la autorización de débito queda en blanco, sin "No
+  disponible": el asegurado lo completa a mano en la hoja impresa; (6) la banda de Suma asegurada y Prima pasa del azul
+  pizarra oscuro al gris claro de la paleta (`--v4-wash`, el mismo de la barra "Proveedor del Estado"), con etiquetas y montos
+  en tinta oscura; (7) CodeQL marcó 3 alertas `js/bad-tag-filter` en `mrc-v4.test.js` (regex de `<script>` sin distinguir
+  mayúsculas): falsos positivos, porque solo inspeccionan el HTML propio, pero se corrigieron con el flag `/i` y el check quedó
+  en verde. PR #506 mergeado a `main` (`1f28b5a`) el 2026-11-05; probado en TEST (backend `43182455b86e`).
+- **Deploy:** backend (el PDF se genera ahí) y frontend (campo Número de póliza). TEST hecho; PROD pendiente; se suma al deploy manual a PROD de
   #486, #496, #498, #501, #502, #503 y frontend #497 a #500. Desplegar el backend primero.

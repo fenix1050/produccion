@@ -39,6 +39,8 @@ New renderer revision `pf3-mrc-renderer-v4-r1` for the MRC Propuesta Formal PDF,
 
 - [x] T9 (post-TEST feedback from Kevin; also the card number line in the debit authorization now stays blank, the insured fills it by hand on the printed sheet): numero_poliza field uses `inputField` like the other step-5 inputs; crisp SVG checkbox X; red second title line; signature row without the facsimile option (v4 filters it, official text untouched). RED observed (3 template tests + PF-4 frontend), GREEN: v4/v3/pagination 99, frontend propuestas 19. Pending: commit, push, redeploy to TEST (needs Kevin's authorization per step).
 
+- [x] T10 (2026-11-05): total band in the light wash gray with dark labels and amounts; CodeQL `js/bad-tag-filter` alerts in `mrc-v4.test.js` closed with the `/i` flag. Deployed to TEST (backend 43182455b86e). PR #506 merged to main (1f28b5a), branch deleted. Pending: Kevin's manual PROD deploy.
+
 ## Progress
 
 Branch created. T0 done and committed. T1 declared. T2-T6 implemented in `backend/src/templates/propuesta/mrc-v4.js` (+ test), not committed; visually compared against the mockup (see report). Pagination contract: every direct child of `.page-body` is `data-block`; continuation header = exported `renderContinuationHeader({topic, number, logo})`.

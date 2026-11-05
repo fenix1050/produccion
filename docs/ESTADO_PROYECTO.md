@@ -4014,3 +4014,48 @@ las cards pasan a negro (`.finance-card h2` y `.collection-clause .section-headi
 - **Alcance:** solo PDF nuevos; las Propuestas emitidas guardan su PDF. Sin subir la revisión del renderer.
 - **Verificación:** RED observado; tests de plantillas 53/53; render con el servicio real sobre el snapshot de la Propuesta 25
   de TEST: 3 páginas y todo el texto en negro. Falta confirmar en TEST con un PDF nuevo tras el deploy del backend.
+
+## 124. Propuesta Formal (PDF v4): rediseño minimalista como renderer nuevo (2026-11-04)
+
+Pedido de Kevin: rediseño grande de la Propuesta Formal MRC, replicando lo más fiel posible `docs/references/Modelo propuesta formal
+minimalista.pdf` (5 páginas, una por tema) con el logo rojo y negro. Por ser un rediseño grande va como **revisión nueva**
+`pf3-mrc-renderer-v4-r1` que convive con v1, v2 y v3 sin modificarlas.
+
+- **Qué cambia:**
+  - Template nuevo `backend/src/templates/propuesta/mrc-v4.js`: portada con identificación, ubicaciones, riesgo y franja de
+    Suma Asegurada / Prima; página de coberturas (tabla de sumas, coberturas principales, barras de distribución del capital y
+    sublímites); declaraciones; disposiciones complementarias; y costo y forma de pago con firmas.
+  - Paginación con continuación (`mrc-v4-pagination.js`): una página por tema; si un tema desborda, sigue en una página extra del
+    mismo tema con encabezado compacto "· continuación". No hay ajuste de fuente ni `V3_LAYOUTS`. El planificador es una función
+    pura probada en Node; un script en la página mide, mueve bloques y renumera "Página X de Y". Falla en voz alta
+    (`ProposalPaginationError`, `PF_PDF_PAGINATION_FAILED`) si un bloque no entra ni en una página entera.
+  - Servicio: rama v4 en `renderPropuestaMrcPdf`, `waitForProposalV4Ready` y `printV4ProposalPdf` (A4, sin márgenes). El alias
+    `PROPUESTA_FORMAL_RENDERER_REVISION` pasa a v4, así que las Propuestas **nuevas** usan v4.
+  - Campo opcional **Número de póliza** (`numero_poliza`, máx. 40) en el paso 5 del formulario y en el schema del borrador. El
+    encabezado muestra la celda "Póliza N.º" solo si se cargó; no entra en `readiness` y no bloquea la emisión.
+- **Decisiones de Kevin:** pie "TAJY • Aseguradora Tajy Prop. Coop. S.A." / "Propuesta N.º n · Página X de Y"; sin recuadro
+  amarillo de "Nota de revisión"; sin los textos de maqueta ("Documento conceptual", "Diseño alternativo B"); la celda de
+  Renovación se oculta hasta que exista la API de Sebaout; Modalidad 1020 literal como en v3.
+- **Alcance:** solo PDF nuevos. Las Propuestas emitidas guardan su PDF y snapshot inmutables (trigger de la migración 071) y siguen
+  con su renderer; v1, v2 y v3 siguen resolviéndose. Sin migraciones.
+- **Desviaciones conocidas respecto del modelo:** la fuente es Arial/Helvetica/Liberation Sans (el modelo usa Inter y el renderer
+  no carga fuentes externas); el logo rojo/negro incluye "ASEGURADORA" y se ve más grande que la ficha roja del modelo; en
+  Condiciones particulares se conservaron los párrafos que restauró la migración 078, así que esa página es unas líneas más
+  larga; las dos columnas de Coberturas principales siguen el orden del texto fuente. Los saltos de línea que el usuario escribe
+  en "Descripción detallada" se respetan (`white-space: pre-line`), por lo que ese texto puede verse más angosto que en el modelo.
+- **Imperfecciones menores:** la tabla de sumas no repite su encabezado en una página de continuación, y esas páginas pueden
+  terminar con espacio en blanco porque los bloques son atómicos.
+- **Verificación:** RED observado en cada pieza (schema, formulario, constante, template por página, planificador, servicio,
+  dispatch, activación). 138 tests en verde en los archivos tocados más v3, y el hook de commit corrió las suites completas.
+  Render con el servicio real sobre el snapshot de la Propuesta 25 de TEST (lectura de solo lectura autorizada por Kevin): v3
+  daba 3 páginas y v4 da 5 páginas A4 con todos los datos, barras de distribución y sublímites parseados del texto real.
+  Fixtures densos (45 coberturas, observaciones y textos legales largos): 8 páginas, sin pérdida ni duplicación de bloques.
+  Falta confirmar en TEST con un PDF nuevo tras el deploy.
+- **Ajustes tras probar en TEST (2026-11-04):** (1) el campo Número de póliza usa el helper `inputField` (clase `field-input`) como
+  el resto del paso 5, con `maxLength` opcional; (2) la X de los recuadros marcados es un SVG vectorial (antes gradientes que
+  se veían borrosos) con recuadro más grande y borde oscuro; (3) la segunda línea de los títulos pasa de gris a rojo de marca
+  (portada y títulos de tema); (4) la fila "Modalidad de firma" ofrece solo Firma Digital y Firma Manuscrita: la v4 filtra la
+  opción "Facsimilar" del texto oficial, que en la base sigue completo (v1 a v3 lo siguen mostrando); quitarlo del texto
+  oficial requiere una versión nueva desde el panel de textos de Propuesta.
+- **Deploy:** backend (el PDF se genera ahí) y frontend (campo Número de póliza). Pendiente; se suma al deploy manual a PROD de
+  #486, #496, #498, #501, #502, #503 y frontend #497 a #500. Desplegar el backend primero.

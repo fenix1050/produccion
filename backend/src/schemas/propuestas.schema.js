@@ -119,6 +119,7 @@ export const draftPropuestaSchema = z
       .optional(),
     descripcion_detallada: descripcionDetalladaSchema,
     observaciones: texto(2000),
+    numero_poliza: texto(40),
     tipo_firma: z.enum(['manual', 'digital']).optional(),
   })
   .catchall(jsonValue)

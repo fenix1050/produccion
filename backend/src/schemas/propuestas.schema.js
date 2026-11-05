@@ -75,6 +75,7 @@ const aseguradoSchema = z
     telefono: texto(30),
     email: z.union([z.literal(''), z.string().trim().email().max(120)]).optional(),
     direccion: texto(500),
+    direccion_comercial: texto(500),
     actividad_economica: texto(200),
   })
   .passthrough()

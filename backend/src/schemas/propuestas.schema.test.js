@@ -66,6 +66,17 @@ test('draftPropuestaSchema: numero_poliza es opcional, se recorta y admite como 
   assert.equal(largo.success, false)
 })
 
+test('draftPropuestaSchema: asegurado.direccion_comercial es opcional, se recorta y admite como máximo 500 caracteres', () => {
+  const parse = (asegurado) => draftPropuestaSchema.safeParse({ partes: { asegurado } })
+
+  assert.equal(parse({ direccion: 'Calle 1' }).success, true)
+  const conValor = parse({ direccion_comercial: '  Av. Mcal. López 123  ' })
+  assert.equal(conValor.success, true)
+  assert.equal(conValor.data.partes.asegurado.direccion_comercial, 'Av. Mcal. López 123')
+  assert.equal(parse({ direccion_comercial: 'a'.repeat(500) }).success, true)
+  assert.equal(parse({ direccion_comercial: 'a'.repeat(501) }).success, false)
+})
+
 test('draftPropuestaSchema: un borrador normal sigue pasando', () => {
   const resultado = draftPropuestaSchema.safeParse({
     partes: { asegurado: { nombre_razon_social: 'Ana Gómez', fecha_nacimiento: '1985-03-12' } },

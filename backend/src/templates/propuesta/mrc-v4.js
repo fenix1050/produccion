@@ -171,7 +171,7 @@ export const PROPUESTA_FORMAL_V4_STYLE = `
   .fine-print { margin: 2.2mm 0 0; font-size: 5.6pt; line-height: 1.4; color: var(--v4-faint); }
 
   /* Locations. */
-  .location-grid { display: grid; grid-template-columns: 1fr 1fr; column-gap: 9mm; }
+  .location-grid { display: grid; grid-template-columns: 1fr 1fr; column-gap: 9mm; row-gap: 4mm; }
   .location { padding: .3mm 0 .3mm 3.6mm; border-left: .6mm solid var(--v4-red); display: flex; flex-direction: column; gap: 1.2mm; }
   .location-label { font-size: 5.2pt; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--v4-muted); }
   .location-address { font-size: 7.1pt; color: var(--v4-ink); overflow-wrap: anywhere; }
@@ -462,11 +462,30 @@ function identificationBlocks(insured, draft) {
 }
 
 function locationBlocks(insured, proposer) {
+  const box = (label, address, city, phone) =>
+    `<div class="location"><span class="location-label">${label}</span><strong class="location-address">${text(address)}</strong><span class="location-sub">${text(city)} · Tel.: ${text(celular(phone))}</span></div>`
+  const boxes = [box('Dirección particular', insured.direccion, insured.ciudad, insured.telefono)]
+  // Optional asegurado commercial address: hidden when empty or blank.
+  if (String(insured.direccion_comercial ?? '').trim()) {
+    boxes.push(
+      box('Dirección comercial', insured.direccion_comercial, insured.ciudad, insured.telefono)
+    )
+  }
+  // coverBody aliases proposer to insured when the tomador is the asegurado.
+  if (proposer !== insured) {
+    boxes.push(
+      box(
+        'Dirección del tomador',
+        proposer.direccion,
+        proposer.ciudad,
+        proposer.telefono ?? insured.telefono
+      )
+    )
+  }
   return [
     sectionTitle('02', 'Ubicaciones declaradas'),
     `<div class="location-grid" data-block>
-      <div class="location"><span class="location-label">Dirección comercial</span><strong class="location-address">${text(proposer.direccion)}</strong><span class="location-sub">${text(proposer.ciudad)} · Tel.: ${text(celular(proposer.telefono ?? insured.telefono))}</span></div>
-      <div class="location"><span class="location-label">Dirección particular</span><strong class="location-address">${text(insured.direccion)}</strong><span class="location-sub">${text(insured.ciudad)} · Tel.: ${text(celular(insured.telefono))}</span></div>
+      ${boxes.join('\n      ')}
     </div>`,
   ]
 }

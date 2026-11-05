@@ -9,13 +9,16 @@ import {
   printFittedProposalPdf,
   printV2ProposalPdf,
   printV3ProposalPdf,
+  printV4ProposalPdf,
   printV3ProposalWithLayoutFallback,
   ProposalFitError,
   ProposalFitOverflowError,
+  ProposalPaginationError,
   ProposalRendererRevisionError,
   renderPropuestaMrcPdf,
   waitForProposalFit,
   waitForProposalV2Ready,
+  waitForProposalV4Ready,
 } from './propuesta-pdf.service.js'
 
 test('proposal PDF renderer rejects unknown revisions with a bounded error shape', async () => {
@@ -485,4 +488,149 @@ test('v3 layout fallback does not retry non-overflow fit failures', async () => 
     (error) => error instanceof ProposalFitError && error.fitState === 'missing-metrics'
   )
   assert.deepEqual(page.setContents, ['two-page'])
+})
+
+// ---------------------------------------------------------------- v4 pagination gate
+
+const V4_TOPICS = ['cover', 'coverage', 'declarations', 'conditions', 'payment']
+
+const v4Metrics = (overrides = {}) => ({
+  pages: 5,
+  continuationPages: 0,
+  topics: V4_TOPICS.map((topic) => ({ topic, pages: 1 })),
+  ...overrides,
+})
+
+const v4Page = ({ status = 'complete', error = null, metrics = v4Metrics(), pdf } = {}) => ({
+  waitForFunction: async () => {},
+  evaluate: async () => ({ status, error, metrics }),
+  pdf: pdf ?? (async () => Buffer.from('v4-pdf')),
+})
+
+test('v4 readiness gate waits for pagination to leave the pending state', async () => {
+  let waited
+  const page = {
+    ...v4Page(),
+    waitForFunction: async (fn, options) => {
+      waited = { source: String(fn), options }
+    },
+  }
+
+  const metrics = await waitForProposalV4Ready(page)
+
+  assert.match(waited.source, /proposalPagination/)
+  assert.match(waited.source, /pending/)
+  assert.deepEqual(waited.options, { timeout: 5000 })
+  assert.deepEqual(metrics, v4Metrics())
+})
+
+test('v4 readiness gate accepts continuation pages when every topic is present', async () => {
+  const metrics = v4Metrics({
+    pages: 7,
+    continuationPages: 2,
+    topics: [
+      { topic: 'cover', pages: 2 },
+      { topic: 'coverage', pages: 1 },
+      { topic: 'declarations', pages: 1 },
+      { topic: 'conditions', pages: 1 },
+      { topic: 'payment', pages: 2 },
+    ],
+  })
+
+  assert.deepEqual(await waitForProposalV4Ready(v4Page({ metrics })), metrics)
+})
+
+test('v4 readiness gate rejects a pagination timeout with a bounded error', async () => {
+  const page = {
+    ...v4Page(),
+    waitForFunction: async () => {
+      throw new Error('Waiting failed: 5000ms exceeded')
+    },
+  }
+
+  await assert.rejects(
+    () => waitForProposalV4Ready(page),
+    (error) => {
+      assert.ok(error instanceof ProposalPaginationError)
+      assert.equal(error.name, 'ProposalPaginationError')
+      assert.equal(error.code, 'PF_PDF_PAGINATION_FAILED')
+      assert.equal(error.paginationState, 'timeout')
+      return true
+    }
+  )
+})
+
+test('v4 readiness gate surfaces the error code reported by the page', async () => {
+  await assert.rejects(
+    () => waitForProposalV4Ready(v4Page({ status: 'error', error: 'block-too-tall' })),
+    (error) => {
+      assert.ok(error instanceof ProposalPaginationError)
+      assert.equal(error.paginationState, 'error')
+      assert.equal(error.reason, 'block-too-tall')
+      assert.match(error.message, /block-too-tall/)
+      return true
+    }
+  )
+})
+
+test('v4 readiness gate rejects unexpected states and malformed metrics', async () => {
+  const bad = [
+    [v4Page({ status: 'pending' }), 'invalid-state'],
+    [v4Page({ metrics: null }), 'missing-metrics'],
+    [v4Page({ metrics: v4Metrics({ pages: 4 }) }), 'invalid-metrics'],
+    [v4Page({ metrics: v4Metrics({ pages: 'five' }) }), 'invalid-metrics'],
+    [
+      v4Page({ metrics: v4Metrics({ topics: [{ topic: 'cover', pages: 1 }] }) }),
+      'incomplete-metrics',
+    ],
+    [
+      v4Page({
+        metrics: v4Metrics({ topics: V4_TOPICS.map((topic) => ({ topic, pages: 0 })) }),
+      }),
+      'incomplete-metrics',
+    ],
+  ]
+
+  for (const [page, state] of bad) {
+    await assert.rejects(
+      () => waitForProposalV4Ready(page),
+      (error) => error instanceof ProposalPaginationError && error.paginationState === state,
+      state
+    )
+  }
+})
+
+test('proposal PDF renderer prints v4 content on A4 after the pagination gate', async () => {
+  let pdfOptions
+  const page = v4Page({
+    pdf: async (receivedOptions) => {
+      pdfOptions = receivedOptions
+      return Buffer.from('v4-pdf')
+    },
+  })
+
+  assert.deepEqual(await printV4ProposalPdf(page), Buffer.from('v4-pdf'))
+  assert.deepEqual(pdfOptions, {
+    format: 'A4',
+    printBackground: true,
+    margin: { top: '0', bottom: '0', left: '0', right: '0' },
+  })
+})
+
+test('proposal PDF renderer does not print v4 content when pagination failed', async () => {
+  let pdfCalls = 0
+  const page = v4Page({
+    status: 'error',
+    error: 'block-too-tall',
+    pdf: async () => {
+      pdfCalls += 1
+      return Buffer.from('never')
+    },
+  })
+
+  await assert.rejects(
+    () => printV4ProposalPdf(page),
+    (error) => error instanceof ProposalPaginationError
+  )
+  assert.equal(pdfCalls, 0)
 })

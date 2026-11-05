@@ -411,6 +411,30 @@ test('PF-3 emitir() drives the same progress modal look as the cotizador (reused
   assert.match(moduleSource, /atraparFoco\(e, modalAbierto\)/)
 })
 
+test('PF-4 numero_poliza is an optional step-5 field that mirrors the backend limit', async () => {
+  const [moduleSource, schemaSource] = await Promise.all([
+    readFile(moduleUrl, 'utf8'),
+    readFile(new URL('../../backend/src/schemas/propuestas.schema.js', import.meta.url), 'utf8'),
+  ])
+
+  const backendMax = schemaSource.match(/numero_poliza: texto\((\d+)\)/)?.[1]
+  assert.ok(backendMax, 'backend numero_poliza limit must exist')
+  // Same helper as the other step inputs, so it keeps the shared `field-input` styling.
+  assert.match(
+    moduleSource,
+    new RegExp(
+      String.raw`inputField\(\s*'numero_poliza',\s*'Número de póliza \(opcional\)',[\s\S]*?maxLength: ${backendMax}\s*\}`
+    )
+  )
+  assert.match(moduleSource, /options\.maxLength \? `maxlength="\$\{options\.maxLength\}"` : ''/)
+  assert.doesNotMatch(moduleSource, /<input[^>]*name="numero_poliza"/)
+  assert.match(
+    moduleSource,
+    /if \(has\('numero_poliza'\)\) draft\.numero_poliza = text\('numero_poliza'\)/
+  )
+  assert.doesNotMatch(moduleSource, /pendientes\.push\('numero_poliza'\)/)
+})
+
 test('PF-3 descripcion_detallada caps length, shows a live counter, and mirrors the backend limits', async () => {
   const [moduleSource, stylesheetSource, schemaSource] = await Promise.all([
     readFile(moduleUrl, 'utf8'),

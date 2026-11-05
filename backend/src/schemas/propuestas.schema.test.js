@@ -53,6 +53,19 @@ test('draftPropuestaSchema: rechaza un draft_json que supera el tope de tamaño'
   assert.equal(draftPropuestaSchema.safeParse(unoMas).success, false)
 })
 
+test('draftPropuestaSchema: numero_poliza es opcional, se recorta y admite como máximo 40 caracteres', () => {
+  const sinNumero = draftPropuestaSchema.safeParse({ observaciones: 'x' })
+  const conNumero = draftPropuestaSchema.safeParse({ numero_poliza: '  1234-56  ' })
+  const enElLimite = draftPropuestaSchema.safeParse({ numero_poliza: 'a'.repeat(40) })
+  const largo = draftPropuestaSchema.safeParse({ numero_poliza: 'a'.repeat(41) })
+
+  assert.equal(sinNumero.success, true)
+  assert.equal(conNumero.success, true)
+  assert.equal(conNumero.data.numero_poliza, '1234-56')
+  assert.equal(enElLimite.success, true)
+  assert.equal(largo.success, false)
+})
+
 test('draftPropuestaSchema: un borrador normal sigue pasando', () => {
   const resultado = draftPropuestaSchema.safeParse({
     partes: { asegurado: { nombre_razon_social: 'Ana Gómez', fecha_nacimiento: '1985-03-12' } },

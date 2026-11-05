@@ -889,3 +889,65 @@ test('MRC proposal v3 tall three-page layout keeps page one for the risk detail 
     assert.equal((html.match(new RegExp(`data-fit-section="${section}"`, 'g')) ?? []).length, 1)
   }
 })
+
+test('MRC proposal v3 separates the header meta card from the banner above it', () => {
+  const html = buildMrcPropuestaV3Html(fixture())
+  const headerMetaRule = html.match(/\.header-meta \{[^}]+\}/)?.[0] ?? ''
+
+  // Antes era `margin-top: -1mm` (la tarjeta se superponía al banner y se veía pegada).
+  assert.match(headerMetaRule, /margin-top: 2mm;/)
+  assert.doesNotMatch(headerMetaRule, /margin-top: -/)
+})
+
+// En el layout de tres páginas, Declaraciones y Condiciones comparten la página 2 con cajas flexibles
+// y acotadas: el ajuste solo baja desde el tamaño objetivo, así que con 8px sobraba espacio al final
+// de ambas cajas. Un objetivo mayor (el ajuste lo reduce hasta que entra) las llena. En los demás
+// layouts las cajas miden lo que mide su texto: ahí el objetivo se mantiene en 8.
+test('MRC proposal v3 raises the declarations and conditions fit target only in the three-page layout', () => {
+  const threePage = buildMrcPropuestaV3Html(fixture(), { layout: 'three-page' })
+  assert.match(
+    threePage,
+    /data-fit-section="declarations" data-fit-target="10" data-fit-minimum="6"/
+  )
+  assert.match(
+    threePage,
+    /data-fit-section="conditions" data-fit-target="10" data-fit-minimum="4\.6"/
+  )
+
+  for (const layout of ['two-page', 'three-page-tall', 'four-page']) {
+    const html = buildMrcPropuestaV3Html(fixture(), { layout })
+    assert.match(html, /data-fit-section="declarations" data-fit-target="8"/, layout)
+    assert.match(html, /data-fit-section="conditions" data-fit-target="8"/, layout)
+  }
+})
+
+test('MRC proposal v3 prints the payment, debit and collection card texts in black', () => {
+  const html = buildMrcPropuestaV3Html(fixture())
+  // Bloque CSS de una regla exacta: `<selector> { ... }` (con espacio antes de la llave).
+  const rule = (selector) => {
+    const start = html.indexOf(`  ${selector} {`)
+    return start === -1 ? '' : html.slice(start, html.indexOf('}', start) + 1)
+  }
+
+  // Valores (antes en rojo) y etiquetas de Costo del seguro / Forma de pago.
+  assert.match(rule('.payment-line span'), /color: #000;/)
+  assert.doesNotMatch(rule('.payment-line span'), /var\(--v3-red\)/)
+  assert.match(rule('.payment-line'), /color: #000;/)
+
+  // Autorización de débito: texto, tipo de tarjeta, etiquetas de los campos y "No disponible".
+  for (const selector of ['.debit-copy', '.debit-type', '.debit-line', '.debit-bank']) {
+    assert.match(rule(selector), /color: #000;/, selector)
+  }
+
+  // Cláusula adicional de cobranzas, sin tocar `.conditions-flow` de Declaraciones y Condiciones.
+  assert.match(rule('.collection-clause .conditions-flow'), /color: #000;/)
+  assert.doesNotMatch(rule('.conditions-flow'), /color: #000;/)
+
+  // Los títulos de cada card también van en negro (el fondo rosado y el ícono rojo se mantienen).
+  assert.match(rule('.finance-card h2'), /color: #000;/)
+  assert.doesNotMatch(rule('.finance-card h2'), /color: var\(--v3-red\)/)
+
+  // Mismo criterio para el título de la Cláusula adicional de cobranzas (conserva su fondo rosado).
+  assert.match(rule('.collection-clause .section-heading'), /color: #000;/)
+  assert.doesNotMatch(rule('.collection-clause .section-heading'), /var\(--v3-red\);/)
+})

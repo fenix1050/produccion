@@ -4138,3 +4138,13 @@ frontend 21.
 **Cómo:** `docs/RUNBOOK_DEPLOY_PROD.md`, ejecutado por Kevin en la VPS un comando por vez. Imagen `cotizador-backend:53798061…` (ID `e99bbefe32f6`), `Up (healthy)`, `health 200`; rollback apuntando a `cotizador-backend:d823eb25…`. Antes se probó en TEST con un recorrido por API (login, cotización MRC y Carta Oferta, mensajes de validación en español, Propuesta Formal emitida con su PDF).
 
 **Verificación:** Kevin confirmó en `cotizador.lat` que todo salió bien. No se pegó en la sesión la salida del `grep` de errores del backend (paso 8).
+
+## 130. Scripts de deploy a PROD para backend y frontend (2026-11-06)
+
+**Qué se agregó:** `scripts/deploy-backend-prod.sh` y `scripts/deploy-frontend-prod.sh`, que reemplazan los comandos manuales de las etapas 3 y 4 de `docs/RUNBOOK_DEPLOY_PROD.md`. Los corre Kevin en la VPS, uno por etapa, con el SHA de 40 hex. Sin `--approve-deploy` solo hacen preflight de lectura. Respaldo de la DB y migraciones siguen manuales; los comandos manuales del runbook quedan como alternativa.
+
+**Por qué:** los comandos largos pegados desde el chat se partían y el rollback dependía de recordar pasos. Los scripts validan el SHA antes de usarlo, guardan el puntero de rollback y comprueban que la imagen anterior exista antes de reemplazar, hacen rollback automático si el backend no llega a `health 200`, y en el frontend nunca copian ni pisan `shared/config.js` (se verifica fecha y checksum).
+
+**Decisiones de seguridad:** la comprobación "imagen ya desplegada" corre antes del worktree y el build; `--rollback` también exige `--approve-deploy`; en el frontend un error de `tar` solo avisa y decide el `diff -rq` (los archivos que solo existen en PROD se avisan, no se borran); un worktree preexistente se reutiliza solo si está en el mismo commit.
+
+**Verificación (honesta):** tests con binarios falsos (docker, git, sudo, sleep, tar) en `backend/src/ops/deploy-backend-prod.test.js` y `deploy-frontend-prod.test.js`, escritos antes del script (RED observado). Los scripts **nunca se ejecutaron contra un servidor real**, ni TEST ni PROD: el primer uso real debe ser el preflight (sin `--approve-deploy`) en la VPS.

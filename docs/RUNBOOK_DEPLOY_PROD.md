@@ -8,6 +8,33 @@ Convenciones: `$SHA` es el commit completo (40 caracteres) que ya se probó en T
 contraseña. Los que usan `git fetch` piden la passphrase de la clave de GitHub. No pegar claves ni valores del `.env`
 en chats ni en el repo.
 
+## Forma preferida para las etapas 3 y 4: scripts
+
+Las etapas 3 (backend) y 4 (frontend) tienen un script cada una, que Kevin corre **en la VPS** (Claude nunca los ejecuta
+contra ningún servidor). Sin `--approve-deploy` hacen solo un preflight de lectura y muestran el plan; no cambian nada.
+Los comandos manuales de abajo quedan como alternativa si un script falla o no está disponible.
+
+```
+~/build-scripts/deploy-backend-prod.sh $SHA
+~/build-scripts/deploy-backend-prod.sh $SHA --approve-deploy
+~/build-scripts/deploy-frontend-prod.sh $SHA
+~/build-scripts/deploy-frontend-prod.sh $SHA --approve-deploy
+```
+
+(La carpeta es un ejemplo: los scripts están en `scripts/` del repo; copiarlos a la VPS desde el `$SHA` ya probado.)
+
+- **Backend** (`deploy-backend-prod.sh`): valida el SHA (40 hex), crea el worktree `~/build-$SHA`, construye la imagen,
+  guarda el puntero de rollback y comprueba que esa imagen siga en el host **antes** de reemplazar nada, recrea solo el
+  servicio `backend` y espera `health 200` hasta ~60 s. Si no llega, **vuelve solo a la imagen anterior** y avisa si el
+  rollback quedó sano (código de salida 2) o no (código 3, actuar ya). Se niega si la imagen actual ya es la del `$SHA`.
+  Rollback manual: `deploy-backend-prod.sh --rollback --approve-deploy` (sin el flag solo muestra el plan).
+- **Frontend** (`deploy-frontend-prod.sh`): respalda `/opt/cotizador/frontend-prod`, verifica que exista
+  `shared/config.js` antes de copiar, copia sin ese archivo, comprueba que su fecha y checksum no cambiaron y hace
+  `diff -rq` contra el worktree: cualquier diferencia falla; los `Only in /opt/cotizador/frontend-prod` solo se avisan
+  (no se borran). Reutiliza `~/build-$SHA` si ya existe en ese commit; solo borra el worktree si lo creó él.
+- Siguen **manuales**: el respaldo de la DB (etapa 1) y las migraciones (etapa 2). Las etapas 5 (verificación) y la
+  limpieza también.
+
 ## Antes de empezar
 
 - El `$SHA` ya está desplegado y verificado en TEST (`scripts/deploy-backend-test.sh`, `scripts/deploy-frontend-test.sh`).

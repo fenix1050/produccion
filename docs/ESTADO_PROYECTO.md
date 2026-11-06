@@ -4130,3 +4130,13 @@ frontend 21.
 **Causa y cambio:** zod 4 ignora en silencio `invalid_type_error` y `required_error` (salían sus mensajes por defecto en inglés) y rechaza `Infinity` en el propio tipo `number`. Se pasó a la opción `error` en los esquemas de `cotizaciones`, `mrc` y `ramos` (mismos mensajes en español de antes) y `z.record` ahora lleva clave y valor. Solo el backend usa zod; no hay cambios de frontend ni de migraciones.
 
 **Verificación:** RED observado (8 tests) y GREEN: backend 729 pasan, 0 fallan; test nuevo de `plan_id` (RED 2, GREEN 2); `npm audit --omit=dev` sin vulnerabilidades. Pendiente: deploy a TEST con autorización y luego PROD manual (solo backend).
+
+## 130. Scripts de deploy a PROD para backend y frontend (2026-11-06)
+
+**Qué se agregó:** `scripts/deploy-backend-prod.sh` y `scripts/deploy-frontend-prod.sh`, que reemplazan los comandos manuales de las etapas 3 y 4 de `docs/RUNBOOK_DEPLOY_PROD.md`. Los corre Kevin en la VPS, uno por etapa, con el SHA de 40 hex. Sin `--approve-deploy` solo hacen preflight de lectura. Respaldo de la DB y migraciones siguen manuales; los comandos manuales del runbook quedan como alternativa.
+
+**Por qué:** los comandos largos pegados desde el chat se partían y el rollback dependía de recordar pasos. Los scripts validan el SHA antes de usarlo, guardan el puntero de rollback y comprueban que la imagen anterior exista antes de reemplazar, hacen rollback automático si el backend no llega a `health 200`, y en el frontend nunca copian ni pisan `shared/config.js` (se verifica fecha y checksum).
+
+**Decisiones de seguridad:** la comprobación "imagen ya desplegada" corre antes del worktree y el build; `--rollback` también exige `--approve-deploy`; en el frontend un error de `tar` solo avisa y decide el `diff -rq` (los archivos que solo existen en PROD se avisan, no se borran); un worktree preexistente se reutiliza solo si está en el mismo commit.
+
+**Verificación (honesta):** tests con binarios falsos (docker, git, sudo, sleep, tar) en `backend/src/ops/deploy-backend-prod.test.js` y `deploy-frontend-prod.test.js`, escritos antes del script (RED observado). Los scripts **nunca se ejecutaron contra un servidor real**, ni TEST ni PROD: el primer uso real debe ser el preflight (sin `--approve-deploy`) en la VPS.

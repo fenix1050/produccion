@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.1.71](https://github.com/fenix1050/produccion/compare/v0.1.70...v0.1.71) (2026-11-06)
+
+
+### Features
+
+* **ops:** scripts de deploy a PROD para backend y frontend con rollback automático ([#519](https://github.com/fenix1050/produccion/issues/519)) ([0eca26f](https://github.com/fenix1050/produccion/commit/0eca26f0fa872c0c1bbe2c519406ba2620aaa8c2))
+* **propuestas:** capturar dirección particular y comercial del asegurado en la Propuesta Formal ([#513](https://github.com/fenix1050/produccion/issues/513)) ([c2c9812](https://github.com/fenix1050/produccion/commit/c2c981246dd59522543779c6c9d4db9564c77da6))
+* **propuestas:** ciudad y teléfono propios para la dirección comercial del asegurado ([#515](https://github.com/fenix1050/produccion/issues/515)) ([d823eb2](https://github.com/fenix1050/produccion/commit/d823eb25e9972571bb8da1ee89cd9967d4d3558f))
+
+
+### Bug Fixes
+
+* **deps:** migrar zod 3 a 4 (alertas de seguridad [#34](https://github.com/fenix1050/produccion/issues/34) y [#35](https://github.com/fenix1050/produccion/issues/35)) ([#517](https://github.com/fenix1050/produccion/issues/517)) ([5379806](https://github.com/fenix1050/produccion/commit/53798061b6dd835bcc2a84531c6b9179a7d842b8))
+
 ## [0.1.70](https://github.com/fenix1050/produccion/compare/v0.1.69...v0.1.70) (2026-11-05)
 
 

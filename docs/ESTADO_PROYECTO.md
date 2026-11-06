@@ -4130,3 +4130,11 @@ frontend 21.
 **Causa y cambio:** zod 4 ignora en silencio `invalid_type_error` y `required_error` (salían sus mensajes por defecto en inglés) y rechaza `Infinity` en el propio tipo `number`. Se pasó a la opción `error` en los esquemas de `cotizaciones`, `mrc` y `ramos` (mismos mensajes en español de antes) y `z.record` ahora lleva clave y valor. Solo el backend usa zod; no hay cambios de frontend ni de migraciones.
 
 **Verificación:** RED observado (8 tests) y GREEN: backend 729 pasan, 0 fallan; test nuevo de `plan_id` (RED 2, GREEN 2); `npm audit --omit=dev` sin vulnerabilidades. Pendiente: deploy a TEST con autorización y luego PROD manual (solo backend).
+
+## 129. Deploy a PROD: zod 4 (2026-11-05)
+
+**Qué se desplegó:** `main` en `53798061b6dd835bcc2a84531c6b9179a7d842b8` (PR #517, migración de zod 3 a 4; cierra las alertas #34 y #35). Solo backend: sin migraciones, sin variables nuevas y sin cambios de frontend, por eso se omitieron las etapas 1, 2 y 4 del runbook.
+
+**Cómo:** `docs/RUNBOOK_DEPLOY_PROD.md`, ejecutado por Kevin en la VPS un comando por vez. Imagen `cotizador-backend:53798061…` (ID `e99bbefe32f6`), `Up (healthy)`, `health 200`; rollback apuntando a `cotizador-backend:d823eb25…`. Antes se probó en TEST con un recorrido por API (login, cotización MRC y Carta Oferta, mensajes de validación en español, Propuesta Formal emitida con su PDF).
+
+**Verificación:** Kevin confirmó en `cotizador.lat` que todo salió bien. No se pegó en la sesión la salida del `grep` de errores del backend (paso 8).

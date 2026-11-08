@@ -41,6 +41,7 @@ Este proyecto se construye **fase por fase**, en este orden fijo (detalle comple
 6. Incendio / Multirriesgo Hogar / MRC / TRO / Transporte
 7. Vida y Accidentes Personales
 8. Deploy
+9. NEO — asistente de Análisis de Riesgos (MRC primero). En Fase 0 de diseño desde 2026-11-08; sin implementación hasta autorización explícita de Kevin. Detalle, fases propias y decisiones pendientes en `docs/ESTADO_PROYECTO.md` sección 131.
 
 **Reglas para Claude Code:**
 

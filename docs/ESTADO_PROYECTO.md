@@ -4148,3 +4148,56 @@ frontend 21.
 **Decisiones de seguridad:** la comprobación "imagen ya desplegada" corre antes del worktree y el build; `--rollback` también exige `--approve-deploy`; en el frontend un error de `tar` solo avisa y decide el `diff -rq` (los archivos que solo existen en PROD se avisan, no se borran); un worktree preexistente se reutiliza solo si está en el mismo commit.
 
 **Verificación (honesta):** tests con binarios falsos (docker, git, sudo, sleep, tar) en `backend/src/ops/deploy-backend-prod.test.js` y `deploy-frontend-prod.test.js`, escritos antes del script (RED observado). Los scripts **nunca se ejecutaron contra un servidor real**, ni TEST ni PROD: el primer uso real debe ser el preflight (sin `--approve-deploy`) en la VPS.
+
+## 131. Fase nueva: NEO, asistente de Análisis de Riesgos (Fase 0, diseño; 2026-11-08)
+
+**Estado:** solo diseño y relevamiento. No hay código, migraciones, carpetas ni dependencias nuevas. La implementación requiere autorización explícita de Kevin. El informe completo está en el documento "NEO — Informe de arquitectura (Fase 0)" (https://claude.ai/artifact/1GCijfDdZFyoKkxp2SvL2i).
+
+**Qué es NEO:** un asistente de suscripción para el Departamento de Análisis de Riesgos (cuatro analistas y un jefe). Integrado en este repositorio, sin ser un cotizador aparte. Primero construye una biblioteca de conocimiento validado a partir de las cartas oferta históricas. Después analiza solicitudes por correo y prepara cartas preliminares para revisión humana. El Cotizador sigue siendo el único que calcula tasas, primas, RPF, IVA y premio. NEO interpreta y recomienda, y nunca decide ni aprueba por su cuenta. Ramo inicial: solo MRC; Auto queda fuera.
+
+**"Aprendizaje" significa:** casos validados por analistas que NEO recupera y cita. No se entrena ni se ajusta ningún modelo con datos de Tajy.
+
+**Fuentes:** cartas históricas en Word y Excel de una carpeta compartida de un servidor Windows interno (finales, borradores y versiones mezcladas), y correos enviados de los buzones de Microsoft 365 de los cuatro analistas. Una carta enviada no se considera aprobada automáticamente: la versión final la confirma un analista. Habrá una segunda carpeta para las ofertas que genere NEO (borradores, correcciones, aprobadas, rechazadas).
+
+**Reglas de MRC confirmadas por el usuario y verificadas en código:**
+
+| Regla                                                                                                                                                         | Código                                                           |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| Al menos un capital de incendio mayor a cero                                                                                                                  | `backend/src/schemas/mrc.schema.js:54`                           |
+| Mínimo de 3 coberturas: Edificio y Contenido cuentan siempre como 2 (aunque uno de los capitales sea 0) más al menos una adicional; los sublímites no cuentan | `backend/src/calculators/mrc.calculator.js:24`, `:230`           |
+| Sin duplicados (límite de repetición 1)                                                                                                                       | `mrc.calculator.js:31`                                           |
+| RPF por curva forma de pago + cuotas; combinación inexistente → 422; contado = 0                                                                              | `backend/src/services/cotizacion-pricing.service.js:69-83`       |
+| Redondeo a Gs. 1.000 (RPF hacia arriba, premio hacia abajo)                                                                                                   | `backend/src/calculators/utils/round.js`, `plan-pago.js`         |
+| Normal y Segucoop comparten tarifación; Segucoop: descuento fijo 10%, solo contado, 0 cuotas                                                                  | `backend/migrations/048_plan_mrc_descuento_fijo.sql:42-63`       |
+| Tope de responsabilidad: Normal Gs. 7.200.000.000 (migración 018); Segucoop sin valor en migraciones (`NULL` = sin tope en `mrc.calculator.js:216-218`)       | No verificado contra la base: pudo cargarse desde el panel admin |
+
+**Arquitectura propuesta (resumen):**
+
+- Backend Express: rutas `/api/neo/*`, servicios `services/neo/`, tablas `neo_*` con RLS. Sin cambios en `calculators/`, `schemas/mrc.schema.js` ni `cotizacion-*.service.js`.
+- Workspace `worker/` en contenedor propio para extracción, sincronización con Microsoft Graph y vinculación. No corre dentro de Express por el singleton de Chromium, la caché global, el límite de 2 MB y el rate limit compartido.
+- `agente-documental/` en la LAN, solo con HTTPS saliente. Puede ser innecesario si la VPS (`192.168.0.90`) llega al recurso compartido en la misma red; lo confirma TI.
+- Recálculo de cartas históricas con `calcularPreview(body, usuario)` (`backend/src/services/cotizacion.service.js:23`), que exige un usuario: se usará un usuario de servicio de solo cálculo.
+- Puerto LLM independiente del proveedor, con mock determinista hasta que TI apruebe proveedor y datos reales. Datos personales minimizados antes de enviarlos.
+- Permisos `puede_neo_consultar`, `puede_neo_revisar`, `puede_neo_aprobar` y `puede_neo_administrar`, separados de las facultades de suscripción. No existe matriz formal de facultades. NEO puede ayudar a relevar criterios históricos para un catálogo que aprueben las autoridades, pero no convierte excepciones en reglas ni decide quién aprueba.
+
+**Fases funcionales de NEO (definidas por Kevin) y su base técnica:**
+
+| Fase                       | Objetivo                                             | Base técnica del informe                                                            |
+| -------------------------- | ---------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| 0. Diseño y relevamiento   | Fuentes, arquitectura, permisos, requisitos          | Este registro + informe                                                             |
+| 1. Inventario documental   | Identificar y clasificar cartas del servidor Windows | Tablas `neo_*`, worker, extracción Word/Excel, hash y deduplicación                 |
+| 2. Conciliación            | Relacionar cartas con correos enviados               | Cliente Graph restringido a los buzones autorizados, evidencias por hash de adjunto |
+| 3. Aprendizaje supervisado | Validar documentos y construir la biblioteca         | Bandeja de revisión, ciclo de vida, escalamiento manual al jefe, auditoría          |
+| 4. Integración con MRC     | Antecedentes + cálculos del Cotizador                | Recálculo vía `calcularPreview`, test de contrato del motor                         |
+| 5. Generación asistida     | Cartas preliminares sujetas a revisión               | Borradores en la segunda carpeta, siempre con aprobación humana                     |
+| 6. Envío autorizado        | Responder al cliente con cartas aprobadas            | Permiso de envío de correo, solo tras aprobación registrada                         |
+| 7. Expansión               | Otros ramos y mejores recomendaciones                | —                                                                                   |
+
+**Diferencias a resolver entre el plan funcional y el técnico:**
+
+- Las Fases 1 y 2 usan documentos y correos reales desde el principio, así que dependen de la aprobación de TI antes de lo previsto en el informe. Alternativa: construir y probar ambas con cartas sintéticas y conectar las fuentes reales al final de cada fase.
+- Analizar solicitudes entrantes requiere leer la bandeja de entrada, no solo los enviados, y la Fase 6 requiere permiso de envío (`Mail.Send`). Ambos amplían el acceso a Microsoft 365 y deben acotarse a los buzones autorizados.
+
+**Decisiones pendientes:** proveedor LLM, región y retención (TI); aprobación del tratamiento de datos reales (TI y Dirección); registro en Entra ID con restricción a los buzones (TI); si la VPS ve la carpeta en la LAN (TI); formato en que se enviaban las cartas, Word, Excel o PDF (Riesgos); criterios provisorios de escalamiento y visibilidad entre analistas (jefe de Riesgos); ubicación de la segunda carpeta (TI y Riesgos); `pgvector` en el Postgres self-hosted y timeout de Cloudflare Tunnel (Kevin); prioridad de NEO frente a la Carta Oferta de Vida/AP (Kevin).
+
+**Verificación:** relevamiento de solo lectura del repositorio y lectura directa de las líneas citadas. No se accedió a la base, a la VPS, a Microsoft 365 ni al servidor Windows.
